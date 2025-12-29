@@ -1,8 +1,16 @@
 import Together from 'together-ai'
 
-const together = new Together({
-  apiKey: process.env.TOGETHER_API_KEY!
-})
+// Lazy initialization to avoid build-time errors
+let togetherClient: Together | null = null
+
+function getTogetherClient(): Together {
+  if (!togetherClient) {
+    togetherClient = new Together({
+      apiKey: process.env.TOGETHER_API_KEY!
+    })
+  }
+  return togetherClient
+}
 
 interface ResponseSettings {
   maxTokens: number
@@ -168,7 +176,7 @@ export async function callLLM(
   const settings = getResponseSettings(responseLength, queryType)
 
   try {
-    const response = await together.chat.completions.create({
+    const response = await getTogetherClient().chat.completions.create({
       model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
       messages: [
         { role: 'system', content: settings.systemMessage },
