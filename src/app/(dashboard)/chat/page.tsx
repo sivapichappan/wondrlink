@@ -17,11 +17,11 @@ export default function ChatPage() {
   const [responseLength, setResponseLength] = useState<'brief' | 'normal' | 'detailed'>('normal')
   const [hasProfile, setHasProfile] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const supabase = createClient()
 
   useEffect(() => {
     // Check if user has a patient profile
     const checkProfile = async () => {
+      const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         const { data } = await supabase
@@ -33,7 +33,7 @@ export default function ChatPage() {
       }
     }
     checkProfile()
-  }, [supabase])
+  }, [])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })

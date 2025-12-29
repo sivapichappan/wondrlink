@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { callLLM } from '@/lib/llm/together'
 import { assemblePrompt, classifyQueryType, detectUrgency, addMedicalDisclaimer, PatientContext } from '@/lib/llm/prompts'
 
 // Enhanced search that combines multiple search strategies
@@ -145,7 +144,8 @@ export async function POST(request: NextRequest) {
       queryType
     )
 
-    // Call LLM with query type for specialized responses
+    // Call LLM with query type for specialized responses (dynamic import to avoid build-time errors)
+    const { callLLM } = await import('@/lib/llm/together')
     const { answer, apiUsed } = await callLLM(
       prompt,
       response_length as 'brief' | 'normal' | 'detailed',

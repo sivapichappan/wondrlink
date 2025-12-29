@@ -21,7 +21,6 @@ export default function ProfilePage() {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const supabase = createClient()
 
   useEffect(() => {
     loadProfile()
@@ -29,6 +28,7 @@ export default function ProfilePage() {
 
   const loadProfile = async () => {
     try {
+      const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
