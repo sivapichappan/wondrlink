@@ -500,6 +500,25 @@ def api_chat():
             except Exception:
                 logger.exception("search_chunks also failed")
 
+        # Off-topic detection — refuse with redirect if query is outside scope
+        try:
+            from confidence import is_on_topic, OFF_TOPIC_RESPONSE
+            on_topic, ot_reason = is_on_topic(message, retrieved)
+            if not on_topic:
+                logger.info(f"Off-topic query refused: {ot_reason}")
+                return jsonify({
+                    "status": "ok",
+                    "answer": OFF_TOPIC_RESPONSE,
+                    "api_used": "off-topic-filter",
+                    "retrieved_count": 0,
+                    "off_topic": True,
+                    "sources": [],
+                    "guidelines_used": [],
+                    "has_guidelines": False,
+                })
+        except Exception:
+            logger.exception("Off-topic detection failed (continuing with normal flow)")
+
         # Assemble prompt
         if mismatch_detected:
             message_with_note = f"{message}\n\n[SYSTEM NOTE: User asked about different cancer type than their profile]"
@@ -535,6 +554,42 @@ def api_chat():
                 logger.warning(f"Response validation warnings: {all_warnings}")
 
             final_answer = validation['enhanced_response']
+
+            # Second-pass verification — fact-check against retrieved chunks
+            verification_result = {'verified': True, 'recommended_action': 'pass', 'verifier_used': 'skipped'}
+            try:
+                from verify import verify_response, HEDGED_FALLBACK_RESPONSE, SOFT_DISCLAIMER_PREFIX
+                verification_result = verify_response(final_answer, retrieved, message)
+
+                if verification_result.get('recommended_action') == 'add_disclaimer':
+                    final_answer = SOFT_DISCLAIMER_PREFIX + final_answer
+                    logger.info("Verification: added soft disclaimer")
+                elif verification_result.get('recommended_action') == 'regenerate':
+                    logger.info("Verification: regenerating with stronger hedging")
+                    # Regenerate with hedge instruction prepended
+                    hedged_prompt = ("CRITICAL: The previous response had unsupported claims. "
+                                     "You MUST hedge heavily. If specific details are not in the sources, "
+                                     "say 'I don't have reliable information on this' rather than fabricate.\n\n" + prompt)
+                    try:
+                        retry_answer, retry_api = call_llm(hedged_prompt, response_length, query=message, query_type=query_type)
+                        if retry_answer:
+                            retry_answer = trim_incomplete_sentence(retry_answer)
+                            retry_validation = validate_response(retry_answer, message, patient_context)
+                            retry_verification = verify_response(retry_validation['enhanced_response'], retrieved, message)
+                            if retry_verification.get('verified'):
+                                final_answer = retry_validation['enhanced_response']
+                                verification_result = retry_verification
+                                logger.info("Verification: regeneration succeeded")
+                            else:
+                                # Both attempts failed verification — return hedged fallback
+                                final_answer = HEDGED_FALLBACK_RESPONSE
+                                verification_result = retry_verification
+                                logger.warning("Verification: both attempts failed — using hedged fallback")
+                    except Exception as _e:
+                        logger.exception("Regeneration failed; keeping original with disclaimer")
+                        final_answer = SOFT_DISCLAIMER_PREFIX + final_answer
+            except Exception:
+                logger.exception("Verification step failed (continuing with original response)")
 
             # Add relevant patient resources (unless brief response)
             if response_length != "brief":
@@ -603,30 +658,32 @@ def api_chat():
             except Exception as e:
                 logger.error(f"Error in profile update scanning: {e}", exc_info=True)
 
-            # Extract sources for the frontend button
+            # Extract sources for the frontend panel
             sources_metadata = []
             guidelines_used = []
             guideline_keywords = ['NCCN', 'guideline', 'ACS', 'ASCO', 'CDC', 'NCI', 'recommendation']
             try:
                 seen_sources = set()
-                for chunk in retrieved:
+                for chunk in retrieved[:5]:  # max 5 sources per response
                     if isinstance(chunk, dict) and chunk.get('filename'):
                         fname = chunk['filename']
-                        # Clean filename for display (remove id prefix if present, usually not needed if simple)
-                        # Deduplicate
                         if fname not in seen_sources:
+                            content = chunk.get('content', '') or ''
+                            preview = content[:140].strip()
+                            if len(content) > 140:
+                                preview += '...'
                             sources_metadata.append({
                                 "title": fname,
-                                "type": "document"
+                                "type": "document",
+                                "section": chunk.get('chunk_index'),
+                                "preview": preview,
                             })
                             seen_sources.add(fname)
 
-                            # Check if this is a medical guideline source
                             fname_lower = fname.lower()
                             if any(kw.lower() in fname_lower for kw in guideline_keywords):
                                 guidelines_used.append(fname)
 
-                # Prioritize the specific guide user mentioned
                 for s in sources_metadata:
                     if "Comprehensive_Colon_Cancer_Guide" in s["title"]:
                         s["is_featured"] = True
@@ -662,6 +719,13 @@ def api_chat():
                     "has_patient_profile": bool(patient_profile),
                     "query_type": query_type,
                     "session_id": session_id,
+                    "verification": {
+                        "verified": verification_result.get('verified'),
+                        "fabrication_risk": verification_result.get('fabrication_risk'),
+                        "action": verification_result.get('recommended_action'),
+                        "verifier_used": verification_result.get('verifier_used'),
+                    },
+                    "retrieval_confidence": prompt_metadata.get('retrieval_confidence', {}),
                 }
             }
 

@@ -319,7 +319,15 @@ offer the WondrLink Foundation Personal Navigator. You MUST include the URL lite
 you navigate these hurdles? You can reach out at www.wondrlinkfoundation.org"
 ALWAYS include "www.wondrlinkfoundation.org" (spelled exactly) in your response when offering the navigator.
 
-Use "you" and "your" to personalize. Avoid medical jargon unless explaining it."""
+Use "you" and "your" to personalize. Avoid medical jargon unless explaining it.
+
+GROUNDING & CITATION RULES (CRITICAL — patient safety depends on this):
+- The MEDICAL GUIDELINES section below contains source excerpts labeled with [SOURCE: filename §section].
+- Every medical claim in your response MUST be grounded in these source excerpts.
+- If a specific claim (statistic, drug name, trial number, percentage, dose) is NOT in the source excerpts, DO NOT include it. Hedge instead: "I'm not finding specific guidance on this — your oncology team would be best positioned to answer."
+- DO NOT invent: trial NCT numbers, drug names, statistics, percentages, study citations, or specific clinical recommendations not present in the sources.
+- It is better to say "I don't have reliable information about that" than to fabricate plausible-sounding details.
+- When you cannot find supporting information in the sources, explicitly acknowledge this rather than guessing."""
 
 
 # =============================================================================
@@ -337,6 +345,16 @@ These should cover DIFFERENT aspects of their care (not all about the same drug/
 Format as: "You might also want to ask about: • [Question 1] • [Question 2] • [Question 3]"
 """
 
+
+# =============================================================================
+# LOW CONFIDENCE HEDGING (HALLUCINATION MITIGATION)
+# =============================================================================
+
+HEDGE_INSTRUCTION = """LOW CONFIDENCE MODE (the retrieved guideline excerpts may not directly address this question):
+1. Begin your response with explicit acknowledgment: "I'm not finding strong guidance specifically about this in our resources, but here's what I can share..."
+2. End with: "This is exactly the kind of question your oncology team is best equipped to answer specifically for your situation."
+3. Do NOT invent details, statistics, drug names, percentages, or trial numbers to fill gaps.
+4. If you genuinely cannot answer from the sources, say so plainly rather than guessing."""
 
 # =============================================================================
 # SAFETY VALVE — DISTRESS-TRIGGERED COMFORT MODE
@@ -1273,6 +1291,7 @@ def truncate_to_tokens(text: str, max_tokens: int, preserve_end: bool = False) -
 def select_chunks_within_budget(chunks: list, max_tokens: int) -> str:
     """Select and format chunks that fit within token budget.
        Accepts List[str] or List[Dict] (with 'content' key).
+       Labels each chunk with [SOURCE: filename] for citation grounding.
     """
     if not chunks:
         return "No specific guideline excerpts found for this query."
@@ -1284,28 +1303,33 @@ def select_chunks_within_budget(chunks: list, max_tokens: int) -> str:
         # Handle dict vs str
         if isinstance(chunk, dict):
             text = chunk.get('content', '') or chunk.get('chunk_text', '') or ""
+            filename = chunk.get('filename', '') or 'medical guidelines'
+            chunk_idx = chunk.get('chunk_index', '')
+            # Clean filename for display
+            clean_name = filename.replace('.pdf', '').replace('_', ' ')
+            source_label = f"[SOURCE: {clean_name}" + (f" §{chunk_idx}" if chunk_idx != '' else '') + "]"
         else:
             text = str(chunk)
+            source_label = "[SOURCE: medical guidelines]"
 
         if not text:
             continue
 
-        chunk_tokens = count_tokens(text)
-        # Account for separator tokens
-        separator_tokens = 15 if i > 0 else 0
+        labeled_text = f"{source_label}\n{text}"
+        chunk_tokens = count_tokens(labeled_text)
+        separator_tokens = 8 if i > 0 else 0
 
         if current_tokens + chunk_tokens + separator_tokens > max_tokens:
-            # Try to fit a truncated version if we have no chunks yet
             if not selected:
-                truncated = truncate_to_tokens(text, max_tokens - 50)
-                selected.append(truncated)
+                truncated = truncate_to_tokens(text, max_tokens - 80)
+                selected.append(f"{source_label}\n{truncated}")
             break
 
-        selected.append(text)
+        selected.append(labeled_text)
         current_tokens += chunk_tokens + separator_tokens
 
     if selected:
-        return "\n---GUIDELINE EXCERPT---\n".join(selected)
+        return "\n\n".join(selected)
     return "No specific guideline excerpts found for this query."
 
 
@@ -2060,6 +2084,15 @@ After your comfort opening, gently provide helpful information."""
     if pain_mgmt_context:
         prompt_parts.append(pain_mgmt_context)
 
+    # Conditional hedging based on retrieval confidence
+    try:
+        from confidence import compute_retrieval_confidence
+        retrieval_conf = compute_retrieval_confidence(retrieved or [])
+        if retrieval_conf['level'] in ('low', 'medium'):
+            prompt_parts.append("\n\n" + HEDGE_INSTRUCTION)
+    except Exception as _e:
+        retrieval_conf = {'level': 'unknown', 'max_similarity': 0, 'avg_similarity': 0, 'chunk_count': len(retrieved or [])}
+
     prompt_parts.extend([
         "",
         "MEDICAL GUIDELINES:",
@@ -2120,7 +2153,8 @@ After your comfort opening, gently provide helpful information."""
         'urgency_guidance': urgency_info.get('guidance', ''),
         'is_neuropathy_question': is_neuropathy_question,
         'on_oxaliplatin': on_oxaliplatin,
-        'include_resources': settings.get('include_resources', True)
+        'include_resources': settings.get('include_resources', True),
+        'retrieval_confidence': retrieval_conf,
     }
 
     return "\n".join(prompt_parts), metadata

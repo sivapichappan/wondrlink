@@ -3690,45 +3690,76 @@
         }
 
 
-        /* Source Buttons in Chat */
+        /* Sources Panel in Chat (Hallucination Mitigation) */
         .msg-sources {
-            margin-top: 6px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
+            margin-top: 10px;
+            padding: 10px 12px;
+            background: var(--background);
+            border-left: 3px solid var(--primary-lighter);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-xs);
         }
-
+        .msg-sources-header {
+            font-size: var(--font-xs);
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 6px;
+        }
+        .source-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 4px 0;
+            position: relative;
+            cursor: help;
+        }
+        .source-item:not(:last-child) {
+            border-bottom: 1px dashed var(--border-light);
+        }
+        .source-item-title {
+            color: var(--text-primary);
+            font-weight: 500;
+            flex: 1;
+            line-height: 1.4;
+        }
+        .source-item-section {
+            color: var(--text-muted);
+            font-size: 10px;
+            white-space: nowrap;
+        }
+        .source-item-preview {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            padding: 8px 10px;
+            background: var(--text-primary);
+            color: var(--surface);
+            border-radius: var(--radius-sm);
+            font-size: 11px;
+            line-height: 1.4;
+            font-weight: 400;
+            box-shadow: var(--shadow-lg);
+            z-index: 10;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+        .source-item:hover .source-item-preview {
+            display: block;
+        }
+        /* Legacy class kept for backward compat (unused in new flow) */
         .source-button {
             display: inline-flex;
-            align-items: center;
-            gap: 4px;
             padding: 4px 10px;
-            background: rgba(255, 255, 255, 0.9);
+            background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 12px;
             font-size: 11px;
             color: var(--text-secondary);
             cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-        }
-
-        .source-button:hover {
-            background: var(--surface);
-            border-color: var(--primary);
-            color: var(--primary);
-            transform: translateY(-1px);
-        }
-
-        .source-button.featured {
-            background: var(--primary-subtle);
-            border-color: var(--primary-ring);
-            color: var(--primary-dark);
-            font-weight: 500;
-        }
-
-        .source-button.featured:hover {
-            background: var(--primary-ring);
         }
 
         /* Accessibility: Skip Link */
@@ -6699,23 +6730,42 @@
                 const sourcesDiv = document.createElement("div");
                 sourcesDiv.className = "msg-sources";
 
+                const header = document.createElement("div");
+                header.className = "msg-sources-header";
+                header.textContent = "Sources used in this response";
+                sourcesDiv.appendChild(header);
+
                 metadata.sources.forEach(source => {
-                    const btn = document.createElement("button");
-                    btn.className = "source-button" + (source.is_featured ? " featured" : "");
-                    // Use a simpler title if it's the long guide name
-                    let displayTitle = source.title;
-                    if (displayTitle.includes("Comprehensive_Colon_Cancer_Guide")) {
-                        displayTitle = "Comprehensive Care Guide";
-                    } else if (displayTitle.length > 20) {
-                        displayTitle = displayTitle.substring(0, 18) + "...";
+                    const item = document.createElement("div");
+                    item.className = "source-item";
+
+                    // Clean filename for display
+                    let displayTitle = source.title || "";
+                    displayTitle = displayTitle.replace(/\.pdf$/i, '').replace(/_/g, ' ');
+                    if (displayTitle.length > 60) {
+                        displayTitle = displayTitle.substring(0, 58) + '...';
                     }
 
-                    btn.innerHTML = `<span>Helpful Resources:</span> ${displayTitle}`;
-                    btn.onclick = () => {
-                        // Simple alert for now, could be a modal
-                        alert(`Source Document:\n${source.title}\n\nThis guidance is based on our medical knowledge base.`);
-                    };
-                    sourcesDiv.appendChild(btn);
+                    const titleEl = document.createElement("div");
+                    titleEl.className = "source-item-title";
+                    titleEl.textContent = displayTitle;
+                    item.appendChild(titleEl);
+
+                    if (source.section !== undefined && source.section !== null && source.section !== '') {
+                        const sectionEl = document.createElement("div");
+                        sectionEl.className = "source-item-section";
+                        sectionEl.textContent = `§${source.section}`;
+                        item.appendChild(sectionEl);
+                    }
+
+                    if (source.preview) {
+                        const previewEl = document.createElement("div");
+                        previewEl.className = "source-item-preview";
+                        previewEl.textContent = source.preview;
+                        item.appendChild(previewEl);
+                    }
+
+                    sourcesDiv.appendChild(item);
                 });
 
                 div.appendChild(sourcesDiv);

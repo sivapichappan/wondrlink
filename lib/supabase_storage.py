@@ -236,10 +236,20 @@ def load_all_chunks() -> List[Dict[str, Any]]:
     Load all document chunks from the database with metadata.
 
     Returns:
-        List of dicts: [{'content': str, 'filename': str, 'chunk_index': int, ...}]
+        List of dicts: [{'content': str, 'filename': str, 'chunk_index': int, 'document_id': str}]
     """
     try:
         client = get_supabase_client()
+
+        # First, build document_id -> filename map
+        doc_id_to_filename = {}
+        try:
+            docs_result = client.table('pdf_documents').select('id, filename').execute()
+            if docs_result.data:
+                for doc in docs_result.data:
+                    doc_id_to_filename[doc['id']] = doc.get('filename', '')
+        except Exception as e:
+            logger.warning(f"Could not load document filenames: {e}")
 
         # Get total count first
         count_result = client.table('pdf_chunks') \
@@ -258,8 +268,6 @@ def load_all_chunks() -> List[Dict[str, Any]]:
         offset = 0
 
         while offset < total_count:
-            # Select only columns we know exist. 'chunk_text' corresponds to 'content' in usage.
-            # We must NOT select 'content' if it doesn't exist in the schema.
             result = client.table('pdf_chunks') \
                 .select('document_id, chunk_index, content') \
                 .order('document_id') \
@@ -269,11 +277,13 @@ def load_all_chunks() -> List[Dict[str, Any]]:
 
             if result.data:
                 for row in result.data:
+                    # Attach filename via document_id lookup
+                    row['filename'] = doc_id_to_filename.get(row.get('document_id'), '')
                     all_chunks.append(row)
 
             offset += page_size
 
-        logger.info(f"Loaded {len(all_chunks)} chunks from database")
+        logger.info(f"Loaded {len(all_chunks)} chunks from {len(doc_id_to_filename)} documents")
         return all_chunks
     except Exception as e:
         logger.error(f"Failed to load chunks: {e}")

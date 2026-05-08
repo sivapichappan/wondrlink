@@ -364,10 +364,10 @@ def hybrid_search(query: str, chunks: List[Any], top_k: int = 5) -> List[Any]:
         logger.info("Hybrid search: TF-only (no vector results)")
         return tf_results[:top_k]
 
-    # 3. Build RRF scores
-    # Map chunk content to RRF score
+    # 3. Build RRF scores and similarity map
     rrf_scores = {}
-    chunk_map = {}  # content -> original chunk object
+    chunk_map = {}
+    similarity_map = {}  # key -> max similarity score from vector search
 
     # Score TF results
     for rank, chunk in enumerate(tf_results):
@@ -376,24 +376,40 @@ def hybrid_search(query: str, chunks: List[Any], top_k: int = 5) -> List[Any]:
         else:
             content = str(chunk)
 
-        key = content[:200]  # Use first 200 chars as dedup key
+        key = content[:200]
         rrf_scores[key] = rrf_scores.get(key, 0) + 1.0 / (RRF_K + rank + 1)
         chunk_map[key] = chunk
 
-    # Score vector results
+    # Score vector results & track similarity
     for rank, result in enumerate(vector_results):
         content = result.get('content', '')
         key = content[:200]
         rrf_scores[key] = rrf_scores.get(key, 0) + 1.0 / (RRF_K + rank + 1)
+        sim = result.get('similarity', 0)
+        similarity_map[key] = max(similarity_map.get(key, 0), sim)
         if key not in chunk_map:
-            chunk_map[key] = content  # Store as string if not already mapped
+            # Vector result is a dict; preserve filename via document_id lookup later if available
+            chunk_map[key] = result
 
     # 4. Sort by RRF score and return top_k
     sorted_keys = sorted(rrf_scores.keys(), key=lambda k: rrf_scores[k], reverse=True)
 
+    # Build a doc_id -> filename map from any chunks that have it (TF chunks come from Supabase load)
+    doc_id_to_filename = {}
+    for chunk in chunks[:200]:  # sample a few to build mapping
+        if isinstance(chunk, dict) and chunk.get('document_id') and chunk.get('filename'):
+            doc_id_to_filename[chunk['document_id']] = chunk['filename']
+
     results = []
     for key in sorted_keys[:top_k]:
-        results.append(chunk_map[key])
+        chunk = chunk_map[key]
+        if isinstance(chunk, dict):
+            # Ensure filename is set (vector results may lack it; fill from map)
+            if not chunk.get('filename') and chunk.get('document_id'):
+                chunk['filename'] = doc_id_to_filename.get(chunk['document_id'], '')
+            # Attach similarity score
+            chunk['_similarity'] = similarity_map.get(key, 0)
+        results.append(chunk)
 
     tf_count = len(tf_results)
     vec_count = len(vector_results)

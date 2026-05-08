@@ -106,8 +106,43 @@ New `PAIN_MANAGEMENT_GUIDANCE` constant injected when pain + medication keywords
 
 ---
 
+---
+
+## UI Redesign
+
+**Modernized the entire visual design** with dark mode, glassmorphism, refined color system, and improved typography.
+
+### Design System
+- **80+ CSS variables** (was 30): typography scale, glassmorphism tokens, semantic alerts, surface variants
+- **Deepened brand teal** (#4A8F86 to #357A72) for better contrast
+- **Migrated 33 hardcoded colors** to CSS variables (dark-mode ready)
+
+### Dark Mode
+- Auto-detects OS preference via `prefers-color-scheme`
+- Manual toggle button (moon/sun icon) in sidebar header
+- Persists choice to localStorage
+- Smooth theme transition (300ms) on all surfaces
+- Dark palette: #0F1419 background, #1E252D surface, #5DB8AD teal
+
+### Visual Polish
+- **Sidebar**: glassmorphism (backdrop-blur, translucent background)
+- **Chat bubbles**: asymmetric radius, left teal accent border on bot messages, solid user color (dropped gradient)
+- **Section cards**: hover lift animation with teal left-border accent
+- **Suggestion chips**: scale-up micro-interaction on hover
+- **Animations**: spring easing curve on chat messages
+
+### Accessibility
+- `@media (prefers-contrast: high)` support with deepened primary and border colors
+- `<meta name="color-scheme" content="light dark">` for native form theming
+- Logo brightness adjustment for dark backgrounds
+
+---
+
 ## Commits
 
 ```
 7268214 WondrChat v2.2: Empathy-first tone, Safety Valve, Patient Advocate, Navigator
+e802992 Fix nutrition sidebar buttons targeting wrong input ID
+a475fbc Strengthen prompt enforcement and add physician feedback test suite
+1a733a9 UI redesign: dark mode, glassmorphism, refined color system and typography
 ```
