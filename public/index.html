@@ -1203,6 +1203,355 @@
             cursor: pointer;
         }
 
+        /* =====================================================
+           Pitch-feature shared overlay: pre-visit, visit recap,
+           insurance appeal, deep-dive research.
+           ===================================================== */
+        .feature-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        .feature-modal {
+            background: var(--surface);
+            border-radius: var(--radius-lg, 12px);
+            width: 100%;
+            max-width: 720px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+        }
+        .feature-modal-header {
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+        }
+        .feature-modal-title-block { flex: 1; min-width: 0; }
+        .feature-modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0;
+        }
+        .feature-modal-subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            line-height: 1.5;
+        }
+        .feature-modal-close {
+            background: none;
+            border: none;
+            font-size: 26px;
+            line-height: 1;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 0 4px;
+        }
+        .feature-modal-close:hover { color: var(--text-primary); }
+        .feature-modal-body { padding: 22px; }
+        .feature-modal-footer {
+            padding: 14px 22px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .feature-textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius, 8px);
+            font-family: inherit;
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--text-primary);
+            background: var(--background);
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        .feature-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .feature-submit-btn {
+            padding: 10px 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm, 6px);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .feature-submit-btn:hover { background: var(--primary-dark, var(--primary)); }
+        .feature-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .feature-secondary-btn {
+            padding: 10px 16px;
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm, 6px);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .feature-secondary-btn:hover { background: var(--background); }
+        .feature-loading {
+            text-align: center;
+            padding: 30px 20px;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+        .feature-loading-stage {
+            font-style: italic;
+            margin-top: 12px;
+            color: var(--text-secondary);
+        }
+        .feature-error {
+            background: #FEF2F2;
+            border: 1px solid #FCA5A5;
+            color: #991B1B;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm, 6px);
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+        .feature-fallback-note {
+            background: #FEF3C7;
+            border: 1px solid #F59E0B;
+            color: #92400E;
+            padding: 8px 12px;
+            border-radius: var(--radius-sm, 6px);
+            font-size: 12px;
+            margin-bottom: 14px;
+        }
+
+        /* Pre-visit question groups */
+        .previsit-group {
+            margin-bottom: 18px;
+            padding: 14px 16px;
+            background: var(--background);
+            border-left: 3px solid var(--primary);
+            border-radius: var(--radius-sm, 6px);
+        }
+        .previsit-group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .previsit-group-topic {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .previsit-copy-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--primary);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .previsit-copy-btn:hover { background: var(--surface); }
+        .previsit-question {
+            padding: 8px 0;
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            border-top: 1px dashed var(--border-light, var(--border));
+        }
+        .previsit-question:first-of-type { border-top: none; padding-top: 4px; }
+
+        /* Visit Recap result panel */
+        .recap-section {
+            margin-bottom: 16px;
+            padding: 12px 14px;
+            background: var(--background);
+            border-left: 3px solid var(--primary);
+            border-radius: var(--radius-sm, 6px);
+        }
+        .recap-section.recap-flags {
+            background: #FEF3C7;
+            border-left-color: #F59E0B;
+        }
+        .recap-section-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 8px;
+        }
+        .recap-section.recap-flags .recap-section-title { color: #92400E; }
+        .recap-section ul {
+            margin: 0;
+            padding-left: 18px;
+            font-size: 13px;
+            line-height: 1.55;
+            color: var(--text-secondary);
+        }
+        .recap-section li { margin-bottom: 4px; }
+        .recap-section.recap-flags ul li { color: #92400E; }
+        .recap-empty {
+            font-style: italic;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+        .voice-active {
+            background: var(--primary) !important;
+            color: white !important;
+            animation: voicePulse 1.4s infinite;
+        }
+        @keyframes voicePulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(13, 148, 136, 0.5); }
+            50% { box-shadow: 0 0 0 6px rgba(13, 148, 136, 0); }
+        }
+
+        /* Insurance Appeal */
+        .appeal-dropzone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius, 8px);
+            padding: 22px;
+            text-align: center;
+            background: var(--background);
+            transition: border-color 0.15s, background 0.15s;
+            cursor: pointer;
+        }
+        .appeal-dropzone.dragover {
+            border-color: var(--primary);
+            background: var(--surface);
+        }
+        .appeal-dropzone-inner { pointer-events: none; }
+        .appeal-dropzone a { pointer-events: auto; }
+        .appeal-draft-textarea {
+            width: 100%;
+            min-height: 360px;
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius, 8px);
+            font-family: 'Georgia', 'Times New Roman', serif;
+            font-size: 13.5px;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background: var(--surface);
+            resize: vertical;
+            box-sizing: border-box;
+            white-space: pre-wrap;
+        }
+        .appeal-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        .appeal-disclaimer {
+            margin-top: 14px;
+            padding: 10px 12px;
+            background: var(--background);
+            border-left: 3px solid var(--primary);
+            border-radius: var(--radius-sm, 6px);
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Deep-Dive Research result panel */
+        .deepdive-meta-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        .deepdive-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            background: var(--background);
+            color: var(--text-secondary);
+        }
+        .deepdive-badge.verified {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+        .deepdive-badge.unverified {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+        .deepdive-section {
+            margin-bottom: 18px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius, 8px);
+            overflow: hidden;
+        }
+        .deepdive-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 14px;
+            background: var(--background);
+            cursor: pointer;
+            user-select: none;
+        }
+        .deepdive-section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .deepdive-section-chevron {
+            transition: transform 0.15s;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        .deepdive-section.collapsed .deepdive-section-body { display: none; }
+        .deepdive-section.collapsed .deepdive-section-chevron { transform: rotate(-90deg); }
+        .deepdive-section-body {
+            padding: 14px;
+            font-size: 13.5px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+        .deepdive-section-body h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 12px 0 6px;
+        }
+        .deepdive-subqueries {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px dashed var(--border);
+        }
+        .deepdive-subqueries-label {
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 4px;
+        }
+
         /* Crisis Modal */
         .crisis-overlay {
             position: fixed;
@@ -3750,6 +4099,66 @@
         .source-item:hover .source-item-preview {
             display: block;
         }
+
+        /* Inline Citations (Feature 1) — numbered [N] markers in bot text */
+        .citation {
+            display: inline-block;
+            background: var(--primary-lighter);
+            color: var(--primary);
+            padding: 0 5px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            margin: 0 1px;
+            cursor: help;
+            position: relative;
+            vertical-align: super;
+            line-height: 1.2;
+            text-decoration: none;
+            user-select: none;
+        }
+        .citation:hover, .citation:focus {
+            background: var(--primary);
+            color: white;
+            outline: none;
+        }
+        .citation-preview {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 0;
+            width: 280px;
+            padding: 10px 12px;
+            background: var(--text-primary);
+            color: var(--surface);
+            border-radius: var(--radius-sm);
+            font-size: 11px;
+            line-height: 1.5;
+            font-weight: 400;
+            box-shadow: var(--shadow-lg);
+            z-index: 100;
+            white-space: normal;
+            text-transform: none;
+            letter-spacing: 0;
+            text-align: left;
+        }
+        .citation-preview-title {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--primary-lighter);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .citation-preview-text {
+            display: block;
+        }
+        .citation:hover .citation-preview,
+        .citation:focus .citation-preview {
+            display: block;
+        }
+
         /* Legacy class kept for backward compat (unused in new flow) */
         .source-button {
             display: inline-flex;
@@ -4106,6 +4515,129 @@
         </div>
     </div>
 
+    <!-- ============================================= -->
+    <!-- PITCH FEATURES (May 2026)                     -->
+    <!-- ============================================= -->
+
+    <!-- Feature 2: Pre-visit Question Generator -->
+    <div id="previsitOverlay" class="feature-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Prepare for next visit">
+        <div class="feature-modal">
+            <div class="feature-modal-header">
+                <div class="feature-modal-title-block">
+                    <h2 class="feature-modal-title">Prepare for your next visit</h2>
+                    <div class="feature-modal-subtitle">Tell me a little about what's happening — I'll suggest 10–12 questions tailored to your situation.</div>
+                </div>
+                <button class="feature-modal-close" onclick="closePrevisit()" aria-label="Close">&times;</button>
+            </div>
+            <div class="feature-modal-body" id="previsitBody">
+                <textarea id="previsitContext" class="feature-textarea" placeholder="Examples: starting FOLFOX next Tuesday, scan results coming back, side effects I want to discuss, considering a clinical trial..."></textarea>
+                <div id="previsitError" class="feature-error" style="display:none;"></div>
+                <div id="previsitResult" style="margin-top:18px;display:none;"></div>
+            </div>
+            <div class="feature-modal-footer">
+                <button class="feature-secondary-btn" onclick="closePrevisit()">Close</button>
+                <button class="feature-submit-btn" id="previsitSubmitBtn" onclick="submitPrevisit()">Generate questions</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature 5: Deep-Dive Research Mode -->
+    <div id="deepDiveOverlay" class="feature-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Deep-Dive Research">
+        <div class="feature-modal" style="max-width:820px;">
+            <div class="feature-modal-header">
+                <div class="feature-modal-title-block">
+                    <h2 class="feature-modal-title">Deep-Dive Research</h2>
+                    <div class="feature-modal-subtitle">Ask a complex question. I'll spend a bit longer researching across our knowledge base — typically 15–45 seconds.</div>
+                </div>
+                <button class="feature-modal-close" onclick="closeDeepDive()" aria-label="Close">&times;</button>
+            </div>
+            <div class="feature-modal-body" id="deepDiveBody">
+                <div id="deepDiveInputPanel">
+                    <textarea id="deepDiveQuery" class="feature-textarea" style="min-height:100px;" placeholder="Examples: 'FOLFOX vs CAPOX for stage III KRAS-mutant CRC in patients over 70'  ·  'How is MSI status used to choose immunotherapy vs chemotherapy?'  ·  'What does the evidence say about exercise during adjuvant treatment?'"></textarea>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Limited to 3 deep dives every 5 minutes per account.</div>
+                </div>
+                <div id="deepDiveLoading" class="feature-loading" style="display:none;">
+                    <div class="thinking-dots" style="display:inline-flex;"><span></span><span></span><span></span></div>
+                    <div id="deepDiveStage" class="feature-loading-stage">Searching CRC guidelines...</div>
+                    <div style="margin-top:8px;font-size:11px;color:var(--text-muted);">This is a longer call — please don't close this window.</div>
+                </div>
+                <div id="deepDiveError" class="feature-error" style="display:none;"></div>
+                <div id="deepDiveResult" style="margin-top:12px;display:none;"></div>
+            </div>
+            <div class="feature-modal-footer">
+                <button class="feature-secondary-btn" onclick="closeDeepDive()">Close</button>
+                <button class="feature-submit-btn" id="deepDiveSubmitBtn" onclick="submitDeepDive()">Research this</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature 4: Insurance Appeal Letter Drafting -->
+    <div id="appealOverlay" class="feature-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Insurance Appeal Letter">
+        <div class="feature-modal" style="max-width:780px;">
+            <div class="feature-modal-header">
+                <div class="feature-modal-title-block">
+                    <h2 class="feature-modal-title">Insurance Appeal Letter</h2>
+                    <div class="feature-modal-subtitle">Upload your denial letter (PDF) or describe the denial reason — I'll draft an appeal grounded in NCCN/ASCO guidelines.</div>
+                </div>
+                <button class="feature-modal-close" onclick="closeAppeal()" aria-label="Close">&times;</button>
+            </div>
+            <div class="feature-modal-body" id="appealBody">
+                <div id="appealInputPanel">
+                    <div id="appealDropZone" class="appeal-dropzone">
+                        <input type="file" id="appealFileInput" accept="application/pdf,.pdf" style="display:none;" onchange="handleAppealFileChosen(event)">
+                        <div class="appeal-dropzone-inner">
+                            <div style="font-size:30px;line-height:1;">📄</div>
+                            <div style="font-weight:600;margin-top:8px;">Drag your denial letter PDF here</div>
+                            <div style="color:var(--text-muted);font-size:12px;margin-top:4px;">or <a href="#" onclick="document.getElementById('appealFileInput').click(); return false;" style="color:var(--primary);font-weight:600;">browse to upload</a> · max 5 MB</div>
+                            <div id="appealFileChosen" style="margin-top:10px;font-size:12px;color:var(--primary);font-weight:600;display:none;"></div>
+                        </div>
+                    </div>
+                    <div style="text-align:center;margin:14px 0;color:var(--text-muted);font-size:12px;">or describe the denial in your own words</div>
+                    <textarea id="appealDenialText" class="feature-textarea" style="min-height:100px;" placeholder="Example: Aetna denied my request for FOLFOX as adjuvant therapy after stage III colon cancer surgery, citing 'not medically necessary.'"></textarea>
+                </div>
+                <div id="appealError" class="feature-error" style="display:none;"></div>
+                <div id="appealResult" style="margin-top:18px;display:none;"></div>
+            </div>
+            <div class="feature-modal-footer">
+                <button class="feature-secondary-btn" onclick="closeAppeal()">Close</button>
+                <button class="feature-submit-btn" id="appealSubmitBtn" onclick="submitAppeal()">Draft my appeal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feature 3: Appointment Companion (Visit Recap) -->
+    <div id="visitRecapOverlay" class="feature-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Visit Companion">
+        <div class="feature-modal">
+            <div class="feature-modal-header">
+                <div class="feature-modal-title-block">
+                    <h2 class="feature-modal-title">Visit Companion</h2>
+                    <div class="feature-modal-subtitle">Tell me what happened at your visit. Paste notes, type, or use the microphone — I'll organize it into a clean recap.</div>
+                </div>
+                <button class="feature-modal-close" onclick="closeVisitRecap()" aria-label="Close">&times;</button>
+            </div>
+            <div class="feature-modal-body" id="visitRecapBody">
+                <div style="position:relative;">
+                    <textarea id="visitRecapTranscript" class="feature-textarea" style="min-height:160px;" placeholder="Examples: 'Met with Dr. Patel today. She said scan looked stable. Switching cycle 5 oxaliplatin to lower dose because of neuropathy. Need to schedule labs next Tuesday and follow up in 3 weeks.'"></textarea>
+                    <button id="visitRecapVoiceBtn" type="button" onclick="toggleVisitRecapVoice()" aria-label="Dictate notes" title="Click to dictate"
+                        style="position:absolute;top:8px;right:8px;width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                            <line x1="12" y1="19" x2="12" y2="23"></line>
+                            <line x1="8" y1="23" x2="16" y2="23"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div id="visitRecapError" class="feature-error" style="display:none;"></div>
+                <div id="visitRecapResult" style="margin-top:18px;display:none;"></div>
+            </div>
+            <div class="feature-modal-footer">
+                <button class="feature-secondary-btn" onclick="closeVisitRecap()">Close</button>
+                <button class="feature-submit-btn" id="visitRecapSubmitBtn" onclick="submitVisitRecap()">Build recap</button>
+            </div>
+        </div>
+    </div>
+
     <div class="app" id="mainApp" style="display: none;">
         <!-- Mobile Header Bar -->
         <div class="mobile-header" role="banner">
@@ -4210,6 +4742,27 @@
                         </button>
                         <button onclick="startScreening('SYMPTOM')" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;background:var(--primary);color:white;">
                             Symptom Check-In
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Care Tools (Pitch features: pre-visit, visit recap, insurance appeal, deep research) -->
+                <div class="section-card compact" id="careToolsPanel">
+                    <div class="section-header">
+                        <div class="section-title">Care Tools</div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px;padding:0 12px 12px;">
+                        <button id="previsitBtn" onclick="openPrevisit()" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
+                            Prepare for next visit
+                        </button>
+                        <button id="visitRecapBtn" onclick="openVisitRecap()" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
+                            Visit Companion (recap)
+                        </button>
+                        <button id="appealBtn" onclick="openAppeal()" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
+                            Insurance Appeal Letter
+                        </button>
+                        <button id="deepDiveBtn" onclick="openDeepDive()" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
+                            Deep-Dive Research
                         </button>
                     </div>
                 </div>
@@ -6702,13 +7255,57 @@
         // =====================
         // Chat Functions
         // =====================
+
+        // Per-feature kill switches. Set to false to disable a feature client-side
+        // even if the backend ships it. Mirror of FEATURE_<NAME> env vars.
+        const FEATURES = {
+            inlineCitations: true,
+            preVisitQuestions: true,
+            appointmentCompanion: true,
+            insuranceAppeal: true,
+            deepDive: true,
+        };
+
+        function escapeHtml(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[c]);
+        }
+
+        // Feature 1: render inline [N] markers as hover-preview citation badges.
+        // citations: { "1": {filename, section, preview}, "2": {...} }
+        function renderCitations(text, citations) {
+            if (!FEATURES.inlineCitations) return text;
+            if (!citations || Object.keys(citations).length === 0) return text;
+            return text.replace(/\[(\d+(?:\s*,\s*\d+)*)\]/g, (match, nums) => {
+                const numList = nums.split(',').map(n => parseInt(n.trim(), 10));
+                const validNums = numList.filter(n => citations[n] || citations[String(n)]);
+                if (validNums.length === 0) return '';
+                return validNums.map(n => {
+                    const c = citations[n] || citations[String(n)];
+                    const filename = c.filename || 'guideline';
+                    const section = (c.section !== undefined && c.section !== null && c.section !== '') ? ` §${c.section}` : '';
+                    const preview = c.preview || '';
+                    return '<sup class="citation" data-cite="' + n + '" tabindex="0">[' + n + ']' +
+                        '<span class="citation-preview">' +
+                        '<span class="citation-preview-title">' + escapeHtml(filename + section) + '</span>' +
+                        '<span class="citation-preview-text">' + escapeHtml(preview) + '</span>' +
+                        '</span></sup>';
+                }).join('');
+            });
+        }
+
         function addMessage(text, who = "bot", metadata = null) {
             const div = document.createElement("div");
             div.className = "msg " + who;
 
             const bubble = document.createElement("div");
             bubble.className = "bubble " + who;
-            bubble.innerHTML = text.replace(/\n/g, '<br>');
+            let processedText = text;
+            if (who === "bot" && metadata && metadata.citations) {
+                processedText = renderCitations(text, metadata.citations);
+            }
+            bubble.innerHTML = processedText.replace(/\n/g, '<br>');
             div.appendChild(bubble);
 
             if (who === "bot" && metadata && metadata.patient_context_used) {
@@ -8156,6 +8753,777 @@
         function formatDate(isoStr) {
             const d = new Date(isoStr);
             return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        // =============================================
+        // PITCH FEATURE HANDLERS (May 2026)
+        //   F2: Pre-visit Question Generator
+        //   F3: Appointment Companion (Visit Recap)
+        //   F4: Insurance Appeal Letter Drafting
+        //   F5: Deep-Dive Research Mode
+        // =============================================
+
+        // ---- Feature 2: Pre-visit Question Generator ----
+        function openPrevisit() {
+            if (!FEATURES.preVisitQuestions) return;
+            document.getElementById('previsitContext').value = '';
+            document.getElementById('previsitError').style.display = 'none';
+            document.getElementById('previsitResult').style.display = 'none';
+            document.getElementById('previsitResult').innerHTML = '';
+            document.getElementById('previsitSubmitBtn').disabled = false;
+            document.getElementById('previsitSubmitBtn').textContent = 'Generate questions';
+            document.getElementById('previsitOverlay').style.display = 'flex';
+            // Close mobile sidebar if open
+            try { closeMobileMenu(); } catch (_) {}
+        }
+
+        function closePrevisit() {
+            document.getElementById('previsitOverlay').style.display = 'none';
+        }
+
+        async function submitPrevisit() {
+            const ctx = document.getElementById('previsitContext').value.trim();
+            const errEl = document.getElementById('previsitError');
+            const resultEl = document.getElementById('previsitResult');
+            const btn = document.getElementById('previsitSubmitBtn');
+
+            errEl.style.display = 'none';
+            resultEl.style.display = 'none';
+            resultEl.innerHTML = '';
+
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+
+            try {
+                const resp = await authFetch('/api/previsit_questions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ context: ctx })
+                });
+                const j = await resp.json();
+                if (!resp.ok) {
+                    if (resp.status === 503) {
+                        errEl.textContent = 'This feature is temporarily unavailable.';
+                    } else if (resp.status === 429) {
+                        errEl.textContent = 'You\'ve generated questions a lot recently — please wait a moment.';
+                    } else {
+                        errEl.textContent = j.error || 'Could not generate questions right now. Please try again.';
+                    }
+                    errEl.style.display = 'block';
+                    return;
+                }
+                renderPrevisitGroups(j.groups || [], j.used_fallback, j.cached);
+            } catch (e) {
+                errEl.textContent = 'Network error: ' + e.message;
+                errEl.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Generate questions';
+            }
+        }
+
+        function renderPrevisitGroups(groups, usedFallback, cached) {
+            const resultEl = document.getElementById('previsitResult');
+            resultEl.innerHTML = '';
+            if (!groups || groups.length === 0) {
+                resultEl.innerHTML = '<div class="feature-error">No questions generated. Please try again.</div>';
+                resultEl.style.display = 'block';
+                return;
+            }
+
+            if (usedFallback) {
+                const note = document.createElement('div');
+                note.className = 'feature-fallback-note';
+                note.textContent = 'Showing general pre-visit questions — for more tailored questions, please complete your profile.';
+                resultEl.appendChild(note);
+            }
+
+            groups.forEach((g, gi) => {
+                const groupEl = document.createElement('div');
+                groupEl.className = 'previsit-group';
+
+                const headerEl = document.createElement('div');
+                headerEl.className = 'previsit-group-header';
+
+                const topicEl = document.createElement('div');
+                topicEl.className = 'previsit-group-topic';
+                topicEl.textContent = g.topic || ('Group ' + (gi + 1));
+                headerEl.appendChild(topicEl);
+
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'previsit-copy-btn';
+                copyBtn.textContent = 'Copy';
+                copyBtn.onclick = () => {
+                    const text = (g.questions || []).map(q => '- ' + q).join('\n');
+                    navigator.clipboard.writeText(text).then(() => {
+                        copyBtn.textContent = 'Copied!';
+                        setTimeout(() => copyBtn.textContent = 'Copy', 1500);
+                    });
+                };
+                headerEl.appendChild(copyBtn);
+                groupEl.appendChild(headerEl);
+
+                (g.questions || []).forEach(q => {
+                    const qEl = document.createElement('div');
+                    qEl.className = 'previsit-question';
+                    qEl.textContent = q;
+                    groupEl.appendChild(qEl);
+                });
+
+                resultEl.appendChild(groupEl);
+            });
+            resultEl.style.display = 'block';
+        }
+
+        // ---- Feature 3: Appointment Companion (Visit Recap) ----
+        let visitRecapRecognition = null;
+        let visitRecapListening = false;
+
+        function openVisitRecap() {
+            if (!FEATURES.appointmentCompanion) return;
+            document.getElementById('visitRecapTranscript').value = '';
+            document.getElementById('visitRecapError').style.display = 'none';
+            document.getElementById('visitRecapResult').style.display = 'none';
+            document.getElementById('visitRecapResult').innerHTML = '';
+            const btn = document.getElementById('visitRecapSubmitBtn');
+            btn.disabled = false;
+            btn.textContent = 'Build recap';
+            stopVisitRecapVoice();
+            document.getElementById('visitRecapOverlay').style.display = 'flex';
+            try { closeMobileMenu(); } catch (_) {}
+        }
+
+        function closeVisitRecap() {
+            stopVisitRecapVoice();
+            document.getElementById('visitRecapOverlay').style.display = 'none';
+        }
+
+        function toggleVisitRecapVoice() {
+            if (visitRecapListening) {
+                stopVisitRecapVoice();
+            } else {
+                startVisitRecapVoice();
+            }
+        }
+
+        function startVisitRecapVoice() {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) {
+                document.getElementById('visitRecapError').textContent = 'Voice input is not supported in this browser. You can paste or type your notes instead.';
+                document.getElementById('visitRecapError').style.display = 'block';
+                return;
+            }
+            visitRecapRecognition = new SR();
+            visitRecapRecognition.continuous = true;
+            visitRecapRecognition.interimResults = true;
+            visitRecapRecognition.lang = 'en-US';
+
+            const ta = document.getElementById('visitRecapTranscript');
+            const baseText = ta.value;
+            visitRecapRecognition.onresult = (e) => {
+                let interim = '';
+                let final = '';
+                for (let i = e.resultIndex; i < e.results.length; i++) {
+                    const r = e.results[i];
+                    if (r.isFinal) final += r[0].transcript + ' ';
+                    else interim += r[0].transcript;
+                }
+                ta.value = (baseText + ' ' + final + interim).trim();
+            };
+            visitRecapRecognition.onerror = () => stopVisitRecapVoice();
+            visitRecapRecognition.onend = () => {
+                if (visitRecapListening) {
+                    try { visitRecapRecognition.start(); } catch (_) { stopVisitRecapVoice(); }
+                }
+            };
+            visitRecapRecognition.start();
+            visitRecapListening = true;
+            document.getElementById('visitRecapVoiceBtn').classList.add('voice-active');
+        }
+
+        function stopVisitRecapVoice() {
+            if (visitRecapRecognition) {
+                try { visitRecapRecognition.stop(); } catch (_) {}
+                visitRecapRecognition = null;
+            }
+            visitRecapListening = false;
+            const btn = document.getElementById('visitRecapVoiceBtn');
+            if (btn) btn.classList.remove('voice-active');
+        }
+
+        async function submitVisitRecap() {
+            const transcript = document.getElementById('visitRecapTranscript').value.trim();
+            const errEl = document.getElementById('visitRecapError');
+            const resultEl = document.getElementById('visitRecapResult');
+            const btn = document.getElementById('visitRecapSubmitBtn');
+
+            errEl.style.display = 'none';
+            resultEl.style.display = 'none';
+            resultEl.innerHTML = '';
+
+            if (transcript.length < 50) {
+                errEl.textContent = 'Please share at least a few sentences about your visit (50+ characters).';
+                errEl.style.display = 'block';
+                return;
+            }
+
+            stopVisitRecapVoice();
+            btn.disabled = true;
+            btn.textContent = 'Building recap...';
+
+            try {
+                const resp = await authFetch('/api/visit_recap', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ transcript })
+                });
+                const j = await resp.json();
+                if (!resp.ok) {
+                    if (resp.status === 503) errEl.textContent = 'This feature is temporarily unavailable.';
+                    else if (resp.status === 429) errEl.textContent = 'Too many requests — please wait a moment.';
+                    else errEl.textContent = j.error || 'Could not build the recap right now. Please try again.';
+                    errEl.style.display = 'block';
+                    return;
+                }
+                renderVisitRecap(j.recap || {}, j.truncated);
+            } catch (e) {
+                errEl.textContent = 'Network error: ' + e.message;
+                errEl.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Build recap';
+            }
+        }
+
+        function renderVisitRecap(recap, truncated) {
+            const resultEl = document.getElementById('visitRecapResult');
+            resultEl.innerHTML = '';
+
+            if (truncated) {
+                const note = document.createElement('div');
+                note.className = 'feature-fallback-note';
+                note.textContent = 'Your notes were long, so I worked from the first 8,000 characters.';
+                resultEl.appendChild(note);
+            }
+
+            if (recap.used_fallback) {
+                const note = document.createElement('div');
+                note.className = 'feature-fallback-note';
+                note.textContent = 'I had trouble structuring the recap precisely — please review with your care team.';
+                resultEl.appendChild(note);
+            }
+
+            const renderSection = (title, items, isFlags) => {
+                const sec = document.createElement('div');
+                sec.className = 'recap-section' + (isFlags ? ' recap-flags' : '');
+                const t = document.createElement('div');
+                t.className = 'recap-section-title';
+                t.textContent = title;
+                sec.appendChild(t);
+                if (!items || items.length === 0) {
+                    const e = document.createElement('div');
+                    e.className = 'recap-empty';
+                    e.textContent = 'Nothing noted.';
+                    sec.appendChild(e);
+                } else {
+                    const ul = document.createElement('ul');
+                    items.forEach(it => {
+                        const li = document.createElement('li');
+                        li.textContent = it;
+                        ul.appendChild(li);
+                    });
+                    sec.appendChild(ul);
+                }
+                return sec;
+            };
+
+            // Render flags first if present (most important)
+            if (recap.flags && recap.flags.length > 0) {
+                resultEl.appendChild(renderSection('Things to confirm with your care team', recap.flags, true));
+            }
+            resultEl.appendChild(renderSection('Discussed at the visit', recap.discussed || []));
+            resultEl.appendChild(renderSection('Treatment changes', recap.treatment_changes || []));
+            resultEl.appendChild(renderSection('Action items for me', recap.action_items || []));
+            resultEl.appendChild(renderSection('Questions for next time', recap.follow_up_questions || []));
+
+            resultEl.style.display = 'block';
+        }
+
+        // ---- Feature 4: Insurance Appeal Letter ----
+        let appealChosenFile = null;
+
+        function openAppeal() {
+            if (!FEATURES.insuranceAppeal) return;
+            appealChosenFile = null;
+            const fileInput = document.getElementById('appealFileInput');
+            if (fileInput) fileInput.value = '';
+            document.getElementById('appealFileChosen').style.display = 'none';
+            document.getElementById('appealFileChosen').textContent = '';
+            document.getElementById('appealDenialText').value = '';
+            document.getElementById('appealError').style.display = 'none';
+            document.getElementById('appealResult').style.display = 'none';
+            document.getElementById('appealResult').innerHTML = '';
+            document.getElementById('appealInputPanel').style.display = 'block';
+            const btn = document.getElementById('appealSubmitBtn');
+            btn.disabled = false;
+            btn.textContent = 'Draft my appeal';
+            wireAppealDropzone();
+            document.getElementById('appealOverlay').style.display = 'flex';
+            try { closeMobileMenu(); } catch (_) {}
+        }
+
+        function closeAppeal() {
+            document.getElementById('appealOverlay').style.display = 'none';
+        }
+
+        function wireAppealDropzone() {
+            const dz = document.getElementById('appealDropZone');
+            if (!dz || dz.dataset.wired === '1') return;
+            dz.dataset.wired = '1';
+            dz.addEventListener('click', (e) => {
+                if (e.target.tagName === 'A') return;
+                document.getElementById('appealFileInput').click();
+            });
+            dz.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dz.classList.add('dragover');
+            });
+            dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+            dz.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dz.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files && files.length > 0) {
+                    handleAppealFile(files[0]);
+                }
+            });
+        }
+
+        function handleAppealFileChosen(event) {
+            const file = event.target.files && event.target.files[0];
+            if (file) handleAppealFile(file);
+        }
+
+        function handleAppealFile(file) {
+            const errEl = document.getElementById('appealError');
+            errEl.style.display = 'none';
+            if (!file.name.toLowerCase().endsWith('.pdf')) {
+                errEl.textContent = 'Please choose a PDF file.';
+                errEl.style.display = 'block';
+                appealChosenFile = null;
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                errEl.textContent = 'PDF is too large. Please use a file under 5 MB.';
+                errEl.style.display = 'block';
+                appealChosenFile = null;
+                return;
+            }
+            appealChosenFile = file;
+            const labelEl = document.getElementById('appealFileChosen');
+            const sizeKb = Math.round(file.size / 1024);
+            labelEl.textContent = file.name + ' (' + sizeKb + ' KB)';
+            labelEl.style.display = 'block';
+        }
+
+        async function submitAppeal() {
+            const errEl = document.getElementById('appealError');
+            const resultEl = document.getElementById('appealResult');
+            const btn = document.getElementById('appealSubmitBtn');
+            const denialText = document.getElementById('appealDenialText').value.trim();
+
+            errEl.style.display = 'none';
+            resultEl.style.display = 'none';
+            resultEl.innerHTML = '';
+
+            if (!appealChosenFile && denialText.length < 50) {
+                errEl.textContent = 'Please upload your denial letter PDF or describe the denial reason in at least a sentence or two.';
+                errEl.style.display = 'block';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Drafting your appeal...';
+
+            const formData = new FormData();
+            if (appealChosenFile) formData.append('denial_pdf', appealChosenFile);
+            if (denialText) formData.append('denial_text', denialText);
+
+            try {
+                // authFetch only sets Authorization (not Content-Type), so FormData boundaries
+                // are preserved correctly for the multipart upload.
+                const resp = await authFetch('/api/insurance_appeal', {
+                    method: 'POST',
+                    body: formData,
+                });
+                const j = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    if (resp.status === 503) errEl.textContent = 'This feature is temporarily unavailable.';
+                    else if (resp.status === 413) errEl.textContent = 'Your PDF is too large (max 5 MB).';
+                    else if (resp.status === 422) errEl.textContent = j.error || 'Could not extract text from this PDF.';
+                    else if (resp.status === 429) errEl.textContent = 'Too many requests — please wait a moment.';
+                    else errEl.textContent = j.error || 'Could not draft an appeal right now. Please try again.';
+                    errEl.style.display = 'block';
+                    return;
+                }
+                renderAppealDraft(j);
+            } catch (e) {
+                errEl.textContent = 'Network error: ' + e.message;
+                errEl.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Draft my appeal';
+            }
+        }
+
+        function renderAppealDraft(payload) {
+            const resultEl = document.getElementById('appealResult');
+            resultEl.innerHTML = '';
+
+            // Hide the input panel; the draft replaces it visually.
+            document.getElementById('appealInputPanel').style.display = 'none';
+
+            const draft = payload.draft || '';
+            const citations = payload.citations || {};
+            const sources = payload.sources || [];
+
+            // Editable draft textarea
+            const ta = document.createElement('textarea');
+            ta.id = 'appealDraftText';
+            ta.className = 'appeal-draft-textarea';
+            ta.value = draft;
+            resultEl.appendChild(ta);
+
+            // Action row
+            const actions = document.createElement('div');
+            actions.className = 'appeal-actions';
+
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'feature-submit-btn';
+            copyBtn.textContent = 'Copy to clipboard';
+            copyBtn.onclick = () => {
+                navigator.clipboard.writeText(ta.value).then(() => {
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(() => copyBtn.textContent = 'Copy to clipboard', 1500);
+                });
+            };
+            actions.appendChild(copyBtn);
+
+            const newBtn = document.createElement('button');
+            newBtn.className = 'feature-secondary-btn';
+            newBtn.textContent = 'Draft a different appeal';
+            newBtn.onclick = () => {
+                document.getElementById('appealInputPanel').style.display = 'block';
+                resultEl.style.display = 'none';
+                resultEl.innerHTML = '';
+            };
+            actions.appendChild(newBtn);
+
+            resultEl.appendChild(actions);
+
+            // Citation list (used inline as [N])
+            if (Object.keys(citations).length > 0) {
+                const citDiv = document.createElement('div');
+                citDiv.className = 'msg-sources';
+                citDiv.style.marginTop = '14px';
+                const h = document.createElement('div');
+                h.className = 'msg-sources-header';
+                h.textContent = 'Inline citations';
+                citDiv.appendChild(h);
+                Object.keys(citations).sort((a,b) => parseInt(a) - parseInt(b)).forEach(n => {
+                    const c = citations[n];
+                    const item = document.createElement('div');
+                    item.className = 'source-item';
+                    const t = document.createElement('div');
+                    t.className = 'source-item-title';
+                    const sec = (c.section !== undefined && c.section !== null && c.section !== '') ? ' §' + c.section : '';
+                    t.textContent = '[' + n + '] ' + (c.filename || 'guideline') + sec;
+                    item.appendChild(t);
+                    if (c.preview) {
+                        const p = document.createElement('div');
+                        p.className = 'source-item-preview';
+                        p.textContent = c.preview;
+                        item.appendChild(p);
+                    }
+                    citDiv.appendChild(item);
+                });
+                resultEl.appendChild(citDiv);
+            }
+
+            // Disclaimer
+            const disc = document.createElement('div');
+            disc.className = 'appeal-disclaimer';
+            disc.textContent = 'This is a draft — please review with your oncology team or a Personal Navigator before sending. Replace [Patient Name], [Member ID], and other placeholders with your actual information.';
+            resultEl.appendChild(disc);
+
+            resultEl.style.display = 'block';
+        }
+
+        // ---- Feature 5: Deep-Dive Research ----
+        let deepDiveStageTimer = null;
+
+        function openDeepDive() {
+            if (!FEATURES.deepDive) return;
+            document.getElementById('deepDiveQuery').value = '';
+            document.getElementById('deepDiveError').style.display = 'none';
+            document.getElementById('deepDiveResult').style.display = 'none';
+            document.getElementById('deepDiveResult').innerHTML = '';
+            document.getElementById('deepDiveLoading').style.display = 'none';
+            document.getElementById('deepDiveInputPanel').style.display = 'block';
+            const btn = document.getElementById('deepDiveSubmitBtn');
+            btn.disabled = false;
+            btn.textContent = 'Research this';
+            document.getElementById('deepDiveOverlay').style.display = 'flex';
+            try { closeMobileMenu(); } catch (_) {}
+        }
+
+        function closeDeepDive() {
+            stopDeepDiveStageRotation();
+            document.getElementById('deepDiveOverlay').style.display = 'none';
+        }
+
+        const DEEP_DIVE_STAGES = [
+            { at: 0,    label: 'Searching CRC guidelines...' },
+            { at: 5000, label: 'Cross-referencing trial evidence...' },
+            { at: 12000, label: 'Drafting your report...' },
+            { at: 28000, label: 'Verifying citations and grounding...' },
+            { at: 45000, label: 'Taking longer than usual — almost there...' },
+        ];
+
+        function startDeepDiveStageRotation() {
+            const stageEl = document.getElementById('deepDiveStage');
+            stageEl.textContent = DEEP_DIVE_STAGES[0].label;
+            const startTs = Date.now();
+            stopDeepDiveStageRotation();
+            deepDiveStageTimer = setInterval(() => {
+                const elapsed = Date.now() - startTs;
+                let label = DEEP_DIVE_STAGES[0].label;
+                for (const s of DEEP_DIVE_STAGES) {
+                    if (elapsed >= s.at) label = s.label;
+                }
+                stageEl.textContent = label;
+            }, 1000);
+        }
+
+        function stopDeepDiveStageRotation() {
+            if (deepDiveStageTimer) {
+                clearInterval(deepDiveStageTimer);
+                deepDiveStageTimer = null;
+            }
+        }
+
+        async function submitDeepDive() {
+            const query = document.getElementById('deepDiveQuery').value.trim();
+            const errEl = document.getElementById('deepDiveError');
+            const resultEl = document.getElementById('deepDiveResult');
+            const loadingEl = document.getElementById('deepDiveLoading');
+            const inputPanel = document.getElementById('deepDiveInputPanel');
+            const btn = document.getElementById('deepDiveSubmitBtn');
+
+            errEl.style.display = 'none';
+            resultEl.style.display = 'none';
+            resultEl.innerHTML = '';
+
+            if (query.length < 8) {
+                errEl.textContent = 'Please ask a more detailed question for deep research.';
+                errEl.style.display = 'block';
+                return;
+            }
+
+            inputPanel.style.display = 'none';
+            loadingEl.style.display = 'block';
+            startDeepDiveStageRotation();
+            btn.disabled = true;
+            btn.textContent = 'Researching...';
+
+            try {
+                const resp = await authFetch('/api/deep_research', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+                const j = await resp.json();
+                stopDeepDiveStageRotation();
+                loadingEl.style.display = 'none';
+
+                if (!resp.ok) {
+                    inputPanel.style.display = 'block';
+                    if (resp.status === 503) errEl.textContent = 'This feature is temporarily unavailable.';
+                    else if (resp.status === 429) errEl.textContent = j.error || 'Deep research is rate-limited to 3 per 5 minutes.';
+                    else if (resp.status === 504) errEl.textContent = 'Research is taking too long. Try a more specific question.';
+                    else errEl.textContent = j.error || 'Deep research failed. Try a more specific question.';
+                    errEl.style.display = 'block';
+                    return;
+                }
+                renderDeepDive(j);
+            } catch (e) {
+                stopDeepDiveStageRotation();
+                loadingEl.style.display = 'none';
+                inputPanel.style.display = 'block';
+                errEl.textContent = 'Network error: ' + e.message;
+                errEl.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Research this';
+            }
+        }
+
+        function renderDeepDive(payload) {
+            const resultEl = document.getElementById('deepDiveResult');
+            resultEl.innerHTML = '';
+
+            // Meta row: verified badge + took_seconds
+            const meta = document.createElement('div');
+            meta.className = 'deepdive-meta-row';
+
+            if (payload.status === 'off_topic') {
+                const b = document.createElement('div');
+                b.className = 'deepdive-badge';
+                b.textContent = 'Out of scope';
+                meta.appendChild(b);
+            } else if (payload.status === 'fallback') {
+                const b = document.createElement('div');
+                b.className = 'deepdive-badge unverified';
+                b.textContent = 'Hedged response — sources insufficient';
+                meta.appendChild(b);
+            } else {
+                const vb = document.createElement('div');
+                vb.className = 'deepdive-badge ' + (payload.verified ? 'verified' : 'unverified');
+                vb.textContent = payload.verified ? '✓ Verified against sources' : '⚠ Not fully verified';
+                meta.appendChild(vb);
+                if (typeof payload.took_seconds === 'number') {
+                    const tb = document.createElement('div');
+                    tb.className = 'deepdive-badge';
+                    tb.textContent = payload.took_seconds + 's';
+                    meta.appendChild(tb);
+                }
+            }
+            resultEl.appendChild(meta);
+
+            // Sections (collapsible)
+            const sections = payload.sections || [];
+            const citations = payload.citations || {};
+            sections.forEach((sec, i) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'deepdive-section' + (i > 1 ? ' collapsed' : '');
+
+                const header = document.createElement('div');
+                header.className = 'deepdive-section-header';
+                header.onclick = () => wrap.classList.toggle('collapsed');
+
+                const t = document.createElement('div');
+                t.className = 'deepdive-section-title';
+                t.textContent = sec.title || ('Section ' + (i + 1));
+                header.appendChild(t);
+
+                const chev = document.createElement('div');
+                chev.className = 'deepdive-section-chevron';
+                chev.textContent = '▾';
+                header.appendChild(chev);
+
+                wrap.appendChild(header);
+
+                const body = document.createElement('div');
+                body.className = 'deepdive-section-body';
+                // Render with inline citations using the existing renderCitations helper
+                const html = renderCitations(escapeHtml(sec.body || ''), citations).replace(/\n/g, '<br>');
+                // Note: escapeHtml escapes the body first; renderCitations operates on the escaped text,
+                // converting [N] markers to safe HTML <sup> tags. Markdown headings ### get rendered as
+                // plain text in v1.
+                body.innerHTML = html;
+                wrap.appendChild(body);
+
+                resultEl.appendChild(wrap);
+            });
+
+            // Sub-queries used (transparency)
+            if (payload.subqueries_used && payload.subqueries_used.length > 0) {
+                const sub = document.createElement('div');
+                sub.className = 'deepdive-subqueries';
+                const lbl = document.createElement('div');
+                lbl.className = 'deepdive-subqueries-label';
+                lbl.textContent = 'Also searched:';
+                sub.appendChild(lbl);
+                payload.subqueries_used.forEach(q => {
+                    const li = document.createElement('div');
+                    li.textContent = '• ' + q;
+                    sub.appendChild(li);
+                });
+                resultEl.appendChild(sub);
+            }
+
+            // Bottom sources panel (full filename list)
+            if (payload.sources && payload.sources.length > 0) {
+                const srcDiv = document.createElement('div');
+                srcDiv.className = 'msg-sources';
+                srcDiv.style.marginTop = '14px';
+                const h = document.createElement('div');
+                h.className = 'msg-sources-header';
+                h.textContent = 'Source documents';
+                srcDiv.appendChild(h);
+                payload.sources.forEach(s => {
+                    const item = document.createElement('div');
+                    item.className = 'source-item';
+                    let title = s.title || '';
+                    title = title.replace(/\.pdf$/i, '').replace(/_/g, ' ');
+                    if (title.length > 60) title = title.substring(0, 58) + '...';
+                    const t = document.createElement('div');
+                    t.className = 'source-item-title';
+                    t.textContent = title;
+                    item.appendChild(t);
+                    if (s.section !== undefined && s.section !== null && s.section !== '') {
+                        const sec = document.createElement('div');
+                        sec.className = 'source-item-section';
+                        sec.textContent = '§' + s.section;
+                        item.appendChild(sec);
+                    }
+                    if (s.preview) {
+                        const p = document.createElement('div');
+                        p.className = 'source-item-preview';
+                        p.textContent = s.preview;
+                        item.appendChild(p);
+                    }
+                    srcDiv.appendChild(item);
+                });
+                resultEl.appendChild(srcDiv);
+            }
+
+            // "Ask another" button
+            const actions = document.createElement('div');
+            actions.className = 'appeal-actions';
+            const newBtn = document.createElement('button');
+            newBtn.className = 'feature-secondary-btn';
+            newBtn.textContent = 'Ask another deep-dive question';
+            newBtn.onclick = () => {
+                resultEl.style.display = 'none';
+                resultEl.innerHTML = '';
+                document.getElementById('deepDiveInputPanel').style.display = 'block';
+                document.getElementById('deepDiveQuery').value = '';
+            };
+            actions.appendChild(newBtn);
+            resultEl.appendChild(actions);
+
+            resultEl.style.display = 'block';
+        }
+
+        // Hide care-tools buttons whose features are turned off in FEATURES.
+        // Run after DOM is ready.
+        function applyFeatureFlagsToSidebar() {
+            const map = {
+                previsitBtn: FEATURES.preVisitQuestions,
+                visitRecapBtn: FEATURES.appointmentCompanion,
+                appealBtn: FEATURES.insuranceAppeal,
+                deepDiveBtn: FEATURES.deepDive,
+            };
+            Object.keys(map).forEach(id => {
+                const el = document.getElementById(id);
+                if (el && !map[id]) el.style.display = 'none';
+            });
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', applyFeatureFlagsToSidebar);
+        } else {
+            applyFeatureFlagsToSidebar();
         }
 
         // =============================================

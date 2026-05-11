@@ -389,6 +389,168 @@ def run_adversarial_test(question_data, all_chunks, profile, patient_context):
         }
 
 
+# =====================================================
+# PITCH FEATURE TESTS (Inline citations, Pre-visit,
+# Visit Recap, Insurance Appeal, Deep-Dive Research)
+# =====================================================
+PITCH_FEATURE_TESTS = [
+    {"key": "inline_citations_end_to_end", "feature": "F1: Inline citations",
+     "desc": "Standard CRC query → response includes [N] markers + citation map"},
+    {"key": "previsit_fallback", "feature": "F2: Pre-visit Questions",
+     "desc": "Empty profile/context → fallback question set returned"},
+    {"key": "previsit_profile_aware", "feature": "F2: Pre-visit Questions",
+     "desc": "Profile + FOLFOX context → LLM produces JSON-structured groups"},
+    {"key": "visit_recap_structure", "feature": "F3: Visit Recap",
+     "desc": "Transcript → recap dict has all 5 keys (discussed/changes/actions/follow-ups/flags)"},
+    {"key": "visit_recap_contradiction_flag", "feature": "F3: Visit Recap",
+     "desc": "Profile says FOLFOX, transcript says FOLFIRI → recap.flags non-empty"},
+    {"key": "insurance_appeal_draft", "feature": "F4: Insurance Appeal",
+     "desc": "Typed denial → non-empty draft, used_fallback=False"},
+    {"key": "deep_research_section_parse", "feature": "F5: Deep-Dive",
+     "desc": "parse_deep_research_sections splits ## headers correctly (unit test)"},
+]
+
+
+def run_pitch_feature_test(test_meta, all_chunks, profile, patient_context):
+    """Exercise the new pitch-feature helpers and assert their contracts."""
+    from llm_utils import (
+        postprocess_citations, generate_previsit_questions, generate_visit_recap,
+        generate_insurance_appeal, parse_deep_research_sections, assemble_prompt,
+        call_llm, select_chunks_within_budget,
+    )
+    from profile_utils import format_patient_summary_complex
+    from pdf_utils import hybrid_search
+
+    key = test_meta["key"]
+    checks = []
+    answer = ""
+    err = None
+
+    try:
+        if key == "inline_citations_end_to_end":
+            # Run a standard CRC query through the full pipeline and check that
+            # [N] markers appear and citation_map is non-empty.
+            q = "What are the side effects of oxaliplatin?"
+            retrieved = hybrid_search(q, all_chunks, top_k=5)
+            prompt, _meta = assemble_prompt(
+                message=q, retrieved=retrieved, patient=profile,
+                response_length="normal", conversation_context="",
+                patient_context=patient_context,
+            )
+            raw, _api = call_llm(prompt, response_length="normal", query_type="side_effect")
+            cleaned, cmap = postprocess_citations(raw or "", retrieved)
+            answer = cleaned[:400]
+            checks.append({"check": "Response not empty", "passed": bool(cleaned)})
+            checks.append({"check": "At least one [N] citation marker present", "passed": bool(__import__('re').search(r'\[\d+\]', cleaned))})
+            checks.append({"check": "Citation map non-empty", "passed": len(cmap) > 0})
+
+        elif key == "previsit_fallback":
+            result = generate_previsit_questions("", "")
+            answer = str(result)[:400]
+            checks.append({"check": "Returns groups", "passed": isinstance(result.get('groups'), list) and len(result['groups']) > 0})
+            checks.append({"check": "Flagged as fallback", "passed": bool(result.get('used_fallback'))})
+            checks.append({"check": "Each group has questions", "passed": all(isinstance(g.get('questions'), list) and len(g['questions']) > 0 for g in result['groups'])})
+
+        elif key == "previsit_profile_aware":
+            summary = format_patient_summary_complex(patient_context) if patient_context else ""
+            result = generate_previsit_questions(summary, "starting FOLFOX next Tuesday")
+            answer = str(result)[:400]
+            checks.append({"check": "Returns groups", "passed": isinstance(result.get('groups'), list) and len(result['groups']) > 0})
+            # LLM-aware path should NOT be fallback if LLM is working
+            checks.append({"check": "Not using fallback (LLM produced JSON)", "passed": result.get('used_fallback') is False})
+            checks.append({"check": "Multiple groups", "passed": len(result.get('groups', [])) >= 2})
+
+        elif key == "visit_recap_structure":
+            summary = format_patient_summary_complex(patient_context) if patient_context else ""
+            transcript = ("Met with Dr. Patel today. We reviewed the latest CT scan — she said disease appears "
+                          "stable. Continuing FOLFOX, with a dose reduction on oxaliplatin because of neuropathy. "
+                          "Need to schedule labs next Tuesday and follow up in three weeks.")
+            recap = generate_visit_recap(summary, transcript)
+            answer = str(recap)[:400]
+            for key_field in ('discussed', 'treatment_changes', 'action_items', 'follow_up_questions', 'flags'):
+                checks.append({"check": f"Has '{key_field}' field", "passed": isinstance(recap.get(key_field), list)})
+            checks.append({"check": "Discussed is non-empty", "passed": len(recap.get('discussed', [])) > 0})
+
+        elif key == "visit_recap_contradiction_flag":
+            # Build a summary that says FOLFOX explicitly, then feed FOLFIRI transcript
+            summary = "Diagnosis: Colon adenocarcinoma, stage III | Currently on FOLFOX (Adjuvant, Cycle 5)"
+            transcript = ("Saw Dr. Lee today. She wants to switch me from my current chemo to FOLFIRI starting "
+                          "next cycle. She said something about my response not being strong enough. "
+                          "Need new labs and to come back in two weeks.")
+            recap = generate_visit_recap(summary, transcript)
+            answer = "flags=" + str(recap.get('flags'))[:400]
+            checks.append({"check": "Recap parsed", "passed": not recap.get('used_fallback')})
+            # The flag detection is LLM-dependent. We pass if EITHER flags list is non-empty
+            # OR the treatment_changes list mentions FOLFIRI (indicating it noticed the change).
+            flagged = (len(recap.get('flags', [])) > 0)
+            change_noted = any("folfiri" in c.lower() for c in recap.get('treatment_changes', []))
+            checks.append({"check": "Treatment switch detected (flag OR change_noted)", "passed": flagged or change_noted})
+
+        elif key == "insurance_appeal_draft":
+            from llm_utils import generate_insurance_appeal
+            summary = format_patient_summary_complex(patient_context) if patient_context else ""
+            denial = ("Aetna denied my request for FOLFOX adjuvant chemotherapy following stage III colon "
+                      "cancer surgery, citing 'experimental/not medically necessary' for my specific case.")
+            # Retrieve a few relevant chunks
+            retrieved = hybrid_search(denial, all_chunks, top_k=5) or []
+            guidelines = select_chunks_within_budget(retrieved, 2000)
+            result = generate_insurance_appeal(summary, denial, retrieved, guidelines)
+            answer = (result.get('draft') or '')[:600]
+            checks.append({"check": "Draft generated (non-empty)", "passed": bool(result.get('draft')) and len(result['draft']) > 200})
+            checks.append({"check": "Not a fallback error", "passed": not result.get('used_fallback')})
+            # Letter should look like a letter
+            draft_lower = (result.get('draft') or '').lower()
+            looks_like_letter = any(kw in draft_lower for kw in ('appeal', 'reconsideration', 're:', 'to:', 'dear'))
+            checks.append({"check": "Output looks like an appeal letter", "passed": looks_like_letter})
+
+        elif key == "deep_research_section_parse":
+            # Pure unit test — no LLM needed
+            sample = ("Lead paragraph that introduces the topic.\n\n"
+                      "## Background\nThis is the background section.\n\n"
+                      "## Current Evidence\nThe evidence says X [1].\n\n"
+                      "## Treatment Options or Approaches\n### Option A\nSome details.\n\n"
+                      "## Caveats & Uncertainty\nThe sources are limited.\n\n"
+                      "## Questions for Your Oncology Team\n- Question 1\n- Question 2\n")
+            sections = parse_deep_research_sections(sample)
+            answer = str([s['title'] for s in sections])
+            titles = [s['title'] for s in sections]
+            checks.append({"check": "Has Overview (leading paragraph)", "passed": "Overview" in titles})
+            checks.append({"check": "Has Background", "passed": "Background" in titles})
+            checks.append({"check": "Has Current Evidence", "passed": "Current Evidence" in titles})
+            checks.append({"check": "Has Questions for Your Oncology Team", "passed": any("Questions for Your" in t for t in titles)})
+
+        else:
+            checks.append({"check": "Test key recognized", "passed": False})
+
+        all_passed = all(c["passed"] for c in checks)
+        return {
+            "category": test_meta["feature"],
+            "question": test_meta["desc"],
+            "answer": answer,
+            "checks": checks,
+            "all_passed": all_passed,
+            "success": True,
+            "error": None,
+            "note": "",
+            "api_used": "pitch-feature",
+            "chunks_retrieved": 0,
+            "query_type": "pitch-feature",
+            "urgency_detected": False,
+            "urgency_level": None,
+        }
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "category": test_meta["feature"], "question": test_meta["desc"], "answer": "",
+            "checks": [{"check": "No error", "passed": False}],
+            "all_passed": False, "success": False, "error": str(e), "note": "",
+            "api_used": None, "chunks_retrieved": 0, "query_type": None,
+            "urgency_detected": False, "urgency_level": None,
+        }
+
+
 def load_profile(path):
     """Load a patient profile."""
     with open(path, 'r') as f:
@@ -780,6 +942,15 @@ def main():
         print(f"   [{i}/{len(ADVERSARIAL_TESTS)}] {q['category']}: ", end="")
         result = run_adversarial_test(q, all_chunks, profile_a, patient_context_a)
         profile_b_results.append(result)  # bundle into profile_b list for reporting
+        status = "PASS" if result['all_passed'] else "FAIL"
+        print(f"{status}")
+
+    # 4c. Pitch feature tests (inline citations, pre-visit, visit recap, appeal, deep dive)
+    print("\n4c. Running pitch feature tests (5 new features)...")
+    for i, t in enumerate(PITCH_FEATURE_TESTS, 1):
+        print(f"   [{i}/{len(PITCH_FEATURE_TESTS)}] {t['feature']}: ", end="")
+        result = run_pitch_feature_test(t, all_chunks, profile_a, patient_context_a)
+        profile_b_results.append(result)
         status = "PASS" if result['all_passed'] else "FAIL"
         print(f"{status}")
 

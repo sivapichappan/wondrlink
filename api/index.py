@@ -32,7 +32,8 @@ from llm_utils import (
     assemble_prompt, call_llm, classify_query_type,
     trim_incomplete_sentence, validate_response, enhanced_medical_validation,
     format_conversation_context, get_llm_status, sanitize_query,
-    extract_profile_updates_from_query, get_relevant_resources
+    extract_profile_updates_from_query, get_relevant_resources,
+    postprocess_citations
 )
 from clinical_trials import (
     search_trials_for_patient, format_trials_for_chat, is_clinical_trial_query,
@@ -47,6 +48,11 @@ logger = logging.getLogger("wondr-api")
 
 ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5000").split(",")
 
+
+def feature_enabled(flag_name: str) -> bool:
+    """Per-feature kill switch via env var FEATURE_<NAME>. Defaults to True."""
+    return os.getenv(f"FEATURE_{flag_name.upper()}", "true").lower() == "true"
+
 def _origin_allowed(origin: str) -> bool:
     if not origin:
         return False
@@ -59,7 +65,7 @@ def _origin_allowed(origin: str) -> bool:
 # Flask app
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "wondrlink-dev-secret-key")
-app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024  # 1MB max request size
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB — allows PDF uploads on /api/insurance_appeal
 
 # -------------------------
 # Auth Decorator
@@ -591,6 +597,17 @@ def api_chat():
             except Exception:
                 logger.exception("Verification step failed (continuing with original response)")
 
+            # Feature 1: Inline citation post-processing.
+            # Strips invalid [N] markers and builds the citation_map for the frontend.
+            # Run before resources_text is appended (resources contain no [N] markers).
+            citation_map = {}
+            if feature_enabled('inline_citations'):
+                try:
+                    final_answer, citation_map = postprocess_citations(final_answer, retrieved)
+                except Exception:
+                    logger.exception("Citation post-processing failed; continuing without inline citations")
+                    citation_map = {}
+
             # Add relevant patient resources (unless brief response)
             if response_length != "brief":
                 resources_text = get_relevant_resources(query_type, include_resources=True, query=message)
@@ -705,6 +722,7 @@ def api_chat():
                 "has_profile_updates": bool(profile_updates),
                 "profile_updates_saved": update_success if profile_updates else None,
                 "sources": sources_metadata,
+                "citations": citation_map,
                 "guidelines_used": guidelines_used,
                 "has_guidelines": len(guidelines_used) > 0,
                 "clinical_trials": clinical_trials_data,
@@ -983,6 +1001,473 @@ def api_clinical_trials():
     except Exception as e:
         logger.exception("clinical_trials error")
         return jsonify({"error": str(e), "trials": []}), 500
+
+
+# =============================================================================
+# PITCH FEATURES (May 2026)
+#   F2: /api/previsit_questions  — Pre-visit Question Generator
+#   F3: /api/visit_recap         — Appointment Companion
+#   F4: /api/insurance_appeal    — Insurance Appeal Letter Drafting
+#   F5: /api/deep_research       — Deep-Dive Research Mode
+# Each gated by FEATURE_<NAME> env var (defaults true).
+# =============================================================================
+
+@app.route("/api/previsit_questions", methods=["POST"])
+@require_auth
+def api_previsit_questions():
+    """
+    Generate a tailored list of pre-visit questions for a patient's next
+    oncology appointment, grouped by topic. Cached 5 min per (user, context).
+    """
+    if not feature_enabled('pre_visit_questions'):
+        return jsonify({"status": "feature_disabled"}), 503
+    try:
+        user_id = request.user["user_id"]
+
+        # Rate limit: 10 generations per 60s per user
+        from rate_limit import check_rate_limit
+        allowed, _ = check_rate_limit(user_id, 'previsit_questions', 10, 60)
+        if not allowed:
+            return jsonify({"error": "Too many requests. Please wait a moment and try again."}), 429
+
+        data = request.get_json(silent=True) or {}
+        context = (data.get('context') or '').strip()
+        if len(context) > 1000:
+            context = context[:1000]
+
+        # Load profile and build patient_summary
+        patient_profile = load_profile(user_id) or {}
+        patient_context = extract_patient_context_complex(patient_profile) if patient_profile else {}
+        patient_summary = format_patient_summary_complex(patient_context) if patient_context else ""
+
+        # Cache check
+        from llm_utils import get_cached_previsit, set_cached_previsit, generate_previsit_questions
+        cached = get_cached_previsit(user_id, context)
+        if cached:
+            return jsonify({
+                "status": "ok",
+                "groups": cached.get('groups', []),
+                "used_fallback": cached.get('used_fallback', False),
+                "cached": True,
+                "saved": False,
+            })
+
+        # Generate
+        result = generate_previsit_questions(patient_summary, context)
+        set_cached_previsit(user_id, context, result)
+
+        # Persist to profile (max 10 entries, drop oldest)
+        saved = False
+        try:
+            existing = patient_profile.get('previsit_questions') or []
+            if not isinstance(existing, list):
+                existing = []
+            entry = {
+                "timestamp": datetime.now().isoformat(),
+                "context": context,
+                "groups": result['groups'],
+                "used_fallback": result['used_fallback'],
+            }
+            existing.append(entry)
+            if len(existing) > 10:
+                existing = existing[-10:]
+            patient_profile['previsit_questions'] = existing
+            saved = save_profile(user_id, patient_profile)
+        except Exception as e:
+            logger.error(f"Failed to save previsit_questions to profile: {e}")
+
+        return jsonify({
+            "status": "ok",
+            "groups": result['groups'],
+            "used_fallback": result['used_fallback'],
+            "cached": False,
+            "saved": saved,
+        })
+
+    except Exception as e:
+        logger.exception("previsit_questions error")
+        return jsonify({"error": "Could not generate questions right now."}), 500
+
+
+@app.route("/api/visit_recap", methods=["POST"])
+@require_auth
+def api_visit_recap():
+    """
+    Generate a structured recap from a patient's freeform visit notes.
+    Detects contradictions vs. stored profile and saves to profile.visit_recaps.
+    """
+    if not feature_enabled('appointment_companion'):
+        return jsonify({"status": "feature_disabled"}), 503
+    try:
+        user_id = request.user["user_id"]
+
+        from rate_limit import check_rate_limit
+        allowed, _ = check_rate_limit(user_id, 'visit_recap', 10, 60)
+        if not allowed:
+            return jsonify({"error": "Too many requests. Please wait a moment and try again."}), 429
+
+        data = request.get_json(silent=True) or {}
+        transcript = (data.get('transcript') or '').strip()
+
+        if len(transcript) < 50:
+            return jsonify({"error": "Please share at least a few sentences about your visit so I can build a useful recap."}), 400
+
+        truncated = False
+        if len(transcript) > 8000:
+            transcript = transcript[:8000]
+            truncated = True
+
+        # Sanitize PII from transcript before sending to LLM
+        try:
+            transcript_for_llm, _pii_warnings = sanitize_query(transcript)
+        except Exception:
+            transcript_for_llm = transcript
+
+        patient_profile = load_profile(user_id) or {}
+        patient_context = extract_patient_context_complex(patient_profile) if patient_profile else {}
+        patient_summary = format_patient_summary_complex(patient_context) if patient_context else ""
+
+        from llm_utils import generate_visit_recap
+        recap = generate_visit_recap(patient_summary, transcript_for_llm)
+
+        # Save to profile (max 20 entries, drop oldest)
+        saved = False
+        try:
+            existing = patient_profile.get('visit_recaps') or []
+            if not isinstance(existing, list):
+                existing = []
+            preview = transcript[:200] + ('...' if len(transcript) > 200 else '')
+            entry = {
+                "timestamp": datetime.now().isoformat(),
+                "transcript_preview": preview,
+                "recap": {
+                    "discussed": recap['discussed'],
+                    "treatment_changes": recap['treatment_changes'],
+                    "action_items": recap['action_items'],
+                    "follow_up_questions": recap['follow_up_questions'],
+                    "flags": recap['flags'],
+                },
+                "used_fallback": recap['used_fallback'],
+            }
+            existing.append(entry)
+            if len(existing) > 20:
+                existing = existing[-20:]
+            patient_profile['visit_recaps'] = existing
+            saved = save_profile(user_id, patient_profile)
+        except Exception as e:
+            logger.error(f"Failed to save visit recap to profile: {e}")
+
+        return jsonify({
+            "status": "ok",
+            "recap": recap,
+            "saved": saved,
+            "truncated": truncated,
+        })
+
+    except Exception as e:
+        logger.exception("visit_recap error")
+        return jsonify({"error": "Could not generate a recap right now."}), 500
+
+
+@app.route("/api/insurance_appeal", methods=["POST"])
+@require_auth
+def api_insurance_appeal():
+    """
+    Accept a denial-letter PDF (multipart) OR typed denial text (form field
+    'denial_text') and produce a drafted appeal letter grounded in NCCN/ASCO
+    guidelines. Saves draft to profile.appeal_drafts.
+    """
+    if not feature_enabled('insurance_appeal'):
+        return jsonify({"status": "feature_disabled"}), 503
+    try:
+        user_id = request.user["user_id"]
+
+        from rate_limit import check_rate_limit
+        allowed, _ = check_rate_limit(user_id, 'insurance_appeal', 5, 60)
+        if not allowed:
+            return jsonify({"error": "Too many requests. Please wait a moment and try again."}), 429
+
+        # Accept either a typed denial reason (form field) or a PDF upload.
+        denial_text = (request.form.get('denial_text') or '').strip()
+        pdf_file = request.files.get('denial_pdf')
+
+        if pdf_file:
+            # Validate filetype + extension
+            filename = (pdf_file.filename or '').lower()
+            if not filename.endswith('.pdf'):
+                return jsonify({"error": "Only PDF files are accepted."}), 400
+            mimetype = (pdf_file.mimetype or '').lower()
+            if mimetype and mimetype not in ('application/pdf', 'application/x-pdf', 'application/octet-stream'):
+                return jsonify({"error": "File doesn't appear to be a PDF."}), 400
+
+            # Save to /tmp and extract
+            import tempfile
+            tmp_path = None
+            try:
+                with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False, dir='/tmp') as tf:
+                    pdf_file.save(tf.name)
+                    tmp_path = tf.name
+                from pdf_utils import extract_text
+                extracted = extract_text(tmp_path) or ''
+            finally:
+                if tmp_path:
+                    try:
+                        os.remove(tmp_path)
+                    except Exception:
+                        pass
+
+            if len(extracted.strip()) < 100:
+                return jsonify({
+                    "error": "I couldn't extract readable text from this PDF. It may be image-only (scanned) or password-protected. Please type the denial reason in the text box instead."
+                }), 422
+            denial_text = extracted
+
+        if not denial_text or len(denial_text.strip()) < 50:
+            return jsonify({"error": "Please describe the denial reason or upload your denial letter PDF."}), 400
+
+        # PII de-identify before LLM call (HIPAA-adjacent safety)
+        try:
+            denial_for_llm, _pii_warnings = sanitize_query(denial_text)
+        except Exception:
+            denial_for_llm = denial_text
+
+        # Truncate the input we pass to the LLM
+        denial_for_llm = denial_for_llm[:4000]
+
+        # Load patient profile, build summary
+        patient_profile = load_profile(user_id) or {}
+        patient_context = extract_patient_context_complex(patient_profile) if patient_profile else {}
+        patient_summary = format_patient_summary_complex(patient_context) if patient_context else ""
+
+        # Retrieve relevant guidelines using denial reason as query
+        retrieved = []
+        guidelines_formatted = ""
+        try:
+            chunks = load_all_chunks()
+            if chunks:
+                # Use first 1000 chars of denial text as retrieval query
+                retrieval_query = denial_for_llm[:1000]
+                retrieved = hybrid_search(retrieval_query, chunks, top_k=5) or []
+                from llm_utils import select_chunks_within_budget
+                guidelines_formatted = select_chunks_within_budget(retrieved, 2000)
+        except Exception as e:
+            logger.warning(f"Guideline retrieval failed for appeal: {e}")
+
+        # Generate appeal letter (with inline citations)
+        from llm_utils import generate_insurance_appeal
+        result = generate_insurance_appeal(patient_summary, denial_for_llm, retrieved, guidelines_formatted)
+
+        if result['used_fallback']:
+            return jsonify({
+                "status": "error",
+                "error": result.get('error', 'Could not draft a letter right now.'),
+            }), 500
+
+        # Build sources_metadata for the bottom panel (mirrors /api/chat)
+        sources_metadata = []
+        try:
+            seen = set()
+            for chunk in retrieved[:5]:
+                if isinstance(chunk, dict) and chunk.get('filename'):
+                    fname = chunk['filename']
+                    if fname in seen:
+                        continue
+                    seen.add(fname)
+                    content = chunk.get('content', '') or ''
+                    preview = content[:140].strip()
+                    if len(content) > 140:
+                        preview += '...'
+                    sources_metadata.append({
+                        "title": fname,
+                        "section": chunk.get('chunk_index'),
+                        "preview": preview,
+                    })
+        except Exception:
+            pass
+
+        # Save to profile (max 10 entries)
+        saved = False
+        try:
+            existing = patient_profile.get('appeal_drafts') or []
+            if not isinstance(existing, list):
+                existing = []
+            denial_preview = denial_text[:200] + ('...' if len(denial_text) > 200 else '')
+            entry = {
+                "timestamp": datetime.now().isoformat(),
+                "denial_preview": denial_preview,
+                "draft": result['draft'],
+                "citations": result['citations'],
+                "sources": sources_metadata,
+            }
+            existing.append(entry)
+            if len(existing) > 10:
+                existing = existing[-10:]
+            patient_profile['appeal_drafts'] = existing
+            saved = save_profile(user_id, patient_profile)
+        except Exception as e:
+            logger.error(f"Failed to save appeal draft: {e}")
+
+        return jsonify({
+            "status": "ok",
+            "draft": result['draft'],
+            "citations": result['citations'],
+            "sources": sources_metadata,
+            "saved": saved,
+        })
+
+    except Exception as e:
+        logger.exception("insurance_appeal error")
+        return jsonify({"error": "Could not draft an appeal letter right now."}), 500
+
+
+@app.route("/api/deep_research", methods=["POST"])
+@require_auth
+def api_deep_research():
+    """
+    Long-running research endpoint: multi-pass retrieval + longer LLM call +
+    verification. ~15–45s. Off-topic queries refused immediately.
+    """
+    if not feature_enabled('deep_dive'):
+        return jsonify({"status": "feature_disabled"}), 503
+    import time as _t
+    start_ts = _t.time()
+
+    try:
+        user_id = request.user["user_id"]
+
+        from rate_limit import check_rate_limit
+        # Heavy endpoint: 3 requests per 5 minutes per user
+        allowed, _ = check_rate_limit(user_id, 'deep_research', 3, 300)
+        if not allowed:
+            return jsonify({"error": "Deep research is rate-limited to 3 requests per 5 minutes. Please try again shortly."}), 429
+
+        data = request.get_json(silent=True) or {}
+        query = (data.get('query') or '').strip()
+        if len(query) < 8:
+            return jsonify({"error": "Please ask a more detailed question for deep research."}), 400
+        if len(query) > 1000:
+            query = query[:1000]
+
+        # Off-topic guard (reuse hallucination-mitigation infra)
+        try:
+            from confidence import is_on_topic, OFF_TOPIC_RESPONSE
+            chunks = load_all_chunks()
+            quick_retrieved = hybrid_search(query, chunks, top_k=5) if chunks else []
+            on_topic, _reason = is_on_topic(query, quick_retrieved)
+            if not on_topic:
+                return jsonify({
+                    "status": "off_topic",
+                    "report": OFF_TOPIC_RESPONSE,
+                    "sections": [{"title": "Outside scope", "body": OFF_TOPIC_RESPONSE}],
+                    "citations": {},
+                    "sources": [],
+                    "verified": True,
+                    "took_seconds": round(_t.time() - start_ts, 1),
+                })
+        except Exception as e:
+            logger.warning(f"Off-topic check failed in deep_research: {e}")
+            chunks = load_all_chunks()
+            quick_retrieved = []
+
+        # Multi-pass retrieval
+        from llm_utils import derive_subqueries, select_chunks_within_budget, generate_deep_research
+        retrieved = list(quick_retrieved)
+        seen_ids = set()
+        for c in retrieved:
+            if isinstance(c, dict):
+                seen_ids.add((c.get('document_id'), c.get('chunk_index')))
+
+        # Pass 1: broaden top_k for the primary query
+        try:
+            primary = hybrid_search(query, chunks, top_k=12) or []
+            for c in primary:
+                if isinstance(c, dict):
+                    key = (c.get('document_id'), c.get('chunk_index'))
+                    if key not in seen_ids:
+                        seen_ids.add(key)
+                        retrieved.append(c)
+        except Exception as e:
+            logger.warning(f"Deep research primary retrieval failed: {e}")
+
+        # Pass 2: derive 2-3 sub-queries and search each
+        subqueries = []
+        try:
+            subqueries = derive_subqueries(query) or []
+            for sq in subqueries:
+                try:
+                    extra = hybrid_search(sq, chunks, top_k=4) or []
+                    for c in extra:
+                        if isinstance(c, dict):
+                            key = (c.get('document_id'), c.get('chunk_index'))
+                            if key not in seen_ids:
+                                seen_ids.add(key)
+                                retrieved.append(c)
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.warning(f"Deep research sub-query retrieval failed: {e}")
+
+        # Cap total chunks fed to LLM (prevents runaway prompt)
+        retrieved = retrieved[:20]
+
+        # Patient context
+        patient_profile = load_profile(user_id) or {}
+        patient_context = extract_patient_context_complex(patient_profile) if patient_profile else {}
+        patient_summary = format_patient_summary_complex(patient_context) if patient_context else ""
+
+        # Generate report
+        result = generate_deep_research(query, retrieved, patient_summary)
+
+        if result.get('used_fallback'):
+            from verify import HEDGED_FALLBACK_RESPONSE
+            return jsonify({
+                "status": "fallback",
+                "report": HEDGED_FALLBACK_RESPONSE,
+                "sections": [{"title": "I'm not confident enough to answer this", "body": HEDGED_FALLBACK_RESPONSE}],
+                "citations": {},
+                "sources": [],
+                "verified": False,
+                "took_seconds": round(_t.time() - start_ts, 1),
+            })
+
+        # Source metadata for the bottom panel
+        sources_metadata = []
+        try:
+            seen = set()
+            for chunk in retrieved[:8]:
+                if isinstance(chunk, dict) and chunk.get('filename'):
+                    fname = chunk['filename']
+                    if fname in seen:
+                        continue
+                    seen.add(fname)
+                    content = chunk.get('content', '') or ''
+                    preview = content[:140].strip()
+                    if len(content) > 140:
+                        preview += '...'
+                    sources_metadata.append({
+                        "title": fname,
+                        "section": chunk.get('chunk_index'),
+                        "preview": preview,
+                    })
+        except Exception:
+            pass
+
+        took = round(_t.time() - start_ts, 1)
+        return jsonify({
+            "status": "ok",
+            "report": result['report'],
+            "sections": result['sections'],
+            "citations": result['citations'],
+            "sources": sources_metadata,
+            "verified": result.get('verified', True),
+            "fabrication_risk": result.get('fabrication_risk', 'unknown'),
+            "subqueries_used": subqueries,
+            "took_seconds": took,
+        })
+
+    except Exception as e:
+        logger.exception("deep_research error")
+        return jsonify({"error": "Deep research failed. Try a more specific question."}), 500
 
 
 # -------------------------

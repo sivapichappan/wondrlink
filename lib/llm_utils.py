@@ -322,12 +322,24 @@ ALWAYS include "www.wondrlinkfoundation.org" (spelled exactly) in your response 
 Use "you" and "your" to personalize. Avoid medical jargon unless explaining it.
 
 GROUNDING & CITATION RULES (CRITICAL — patient safety depends on this):
-- The MEDICAL GUIDELINES section below contains source excerpts labeled with [SOURCE: filename §section].
+- The MEDICAL GUIDELINES section below contains source excerpts labeled with [Source N: filename §section] where N is the source number (1, 2, 3, ...).
 - Every medical claim in your response MUST be grounded in these source excerpts.
 - If a specific claim (statistic, drug name, trial number, percentage, dose) is NOT in the source excerpts, DO NOT include it. Hedge instead: "I'm not finding specific guidance on this — your oncology team would be best positioned to answer."
 - DO NOT invent: trial NCT numbers, drug names, statistics, percentages, study citations, or specific clinical recommendations not present in the sources.
 - It is better to say "I don't have reliable information about that" than to fabricate plausible-sounding details.
-- When you cannot find supporting information in the sources, explicitly acknowledge this rather than guessing."""
+- When you cannot find supporting information in the sources, explicitly acknowledge this rather than guessing.
+
+INLINE CITATION FORMAT (MANDATORY for medical claims):
+- When a medical claim comes from a specific source excerpt, append a numbered citation marker INLINE immediately after the claim, using the source's number from above.
+- Format: a single source → "[1]". Multiple sources for one claim → "[1, 3]".
+- Place the marker AFTER the claim, before the period. Example: "FOLFOX combines oxaliplatin, 5-FU, and leucovorin [1]."
+- Do NOT cite for empathy, validation, encouragement, or generic "discuss with your team" statements — only for factual medical claims drawn from a source.
+- Do NOT invent citation numbers higher than the highest source number provided.
+- If a claim is general knowledge or not from a source, do NOT cite — and per grounding rules above, hedge if it's a specific factual claim with no source backing.
+- Examples of correct usage:
+  * "Oxaliplatin commonly causes peripheral neuropathy [1]. Cold-triggered numbness in the hands and face is the classic acute presentation [1, 2]."
+  * "Many people facing this feel exactly the same way." (no citation — empathy/validation)
+  * "I want to make sure you connect with your oncology team about this." (no citation — guidance)"""
 
 
 # =============================================================================
@@ -1291,13 +1303,15 @@ def truncate_to_tokens(text: str, max_tokens: int, preserve_end: bool = False) -
 def select_chunks_within_budget(chunks: list, max_tokens: int) -> str:
     """Select and format chunks that fit within token budget.
        Accepts List[str] or List[Dict] (with 'content' key).
-       Labels each chunk with [SOURCE: filename] for citation grounding.
+       Labels each chunk with [Source N: filename §section] where N is 1-indexed
+       position. The number N is what the LLM uses for inline citations [1], [2].
     """
     if not chunks:
         return "No specific guideline excerpts found for this query."
 
     selected = []
     current_tokens = 0
+    source_number = 0  # 1-indexed counter for inline-citation alignment
 
     for i, chunk in enumerate(chunks):
         # Handle dict vs str
@@ -1305,16 +1319,18 @@ def select_chunks_within_budget(chunks: list, max_tokens: int) -> str:
             text = chunk.get('content', '') or chunk.get('chunk_text', '') or ""
             filename = chunk.get('filename', '') or 'medical guidelines'
             chunk_idx = chunk.get('chunk_index', '')
-            # Clean filename for display
             clean_name = filename.replace('.pdf', '').replace('_', ' ')
-            source_label = f"[SOURCE: {clean_name}" + (f" §{chunk_idx}" if chunk_idx != '' else '') + "]"
         else:
             text = str(chunk)
-            source_label = "[SOURCE: medical guidelines]"
+            clean_name = 'medical guidelines'
+            chunk_idx = ''
 
         if not text:
             continue
 
+        # Tentatively assign next source number; only commit if we actually include it
+        next_num = source_number + 1
+        source_label = f"[Source {next_num}: {clean_name}" + (f" §{chunk_idx}" if chunk_idx != '' else '') + "]"
         labeled_text = f"{source_label}\n{text}"
         chunk_tokens = count_tokens(labeled_text)
         separator_tokens = 8 if i > 0 else 0
@@ -1323,14 +1339,638 @@ def select_chunks_within_budget(chunks: list, max_tokens: int) -> str:
             if not selected:
                 truncated = truncate_to_tokens(text, max_tokens - 80)
                 selected.append(f"{source_label}\n{truncated}")
+                source_number = next_num
             break
 
         selected.append(labeled_text)
         current_tokens += chunk_tokens + separator_tokens
+        source_number = next_num
 
     if selected:
         return "\n\n".join(selected)
     return "No specific guideline excerpts found for this query."
+
+
+# =============================================================================
+# INLINE CITATION POST-PROCESSING (Feature 1)
+# =============================================================================
+
+import re as _re_citations
+
+
+def postprocess_citations(response_text: str, retrieved_chunks: list, max_chunks: int = None):
+    """
+    Validate and extract inline [N] citation markers from an LLM response.
+
+    Strips invalid markers (citing N higher than available chunks) and returns
+    a citation_map keyed by the citation numbers that actually appeared in the
+    final response.
+
+    Returns:
+        (cleaned_text, citation_map)
+        citation_map: {N: {filename, section, preview, content}}
+
+    Edge cases:
+      - LLM cited [5] but only 3 chunks available → marker stripped from text
+      - LLM produced no markers → returns (text, {}) — frontend falls back to bottom panel
+      - Same N cited multiple times → single map entry, all renders point to same source
+      - Combined markers like [1, 3] → split into individual [1] and [3] for rendering
+    """
+    if not response_text:
+        return response_text, {}
+
+    if not retrieved_chunks:
+        # No chunks → strip ALL citation markers (LLM should not be citing)
+        cleaned = _re_citations.sub(r'\s*\[\d+(?:\s*,\s*\d+)*\]', '', response_text)
+        return cleaned, {}
+
+    # Cap to the number of chunks we actually surfaced to the LLM in select_chunks_within_budget
+    available = max_chunks if max_chunks is not None else len(retrieved_chunks)
+    available = min(available, len(retrieved_chunks))
+
+    # Find all [N] or [N, M, ...] patterns
+    citation_pattern = _re_citations.compile(r'\[(\d+(?:\s*,\s*\d+)*)\]')
+
+    cited_numbers = set()
+
+    def _replace_marker(match):
+        nums_str = match.group(1)
+        nums = [int(n.strip()) for n in nums_str.split(',')]
+        # Filter to valid numbers only
+        valid_nums = [n for n in nums if 1 <= n <= available]
+        if not valid_nums:
+            # All invalid — strip entire marker
+            return ''
+        cited_numbers.update(valid_nums)
+        # Reconstruct using only valid numbers
+        if len(valid_nums) == 1:
+            return f'[{valid_nums[0]}]'
+        return '[' + ', '.join(str(n) for n in valid_nums) + ']'
+
+    cleaned = citation_pattern.sub(_replace_marker, response_text)
+
+    # Build citation_map for the numbers that actually survived
+    citation_map = {}
+    for n in cited_numbers:
+        idx = n - 1  # convert to 0-indexed
+        if idx >= len(retrieved_chunks):
+            continue
+        chunk = retrieved_chunks[idx]
+        if not isinstance(chunk, dict):
+            citation_map[n] = {
+                'filename': 'medical guidelines',
+                'section': None,
+                'preview': str(chunk)[:140],
+            }
+            continue
+        filename = chunk.get('filename', 'medical guidelines') or 'medical guidelines'
+        content = chunk.get('content', '') or ''
+        preview = content[:140].strip()
+        if len(content) > 140:
+            preview += '...'
+        citation_map[n] = {
+            'filename': filename.replace('.pdf', '').replace('_', ' '),
+            'section': chunk.get('chunk_index'),
+            'preview': preview,
+        }
+
+    return cleaned, citation_map
+
+
+# =============================================================================
+# FEATURE 2: PRE-VISIT QUESTION GENERATOR
+# =============================================================================
+
+PREVISIT_QUESTION_PROMPT = """You are helping a colorectal cancer patient prepare for their next oncology visit. Generate a focused, profile-aware list of questions they can ask their care team.
+
+PATIENT PROFILE:
+{patient_summary}
+
+PATIENT'S CONTEXT FOR THIS VISIT:
+{user_context}
+
+Generate 10–12 questions, grouped under 3–4 topical headers. Each question should be:
+- Specific to this patient's diagnosis, treatment line, biomarkers, comorbidities, and stated context
+- Answerable by an oncology team member in 1–2 minutes
+- Phrased the way the patient would speak it (first person, plain language, no jargon)
+- Practical — focused on what the patient can act on or understand
+
+Avoid:
+- Yes/no questions ("Is FOLFOX safe?") — prefer open-ended ("What side effects from FOLFOX should I expect to feel first?")
+- Generic CRC questions that ignore this patient's profile
+- Questions that ask the AI to diagnose or predict outcomes
+
+OUTPUT FORMAT — strict JSON, no prose, no markdown:
+{{
+  "groups": [
+    {{"topic": "Treatment plan and timing", "questions": ["...", "..."]}},
+    {{"topic": "Side effects to expect", "questions": ["...", "..."]}},
+    {{"topic": "Daily life and self-care", "questions": ["...", "..."]}}
+  ]
+}}
+
+If the patient profile is empty or minimal, fall back to general CRC pre-visit questions but still group them.
+Output ONLY the JSON object. No preamble, no explanation."""
+
+
+# Process-local cache: key = sha256(profile_id + context), value = (timestamp, result_dict)
+# Survives within a single serverless invocation; not shared across cold starts.
+_PREVISIT_CACHE: Dict[str, Tuple[float, Dict[str, Any]]] = {}
+_PREVISIT_CACHE_TTL_SEC = 300  # 5 minutes
+
+
+def _previsit_cache_key(profile_id: str, context: str) -> str:
+    import hashlib
+    return hashlib.sha256(f"{profile_id}|{context}".encode('utf-8')).hexdigest()
+
+
+def get_cached_previsit(profile_id: str, context: str):
+    import time
+    key = _previsit_cache_key(profile_id, context)
+    entry = _PREVISIT_CACHE.get(key)
+    if not entry:
+        return None
+    ts, result = entry
+    if time.time() - ts > _PREVISIT_CACHE_TTL_SEC:
+        _PREVISIT_CACHE.pop(key, None)
+        return None
+    return result
+
+
+def set_cached_previsit(profile_id: str, context: str, result: Dict[str, Any]) -> None:
+    import time
+    key = _previsit_cache_key(profile_id, context)
+    _PREVISIT_CACHE[key] = (time.time(), result)
+
+
+def generate_previsit_questions(patient_summary: str, user_context: str) -> Dict[str, Any]:
+    """
+    Run the pre-visit question prompt and parse JSON output.
+    Returns: {'groups': [...], 'used_fallback': bool}
+
+    Falls back to a generic CRC question set if LLM call fails or JSON parsing fails.
+    """
+    prompt = PREVISIT_QUESTION_PROMPT.format(
+        patient_summary=patient_summary or "No profile information available.",
+        user_context=user_context or "No specific context provided. Generate broad pre-visit questions for this patient."
+    )
+
+    try:
+        answer, _api = call_llm(prompt, response_length="detailed", query_type="general")
+        if not answer:
+            raise RuntimeError("Empty LLM response")
+
+        # Extract JSON object — LLM occasionally wraps in markdown
+        match = _re_citations.search(r'\{[\s\S]*\}', answer)
+        if not match:
+            raise ValueError("No JSON object in response")
+        parsed = json.loads(match.group(0))
+        groups = parsed.get('groups', [])
+        if not isinstance(groups, list) or not groups:
+            raise ValueError("Empty or malformed groups")
+
+        # Sanity-cap to 4 groups, 12 questions total
+        cleaned = []
+        total_q = 0
+        for g in groups[:4]:
+            if not isinstance(g, dict):
+                continue
+            topic = str(g.get('topic', 'General questions'))[:80]
+            qs = g.get('questions', [])
+            if not isinstance(qs, list):
+                continue
+            qs = [str(q)[:300] for q in qs if isinstance(q, (str, int))][:6]
+            if total_q + len(qs) > 12:
+                qs = qs[:12 - total_q]
+            if qs:
+                cleaned.append({'topic': topic, 'questions': qs})
+                total_q += len(qs)
+            if total_q >= 12:
+                break
+
+        if not cleaned:
+            raise ValueError("All groups were filtered out")
+        return {'groups': cleaned, 'used_fallback': False}
+    except Exception as e:
+        logger.warning(f"Pre-visit question generation fell back: {e}")
+        return {
+            'groups': _PREVISIT_FALLBACK_QUESTIONS,
+            'used_fallback': True,
+        }
+
+
+_PREVISIT_FALLBACK_QUESTIONS = [
+    {
+        "topic": "Treatment plan and timing",
+        "questions": [
+            "What is the goal of this treatment plan — cure, slow progression, or symptom control?",
+            "How long will I be on this regimen, and what milestones will tell us it's working?",
+            "What scans or labs will we use to track my response?",
+        ],
+    },
+    {
+        "topic": "Side effects and what to watch for",
+        "questions": [
+            "Which side effects are most common, and which ones should I call you immediately for?",
+            "What can I do at home to manage fatigue and nausea?",
+            "Are there long-term side effects I should be aware of after treatment ends?",
+        ],
+    },
+    {
+        "topic": "Daily life and support",
+        "questions": [
+            "Are there foods or activities I should avoid during treatment?",
+            "Who on the care team should I contact for non-urgent questions?",
+            "What support services (social work, nutrition, mental health) are available?",
+        ],
+    },
+]
+
+
+# =============================================================================
+# FEATURE 3: APPOINTMENT COMPANION (VISIT RECAP)
+# =============================================================================
+
+VISIT_RECAP_PROMPT = """You are helping a colorectal cancer patient organize what happened at a recent oncology visit. The patient has provided their own notes (which may be informal, incomplete, or paraphrased). Your job is to extract a clean, structured recap.
+
+PATIENT PROFILE (use this to detect contradictions or fill in gaps):
+{patient_summary}
+
+PATIENT'S VISIT NOTES:
+{transcript}
+
+Extract a structured recap. Be faithful to what the patient said — do NOT invent details, drugs, dose changes, or scan results that are not in their notes.
+
+If the notes mention a treatment change that contradicts the patient's stored profile (e.g. they say "switching to FOLFIRI" but their profile shows FOLFOX), flag it under "flags".
+
+If something is unclear ("doctor mentioned a new medication but I don't remember the name"), include it in "action_items" as a follow-up — do NOT guess.
+
+OUTPUT FORMAT — strict JSON only:
+{{
+  "discussed": ["bullet 1", "bullet 2", "..."],
+  "treatment_changes": ["change 1", "..."],
+  "action_items": ["thing the patient should do", "..."],
+  "follow_up_questions": ["question to bring next time", "..."],
+  "flags": ["potential contradiction or thing worth confirming with the care team", "..."]
+}}
+
+Rules:
+- Each list can be empty if nothing applies. Use [] not null.
+- Each item should be 1 sentence, plain language, first-person where natural.
+- "flags" is for things the patient should confirm with their care team (contradictions with profile, ambiguous instructions, missed information).
+- Do NOT cite sources or use [N] markers in this output — this is a structured recap, not a generated medical answer.
+- Output ONLY the JSON object. No preamble, no markdown."""
+
+
+def generate_visit_recap(patient_summary: str, transcript: str) -> Dict[str, Any]:
+    """
+    Run the visit recap prompt and parse JSON output.
+    Returns: {'discussed': [...], 'treatment_changes': [...], 'action_items': [...],
+              'follow_up_questions': [...], 'flags': [...], 'used_fallback': bool}
+
+    Falls back to a plain-text best-effort structure if JSON parsing fails.
+    """
+    if not transcript or len(transcript.strip()) < 30:
+        return {
+            'discussed': [],
+            'treatment_changes': [],
+            'action_items': [],
+            'follow_up_questions': [],
+            'flags': ["The notes were too short to produce a meaningful recap. Try adding more detail or use the microphone."],
+            'used_fallback': True,
+        }
+
+    # Soft cap; LLM doesn't need an essay
+    if len(transcript) > 8000:
+        transcript = transcript[:8000]
+
+    prompt = VISIT_RECAP_PROMPT.format(
+        patient_summary=patient_summary or "No profile information available.",
+        transcript=transcript,
+    )
+
+    try:
+        answer, _api = call_llm(prompt, response_length="detailed", query_type="general")
+        if not answer:
+            raise RuntimeError("Empty LLM response")
+
+        match = _re_citations.search(r'\{[\s\S]*\}', answer)
+        if not match:
+            raise ValueError("No JSON in response")
+        parsed = json.loads(match.group(0))
+
+        def _str_list(key, max_items=10, max_len=300):
+            items = parsed.get(key, [])
+            if not isinstance(items, list):
+                return []
+            cleaned = []
+            for it in items[:max_items]:
+                if isinstance(it, (str, int)):
+                    s = str(it).strip()[:max_len]
+                    if s:
+                        cleaned.append(s)
+            return cleaned
+
+        return {
+            'discussed': _str_list('discussed'),
+            'treatment_changes': _str_list('treatment_changes'),
+            'action_items': _str_list('action_items'),
+            'follow_up_questions': _str_list('follow_up_questions'),
+            'flags': _str_list('flags'),
+            'used_fallback': False,
+        }
+    except Exception as e:
+        logger.warning(f"Visit recap generation fell back: {e}")
+        # Plain-text fallback: store the raw LLM output as a single discussed bullet
+        return {
+            'discussed': ["I had trouble parsing your notes into a structured recap, but I saved them. Your care team can review the full text."],
+            'treatment_changes': [],
+            'action_items': [],
+            'follow_up_questions': [],
+            'flags': ["Recap parsing failed — please review the transcript with your care team."],
+            'used_fallback': True,
+        }
+
+
+# =============================================================================
+# FEATURE 4: INSURANCE APPEAL LETTER DRAFTING
+# =============================================================================
+
+INSURANCE_APPEAL_PROMPT = """You are helping a colorectal cancer patient draft a formal appeal letter for an insurance denial. Your draft will be reviewed by the patient and their oncology team before being sent — it is a starting point, not a final document.
+
+PATIENT PROFILE (de-identified):
+{patient_summary}
+
+THE INSURANCE DENIAL (extracted from the patient's denial letter — may be incomplete):
+{denial_text}
+
+RELEVANT CLINICAL GUIDELINE EXCERPTS:
+{guidelines}
+
+Write a formal appeal letter the patient could send to their insurance company. Use this structure:
+
+1. Header: "To: [Insurance Company]", "Re: Appeal of [denial reference, if extracted]", and the date.
+2. Opening paragraph: state that the patient is formally appealing the denial, name the requested treatment/service, and reference the denial letter.
+3. Clinical rationale (1–2 paragraphs): explain why this treatment is medically appropriate for this patient's diagnosis, stage, biomarkers, and treatment line. Be specific to the profile.
+4. Guideline support (1–2 paragraphs): cite the provided guideline excerpts using inline numbered citations [1], [2], etc., per the SOURCE numbers in the guidelines section. Quote brief language from the excerpts where helpful.
+5. Closing: request reconsideration, request a peer-to-peer review with the treating oncologist, list any supporting documents the patient can provide.
+
+CRITICAL RULES:
+- Use [1], [2] inline citations ONLY for claims drawn from the guideline excerpts above. Source N corresponds to the [Source N: ...] excerpt.
+- DO NOT invent guideline language, statistics, or trial numbers not in the provided excerpts.
+- If the requested treatment is NOT supported by the guidelines provided, say so directly in the letter rather than fabricating support — e.g., "While the standard NCCN pathway differs from the requested approach, my treating oncologist's clinical judgment supports..."
+- Use the patient's de-identified profile only — do NOT include patient name, MRN, or DOB. Use placeholder "[Patient Name]" and "[Member ID]" the patient will fill in.
+- Tone: professional, factual, respectful. Avoid emotional appeals; lead with clinical evidence.
+- Length: 350–550 words.
+
+Output ONLY the letter text. No preamble, no explanation, no markdown headers — write it in standard business letter form."""
+
+
+def generate_insurance_appeal(patient_summary: str, denial_text: str, retrieved_chunks: list, guidelines_formatted: str) -> Dict[str, Any]:
+    """
+    Run the insurance appeal prompt and return the draft + citation map.
+    Returns: {'draft': str, 'citations': dict, 'used_fallback': bool}
+    """
+    if not denial_text or len(denial_text.strip()) < 50:
+        return {
+            'draft': "",
+            'citations': {},
+            'used_fallback': True,
+            'error': 'Could not extract enough text from the denial letter. Try retyping the denial reason in the box below.',
+        }
+
+    prompt = INSURANCE_APPEAL_PROMPT.format(
+        patient_summary=patient_summary or "Profile information unavailable; the patient should fill in personal details before sending.",
+        denial_text=denial_text[:4000],
+        guidelines=guidelines_formatted or "No specific guideline excerpts available for this denial reason.",
+    )
+
+    try:
+        answer, _api = call_llm(prompt, response_length="detailed", query_type="general")
+        if not answer or len(answer.strip()) < 200:
+            raise RuntimeError("LLM returned an unusable letter")
+
+        # Run inline citation post-processor (Feature 1 reuse)
+        cleaned, citation_map = postprocess_citations(answer, retrieved_chunks)
+        return {
+            'draft': cleaned,
+            'citations': citation_map,
+            'used_fallback': False,
+        }
+    except Exception as e:
+        logger.warning(f"Insurance appeal generation fell back: {e}")
+        return {
+            'draft': "",
+            'citations': {},
+            'used_fallback': True,
+            'error': "I couldn't draft a letter right now. Please try again, or describe the denial reason directly.",
+        }
+
+
+# =============================================================================
+# FEATURE 5: DEEP-DIVE RESEARCH MODE
+# =============================================================================
+
+DEEP_RESEARCH_PROMPT = """You are producing a deep-dive research report for a colorectal cancer patient or caregiver. The report should be thorough, structured, and grounded — and should explicitly hedge or refuse where the source excerpts do not support a confident answer.
+
+PATIENT PROFILE (de-identified, may be empty):
+{patient_summary}
+
+THE QUESTION:
+{query}
+
+RELEVANT SOURCE EXCERPTS (NCCN/NCI/ASCO/CRC-specific):
+{guidelines}
+
+Write a structured report with these sections (use the exact section headers, in this order):
+
+## Background
+Brief framing of the question and why it matters for this patient (1 short paragraph).
+
+## Current Evidence
+What the provided source excerpts say about this question. Use inline numbered citations [1], [2] tied to the [Source N: ...] excerpts above. If sources conflict, present both. If sources are silent, say so explicitly.
+
+## Treatment Options or Approaches
+Each distinct approach as a sub-section header (### Option name) with: rationale, who it tends to fit, key trade-offs. Cite sources inline.
+
+## Caveats & Uncertainty
+What this report does NOT cover. Specific limitations of the evidence. Where individual factors (comorbidities, age, performance status) materially change the picture.
+
+## Questions for Your Oncology Team
+5–8 specific questions the patient should bring to their next visit, tailored to this question and their profile.
+
+CRITICAL RULES:
+- Use [N] inline citations ONLY where supported by the source excerpts.
+- DO NOT invent statistics, drug names, dose numbers, NCT trial numbers, or guideline language not in the excerpts.
+- If a section has insufficient source backing, write "The provided sources don't directly address this — please discuss with your care team."
+- Tone: thorough but accessible. Avoid jargon. Use "you" / "your" naturally.
+- Length: 800–1500 words.
+
+Output the report directly. No preamble, no meta-commentary."""
+
+
+SUBQUERY_DERIVATION_PROMPT = """The user asked a complex medical question. Generate 2–3 related sub-queries that would surface different relevant sub-topics from a colorectal cancer guideline corpus. Sub-queries should be different angles on the question — not paraphrases.
+
+USER QUESTION: {query}
+
+Output as a JSON array of 2–3 short search queries:
+["sub-query 1", "sub-query 2", "sub-query 3"]
+
+Output ONLY the JSON array. No prose."""
+
+
+def derive_subqueries(query: str) -> List[str]:
+    """
+    Use Groq 8B (fast, cheap) to derive 2-3 sub-queries for multi-pass retrieval.
+    Falls back to [] (caller treats as no sub-queries) if anything goes wrong.
+    """
+    try:
+        client = get_groq_client()
+        if not client:
+            return []
+        prompt = SUBQUERY_DERIVATION_PROMPT.format(query=query[:500])
+        completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=200,
+            temperature=0.2,
+        )
+        raw = (completion.choices[0].message.content or "").strip()
+        match = _re_citations.search(r'\[[\s\S]*\]', raw)
+        if not match:
+            return []
+        arr = json.loads(match.group(0))
+        if not isinstance(arr, list):
+            return []
+        out = []
+        for q in arr[:3]:
+            if isinstance(q, str):
+                q = q.strip()[:200]
+                if q and q.lower() != query.lower():
+                    out.append(q)
+        return out
+    except Exception as e:
+        logger.warning(f"Sub-query derivation failed: {e}")
+        return []
+
+
+def parse_deep_research_sections(report_text: str) -> List[Dict[str, str]]:
+    """
+    Split a deep-research report into [{title, body}] sections by '## ' markers.
+    """
+    if not report_text:
+        return []
+    parts = _re_citations.split(r'^## ', report_text, flags=_re_citations.MULTILINE)
+    sections = []
+    # First part may be pre-amble (no header) — skip if empty
+    leading = (parts[0] if parts else '').strip()
+    if leading:
+        sections.append({'title': 'Overview', 'body': leading})
+    for chunk in parts[1:]:
+        if not chunk.strip():
+            continue
+        lines = chunk.split('\n', 1)
+        title = lines[0].strip()
+        body = lines[1].strip() if len(lines) > 1 else ''
+        sections.append({'title': title, 'body': body})
+    return sections
+
+
+def generate_deep_research(query: str, retrieved_chunks: list, patient_summary: str) -> Dict[str, Any]:
+    """
+    Generate a structured deep-research report. Includes:
+      - longer LLM call (max_tokens via response_length="detailed")
+      - second-pass verification (reuses verify.py)
+      - regenerate-once-on-fabrication
+      - inline-citation post-processing (Feature 1)
+      - section parsing
+
+    Returns {report, sections, citations, verified, fabrication_risk, used_fallback}
+    """
+    if not query or not retrieved_chunks:
+        return {
+            'report': '',
+            'sections': [],
+            'citations': {},
+            'verified': False,
+            'fabrication_risk': 'unknown',
+            'used_fallback': True,
+        }
+
+    guidelines_formatted = select_chunks_within_budget(retrieved_chunks, 3500)
+    prompt = DEEP_RESEARCH_PROMPT.format(
+        patient_summary=patient_summary or "Profile information unavailable.",
+        query=query,
+        guidelines=guidelines_formatted,
+    )
+
+    try:
+        # Primary report — use detailed length so max_tokens is generous
+        report, _api = call_llm(prompt, response_length="detailed", query_type="general")
+        if not report or len(report.strip()) < 200:
+            raise RuntimeError("Empty or unusably short report")
+
+        report = trim_incomplete_sentence(report)
+
+        # Second-pass verification (heavy report → must be source-grounded)
+        verified = True
+        risk = 'unknown'
+        try:
+            from verify import verify_response, HEDGED_FALLBACK_RESPONSE
+            verdict = verify_response(report, retrieved_chunks, query)
+            verified = bool(verdict.get('verified', True))
+            risk = verdict.get('fabrication_risk', 'unknown')
+            if verdict.get('recommended_action') == 'regenerate':
+                hedged_prompt = (
+                    "CRITICAL: The previous draft contained unsupported claims. "
+                    "You MUST hedge heavily and explicitly say where the sources do not address a question. "
+                    "If specific details are not in the source excerpts, write 'The sources don't directly address this' "
+                    "rather than fabricating. Do not invent statistics, drug names, dose numbers, or NCT trials.\n\n"
+                    + prompt
+                )
+                retry_report, _ = call_llm(hedged_prompt, response_length="detailed", query_type="general")
+                if retry_report and len(retry_report.strip()) > 200:
+                    retry_report = trim_incomplete_sentence(retry_report)
+                    retry_verdict = verify_response(retry_report, retrieved_chunks, query)
+                    if retry_verdict.get('verified'):
+                        report = retry_report
+                        verified = True
+                        risk = retry_verdict.get('fabrication_risk', risk)
+                    else:
+                        # Both attempts failed — return hedged fallback
+                        return {
+                            'report': HEDGED_FALLBACK_RESPONSE,
+                            'sections': [{'title': "I'm not confident enough to answer this", 'body': HEDGED_FALLBACK_RESPONSE}],
+                            'citations': {},
+                            'verified': False,
+                            'fabrication_risk': retry_verdict.get('fabrication_risk', 'high'),
+                            'used_fallback': True,
+                        }
+        except Exception as e:
+            logger.warning(f"Deep research verification failed (continuing): {e}")
+
+        # Inline citation post-processing (Feature 1)
+        cleaned_report, citation_map = postprocess_citations(report, retrieved_chunks)
+        sections = parse_deep_research_sections(cleaned_report)
+
+        return {
+            'report': cleaned_report,
+            'sections': sections,
+            'citations': citation_map,
+            'verified': verified,
+            'fabrication_risk': risk,
+            'used_fallback': False,
+        }
+    except Exception as e:
+        logger.exception(f"Deep research generation failed: {e}")
+        return {
+            'report': '',
+            'sections': [],
+            'citations': {},
+            'verified': False,
+            'fabrication_risk': 'unknown',
+            'used_fallback': True,
+        }
 
 
 def classify_query_type(message: str) -> str:
