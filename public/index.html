@@ -791,23 +791,28 @@
 
         .ai-disclosure-banner {
             display: flex;
-            align-items: flex-start;
-            gap: 8px;
-            margin: 8px 0 0 0;
-            padding: 8px 12px;
-            background: var(--background);
-            border: 1px solid var(--border);
-            border-left: 3px solid var(--primary);
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0 4px;
+            padding: 9px 14px;
+            background: rgba(13, 148, 136, 0.06);
+            border: 1px solid rgba(13, 148, 136, 0.18);
             border-radius: var(--radius-sm, 6px);
             font-size: 12px;
-            line-height: 1.5;
+            line-height: 1.45;
             color: var(--text-secondary);
         }
         .ai-disclosure-icon {
-            font-size: 14px;
+            font-size: 15px;
             line-height: 1;
             flex-shrink: 0;
-            margin-top: 1px;
+        }
+        @media (max-width: 640px) {
+            .ai-disclosure-banner {
+                font-size: 11.5px;
+                padding: 8px 12px;
+                gap: 8px;
+            }
         }
 
         .messages {
@@ -1714,6 +1719,51 @@
             margin-bottom: 4px;
         }
 
+        .policy-modal-body code {
+            background: var(--background);
+            color: var(--text-primary);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 11.5px;
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+        }
+
+        /* Draft / attorney-review banner used at the top of legal modals */
+        .policy-draft-banner {
+            background: #FEF3C7;
+            border-left: 3px solid #F59E0B;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm, 6px);
+            font-size: 12px;
+            line-height: 1.5;
+            color: #92400E;
+            margin: 0 0 14px;
+        }
+        .policy-draft-banner strong {
+            color: #78350F;
+        }
+
+        /* Privacy appeal mini-form inside policy modal */
+        .appeal-form-block {
+            margin-top: 8px;
+            padding: 14px 16px;
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm, 6px);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .appeal-form-block .feature-textarea {
+            min-height: 80px;
+            font-size: 13px;
+        }
+        #appealStatus {
+            min-height: 16px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
         /* Suggested Questions */
         .suggested-questions {
             margin-top: 16px;
@@ -1757,7 +1807,9 @@
         .chat-footer-links {
             display: flex;
             justify-content: center;
-            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px 10px;
             padding: 4px 0 0;
             font-size: 11px;
         }
@@ -2743,6 +2795,35 @@
             line-height: 1.5;
         }
 
+        .auth-signup-notice {
+            display: none;
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+            font-size: 12px;
+            line-height: 1.55;
+            color: var(--text-muted);
+        }
+        .auth-signup-notice-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 6px;
+        }
+        .auth-signup-notice-body {
+            margin-bottom: 6px;
+        }
+        .auth-signup-notice-list {
+            margin: 0;
+            padding-left: 18px;
+        }
+        .auth-signup-notice-list li {
+            margin-bottom: 3px;
+        }
+
         /* Acknowledgement Modal */
         .acknowledgement-overlay {
             position: fixed;
@@ -2762,42 +2843,42 @@
         .acknowledgement-modal {
             background: var(--surface);
             border-radius: var(--radius-lg);
-            padding: 32px;
+            padding: 28px 32px;
             width: 100%;
-            max-width: 420px;
-            max-height: 85vh;
+            max-width: 580px;
+            max-height: 92vh;
             display: flex;
             flex-direction: column;
             box-shadow: var(--shadow-lg);
             animation: modalSlideIn 0.3s ease;
             margin: 16px;
+            overflow-y: auto;
         }
 
         .acknowledgement-icon {
             text-align: center;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             color: var(--primary);
         }
 
         .acknowledgement-title {
-            font-size: 20px;
+            font-size: 19px;
             font-weight: 700;
             color: var(--text-primary);
             text-align: center;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
+            line-height: 1.3;
         }
 
         .acknowledgement-text {
-            font-size: 14px;
+            font-size: 13.5px;
             color: var(--text-secondary);
-            line-height: 1.6;
-            margin-bottom: 20px;
-            overflow-y: auto;
-            max-height: 40vh;
+            line-height: 1.55;
+            margin-bottom: 18px;
         }
 
         .acknowledgement-text p {
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
         .acknowledgement-text p:last-child {
@@ -2851,13 +2932,55 @@
         }
 
         /* Extended acknowledgement form fields */
+        .acknowledgement-text {
+            text-align: left;
+        }
+        .acknowledgement-text p {
+            font-size: 13.5px;
+        }
+        .ack-policy-links {
+            font-size: 12px !important;
+            color: var(--text-muted);
+            margin-top: 10px !important;
+        }
+        .ack-policy-link {
+            color: var(--primary);
+            text-decoration: none;
+            margin: 0 2px;
+        }
+        .ack-policy-link.primary {
+            font-weight: 600;
+        }
+        .ack-policy-link:hover {
+            text-decoration: underline;
+        }
+
+        #ackForm {
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin-top: 8px;
+        }
+        .ack-state-note {
+            font-size: 11.5px;
+            color: var(--text-muted);
+            margin-top: 5px;
+        }
+        .ack-consents-title {
+            font-weight: 600;
+            margin-bottom: 2px;
+            color: var(--text-primary);
+            font-size: 13px;
+        }
         .ack-field {
             display: flex;
             align-items: flex-start;
             gap: 10px;
-            font-size: 13px;
+            font-size: 13.5px;
             line-height: 1.5;
             cursor: pointer;
+            color: var(--text-primary);
         }
         .ack-field input[type="checkbox"] {
             width: 18px;
@@ -2865,33 +2988,49 @@
             margin: 2px 0 0 0;
             cursor: pointer;
             flex-shrink: 0;
+            accent-color: var(--primary);
         }
-        .ack-field-block { font-size: 13px; }
+        .ack-field span {
+            flex: 1;
+        }
+        .ack-field-block {
+            font-size: 13.5px;
+        }
+        .ack-field-block label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+        }
         .ack-select {
             width: 100%;
-            padding: 9px 10px;
-            font-size: 13px;
+            padding: 10px 12px;
+            font-size: 14px;
             border: 1px solid var(--border);
             border-radius: var(--radius-sm, 6px);
             background: var(--background);
             color: var(--text-primary);
+            cursor: pointer;
         }
-        .ack-select:focus { outline: none; border-color: var(--primary); }
+        .ack-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
+        }
         .ack-consents {
             background: var(--background);
-            padding: 12px 14px;
+            padding: 14px 16px;
             border-radius: var(--radius-sm, 6px);
             border-left: 3px solid var(--primary-lighter);
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 12px;
         }
-
-        /* Make the acknowledgement modal taller now that it has a form */
-        #acknowledgementOverlay .acknowledgement-modal {
-            max-width: 560px;
-            max-height: 90vh;
-            overflow-y: auto;
+        .ack-consents > div:first-child {
+            color: var(--text-primary);
+        }
+        #acknowledgementOverlay .acknowledgement-btn {
+            margin-top: 18px;
         }
 
         /* Profile Success Modal */
@@ -4320,13 +4459,13 @@
                 <input type="email" class="auth-input" id="authEmail" placeholder="Email address" aria-label="Email address" autocomplete="email" required>
                 <input type="password" class="auth-input" id="authPassword" placeholder="Password (min 6 characters)"
                     aria-label="Password" autocomplete="current-password" required minlength="6">
-                <div id="authSignupNotice" style="display:none;font-size:11px;color:var(--text-muted);line-height:1.5;background:var(--background);padding:10px 12px;border-radius:6px;margin-top:4px;">
-                    <strong style="display:block;color:var(--text-secondary);margin-bottom:4px;">Before you continue</strong>
-                    After creating your account we'll ask you to confirm:
-                    <ul style="margin:6px 0 4px 18px;padding:0;">
+                <div id="authSignupNotice" class="auth-signup-notice">
+                    <div class="auth-signup-notice-title">Before you continue</div>
+                    <div class="auth-signup-notice-body">After creating your account we'll ask you to confirm:</div>
+                    <ul class="auth-signup-notice-list">
                         <li>You are 18 or older</li>
-                        <li>Your state of residence (WondrChat is not available to residents of <strong>Illinois</strong> or <strong>Nevada</strong> at this time)</li>
-                        <li>Separate consents for data collection, AI provider sharing, and our Terms / Privacy Policy</li>
+                        <li>Your state of residence (not available in <strong>Illinois</strong> or <strong>Nevada</strong>)</li>
+                        <li>Separate consents for data collection, AI processing, and our policies</li>
                     </ul>
                 </div>
                 <button type="submit" class="auth-btn" id="authSubmitBtn">Sign In</button>
@@ -4348,27 +4487,31 @@
                 </svg>
             </div>
             <div class="acknowledgement-title">Welcome — please confirm a few things</div>
-            <div class="acknowledgement-text" style="text-align:left;">
-                <p style="font-size:13px;">WondrLink is an information tool for people affected by colon cancer. Before you continue, we need to confirm your age, state of residence, and consents required by US privacy law.</p>
-                <p style="font-size:12px; margin-top:8px;color:var(--text-muted);">Review our policies (each opens in its own window): <a href="#" onclick="showPolicyModal('consumerHealthOverlay'); return false;" style="color:var(--primary);font-weight:600;">Consumer Health Data Privacy Notice</a> · <a href="#" onclick="showPolicyModal('privacyOverlay'); return false;" style="color:var(--primary);">Privacy Policy</a> · <a href="#" onclick="showPolicyModal('termsOverlay'); return false;" style="color:var(--primary);">Terms of Use</a></p>
+            <div class="acknowledgement-text">
+                <p>WondrLink is an information tool for people affected by colon cancer. Before you continue, we need to confirm your age, state of residence, and consents required by US privacy law.</p>
+                <p class="ack-policy-links">Review our policies (each opens in its own window):
+                    <a href="#" onclick="showPolicyModal('consumerHealthOverlay'); return false;" class="ack-policy-link primary">Consumer Health Data Privacy Notice</a>
+                    <a href="#" onclick="showPolicyModal('privacyOverlay'); return false;" class="ack-policy-link">Privacy Policy</a>
+                    <a href="#" onclick="showPolicyModal('termsOverlay'); return false;" class="ack-policy-link">Terms of Use</a>
+                </p>
             </div>
 
-            <div id="ackForm" style="text-align:left;font-size:13px;display:flex;flex-direction:column;gap:14px;margin-top:8px;">
+            <div id="ackForm">
                 <label class="ack-field">
                     <input type="checkbox" id="ackAge18">
                     <span>I confirm I am 18 years of age or older.</span>
                 </label>
 
                 <div class="ack-field-block">
-                    <label for="ackState" style="display:block;font-weight:600;margin-bottom:4px;">State of residence</label>
+                    <label for="ackState">State of residence</label>
                     <select id="ackState" class="ack-select" required>
                         <option value="">— Select your state —</option>
                     </select>
-                    <div id="ackStateNote" style="font-size:11px;color:var(--text-muted);margin-top:4px;">WondrLink is not currently available to residents of Illinois or Nevada.</div>
+                    <div id="ackStateNote" class="ack-state-note">WondrLink is not currently available to residents of Illinois or Nevada.</div>
                 </div>
 
                 <div class="ack-consents">
-                    <div style="font-weight:600;margin-bottom:8px;">Required consents (each is independent — please review and check all three)</div>
+                    <div class="ack-consents-title">Required consents (each is independent — please review and check all three)</div>
                     <label class="ack-field">
                         <input type="checkbox" id="ackConsentCollection">
                         <span><strong>1. Data collection.</strong> I consent to WondrLink collecting my health-related information (questions, screening responses, profile fields I provide) to give me personalized cancer education.</span>
@@ -4400,7 +4543,7 @@
                 <button class="policy-modal-close" onclick="closePolicyModal('consumerHealthOverlay')" aria-label="Close">&times;</button>
             </div>
             <div class="policy-modal-body">
-                <p style="background:#FEF3C7;border-left:3px solid #F59E0B;padding:10px 12px;border-radius:6px;font-size:12px;color:#92400E;">
+                <p class="policy-draft-banner">
                     <strong>DRAFT — ATTORNEY REVIEW REQUIRED.</strong> This notice has been prepared in good faith using the requirements of the Washington My Health My Data Act (MHMDA) as a template. A licensed healthcare-privacy attorney should review and finalize before public launch.
                 </p>
                 <p><strong>Effective Date:</strong> May 2026 &nbsp;|&nbsp; <strong>Version:</strong> v2-mhmda-2026-05</p>
@@ -4475,16 +4618,19 @@
     <!-- State Restricted Modal (IL / NV soft-deactivation explanation) -->
     <div id="stateRestrictedOverlay" class="feature-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Service not available in your state">
         <div class="feature-modal" style="max-width:480px;">
-            <div class="feature-modal-header">
-                <div class="feature-modal-title-block">
-                    <h2 class="feature-modal-title">WondrLink isn't available in your state yet</h2>
+            <div class="feature-modal-body" style="text-align:center;padding:32px 28px 22px;">
+                <div style="width:56px;height:56px;border-radius:50%;background:#FEF3C7;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#92400E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
                 </div>
+                <h2 style="font-size:18px;font-weight:700;margin:0 0 12px;color:var(--text-primary);line-height:1.3;">WondrLink isn't available in your state yet</h2>
+                <p id="stateRestrictedMessage" style="font-size:13.5px;line-height:1.6;color:var(--text-secondary);margin:0;">WondrLink is not currently available to residents of Illinois or Nevada due to state regulations governing AI in mental and behavioral health. We are actively working to expand access — thank you for your patience.</p>
+                <p style="font-size:12px;color:var(--text-muted);margin:14px 0 0;">If you'd like to permanently remove the account you created, use the option below. Otherwise we'll sign you out.</p>
             </div>
-            <div class="feature-modal-body">
-                <p id="stateRestrictedMessage" style="font-size:13px;line-height:1.6;color:var(--text-secondary);">WondrLink is not currently available to residents of Illinois or Nevada due to state regulations governing AI in mental and behavioral health. We are actively working to expand access — thank you for your patience.</p>
-                <p style="font-size:12px;color:var(--text-muted);margin-top:14px;">If you'd like to permanently remove the account you created, use the option below. Otherwise we'll sign you out.</p>
-            </div>
-            <div class="feature-modal-footer">
+            <div class="feature-modal-footer" style="justify-content:space-between;">
                 <button class="feature-secondary-btn" onclick="deleteAccountFromRestricted()" style="color:var(--danger);border-color:var(--danger);">Delete my account</button>
                 <button class="feature-submit-btn" onclick="closeStateRestrictedModal()">Sign me out</button>
             </div>
@@ -4499,7 +4645,7 @@
                 <button class="policy-modal-close" onclick="closePolicyModal('privacyOverlay')" aria-label="Close">&times;</button>
             </div>
             <div class="policy-modal-body">
-                <p style="background:#FEF3C7;border-left:3px solid #F59E0B;padding:10px 12px;border-radius:6px;font-size:12px;color:#92400E;">
+                <p class="policy-draft-banner">
                     <strong>DRAFT — ATTORNEY REVIEW REQUIRED.</strong> Updated for MHMDA, state AI laws, and HBNR. Awaiting final attorney review.
                 </p>
                 <p><strong>Effective Date:</strong> May 2026 &nbsp;|&nbsp; <strong>Version:</strong> v2-mhmda-2026-05</p>
@@ -4565,17 +4711,17 @@
                 <p>For privacy-related questions or data requests, contact us at <a href="mailto:info@wondrlinkfoundation.org" style="color:var(--primary);">info@wondrlinkfoundation.org</a>.</p>
 
                 <h3>File a Privacy Appeal</h3>
-                <p style="font-size:13px;">If we have denied an access, deletion, or consent withdrawal request, you may file an appeal here. We will respond within 45 days.</p>
-                <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
-                    <select id="appealRequestType" class="ack-select">
+                <p>If we have denied an access, deletion, or consent withdrawal request, you may file an appeal here. We will respond within 45 days.</p>
+                <div class="appeal-form-block">
+                    <select id="appealRequestType" class="ack-select" aria-label="Appeal request type">
                         <option value="">— Choose a request type —</option>
                         <option value="access">Access to my data</option>
                         <option value="deletion">Deletion of my data</option>
                         <option value="consent_withdrawal">Withdraw a consent</option>
                         <option value="other">Other privacy concern</option>
                     </select>
-                    <textarea id="appealReason" class="feature-textarea" style="min-height:80px;" placeholder="Briefly describe your request and what outcome you'd like."></textarea>
-                    <div id="appealStatus" style="font-size:12px;"></div>
+                    <textarea id="appealReason" class="feature-textarea" placeholder="Briefly describe your request and what outcome you'd like." aria-label="Appeal reason"></textarea>
+                    <div id="appealStatus"></div>
                     <button class="feature-submit-btn" onclick="submitPrivacyAppeal()" style="align-self:flex-start;">Submit appeal</button>
                 </div>
             </div>
@@ -4590,7 +4736,7 @@
                 <button class="policy-modal-close" onclick="closePolicyModal('termsOverlay')" aria-label="Close">&times;</button>
             </div>
             <div class="policy-modal-body">
-                <p style="background:#FEF3C7;border-left:3px solid #F59E0B;padding:10px 12px;border-radius:6px;font-size:12px;color:#92400E;">
+                <p class="policy-draft-banner">
                     <strong>DRAFT — ATTORNEY REVIEW REQUIRED.</strong> Updated for age, state, and consent requirements. Awaiting final attorney review.
                 </p>
                 <p><strong>Effective Date:</strong> May 2026 &nbsp;|&nbsp; <strong>Version:</strong> v2-mhmda-2026-05</p>
