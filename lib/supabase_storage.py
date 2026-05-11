@@ -562,49 +562,107 @@ def clear_conversation_history(session_id: str, user_id: str) -> bool:
 # User Acknowledgement Operations
 # -------------------------
 
-def check_acknowledgement(user_id: str) -> bool:
+def check_acknowledgement(user_id: str) -> Dict[str, Any]:
     """
-    Check if a user has acknowledged the disclaimer.
+    Check the current acknowledgement + consent state for a user.
 
-    Args:
-        user_id: The user's UUID
-
-    Returns:
-        True if acknowledged, False otherwise
+    Returns a dict (not just a bool) so the API layer can decide whether the
+    user needs to re-consent under the new MHMDA flow:
+      {
+        'acknowledged': bool,            # has any acknowledgement row
+        'consent_version': str | None,   # last accepted version
+        'consent_metadata': dict,        # full audit JSONB (may be empty for pre-v2)
+        'state_restricted': bool,        # user previously declared IL/NV
+      }
     """
     try:
         client = get_admin_client()
-        result = client.table('user_acknowledgements') \
-            .select('id') \
-            .eq('user_id', user_id) \
-            .limit(1) \
-            .execute()
+        # Be defensive: the new columns may not yet exist on every environment.
+        # Try the full select first; fall back to the legacy id-only check.
+        try:
+            result = client.table('user_acknowledgements') \
+                .select('id, consent_version, consent_metadata') \
+                .eq('user_id', user_id) \
+                .limit(1) \
+                .execute()
+        except Exception:
+            result = client.table('user_acknowledgements') \
+                .select('id') \
+                .eq('user_id', user_id) \
+                .limit(1) \
+                .execute()
 
-        return bool(result.data)
+        if not result.data:
+            return {
+                'acknowledged': False,
+                'consent_version': None,
+                'consent_metadata': {},
+                'state_restricted': False,
+            }
+
+        row = result.data[0]
+        metadata = row.get('consent_metadata') or {}
+        state = (metadata.get('state') or '').upper() if isinstance(metadata, dict) else ''
+        from compliance import BLOCKED_STATES
+        return {
+            'acknowledged': True,
+            'consent_version': row.get('consent_version'),
+            'consent_metadata': metadata if isinstance(metadata, dict) else {},
+            'state_restricted': state in BLOCKED_STATES,
+        }
     except Exception as e:
         logger.error(f"Failed to check acknowledgement for user {user_id}: {e}")
-        return False
+        return {
+            'acknowledged': False,
+            'consent_version': None,
+            'consent_metadata': {},
+            'state_restricted': False,
+        }
 
 
-def save_acknowledgement(user_id: str) -> bool:
+def save_acknowledgement(user_id: str, consent_metadata: Dict[str, Any] = None,
+                          consent_version: str = None) -> bool:
     """
-    Save a user's acknowledgement of the disclaimer.
+    Save a user's acknowledgement + MHMDA consent record.
 
     Args:
         user_id: The user's UUID
+        consent_metadata: Full consent record (see lib.compliance.build_consent_metadata)
+        consent_version: The version tag of the consent terms accepted
 
     Returns:
         True if successful, False otherwise
+
+    Backwards-compatible: callers that don't pass consent_metadata still work
+    (legacy "v1" acknowledgement just records the user clicked OK).
     """
     try:
         client = get_admin_client()
-        client.table('user_acknowledgements').upsert({
+        row = {
             'user_id': user_id,
             'acknowledged_at': datetime.now().isoformat(),
-            'acknowledgement_version': '1.0'
-        }, on_conflict='user_id').execute()
+            'acknowledgement_version': '1.0',
+        }
+        if consent_version:
+            row['consent_version'] = consent_version
+        if consent_metadata is not None:
+            row['consent_metadata'] = consent_metadata
 
-        logger.info(f"Saved acknowledgement for user {user_id}")
+        # Try full upsert (new columns); fall back to legacy if columns don't exist
+        try:
+            client.table('user_acknowledgements').upsert(
+                row, on_conflict='user_id'
+            ).execute()
+        except Exception as e:
+            # Likely the new columns aren't migrated yet — fall back to legacy fields
+            logger.warning(f"Full acknowledgement upsert failed ({e}); retrying with legacy fields")
+            client.table('user_acknowledgements').upsert({
+                'user_id': user_id,
+                'acknowledged_at': datetime.now().isoformat(),
+                'acknowledgement_version': '1.0',
+            }, on_conflict='user_id').execute()
+
+        logger.info(f"Saved acknowledgement for user {user_id} (version={consent_version})")
         return True
     except Exception as e:
         logger.error(f"Failed to save acknowledgement for user {user_id}: {e}")
@@ -776,10 +834,36 @@ def load_all_screening_history(user_id: str) -> dict:
 
 def delete_all_user_data(user_id: str) -> dict:
     """
-    Delete ALL data for a user across all tables. GDPR Article 17 compliance.
+    Delete ALL data for a user across all tables.
 
-    Returns dict with deletion results per table.
+    GDPR Article 17 + WA MHMDA + CCPA compliance. Returns a structured dict
+    with per-table deletion results.
+
+    Scope of this function (under our direct control):
+      - patient_profiles      — full row
+      - chat_messages         — all rows for user
+      - screening_scores      — all rows for user
+      - user_acknowledgements — full row including consent_metadata
+      - chat_feedback         — all rows for user
+      - conversations         — all rows for user
+      - messages              — all rows for user
+      - rate_limits           — all rows for user_id (as identifier)
+
+    Sub-processor data NOT under our direct control (documented in
+    docs/compliance/subprocessor_chain.md — retention per their ToS):
+      - Together AI / Groq inference logs — typically retained ~30 days by
+        the provider; we send only de-identified queries.
+      - Supabase backups — auto-purged on the rolling window per Supabase
+        retention policy (PITR 7 days by default).
+      - Vercel function logs — short retention per Vercel ToS; contains
+        request metadata, not application data.
+
+    Returns dict with deletion results per table + a sub_processors_notice
+    field that the caller logs for the audit trail.
     """
+    import hashlib
+    user_hash = hashlib.sha256((user_id or "").encode("utf-8")).hexdigest()[:16]
+
     results = {}
     try:
         client = get_admin_client()
@@ -802,13 +886,26 @@ def delete_all_user_data(user_id: str) -> dict:
             except Exception as e:
                 results[table] = f'error: {str(e)}'
 
-        # Delete rate limits by identifier (user_id)
+        # rate_limits is keyed by 'identifier' (which is user_id for chat / appeal endpoints).
         try:
             client.table('rate_limits').delete().eq('identifier', user_id).execute()
         except Exception:
             pass
 
-        logger.info(f"All data deleted for user {user_id}")
+        # Structured deletion-audit log line. user_hash (not user_id) so we have an
+        # audit trail without retaining the user identifier in logs.
+        # This satisfies the documented audit trail in docs/compliance/incident_response_plan.md.
+        logger.info(
+            "DELETION_AUDIT user_hash=%s tables=%s timestamp=%s",
+            user_hash,
+            ",".join(t for t, r in results.items() if r == 'deleted'),
+            datetime.now().isoformat(),
+        )
+
+        results['sub_processors_notice'] = (
+            "Sub-processor data (Together AI, Groq, Supabase backups, Vercel logs) "
+            "is purged per their retention policies; see docs/compliance/subprocessor_chain.md."
+        )
         return results
 
     except Exception as e:

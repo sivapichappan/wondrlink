@@ -53,6 +53,16 @@ def feature_enabled(flag_name: str) -> bool:
     """Per-feature kill switch via env var FEATURE_<NAME>. Defaults to True."""
     return os.getenv(f"FEATURE_{flag_name.upper()}", "true").lower() == "true"
 
+
+# Will be assigned after `app` is created (see below).
+def _detect_gpc():
+    """Detect the Global Privacy Control opt-out signal (Sec-GPC: 1).
+       Honored per CCPA, Colorado, Connecticut, and Oregon laws."""
+    try:
+        request.gpc_opted_out = request.headers.get("Sec-GPC", "").strip() == "1"
+    except Exception:
+        request.gpc_opted_out = False
+
 def _origin_allowed(origin: str) -> bool:
     if not origin:
         return False
@@ -66,6 +76,10 @@ def _origin_allowed(origin: str) -> bool:
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "wondrlink-dev-secret-key")
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB — allows PDF uploads on /api/insurance_appeal
+
+# Register the Global Privacy Control detection hook. Sets request.gpc_opted_out
+# (bool) for downstream endpoints that store optional/non-essential data.
+app.before_request(_detect_gpc)
 
 # -------------------------
 # Auth Decorator
@@ -310,11 +324,35 @@ def api_clear_profile():
 @app.route("/api/check_acknowledgement", methods=["GET"])
 @require_auth
 def api_check_acknowledgement():
-    """Check if user has acknowledged the disclaimer."""
+    """
+    Return the user's acknowledgement + consent state. The frontend uses
+    this to decide whether to show the extended MHMDA consent modal.
+
+    Response shape:
+      {
+        "acknowledged": bool,
+        "consent_version": str | null,
+        "current_version": str,              # what we expect users to be on
+        "needs_consent": bool,               # acknowledged && version < current
+        "state_restricted": bool,            # IL/NV — user soft-deactivated
+      }
+    """
     try:
+        from compliance import CURRENT_CONSENT_VERSION
         user_id = request.user["user_id"]
-        acknowledged = check_acknowledgement(user_id)
-        return jsonify({"acknowledged": acknowledged})
+        state = check_acknowledgement(user_id)
+        acknowledged = state.get('acknowledged', False)
+        version = state.get('consent_version')
+        # User needs to re-consent if they've never acknowledged, OR if their
+        # accepted version is below current.
+        needs_consent = (not acknowledged) or (version != CURRENT_CONSENT_VERSION)
+        return jsonify({
+            "acknowledged": acknowledged,
+            "consent_version": version,
+            "current_version": CURRENT_CONSENT_VERSION,
+            "needs_consent": needs_consent,
+            "state_restricted": state.get('state_restricted', False),
+        })
     except Exception as e:
         logger.exception("check_acknowledgement error")
         return jsonify({"error": str(e)}), 500
@@ -323,14 +361,65 @@ def api_check_acknowledgement():
 @app.route("/api/save_acknowledgement", methods=["POST"])
 @require_auth
 def api_save_acknowledgement():
-    """Save user acknowledgement of the disclaimer."""
+    """
+    Save MHMDA-compliant acknowledgement + consents.
+
+    Required body fields:
+      - age_confirmed: bool (must be true)
+      - state: str (US state code or "non_US"; cannot be in BLOCKED_STATES)
+      - consent_collection: bool (must be true)
+      - consent_sharing: bool (must be true)
+      - consent_terms: bool (must be true)
+    """
+    if not feature_enabled('strict_compliance'):
+        # Legacy single-checkbox flow (back-compat for emergency rollback)
+        try:
+            user_id = request.user["user_id"]
+            success = save_acknowledgement(user_id)
+            return jsonify({"status": "ok"} if success else {"error": "save failed"}), (200 if success else 500)
+        except Exception as e:
+            logger.exception("legacy save_acknowledgement error")
+            return jsonify({"error": str(e)}), 500
+
     try:
+        from compliance import (
+            validate_consents, validate_age_confirmation, validate_state,
+            build_consent_metadata, CURRENT_CONSENT_VERSION,
+        )
         user_id = request.user["user_id"]
-        success = save_acknowledgement(user_id)
-        if success:
-            return jsonify({"status": "ok", "message": "Acknowledgement saved"})
-        else:
+        payload = request.get_json(silent=True) or {}
+
+        # Age check
+        ok, msg = validate_age_confirmation(payload)
+        if not ok:
+            return jsonify({"error": msg, "field": "age_confirmed"}), 400
+
+        # State check (returns its own status code: 400 for malformed, 422 for blocked)
+        ok, msg, code = validate_state(payload.get("state"))
+        if not ok:
+            return jsonify({"error": msg, "field": "state"}), code
+
+        # Three separate opt-in consents (MHMDA: no bundling)
+        ok, msg = validate_consents(payload)
+        if not ok:
+            return jsonify({"error": msg}), 400
+
+        # Build the audit record and persist
+        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
+        metadata = build_consent_metadata(payload, ip_address=client_ip)
+        success = save_acknowledgement(
+            user_id,
+            consent_metadata=metadata,
+            consent_version=CURRENT_CONSENT_VERSION,
+        )
+        if not success:
             return jsonify({"error": "Failed to save acknowledgement"}), 500
+
+        return jsonify({
+            "status": "ok",
+            "message": "Acknowledgement saved",
+            "consent_version": CURRENT_CONSENT_VERSION,
+        })
     except Exception as e:
         logger.exception("save_acknowledgement error")
         return jsonify({"error": str(e)}), 500
@@ -1468,6 +1557,79 @@ def api_deep_research():
     except Exception as e:
         logger.exception("deep_research error")
         return jsonify({"error": "Deep research failed. Try a more specific question."}), 500
+
+
+# =============================================================================
+# PRIVACY APPEALS (MHMDA / state privacy laws — 45-day SLA)
+# =============================================================================
+
+ALLOWED_APPEAL_TYPES = {"access", "deletion", "consent_withdrawal", "other"}
+
+@app.route("/api/privacy_appeal", methods=["POST"])
+@require_auth
+def api_privacy_appeal():
+    """
+    Submit a privacy appeal for a denied access / deletion / consent withdrawal
+    request. Persists to patient_profiles.raw_profile.privacy_appeals[].
+    45-day SLA (extendable by 45 more days where reasonably necessary).
+    """
+    try:
+        from datetime import timedelta
+        user_id = request.user["user_id"]
+
+        from rate_limit import check_rate_limit
+        allowed, _ = check_rate_limit(user_id, 'privacy_appeal', 3, 86400)
+        if not allowed:
+            return jsonify({"error": "You've submitted the maximum number of appeals in 24 hours. Please email appeals@wondrlinkfoundation.org for urgent matters."}), 429
+
+        data = request.get_json(silent=True) or {}
+        req_type = (data.get('request_type') or '').strip().lower()
+        reason = (data.get('reason') or '').strip()
+
+        if req_type not in ALLOWED_APPEAL_TYPES:
+            return jsonify({"error": "Please choose a valid request type."}), 400
+        if len(reason) < 10:
+            return jsonify({"error": "Please describe your request in at least one sentence."}), 400
+        if len(reason) > 2000:
+            reason = reason[:2000]
+
+        now = datetime.now()
+        sla_due = (now + timedelta(days=45)).isoformat()
+        appeal_id = f"appeal-{int(now.timestamp())}"
+        entry = {
+            "appeal_id": appeal_id,
+            "timestamp": now.isoformat(),
+            "request_type": req_type,
+            "reason": reason,
+            "status": "submitted",
+            "sla_due": sla_due,
+            "resolved_at": None,
+            "resolution_note": None,
+        }
+
+        # Append to profile.privacy_appeals
+        patient_profile = load_profile(user_id) or {}
+        existing = patient_profile.get('privacy_appeals') or []
+        if not isinstance(existing, list):
+            existing = []
+        existing.append(entry)
+        if len(existing) > 20:
+            existing = existing[-20:]
+        patient_profile['privacy_appeals'] = existing
+        save_profile(user_id, patient_profile)
+
+        # Structured log for ops awareness (no PII beyond appeal_id + user_id)
+        logger.info(f"PRIVACY_APPEAL submitted: appeal_id={appeal_id} user_id={user_id} type={req_type} sla_due={sla_due}")
+
+        return jsonify({
+            "status": "ok",
+            "appeal_id": appeal_id,
+            "sla_due": sla_due,
+            "message": "Your appeal has been recorded. We will respond within 45 days.",
+        })
+    except Exception as e:
+        logger.exception("privacy_appeal error")
+        return jsonify({"error": "Could not record your appeal right now."}), 500
 
 
 # -------------------------

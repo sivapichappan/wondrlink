@@ -789,6 +789,27 @@
             margin-top: 2px;
         }
 
+        .ai-disclosure-banner {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin: 8px 0 0 0;
+            padding: 8px 12px;
+            background: var(--background);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--primary);
+            border-radius: var(--radius-sm, 6px);
+            font-size: 12px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+        .ai-disclosure-icon {
+            font-size: 14px;
+            line-height: 1;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
         .messages {
             flex: 1;
             overflow-y: auto;
@@ -2829,6 +2850,50 @@
             background: var(--primary-dark);
         }
 
+        /* Extended acknowledgement form fields */
+        .ack-field {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 13px;
+            line-height: 1.5;
+            cursor: pointer;
+        }
+        .ack-field input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin: 2px 0 0 0;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .ack-field-block { font-size: 13px; }
+        .ack-select {
+            width: 100%;
+            padding: 9px 10px;
+            font-size: 13px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm, 6px);
+            background: var(--background);
+            color: var(--text-primary);
+        }
+        .ack-select:focus { outline: none; border-color: var(--primary); }
+        .ack-consents {
+            background: var(--background);
+            padding: 12px 14px;
+            border-radius: var(--radius-sm, 6px);
+            border-left: 3px solid var(--primary-lighter);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Make the acknowledgement modal taller now that it has a form */
+        #acknowledgementOverlay .acknowledgement-modal {
+            max-width: 560px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
         /* Profile Success Modal */
         .profile-success-overlay {
             position: fixed;
@@ -4255,6 +4320,15 @@
                 <input type="email" class="auth-input" id="authEmail" placeholder="Email address" aria-label="Email address" autocomplete="email" required>
                 <input type="password" class="auth-input" id="authPassword" placeholder="Password (min 6 characters)"
                     aria-label="Password" autocomplete="current-password" required minlength="6">
+                <div id="authSignupNotice" style="display:none;font-size:11px;color:var(--text-muted);line-height:1.5;background:var(--background);padding:10px 12px;border-radius:6px;margin-top:4px;">
+                    <strong style="display:block;color:var(--text-secondary);margin-bottom:4px;">Before you continue</strong>
+                    After creating your account we'll ask you to confirm:
+                    <ul style="margin:6px 0 4px 18px;padding:0;">
+                        <li>You are 18 or older</li>
+                        <li>Your state of residence (WondrChat is not available to residents of <strong>Illinois</strong> or <strong>Nevada</strong> at this time)</li>
+                        <li>Separate consents for data collection, AI provider sharing, and our Terms / Privacy Policy</li>
+                    </ul>
+                </div>
                 <button type="submit" class="auth-btn" id="authSubmitBtn">Sign In</button>
             </form>
             <div class="auth-toggle">
@@ -4273,24 +4347,147 @@
                     <path d="M12 8v4M12 16h.01" />
                 </svg>
             </div>
-            <div class="acknowledgement-title">Important Information</div>
-            <div class="acknowledgement-text">
-                <p><strong>WondrLink</strong> is a health education tool designed specifically for colon cancer
-                    patients and their caregivers.</p>
-                <p>This tool provides information to help you understand your diagnosis, treatment options, and care
-                    journey. It is <strong>not a substitute for professional medical advice, diagnosis, or treatment</strong>.</p>
-                <p>Always consult your healthcare team for medical decisions. If you use our screening tools (PHQ-9, GAD-7, PSS-10, ISI), please share your results with your healthcare provider.</p>
-                <p style="font-size:12px; margin-top:12px;"><a href="#" onclick="showPolicyModal('privacyOverlay'); return false;" style="color:var(--primary);">Privacy Policy</a> &middot; <a href="#" onclick="showPolicyModal('termsOverlay'); return false;" style="color:var(--primary);">Terms of Use</a></p>
+            <div class="acknowledgement-title">Welcome — please confirm a few things</div>
+            <div class="acknowledgement-text" style="text-align:left;">
+                <p style="font-size:13px;">WondrLink is an information tool for people affected by colon cancer. Before you continue, we need to confirm your age, state of residence, and consents required by US privacy law.</p>
+                <p style="font-size:12px; margin-top:8px;color:var(--text-muted);">Review our policies (each opens in its own window): <a href="#" onclick="showPolicyModal('consumerHealthOverlay'); return false;" style="color:var(--primary);font-weight:600;">Consumer Health Data Privacy Notice</a> · <a href="#" onclick="showPolicyModal('privacyOverlay'); return false;" style="color:var(--primary);">Privacy Policy</a> · <a href="#" onclick="showPolicyModal('termsOverlay'); return false;" style="color:var(--primary);">Terms of Use</a></p>
             </div>
-            <div class="acknowledgement-checkbox">
-                <label>
-                    <input type="checkbox" id="ackCheckbox">
-                    <span>I understand this is a support tool, not medical advice</span>
+
+            <div id="ackForm" style="text-align:left;font-size:13px;display:flex;flex-direction:column;gap:14px;margin-top:8px;">
+                <label class="ack-field">
+                    <input type="checkbox" id="ackAge18">
+                    <span>I confirm I am 18 years of age or older.</span>
                 </label>
+
+                <div class="ack-field-block">
+                    <label for="ackState" style="display:block;font-weight:600;margin-bottom:4px;">State of residence</label>
+                    <select id="ackState" class="ack-select" required>
+                        <option value="">— Select your state —</option>
+                    </select>
+                    <div id="ackStateNote" style="font-size:11px;color:var(--text-muted);margin-top:4px;">WondrLink is not currently available to residents of Illinois or Nevada.</div>
+                </div>
+
+                <div class="ack-consents">
+                    <div style="font-weight:600;margin-bottom:8px;">Required consents (each is independent — please review and check all three)</div>
+                    <label class="ack-field">
+                        <input type="checkbox" id="ackConsentCollection">
+                        <span><strong>1. Data collection.</strong> I consent to WondrLink collecting my health-related information (questions, screening responses, profile fields I provide) to give me personalized cancer education.</span>
+                    </label>
+                    <label class="ack-field">
+                        <input type="checkbox" id="ackConsentSharing">
+                        <span><strong>2. AI provider processing.</strong> I consent to WondrLink sending my de-identified queries to its AI providers (Together AI, Groq) for the purpose of generating responses. No directly identifying information is shared.</span>
+                    </label>
+                    <label class="ack-field">
+                        <input type="checkbox" id="ackConsentTerms">
+                        <span><strong>3. Terms and Privacy.</strong> I have reviewed the Consumer Health Data Privacy Notice, the Privacy Policy, and the Terms of Use, and I accept them.</span>
+                    </label>
+                </div>
+
+                <div id="ackError" class="feature-error" style="display:none;"></div>
             </div>
+
             <button id="ackContinueBtn" class="acknowledgement-btn" disabled onclick="saveAcknowledgement()">
                 Continue to WondrLink
             </button>
+        </div>
+    </div>
+
+    <!-- Consumer Health Data Privacy Notice (Washington MHMDA requirement) -->
+    <div class="policy-overlay" id="consumerHealthOverlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="chdpnTitle">
+        <div class="policy-modal">
+            <div class="policy-modal-header">
+                <div class="policy-modal-title" id="chdpnTitle">Consumer Health Data Privacy Notice</div>
+                <button class="policy-modal-close" onclick="closePolicyModal('consumerHealthOverlay')" aria-label="Close">&times;</button>
+            </div>
+            <div class="policy-modal-body">
+                <p style="background:#FEF3C7;border-left:3px solid #F59E0B;padding:10px 12px;border-radius:6px;font-size:12px;color:#92400E;">
+                    <strong>DRAFT — ATTORNEY REVIEW REQUIRED.</strong> This notice has been prepared in good faith using the requirements of the Washington My Health My Data Act (MHMDA) as a template. A licensed healthcare-privacy attorney should review and finalize before public launch.
+                </p>
+                <p><strong>Effective Date:</strong> May 2026 &nbsp;|&nbsp; <strong>Version:</strong> v2-mhmda-2026-05</p>
+
+                <h3>About this Notice</h3>
+                <p>This Notice describes how WondrLink Foundation ("WondrLink", "we", "us") collects, uses, shares, and protects <em>consumer health data</em>. It is provided separately from our general Privacy Policy in compliance with the Washington My Health My Data Act (MHMDA), Section 4. Washington residents have specific rights under MHMDA described below; we extend these rights to all WondrLink users regardless of state.</p>
+
+                <h3>Categories of Consumer Health Data We Collect</h3>
+                <ul>
+                    <li>Cancer-related information you provide (diagnosis, stage, treatments, biomarkers, comorbidities)</li>
+                    <li>Symptom reports and check-ins (PRO-CTCAE-aligned)</li>
+                    <li>Self-administered screening responses (PHQ-9, GAD-7, PSS-10, ISI, PREMM5) and resulting scores</li>
+                    <li>Questions you ask in the chat interface</li>
+                    <li>ZIP code (for finding clinical trials in your area)</li>
+                    <li>Account information you provide (email, age confirmation, state of residence)</li>
+                </ul>
+
+                <h3>Sources of Data</h3>
+                <ul>
+                    <li>Information you enter directly</li>
+                    <li>Information generated by your use of the service (chat history, screening scores)</li>
+                    <li>Public records from ClinicalTrials.gov (NIH)</li>
+                </ul>
+                <p>We do not buy consumer health data from data brokers or third parties.</p>
+
+                <h3>How We Use Your Consumer Health Data</h3>
+                <ul>
+                    <li>To generate personalized educational responses about colon cancer</li>
+                    <li>To match you against clinical trial eligibility criteria you ask about</li>
+                    <li>To track your screening history so you can share trends with your care team</li>
+                    <li>To improve the service in aggregate (using de-identified data only)</li>
+                </ul>
+                <p><strong>We do not sell your consumer health data.</strong> We do not use it for advertising. We do not share it with insurers, employers, data brokers, or marketing companies.</p>
+
+                <h3>Third Parties That Process Your Data on Our Behalf (Sub-Processors)</h3>
+                <p>The following service providers process consumer health data on our behalf. We do not consider this "sharing" under MHMDA because each is contractually bound to act only on our instructions and not for their own purposes. We list them here for transparency.</p>
+                <ul>
+                    <li><strong>Supabase, Inc.</strong> (database hosting) — privacy@supabase.io — Data shared: all stored data. Retention: per your account deletion request.</li>
+                    <li><strong>Together AI</strong> (LLM inference) — privacy@together.ai — Data shared: de-identified question text plus retrieved guideline excerpts. Retention: per Together AI's Terms of Service.</li>
+                    <li><strong>Groq, Inc.</strong> (LLM inference fallback) — privacy@groq.com — Same scope and retention notes as Together AI.</li>
+                    <li><strong>Vercel, Inc.</strong> (application hosting) — privacy@vercel.com — Data shared: request metadata only. No application data.</li>
+                    <li><strong>ClinicalTrials.gov (US NIH)</strong> — Public records only; queries leaving WondrLink to ClinicalTrials.gov contain only search terms, not your profile.</li>
+                </ul>
+                <p>Before sending your queries to an AI provider, we apply a de-identification step that removes names, dates of birth, addresses, and other directly identifying information. See our Privacy Policy for technical details.</p>
+
+                <h3>Your Rights</h3>
+                <p>You have the right to:</p>
+                <ul>
+                    <li><strong>Confirm</strong> whether we are processing your consumer health data</li>
+                    <li><strong>Access</strong> a copy of your consumer health data</li>
+                    <li><strong>Withdraw consent</strong> for our continued collection or sharing of your data</li>
+                    <li><strong>Delete</strong> your data and account at any time</li>
+                    <li><strong>Appeal</strong> a denial of any of the above requests</li>
+                </ul>
+                <p>To exercise these rights, use the "Delete Account" button in your profile or email <a href="mailto:privacy@wondrlinkfoundation.org" style="color:var(--primary);">privacy@wondrlinkfoundation.org</a>. We will respond within 45 days (with one 45-day extension where reasonably necessary, per RCW 19.373.040).</p>
+
+                <h3>Appeals</h3>
+                <p>If we deny your access, deletion, or consent withdrawal request, you may appeal by emailing <a href="mailto:appeals@wondrlinkfoundation.org" style="color:var(--primary);">appeals@wondrlinkfoundation.org</a>. We will respond to appeals within 45 days. If you are dissatisfied with the appeal outcome, you may contact the Washington Attorney General's Office.</p>
+
+                <h3>Retention</h3>
+                <p>We retain your consumer health data while your account is active. When you delete your account, your data is removed from our primary database within 30 days. Some sub-processor logs may persist beyond this window per their own retention policies; those policies are linked above.</p>
+
+                <h3>Changes to this Notice</h3>
+                <p>We will notify you of material changes by requiring re-acknowledgement on next login.</p>
+
+                <h3>Contact</h3>
+                <p>WondrLink Foundation — <a href="mailto:privacy@wondrlinkfoundation.org" style="color:var(--primary);">privacy@wondrlinkfoundation.org</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- State Restricted Modal (IL / NV soft-deactivation explanation) -->
+    <div id="stateRestrictedOverlay" class="feature-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Service not available in your state">
+        <div class="feature-modal" style="max-width:480px;">
+            <div class="feature-modal-header">
+                <div class="feature-modal-title-block">
+                    <h2 class="feature-modal-title">WondrLink isn't available in your state yet</h2>
+                </div>
+            </div>
+            <div class="feature-modal-body">
+                <p id="stateRestrictedMessage" style="font-size:13px;line-height:1.6;color:var(--text-secondary);">WondrLink is not currently available to residents of Illinois or Nevada due to state regulations governing AI in mental and behavioral health. We are actively working to expand access — thank you for your patience.</p>
+                <p style="font-size:12px;color:var(--text-muted);margin-top:14px;">If you'd like to permanently remove the account you created, use the option below. Otherwise we'll sign you out.</p>
+            </div>
+            <div class="feature-modal-footer">
+                <button class="feature-secondary-btn" onclick="deleteAccountFromRestricted()" style="color:var(--danger);border-color:var(--danger);">Delete my account</button>
+                <button class="feature-submit-btn" onclick="closeStateRestrictedModal()">Sign me out</button>
+            </div>
         </div>
     </div>
 
@@ -4302,15 +4499,29 @@
                 <button class="policy-modal-close" onclick="closePolicyModal('privacyOverlay')" aria-label="Close">&times;</button>
             </div>
             <div class="policy-modal-body">
-                <p><strong>Effective Date:</strong> April 2026</p>
+                <p style="background:#FEF3C7;border-left:3px solid #F59E0B;padding:10px 12px;border-radius:6px;font-size:12px;color:#92400E;">
+                    <strong>DRAFT — ATTORNEY REVIEW REQUIRED.</strong> Updated for MHMDA, state AI laws, and HBNR. Awaiting final attorney review.
+                </p>
+                <p><strong>Effective Date:</strong> May 2026 &nbsp;|&nbsp; <strong>Version:</strong> v2-mhmda-2026-05</p>
+
+                <p><strong>Related notices:</strong> Washington residents and others should also read the <a href="#" onclick="showPolicyModal('consumerHealthOverlay'); return false;" style="color:var(--primary);font-weight:600;">Consumer Health Data Privacy Notice</a>, which describes specific rights under the Washington My Health My Data Act.</p>
+
+                <h3>Service Availability</h3>
+                <p>WondrLink is available to adults (18+) in the United States. It is not currently available to residents of <strong>Illinois</strong> or <strong>Nevada</strong> due to state regulations that govern AI-delivered mental and behavioral health services. We are working to expand access.</p>
+
+                <h3>Global Privacy Control (GPC)</h3>
+                <p>WondrLink honors browser Global Privacy Control signals (the <code>Sec-GPC</code> header) as an opt-out from any non-essential sharing of your data, consistent with applicable state law including California, Colorado, Connecticut, and Oregon. Because we do not sell user data or use it for advertising, the practical effect of GPC on WondrLink is limited — but the signal is detected and honored.</p>
+
+                <h3>Breach Notification (FTC Health Breach Notification Rule)</h3>
+                <p>WondrLink is subject to the FTC's Health Breach Notification Rule. In the event of a breach of unsecured personal health record information, we will notify affected users, the FTC, and (if 500+ users are affected) the media within 60 calendar days of discovery, per 16 CFR Part 318.</p>
 
                 <h3>Information We Collect</h3>
                 <p>WondrLink collects the following information to provide personalized cancer care guidance:</p>
                 <ul>
-                    <li>Account information (email address for authentication)</li>
+                    <li>Account information (email address for authentication, age confirmation, state of residence)</li>
                     <li>Patient profile data you voluntarily provide (diagnosis, treatments, biomarkers, comorbidities)</li>
                     <li>Chat conversation history</li>
-                    <li>Mental health screening results (PHQ-9, GAD-7, PSS-10, ISI)</li>
+                    <li>Self-administered screening results (PHQ-9, GAD-7, PSS-10, ISI, PREMM5)</li>
                     <li>Symptom check-in reports</li>
                 </ul>
 
@@ -4352,6 +4563,21 @@
 
                 <h3>Contact</h3>
                 <p>For privacy-related questions or data requests, contact us at <a href="mailto:info@wondrlinkfoundation.org" style="color:var(--primary);">info@wondrlinkfoundation.org</a>.</p>
+
+                <h3>File a Privacy Appeal</h3>
+                <p style="font-size:13px;">If we have denied an access, deletion, or consent withdrawal request, you may file an appeal here. We will respond within 45 days.</p>
+                <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+                    <select id="appealRequestType" class="ack-select">
+                        <option value="">— Choose a request type —</option>
+                        <option value="access">Access to my data</option>
+                        <option value="deletion">Deletion of my data</option>
+                        <option value="consent_withdrawal">Withdraw a consent</option>
+                        <option value="other">Other privacy concern</option>
+                    </select>
+                    <textarea id="appealReason" class="feature-textarea" style="min-height:80px;" placeholder="Briefly describe your request and what outcome you'd like."></textarea>
+                    <div id="appealStatus" style="font-size:12px;"></div>
+                    <button class="feature-submit-btn" onclick="submitPrivacyAppeal()" style="align-self:flex-start;">Submit appeal</button>
+                </div>
             </div>
         </div>
     </div>
@@ -4364,10 +4590,19 @@
                 <button class="policy-modal-close" onclick="closePolicyModal('termsOverlay')" aria-label="Close">&times;</button>
             </div>
             <div class="policy-modal-body">
-                <p><strong>Effective Date:</strong> April 2026</p>
+                <p style="background:#FEF3C7;border-left:3px solid #F59E0B;padding:10px 12px;border-radius:6px;font-size:12px;color:#92400E;">
+                    <strong>DRAFT — ATTORNEY REVIEW REQUIRED.</strong> Updated for age, state, and consent requirements. Awaiting final attorney review.
+                </p>
+                <p><strong>Effective Date:</strong> May 2026 &nbsp;|&nbsp; <strong>Version:</strong> v2-mhmda-2026-05</p>
+
+                <h3>Eligibility</h3>
+                <p>To use WondrLink you must be at least <strong>18 years of age</strong>. WondrLink is not currently available to residents of <strong>Illinois</strong> or <strong>Nevada</strong> due to state regulations governing AI in mental and behavioral health. By creating an account you confirm that you meet these eligibility requirements.</p>
 
                 <h3>Purpose</h3>
                 <p>WondrLink is a <strong>health education tool</strong> designed to help colon cancer patients and caregivers understand diagnosis, treatment options, and care journeys using evidence-based medical guidelines.</p>
+
+                <h3>Not a Covered Entity</h3>
+                <p>WondrLink Foundation is not a HIPAA Covered Entity and does not have a treating-provider relationship with you. We apply HIPAA-style de-identification before sending your queries to our AI providers, but the service itself is not subject to HIPAA.</p>
 
                 <h3>Not Medical Advice</h3>
                 <p>WondrLink does <strong>not</strong> provide medical advice, diagnosis, or treatment recommendations. All information is for educational and informational purposes only. Always consult your oncologist or healthcare team before making any medical decisions.</p>
@@ -4910,6 +5145,11 @@
                 </div>
             </div>
 
+            <div class="ai-disclosure-banner" role="note" aria-label="AI disclosure">
+                <span class="ai-disclosure-icon" aria-hidden="true">🤖</span>
+                <span>You're chatting with an AI assistant — not a person, not medical advice. AI can make mistakes; please verify important information with your care team.</span>
+            </div>
+
             <div class="messages" id="messages" role="log" aria-label="Chat messages" aria-live="polite">
                 <div class="msg bot">
                     <div class="bubble bot welcome-message">
@@ -4970,6 +5210,8 @@
             </div>
             <div class="input-footer">
                 <div class="chat-footer-links">
+                    <a href="#" onclick="showPolicyModal('consumerHealthOverlay'); return false;" style="font-weight:600;">Consumer Health Data Privacy Notice</a>
+                    <span>&middot;</span>
                     <a href="#" onclick="showPolicyModal('privacyOverlay'); return false;">Privacy Policy</a>
                     <span>&middot;</span>
                     <a href="#" onclick="showPolicyModal('termsOverlay'); return false;">Terms of Use</a>
@@ -5059,12 +5301,16 @@
                 authSubmitBtn.textContent = "Sign In";
                 authToggleText.textContent = "Don't have an account?";
                 authToggleLink.textContent = "Create one";
+                const notice = document.getElementById('authSignupNotice');
+                if (notice) notice.style.display = 'none';
             } else {
                 authTitle.textContent = "Create Account";
                 authSubtitle.textContent = "Get personalized colon cancer care guidance";
                 authSubmitBtn.textContent = "Create Account";
                 authToggleText.textContent = "Already have an account?";
                 authToggleLink.textContent = "Sign in";
+                const notice = document.getElementById('authSignupNotice');
+                if (notice) notice.style.display = 'block';
             }
         }
 
@@ -5096,68 +5342,179 @@
             return false;
         }
 
+        // US states for the residence dropdown (50 + DC + territories).
+        const US_STATES_FOR_ACK = [
+            ["AL","Alabama"],["AK","Alaska"],["AZ","Arizona"],["AR","Arkansas"],
+            ["CA","California"],["CO","Colorado"],["CT","Connecticut"],["DE","Delaware"],
+            ["DC","District of Columbia"],["FL","Florida"],["GA","Georgia"],["HI","Hawaii"],
+            ["ID","Idaho"],["IL","Illinois"],["IN","Indiana"],["IA","Iowa"],
+            ["KS","Kansas"],["KY","Kentucky"],["LA","Louisiana"],["ME","Maine"],
+            ["MD","Maryland"],["MA","Massachusetts"],["MI","Michigan"],["MN","Minnesota"],
+            ["MS","Mississippi"],["MO","Missouri"],["MT","Montana"],["NE","Nebraska"],
+            ["NV","Nevada"],["NH","New Hampshire"],["NJ","New Jersey"],["NM","New Mexico"],
+            ["NY","New York"],["NC","North Carolina"],["ND","North Dakota"],["OH","Ohio"],
+            ["OK","Oklahoma"],["OR","Oregon"],["PA","Pennsylvania"],["RI","Rhode Island"],
+            ["SC","South Carolina"],["SD","South Dakota"],["TN","Tennessee"],["TX","Texas"],
+            ["UT","Utah"],["VT","Vermont"],["VA","Virginia"],["WA","Washington"],
+            ["WV","West Virginia"],["WI","Wisconsin"],["WY","Wyoming"],
+            ["PR","Puerto Rico"],["VI","US Virgin Islands"],["GU","Guam"],
+            ["non_US","Outside the United States"],
+        ];
+
         async function showMainApp() {
             authOverlay.style.display = "none";
 
-            // Check acknowledgement status
+            // Check acknowledgement + consent state
             try {
                 const ackResponse = await authFetch('/api/check_acknowledgement');
                 const ackData = await ackResponse.json();
 
-                if (!ackData.acknowledged) {
-                    // Show acknowledgement modal
+                // Existing user previously declared a blocked state — show explanation
+                if (ackData.state_restricted) {
+                    showStateRestrictedModal();
+                    return;
+                }
+
+                if (ackData.needs_consent) {
                     showAcknowledgementModal();
                     return;
                 }
             } catch (e) {
                 console.error('Error checking acknowledgement:', e);
-                // Continue to app even if check fails
+                // Fall through to app to avoid lockout on transient errors
             }
 
             mainApp.style.display = "flex";
             if (currentUser) {
                 userEmail.textContent = currentUser.email;
             }
-
-            // Initialize trial watchlist from localStorage
             updateWatchlistPanel();
-
-            // Load chat history after app is shown
             await loadChatHistory();
+        }
+
+        function populateAckStateDropdown() {
+            const sel = document.getElementById('ackState');
+            if (!sel || sel.dataset.populated === '1') return;
+            US_STATES_FOR_ACK.forEach(([code, name]) => {
+                const opt = document.createElement('option');
+                opt.value = code;
+                opt.textContent = name;
+                sel.appendChild(opt);
+            });
+            sel.dataset.populated = '1';
+        }
+
+        function updateAckContinueButton() {
+            const btn = document.getElementById('ackContinueBtn');
+            const age = document.getElementById('ackAge18').checked;
+            const stateVal = document.getElementById('ackState').value;
+            const c1 = document.getElementById('ackConsentCollection').checked;
+            const c2 = document.getElementById('ackConsentSharing').checked;
+            const c3 = document.getElementById('ackConsentTerms').checked;
+            btn.disabled = !(age && stateVal && c1 && c2 && c3);
         }
 
         function showAcknowledgementModal() {
             const overlay = document.getElementById('acknowledgementOverlay');
-            const checkbox = document.getElementById('ackCheckbox');
-            const btn = document.getElementById('ackContinueBtn');
+            populateAckStateDropdown();
 
-            overlay.style.display = "flex";
-            checkbox.checked = false;
-            btn.disabled = true;
-
-            checkbox.addEventListener('change', function () {
-                btn.disabled = !this.checked;
+            ['ackAge18','ackConsentCollection','ackConsentSharing','ackConsentTerms'].forEach(id => {
+                const el = document.getElementById(id);
+                el.checked = false;
             });
+            document.getElementById('ackState').value = '';
+            document.getElementById('ackError').style.display = 'none';
+
+            const btn = document.getElementById('ackContinueBtn');
+            btn.disabled = true;
+            btn.textContent = 'Continue to WondrLink';
+
+            // Wire change listeners once
+            if (!overlay.dataset.wired) {
+                ['ackAge18','ackConsentCollection','ackConsentSharing','ackConsentTerms'].forEach(id => {
+                    document.getElementById(id).addEventListener('change', updateAckContinueButton);
+                });
+                document.getElementById('ackState').addEventListener('change', updateAckContinueButton);
+                overlay.dataset.wired = '1';
+            }
+
+            overlay.style.display = 'flex';
         }
 
         async function saveAcknowledgement() {
             const btn = document.getElementById('ackContinueBtn');
+            const errEl = document.getElementById('ackError');
+            errEl.style.display = 'none';
             btn.disabled = true;
             btn.textContent = 'Saving...';
 
+            const payload = {
+                age_confirmed: document.getElementById('ackAge18').checked,
+                state: document.getElementById('ackState').value,
+                consent_collection: document.getElementById('ackConsentCollection').checked,
+                consent_sharing: document.getElementById('ackConsentSharing').checked,
+                consent_terms: document.getElementById('ackConsentTerms').checked,
+            };
+
             try {
-                await authFetch('/api/save_acknowledgement', { method: 'POST' });
-                document.getElementById('acknowledgementOverlay').style.display = "none";
-                mainApp.style.display = "flex";
-                if (currentUser) {
-                    userEmail.textContent = currentUser.email;
+                const resp = await authFetch('/api/save_acknowledgement', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const j = await resp.json().catch(() => ({}));
+
+                if (resp.status === 422) {
+                    // Blocked state — show the soft-deactivation explanation
+                    document.getElementById('acknowledgementOverlay').style.display = 'none';
+                    showStateRestrictedModal(j.error);
+                    return;
                 }
+                if (!resp.ok) {
+                    errEl.textContent = j.error || 'Could not save. Please review the form and try again.';
+                    errEl.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Continue to WondrLink';
+                    updateAckContinueButton();
+                    return;
+                }
+
+                document.getElementById('acknowledgementOverlay').style.display = 'none';
+                mainApp.style.display = 'flex';
+                if (currentUser) userEmail.textContent = currentUser.email;
+                updateWatchlistPanel();
+                await loadChatHistory();
             } catch (e) {
-                console.error('Error saving acknowledgement:', e);
-                alert('Failed to save acknowledgement. Please try again.');
+                errEl.textContent = 'Network error. Please try again.';
+                errEl.style.display = 'block';
                 btn.disabled = false;
                 btn.textContent = 'Continue to WondrLink';
+                updateAckContinueButton();
             }
+        }
+
+        function showStateRestrictedModal(customMessage) {
+            const ov = document.getElementById('stateRestrictedOverlay');
+            const msgEl = document.getElementById('stateRestrictedMessage');
+            if (customMessage && msgEl) {
+                msgEl.textContent = customMessage;
+            }
+            ov.style.display = 'flex';
+        }
+        function closeStateRestrictedModal() {
+            document.getElementById('stateRestrictedOverlay').style.display = 'none';
+            // Sign the user out — they cannot proceed
+            try { supabaseClient.auth.signOut(); } catch (_) {}
+            authOverlay.style.display = 'flex';
+        }
+        async function deleteAccountFromRestricted() {
+            if (!confirm('This will permanently delete your WondrLink account. Continue?')) return;
+            try {
+                await authFetch('/api/delete_account', { method: 'DELETE' });
+                alert('Your account has been deleted.');
+            } catch (_) {}
+            try { supabaseClient.auth.signOut(); } catch (_) {}
+            location.reload();
         }
 
         function showPolicyModal(id) {
@@ -5170,6 +5527,50 @@
 
         function closePolicyModal(id) {
             document.getElementById(id).style.display = 'none';
+        }
+
+        async function submitPrivacyAppeal() {
+            const typeEl = document.getElementById('appealRequestType');
+            const reasonEl = document.getElementById('appealReason');
+            const statusEl = document.getElementById('appealStatus');
+            statusEl.textContent = '';
+            statusEl.style.color = 'var(--text-secondary)';
+
+            const reqType = typeEl.value;
+            const reason = (reasonEl.value || '').trim();
+            if (!reqType) {
+                statusEl.style.color = 'var(--danger)';
+                statusEl.textContent = 'Please choose a request type.';
+                return;
+            }
+            if (reason.length < 10) {
+                statusEl.style.color = 'var(--danger)';
+                statusEl.textContent = 'Please describe your request in at least one sentence.';
+                return;
+            }
+
+            statusEl.textContent = 'Submitting...';
+            try {
+                const resp = await authFetch('/api/privacy_appeal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ request_type: reqType, reason }),
+                });
+                const j = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    statusEl.style.color = 'var(--danger)';
+                    statusEl.textContent = j.error || 'Could not submit. Please try again.';
+                    return;
+                }
+                statusEl.style.color = 'var(--primary)';
+                const due = j.sla_due ? new Date(j.sla_due).toLocaleDateString() : 'within 45 days';
+                statusEl.textContent = 'Appeal recorded (ID: ' + (j.appeal_id || 'pending') + '). We will respond by ' + due + '.';
+                typeEl.value = '';
+                reasonEl.value = '';
+            } catch (e) {
+                statusEl.style.color = 'var(--danger)';
+                statusEl.textContent = 'Network error. Please try again.';
+            }
         }
 
         // Global Escape key handler for policy modals
