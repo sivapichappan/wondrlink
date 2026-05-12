@@ -2893,35 +2893,23 @@
         }
 
         /* True mobile — fixed header, fixed composer, big touch targets */
+        /* True mobile (≤600px) — keep the SAME shell as 601–900px
+           (drawer + drawer-toggle + chat-header + inline composer) so the
+           transition from tablet to phone is a tightening, not a different
+           app. Only layer on small-screen polish: tighter padding, hero
+           scaling, Care Snapshot 1-col, full-bleed modals, 44px touch
+           targets, 16px input font (iOS zoom prevention). */
         @media (max-width: 600px) {
-            .app { padding: 0; gap: 0; }
-            .mobile-header { display: flex; }
-            .drawer-toggle { display: none; } /* mobile-header has its own hamburger */
-            .chat-header { display: none; padding-left: 0; }
-            .chat-wrap {
-                padding-top: 56px;
-                padding-bottom: env(safe-area-inset-bottom);
-                height: 100dvh;
-            }
-            .messages {
-                padding: 16px;
-                padding-bottom: 100px;
-                border-radius: 0;
-                border-left: none;
-                border-right: none;
-            }
-            .input-section {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                padding: 12px;
-                padding-bottom: calc(12px + env(safe-area-inset-bottom));
-                gap: 8px;
-                border-radius: 0;
-                z-index: 50;
-                margin: 0;
-            }
+            .app { padding: 8px; gap: 0; }
+            /* mobile-header stays hidden; the drawer-toggle (from ≤900px
+               block) continues to be the hamburger. chat-header stays
+               visible — but slimmer. */
+            .chat-header { padding: 14px 16px 14px 64px; }
+            .chat-title { font-size: 17px; }
+            .chat-subtitle { font-size: 12px; }
+            .drawer-toggle { top: 16px; left: 12px; width: 38px; height: 38px; }
+            .messages { padding: 16px; }
+            .input-section { padding: 10px; gap: 8px; }
 
             /* Hero card scales down */
             .hero-greeting { font-size: 19px; }
@@ -2970,8 +2958,10 @@
 
         /* Very small phones — squeeze the last bit of padding */
         @media (max-width: 360px) {
-            .messages { padding: 12px; padding-bottom: 100px; }
-            .input-section { padding: 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+            .messages { padding: 12px; }
+            .input-section { padding: 8px; }
+            .chat-header { padding: 12px 14px 12px 58px; }
+            .drawer-toggle { top: 14px; left: 10px; }
             .hero-greeting { font-size: 17px; }
             .hero-card { padding: 14px 14px 12px; }
             .bot-response-card { padding: 12px 14px; }
@@ -3961,101 +3951,9 @@
             opacity: 1;
         }
 
-        @media (max-width: 600px) {
-            .mobile-header {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                background: var(--primary);
-                color: white;
-                padding: 0 12px;
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                z-index: 100;
-                /* Lower than sidebar */
-                height: 56px;
-                box-shadow: var(--shadow-sm);
-            }
-
-            .chat-header {
-                display: none !important;
-            }
-
-            .mobile-header-brand {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                text-align: center;
-                color: white !important;
-            }
-
-            .mobile-header-main {
-                font-size: 16px;
-                font-weight: 700;
-                line-height: 1.2;
-                color: white !important;
-                text-align: center;
-            }
-
-            .mobile-header-sub {
-                font-size: 10px;
-                opacity: 0.9;
-                color: white !important;
-                text-align: center;
-            }
-
-            .mobile-header-logout {
-                background: rgba(255, 255, 255, 0.15);
-                border: 1px solid rgba(255, 255, 255, 0.3);
-                color: white;
-                padding: 4px 10px;
-                border-radius: var(--radius-sm);
-                font-size: 11px;
-                font-weight: 600;
-                cursor: pointer;
-                width: 60px;
-                flex-shrink: 0;
-                text-align: center;
-            }
-
-            .mobile-overlay {
-                display: block;
-                pointer-events: none;
-            }
-
-            .mobile-overlay.active {
-                pointer-events: auto;
-                z-index: 199;
-            }
-
-            .app {
-                padding: 0;
-                gap: 0;
-            }
-
-            .sidebar {
-                position: fixed;
-                top: 0;
-                left: 0;
-                bottom: 0;
-                width: 85%;
-                max-width: 320px;
-                z-index: 200;
-                border-radius: 0;
-                border: none;
-                transform: translateX(-100%);
-                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                box-shadow: var(--shadow-xl);
-            }
-
-            .sidebar.mobile-open {
-                transform: translateX(0);
-            }
-
+        /* Drawer close-button — shown inside the drawer on touch viewports
+           so users can dismiss it without tapping the overlay. */
+        @media (max-width: 900px) {
             .close-sidebar-btn {
                 display: flex !important;
                 position: absolute;
@@ -4063,10 +3961,10 @@
                 right: 12px;
                 width: 32px;
                 height: 32px;
-                background: rgba(255, 255, 255, 0.15);
+                background: rgba(15, 32, 28, 0.06);
                 border: none;
                 border-radius: 50%;
-                color: white;
+                color: var(--sidebar-text);
                 font-size: 24px;
                 line-height: 1;
                 align-items: center;
@@ -4075,82 +3973,35 @@
                 z-index: 101;
                 padding: 0;
                 padding-bottom: 2px;
-                /* Visual centering adjustment for &times; */
             }
-
-            .chat-wrap {
-                width: 100%;
-                border-radius: 0;
-                height: 100vh;
-                height: 100dvh;
-                /* Dynamic viewport height for mobile browsers */
-                padding-top: 56px;
-                padding-bottom: env(safe-area-inset-bottom, 0px);
-                /* Space for mobile header and Safari bottom bar */
+            .close-sidebar-btn:hover {
+                background: rgba(15, 32, 28, 0.12);
             }
+        }
 
-            .messages {
-                padding-top: 20px;
-                padding-bottom: 90px;
-                /* Space for fixed input */
-            }
-
-            .input-section {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                padding: 12px;
-                padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-                gap: 8px;
-                border-radius: 0;
-                border-left: none;
-                border-right: none;
-                border-bottom: none;
-                background: var(--surface);
-                z-index: 50;
-                box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-            }
-
-            /* Fix button heights on mobile */
-            .input-section textarea,
-            .input-section button {
-                height: 48px !important;
-                min-height: 48px !important;
-            }
-
-            /* Compact welcome message for mobile - no scroll needed */
+        /* Welcome message tightening at ≤600px (matches the consolidated
+           mobile polish — same shell as ≤900px, just tighter text). */
+        @media (max-width: 600px) {
             .welcome-message {
                 max-width: 100% !important;
                 padding: 14px !important;
             }
-
             .welcome-intro {
                 font-size: 13px;
                 margin-bottom: 12px;
             }
-
             .welcome-features {
                 padding: 10px;
                 margin-bottom: 12px;
                 gap: 6px;
             }
-
             .welcome-feature {
                 font-size: 12px;
                 gap: 8px;
             }
-
             .feature-icon {
                 font-size: 12px;
                 width: 16px;
-            }
-
-            .messages {
-                display: flex;
-                flex-direction: column;
-                justify-content: flex-start;
-                min-height: auto;
             }
         }
 
