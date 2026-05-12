@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { HeartPulse, MessageCircle, Settings, Wrench } from 'lucide-react-native';
+import { HeartPulse, LifeBuoy, MessageCircle, Settings, Wrench } from 'lucide-react-native';
 
 import { Colors } from '@/constants/theme';
 
@@ -10,6 +10,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarStyle: { backgroundColor: Colors.surface, borderTopColor: Colors.border },
+        tabBarLabelStyle: { fontSize: 10 },
         headerShown: false,
       }}>
       <Tabs.Screen
@@ -31,6 +32,13 @@ export default function TabLayout() {
         options={{
           title: 'Tools',
           tabBarIcon: ({ color, size }) => <Wrench color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="help"
+        options={{
+          title: 'Help',
+          tabBarIcon: ({ color, size }) => <LifeBuoy color={color} size={size} />,
         }}
       />
       <Tabs.Screen

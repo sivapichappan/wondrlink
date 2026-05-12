@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Bot, Trash2 } from 'lucide-react-native';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -16,8 +16,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BotResponseCard } from '@/components/chat/BotResponseCard';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { MessageBubble } from '@/components/chat/MessageBubble';
+import { CrisisModal } from '@/components/common/CrisisModal';
 import { Colors, Fonts } from '@/constants/theme';
 import { useChat } from '@/hooks/useChat';
+import { scanForCrisis, type GuardrailHit } from '@/lib/safety/crisis-keywords';
+import { Sentry } from '@/lib/sentry';
 import { AI_DISCLOSURE_BANNER, WELCOME_INTRO } from '@shared/disclaimers';
 import type { ChatHistoryMessage } from '@shared/types';
 
@@ -27,6 +30,27 @@ export default function ChatScreen() {
   const qc = useQueryClient();
   const params = useLocalSearchParams<{ q?: string }>();
   const lastHandledQ = useRef<string | undefined>(undefined);
+  const [crisis, setCrisis] = useState<{ hit: GuardrailHit; pending: string } | null>(null);
+
+  const guardedSend = (text: string) => {
+    const hit = scanForCrisis(text);
+    if (hit) {
+      setCrisis({ hit, pending: text });
+      return;
+    }
+    sendMessage(text);
+  };
+
+  const onCrisisContinue = () => {
+    if (!crisis) return;
+    Sentry.captureMessage('crisis-guardrail-overridden', {
+      level: 'warning',
+      tags: { category: crisis.hit.category, matched: crisis.hit.matched },
+    });
+    const pending = crisis.pending;
+    setCrisis(null);
+    sendMessage(pending);
+  };
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -42,10 +66,11 @@ export default function ChatScreen() {
     if (!q || isSending) return;
     if (lastHandledQ.current === q) return;
     lastHandledQ.current = q;
-    sendMessage(q);
+    guardedSend(q);
     // Clear the param so a back-nav doesn't re-trigger
     router.setParams({ q: undefined });
-  }, [params.q, isSending, sendMessage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.q, isSending]);
 
   const handleClear = () => {
     Alert.alert(
@@ -68,7 +93,7 @@ export default function ChatScreen() {
     }
     return (
       <View style={{ paddingHorizontal: 12, paddingVertical: 6 }}>
-        <BotResponseCard message={item} onPickFollowup={(t) => sendMessage(t)} />
+        <BotResponseCard message={item} onPickFollowup={(t) => guardedSend(t)} />
       </View>
     );
   };
@@ -162,8 +187,14 @@ export default function ChatScreen() {
           </View>
         )}
 
-        <ChatInput onSend={(t) => sendMessage(t)} disabled={isSending} />
+        <ChatInput onSend={guardedSend} disabled={isSending} />
       </KeyboardAvoidingView>
+
+      <CrisisModal
+        category={crisis?.hit.category ?? null}
+        onContinue={onCrisisContinue}
+        onClose={() => setCrisis(null)}
+      />
     </SafeAreaView>
   );
 }
