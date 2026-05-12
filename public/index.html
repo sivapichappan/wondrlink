@@ -840,13 +840,8 @@
             line-height: 1;
             flex-shrink: 0;
         }
-        @media (max-width: 640px) {
-            .ai-disclosure-banner {
-                font-size: 11.5px;
-                padding: 8px 12px;
-                gap: 8px;
-            }
-        }
+        /* (ai-disclosure-banner mobile font sizing handled by the consolidated
+           responsive block lower in the stylesheet — ≤600px) */
 
         .messages {
             flex: 1;
@@ -2118,12 +2113,8 @@
         }
 
         /* On narrow viewports the card uses full width and tighter padding. */
-        @media (max-width: 720px) {
-            .bot-response-card {
-                max-width: 100%;
-                padding: 14px 16px;
-            }
-        }
+        /* (bot-response-card mobile sizing now handled by the consolidated
+           responsive block lower in the stylesheet — ≤900px and ≤600px) */
 
         /* Markdown inside bot bubbles (Phase C.5) */
         .bubble.bot h1,
@@ -2772,7 +2763,7 @@
             display: block;
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
             .mobile-profile-cta {
                 display: block;
             }
@@ -2807,73 +2798,183 @@
             scrollbar-color: var(--border) transparent;
         }
 
-        /* Responsive */
-        @media (max-width: 1024px) {
-            .app {
-                flex-direction: column;
-                overflow-y: auto;
-                padding: 12px;
-                gap: 12px;
-            }
+        /* Floating drawer-toggle (visible 601–900px). Below 600px the
+           mobile-header has its own hamburger; above 900px the sidebar
+           is visible side-by-side and no toggle is needed. */
+        .drawer-toggle {
+            display: none;
+            position: absolute;
+            top: 24px;
+            left: 20px;
+            width: 40px;
+            height: 40px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm, 8px);
+            cursor: pointer;
+            z-index: 10;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            transition: background var(--transition), border-color var(--transition);
+        }
+        .drawer-toggle:hover {
+            background: var(--primary-subtle);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .drawer-toggle i[data-lucide] { width: 20px; height: 20px; }
+        .chat-wrap { position: relative; }
 
-            .sidebar {
-                width: 100%;
-                max-height: none;
-            }
+        /* ===========================================================
+           RESPONSIVE — four tiers
+             ≥1280px        : large desktop default (defined above)
+             901–1279px     : tighter sidebar, smaller app padding
+             ≤900px         : drawer mode (sidebar slides in)
+             ≤600px         : mobile UX (fixed header, fixed composer,
+                              44px touch targets, full-bleed modals)
+             ≤360px         : extra-narrow phone polish
+           =========================================================== */
 
-            .chat-wrap {
-                min-height: 60vh;
-            }
-
-            .bubble {
-                max-width: 85%;
-            }
-
-            .welcome-message {
-                max-width: 95%;
-            }
+        /* Small desktop / tablet landscape — sidebar narrows */
+        @media (max-width: 1279px) {
+            .sidebar { width: 320px; }
+            .app { gap: 16px; padding: 16px; }
+            .bubble { max-width: 80%; }
+            .welcome-message { max-width: 92%; }
         }
 
-        @media (max-width: 768px) {
-            .brand-section {
-                padding: 18px 16px;
+        /* Drawer threshold — sidebar slides in/out behind a hamburger */
+        @media (max-width: 900px) {
+            .app {
+                padding: 12px;
+                gap: 0;
+                /* keep flex-direction: row so chat takes full width when
+                   sidebar is off-screen */
             }
-
-            .brand-main {
-                font-size: 20px;
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                width: 320px;
+                max-width: 85%;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                z-index: 200;
+                border-radius: 0;
+                max-height: none;
+                box-shadow: 0 10px 30px rgba(15, 32, 28, 0.18);
             }
+            .sidebar.mobile-open { transform: translateX(0); }
+            .chat-wrap { width: 100%; min-height: auto; }
+            .mobile-overlay { display: block; }
 
-            .sidebar-content {
-                padding: 14px;
+            /* Floating drawer-toggle button shows at 601–900px (mobile
+               header is hidden in this range; the toggle takes its place). */
+            .drawer-toggle { display: inline-flex; }
+            .chat-header { padding-left: 72px; }
+
+            /* Bubble + response card use full width */
+            .bot-response-card { max-width: 100%; padding: 14px 18px; }
+            .bubble { max-width: 88%; }
+            .welcome-message { max-width: 100%; }
+
+            /* Sidebar font/padding tighter */
+            .brand-section { padding: 18px 16px; }
+            .brand-main { font-size: 20px; }
+            .sidebar-content { padding: 14px; }
+
+            /* Composer suggestions: smaller pills so they don't crowd */
+            .composer-suggestion-pill { padding: 5px 10px; font-size: 11px; }
+
+            /* msg-resources tracks the response card instead of 72% */
+            .msg-resources { max-width: 100%; }
+        }
+
+        /* True mobile — fixed header, fixed composer, big touch targets */
+        @media (max-width: 600px) {
+            .app { padding: 0; gap: 0; }
+            .mobile-header { display: flex; }
+            .drawer-toggle { display: none; } /* mobile-header has its own hamburger */
+            .chat-header { display: none; padding-left: 0; }
+            .chat-wrap {
+                padding-top: 56px;
+                padding-bottom: env(safe-area-inset-bottom);
+                height: 100dvh;
             }
-
-            .chat-header {
-                display: none;
-            }
-
-            .chat-title {
-                font-size: 16px;
-            }
-
             .messages {
                 padding: 16px;
+                padding-bottom: 100px;
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
             }
-
             .input-section {
-                padding: 10px;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                padding: 12px;
+                padding-bottom: calc(12px + env(safe-area-inset-bottom));
+                gap: 8px;
+                border-radius: 0;
+                z-index: 50;
+                margin: 0;
             }
 
-            textarea {
-                min-height: 40px;
-                padding: 10px 12px;
-                font-size: 16px;
-                /* Prevents zoom on iOS */
+            /* Hero card scales down */
+            .hero-greeting { font-size: 19px; }
+            .hero-phase { font-size: 13px; }
+            .hero-card { padding: 18px 18px 16px; }
+
+            /* Care Snapshot single-column at very narrow */
+            .care-snapshot-stats { grid-template-columns: 1fr; }
+
+            /* AI banner tightens */
+            .ai-disclosure-banner {
+                font-size: 11.5px;
+                padding: 8px 12px;
+                gap: 8px;
             }
 
-            .send-btn {
-                min-width: 60px;
-                height: 40px;
+            /* Touch targets — bump to 44px (WCAG / Apple HIG) */
+            .send-btn { min-height: 44px; min-width: 64px; height: auto; }
+            .voice-btn { min-width: 44px; min-height: 44px; }
+            .composer-attach { min-width: 44px; min-height: 44px; }
+            .input-section textarea {
+                min-height: 44px;
+                font-size: 16px; /* prevents iOS auto-zoom on focus */
+                padding: 12px 14px;
             }
+
+            /* Modals: full-bleed */
+            .feature-modal,
+            .policy-modal,
+            .acknowledgement-modal {
+                max-width: 100%;
+                max-height: 100vh;
+                margin: 8px;
+                border-radius: var(--radius-lg);
+            }
+            .feature-modal-header,
+            .feature-modal-body,
+            .feature-modal-footer { padding-left: 16px; padding-right: 16px; }
+            .policy-modal-body { padding: 16px; }
+            .acknowledgement-modal { padding: 22px 18px; }
+            .acknowledgement-title { font-size: 17px; }
+
+            .composer-suggestions { gap: 6px; margin-bottom: 6px; }
+            .composer-suggestion-pill { padding: 5px 10px; font-size: 11px; }
+        }
+
+        /* Very small phones — squeeze the last bit of padding */
+        @media (max-width: 360px) {
+            .messages { padding: 12px; padding-bottom: 100px; }
+            .input-section { padding: 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+            .hero-greeting { font-size: 17px; }
+            .hero-card { padding: 14px 14px 12px; }
+            .bot-response-card { padding: 12px 14px; }
         }
 
         /* Auth Modal */
@@ -3860,7 +3961,7 @@
             opacity: 1;
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 600px) {
             .mobile-header {
                 display: flex;
                 align-items: center;
@@ -6348,6 +6449,9 @@
         </div>
 
         <div class="chat-wrap">
+            <button class="drawer-toggle" onclick="toggleMobileMenu()" aria-label="Open menu" type="button">
+                <i data-lucide="menu" class="icon-stroke"></i>
+            </button>
             <div class="chat-header">
                 <div class="chat-header-text">
                     <div class="chat-title">Your Colon Cancer Guide</div>
