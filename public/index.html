@@ -2053,11 +2053,14 @@
                pair gaps with hairline separators consistently. */
         }
 
-        /* Reset every direct child so the card owns the visual identity.
-           Inner elements (.followup-chip, .source-item, .msg-resource-link,
-           .feedback-btn) keep their own styling — only the row CONTAINERS
-           are flattened. */
-        .bot-response-card > * {
+        /* Reset row CONTAINERS so the card owns the visual identity.
+           Scoped explicitly (not "* >") so that badges (.ai-status) and
+           other pill-style inline children keep their own styling. */
+        .bot-response-card > .bubble.bot,
+        .bot-response-card > .msg-followups,
+        .bot-response-card > .msg-resources,
+        .bot-response-card > .msg-sources,
+        .bot-response-card > .msg-feedback {
             max-width: 100%;
             margin: 0;
             background: transparent;
@@ -2069,13 +2072,17 @@
         }
 
         /* Badges (Personalized response, Medical Guidelines) sit tight
-           under the bubble — small gap, no hairline. */
+           under the bubble as pills — small gap, no hairline. The badges
+           keep their .ai-status pill background / border / radius from the
+           base rule; we only adjust their top margin inside the card. */
         .bot-response-card > .ai-status {
             margin-top: 10px;
+            align-self: flex-start;   /* don't stretch the pill to card width */
         }
 
         /* Sections with a hairline separator above. Same margin + padding
-           so the visual rhythm is identical between sections. */
+           so the visual rhythm is identical between sections regardless of
+           which siblings are present. */
         .bot-response-card > .msg-followups,
         .bot-response-card > .msg-resources,
         .bot-response-card > .msg-sources,
@@ -2083,6 +2090,27 @@
             margin-top: 14px;
             padding-top: 14px;
             border-top: 1px solid var(--border-light);
+        }
+
+        /* If a section directly follows a badge (no other section between),
+           pull its hairline closer — badges are tight, sections are spaced. */
+        .bot-response-card > .ai-status + .msg-followups,
+        .bot-response-card > .ai-status + .msg-resources,
+        .bot-response-card > .ai-status + .msg-sources,
+        .bot-response-card > .ai-status + .msg-feedback {
+            margin-top: 12px;
+        }
+
+        /* If the first child IS a section (e.g. greeting reply has no
+           bubble badges and goes straight to feedback), drop the hairline
+           — there's nothing above it to separate. */
+        .bot-response-card > .msg-followups:first-child,
+        .bot-response-card > .msg-resources:first-child,
+        .bot-response-card > .msg-sources:first-child,
+        .bot-response-card > .msg-feedback:first-child {
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
         }
 
         /* On narrow viewports the card uses full width and tighter padding. */
@@ -8867,9 +8895,12 @@
             // Bot messages live inside a unified .bot-response-card so the
             // answer, status badges, follow-up chips, resources, sources, and
             // feedback all share one border, padding, and visual identity.
-            // User messages remain a simple bubble.
-            const container = (who === "bot") ? document.createElement("div") : div;
-            if (who === "bot") {
+            // User messages and the transient "thinking..." placeholder skip
+            // the wrapper — the placeholder would otherwise show a chunky
+            // card padded around three tiny animated dots.
+            const isThinking = (who === "bot" && typeof text === "string" && text.includes("thinking-dots"));
+            const container = (who === "bot" && !isThinking) ? document.createElement("div") : div;
+            if (who === "bot" && !isThinking) {
                 container.className = "bot-response-card";
                 div.appendChild(container);
             }
