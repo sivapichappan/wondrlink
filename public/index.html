@@ -12,8 +12,13 @@
     <!-- Chart.js for mental health dashboard -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3"></script>
+    <!-- Lucide line icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Fonts: Geist (sans/UI) + Fraunces (serif accent for wordmark/headlines) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
         * {
             margin: 0;
@@ -22,17 +27,24 @@
         }
 
         :root {
-            /* Brand — deepened teal for better contrast */
-            --primary: #357A72;
-            --primary-light: #4A9990;
-            --primary-lighter: #7CC4BA;
-            --primary-dark: #2B635C;
-            --primary-subtle: rgba(53, 122, 114, 0.06);
-            --primary-ring: rgba(53, 122, 114, 0.12);
+            /* Type — Geist for body/UI, Fraunces for wordmark + serif accents */
+            --font-sans: "Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+            --font-serif: "Fraunces", Georgia, "Times New Roman", serif;
+            --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 
-            /* Accent — warm amber for CTAs/alerts */
-            --accent: #D97706;
-            --accent-light: #F59E0B;
+            /* Brand — deep restrained teal, used for primary actions only */
+            --primary: #1F5D4F;
+            --primary-light: #2D7B68;
+            --primary-lighter: #B8DBD0;
+            --primary-dark: #154238;
+            --primary-subtle: #EAF3F0;
+            --primary-ring: rgba(31, 93, 79, 0.18);
+
+            /* Accent — warm apricot for progress / celebration moments only */
+            --accent: #E89260;
+            --accent-light: #F2AE89;
+            --accent-dark: #C26A3F;
+            --accent-subtle: #FBE9DD;
 
             /* Semantic */
             --success: #16A34A;
@@ -45,22 +57,32 @@
             --severity-severe: #DC2626;
 
             /* Surfaces */
-            --background: #F6F8FA;
-            --background-alt: #EEF2F6;
+            --background: #F6F8F7;
+            --background-alt: #EEF1EF;
             --surface: #FFFFFF;
             --surface-raised: #FFFFFF;
             --surface-overlay: rgba(255, 255, 255, 0.95);
 
             /* Borders */
-            --border: #DDE3EA;
-            --border-light: #EEF2F6;
-            --border-hover: #C1C9D2;
+            --border: #E5E8E6;
+            --border-light: #EEF1EF;
+            --border-hover: #CDD2CF;
 
             /* Text */
-            --text-primary: #111827;
-            --text-secondary: #4B5563;
-            --text-muted: #6B7280;
+            --text-primary: #15201D;
+            --text-secondary: #4A5450;
+            --text-muted: #828B86;
             --text-inverse: #FFFFFF;
+
+            /* Sidebar (dark) — used only by the left rail; chat stays light */
+            --sidebar-bg: #1F3A36;
+            --sidebar-bg-hover: #2A4A45;
+            --sidebar-bg-card: rgba(255, 255, 255, 0.04);
+            --sidebar-text: #E8EFEC;
+            --sidebar-text-muted: #9FB2AD;
+            --sidebar-border: #2E4540;
+            --sidebar-accent: #5FBFA3;
+            --sidebar-accent-text: #0E2723;
 
             /* Shadows — warmer, layered */
             --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -112,9 +134,12 @@
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: var(--font-sans);
+            font-feature-settings: "ss01", "cv11";
             background: var(--background);
             color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
             height: 100vh;
             height: 100dvh;
             overflow: hidden;
@@ -189,11 +214,14 @@
         }
 
         .brand-main {
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--primary-dark);
-            letter-spacing: -0.03em;
-            line-height: 1.2;
+            font-family: var(--font-serif);
+            font-optical-sizing: auto;
+            font-variation-settings: "opsz" 144, "SOFT" 100;
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--sidebar-text);
+            letter-spacing: -0.015em;
+            line-height: 1.1;
         }
 
         .brand-sub {
@@ -777,10 +805,13 @@
         }
 
         .chat-title {
-            font-size: var(--font-lg);
-            font-weight: 700;
+            font-family: var(--font-serif);
+            font-optical-sizing: auto;
+            font-size: 22px;
+            font-weight: 600;
             color: var(--text-primary);
-            letter-spacing: -0.025em;
+            letter-spacing: -0.01em;
+            line-height: 1.15;
         }
 
         .chat-subtitle {
@@ -4434,13 +4465,177 @@
         /* High contrast mode */
         @media (prefers-contrast: high) {
             :root {
-                --primary: #1D5A52;
-                --primary-light: #2B6F65;
+                --primary: #154238;
+                --primary-light: #1F5D4F;
                 --text-secondary: #1F2937;
                 --text-muted: #374151;
                 --border: #9CA3AF;
             }
         }
+
+        /* ===========================================================
+           SIDEBAR DARK THEME (Phase A.4)
+           Scoped overrides — the chat surface keeps its light treatment.
+           =========================================================== */
+        .sidebar {
+            background: var(--sidebar-bg);
+            color: var(--sidebar-text);
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            border: none;
+            border-right: 1px solid var(--sidebar-border);
+            border-radius: 0;
+            box-shadow: none;
+        }
+        .sidebar .brand-section {
+            background: var(--sidebar-bg);
+            border-bottom: 1px solid var(--sidebar-border);
+        }
+        .sidebar .brand-section::before { display: none; }
+        .sidebar .brand-box {
+            background: var(--sidebar-bg-card);
+            box-shadow: none;
+            border: 1px solid var(--sidebar-border);
+        }
+        .sidebar .brand-main { color: var(--sidebar-text); }
+        .sidebar .brand-sub { color: var(--sidebar-text-muted); }
+        .sidebar .brand-user-row {
+            background: var(--sidebar-bg-card);
+            border: 1px solid var(--sidebar-border);
+        }
+        .sidebar .brand-user-email { color: var(--sidebar-text); }
+        .sidebar .brand-logout-btn {
+            background: transparent;
+            border-color: var(--sidebar-border);
+            color: var(--sidebar-text-muted);
+        }
+        .sidebar .brand-logout-btn:hover {
+            background: var(--sidebar-bg-hover);
+            color: var(--sidebar-text);
+            border-color: var(--sidebar-accent);
+        }
+
+        .sidebar .section-card {
+            background: var(--sidebar-bg-card);
+            border: 1px solid var(--sidebar-border);
+            border-left: 1px solid var(--sidebar-border);
+            transition: background var(--transition), border-color var(--transition);
+        }
+        .sidebar .section-card:hover {
+            background: var(--sidebar-bg-hover);
+            border-color: var(--sidebar-border);
+            border-left-color: var(--sidebar-accent);
+            transform: none;
+            box-shadow: none;
+        }
+
+        .sidebar .section-title { color: var(--sidebar-text); }
+        .sidebar .section-badge {
+            background: var(--sidebar-bg-card);
+            color: var(--sidebar-text-muted);
+            border: 1px solid var(--sidebar-border);
+        }
+        .sidebar .section-header {
+            color: var(--sidebar-text);
+        }
+
+        .sidebar .settings-label { color: var(--sidebar-text-muted); }
+        .sidebar .help-tip { color: var(--sidebar-text-muted); }
+        .sidebar .help-note { color: var(--sidebar-text-muted); }
+        .sidebar .build-profile-hint { color: var(--sidebar-text-muted); }
+        .sidebar .status-note { color: var(--sidebar-text-muted); }
+        .sidebar .profile-info-panel {
+            background: var(--sidebar-bg-card);
+            color: var(--sidebar-text-muted);
+            border: 1px solid var(--sidebar-border);
+        }
+        .sidebar .profile-info-panel p,
+        .sidebar .profile-info-panel li,
+        .sidebar .profile-info-panel ul {
+            color: var(--sidebar-text-muted);
+        }
+        .sidebar .profile-info-panel strong { color: var(--sidebar-text); }
+
+        .sidebar .clear-chat-btn,
+        .sidebar .export-chat-btn {
+            background: var(--sidebar-bg-card);
+            border-color: var(--sidebar-border);
+            color: var(--sidebar-text-muted);
+        }
+        .sidebar .clear-chat-btn:hover {
+            background: rgba(220, 38, 38, 0.12);
+            border-color: var(--danger);
+            color: #FCA5A5;
+        }
+        .sidebar .export-chat-btn:hover {
+            background: var(--sidebar-bg-hover);
+            color: var(--sidebar-text);
+            border-color: var(--sidebar-accent);
+        }
+
+        .sidebar .response-dropdown {
+            background: var(--sidebar-bg-card);
+            color: var(--sidebar-text);
+            border: 1px solid var(--sidebar-border);
+        }
+        .sidebar .response-dropdown:focus {
+            outline: none;
+            border-color: var(--sidebar-accent);
+        }
+        .sidebar .response-dropdown option {
+            background: var(--sidebar-bg);
+            color: var(--sidebar-text);
+        }
+
+        .sidebar .suggestion-chip {
+            background: var(--sidebar-bg-card);
+            border-color: var(--sidebar-border);
+            color: var(--sidebar-text);
+        }
+        .sidebar .suggestion-chip:hover {
+            background: var(--sidebar-bg-hover);
+            border-color: var(--sidebar-accent);
+            color: var(--sidebar-text);
+        }
+        .sidebar .build-profile-btn {
+            background: var(--sidebar-accent);
+            color: var(--sidebar-accent-text);
+            font-weight: 600;
+        }
+        .sidebar .build-profile-btn:hover {
+            background: #7BD2B7;
+        }
+        .sidebar .edit-profile-btn {
+            background: var(--sidebar-bg-card);
+            color: var(--sidebar-text);
+            border: 1px solid var(--sidebar-border);
+        }
+        .sidebar .edit-profile-btn:hover {
+            background: var(--sidebar-bg-hover);
+            border-color: var(--sidebar-accent);
+        }
+        .sidebar .status-bar {
+            background: var(--sidebar-bg);
+            border-top: 1px solid var(--sidebar-border);
+            color: var(--sidebar-text-muted);
+        }
+        .sidebar .watchlist-empty,
+        .sidebar .watchlist-content { color: var(--sidebar-text-muted); }
+        .sidebar a { color: var(--sidebar-accent); }
+        .sidebar a:hover { color: #7BD2B7; }
+
+        /* Lucide icon stroke baseline */
+        .icon-stroke,
+        i[data-lucide] {
+            width: 16px;
+            height: 16px;
+            stroke-width: 1.75;
+            flex-shrink: 0;
+        }
+        .icon-stroke.lg,
+        i[data-lucide].lg { width: 22px; height: 22px; }
+        .icon-stroke.sm,
+        i[data-lucide].sm { width: 14px; height: 14px; }
     </style>
 </head>
 
@@ -4967,7 +5162,7 @@
                     <div id="appealDropZone" class="appeal-dropzone">
                         <input type="file" id="appealFileInput" accept="application/pdf,.pdf" style="display:none;" onchange="handleAppealFileChosen(event)">
                         <div class="appeal-dropzone-inner">
-                            <div style="font-size:30px;line-height:1;">📄</div>
+                            <div style="line-height:1;color:var(--text-muted);"><i data-lucide="file-text" style="width:30px;height:30px;stroke-width:1.5;"></i></div>
                             <div style="font-weight:600;margin-top:8px;">Drag your denial letter PDF here</div>
                             <div style="color:var(--text-muted);font-size:12px;margin-top:4px;">or <a href="#" onclick="document.getElementById('appealFileInput').click(); return false;" style="color:var(--primary);font-weight:600;">browse to upload</a> · max 5 MB</div>
                             <div id="appealFileChosen" style="margin-top:10px;font-size:12px;color:var(--primary);font-weight:600;display:none;"></div>
@@ -5284,7 +5479,6 @@
 
         <div class="chat-wrap">
             <div class="chat-header">
-                <div class="chat-header-icon">💬</div>
                 <div class="chat-header-text">
                     <div class="chat-title">Your Colon Cancer Guide</div>
                     <div class="chat-subtitle">Evidence-based guidance in plain language</div>
@@ -5292,7 +5486,7 @@
             </div>
 
             <div class="ai-disclosure-banner" role="note" aria-label="AI disclosure">
-                <span class="ai-disclosure-icon" aria-hidden="true">🤖</span>
+                <span class="ai-disclosure-icon" aria-hidden="true"><i data-lucide="bot" class="icon-stroke"></i></span>
                 <span>You're chatting with an AI assistant — not a person, not medical advice. AI can make mistakes; please verify important information with your care team.</span>
             </div>
 
@@ -5304,19 +5498,19 @@
                             medical advice.</p>
                         <div class="welcome-features">
                             <div class="welcome-feature">
-                                <span class="feature-icon" role="img" aria-label="Open book">📖</span>
+                                <span class="feature-icon"><i data-lucide="book-open" class="icon-stroke"></i></span>
                                 <span>Understand your diagnosis and treatment options</span>
                             </div>
                             <div class="welcome-feature">
-                                <span class="feature-icon" role="img" aria-label="Speech bubble">💬</span>
+                                <span class="feature-icon"><i data-lucide="message-circle" class="icon-stroke"></i></span>
                                 <span>Explain medical terms in plain English</span>
                             </div>
                             <div class="welcome-feature">
-                                <span class="feature-icon" role="img" aria-label="Warning sign">⚠️</span>
+                                <span class="feature-icon"><i data-lucide="alert-triangle" class="icon-stroke"></i></span>
                                 <span>Answer questions about side effects</span>
                             </div>
                             <div class="welcome-feature">
-                                <span class="feature-icon" role="img" aria-label="Notepad">📝</span>
+                                <span class="feature-icon"><i data-lucide="notebook-pen" class="icon-stroke"></i></span>
                                 <span>Help you prepare for appointments</span>
                             </div>
                         </div>
@@ -6198,7 +6392,7 @@
                         animation: modalSlideIn 0.3s ease;
                     ">
                         <div style="text-align: center; margin-bottom: 20px;">
-                            <div style="font-size: 48px; margin-bottom: 12px;">🎗️</div>
+                            <div style="margin-bottom: 12px;color:var(--primary);"><i data-lucide="ribbon" style="width:36px;height:36px;stroke-width:1.5;"></i></div>
                             <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 8px; color: var(--text-primary);">Colon Cancer Support</h3>
                             <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;">
                                 Educational information specifically for patients diagnosed with colon cancer.
@@ -7989,7 +8183,7 @@
                         // Warnings
                         const warnings = trial.relevance_warnings || [];
                         const warningsHtml = warnings.length > 0
-                            ? `<div class="trial-warnings">⚠ ${warnings.slice(0, 2).join('; ')}</div>`
+                            ? `<div class="trial-warnings"><i data-lucide="alert-triangle" class="icon-stroke sm"></i> ${warnings.slice(0, 2).join('; ')}</div>`
                             : '';
 
                         // Eligibility concern
@@ -8057,7 +8251,7 @@
                     noTrialsDiv.className = "clinical-trials-section";
                     noTrialsDiv.innerHTML = `
                         <div class="clinical-trials-no-results">
-                            <div>🔬 No recruiting trials found matching your profile in your area. Try searching:</div>
+                            <div style="display:flex;align-items:center;gap:8px;"><i data-lucide="microscope" class="icon-stroke"></i><span>No recruiting trials found matching your profile in your area. Try searching:</span></div>
                             <div class="clinical-trials-finder-links" style="margin-top:4px;">
                                 <a href="https://clinicaltrials.gov/search?cond=colorectal+cancer&aggFilters=status:rec" target="_blank" rel="noopener noreferrer">ClinicalTrials.gov</a>
                                 <span class="footer-separator">|</span>
@@ -8081,14 +8275,20 @@
                 const feedbackDiv = document.createElement("div");
                 feedbackDiv.className = "msg-feedback";
                 feedbackDiv.innerHTML = `
-                    <button class="feedback-btn" onclick="sendFeedback(this, 'up')" title="Helpful" aria-label="Mark as helpful">&#x1F44D;</button>
-                    <button class="feedback-btn" onclick="sendFeedback(this, 'down')" title="Not helpful" aria-label="Mark as not helpful">&#x1F44E;</button>
+                    <button class="feedback-btn" onclick="sendFeedback(this, 'up')" title="Helpful" aria-label="Mark as helpful"><i data-lucide="thumbs-up" class="icon-stroke sm"></i></button>
+                    <button class="feedback-btn" onclick="sendFeedback(this, 'down')" title="Not helpful" aria-label="Mark as not helpful"><i data-lucide="thumbs-down" class="icon-stroke sm"></i></button>
                 `;
                 div.appendChild(feedbackDiv);
             }
 
             messages.appendChild(div);
             messages.scrollTop = messages.scrollHeight;
+
+            // Render any newly-inserted Lucide placeholders (feedback btns, trial
+            // warnings, no-trials icon, etc.).
+            if (typeof lucide !== 'undefined') {
+                try { lucide.createIcons(); } catch (_) {}
+            }
         }
 
         function showUrgencyBanner(urgency) {
@@ -8105,7 +8305,7 @@
             const ctaHref = isEmergency ? 'tel:911' : '#';
 
             banner.innerHTML = `
-                <div class="urgency-banner-icon">${isEmergency ? '🚨' : '⚠️'}</div>
+                <div class="urgency-banner-icon"><i data-lucide="${isEmergency ? 'siren' : 'alert-triangle'}" style="width:22px;height:22px;stroke-width:2;"></i></div>
                 <div class="urgency-banner-content">
                     <div class="urgency-banner-title">${title}</div>
                     <div>${urgency.guidance || (isEmergency ? 'This may require immediate medical attention.' : 'Please contact your healthcare provider.')}</div>
@@ -8116,6 +8316,9 @@
             // Insert at top of messages area
             const messages = document.getElementById('messages');
             messages.insertBefore(banner, messages.firstChild);
+            if (typeof lucide !== 'undefined') {
+                try { lucide.createIcons(); } catch (_) {}
+            }
         }
 
         // Welcome message HTML to show at top of chat
@@ -8127,19 +8330,19 @@
                         medical advice.</p>
                     <div class="welcome-features">
                         <div class="welcome-feature">
-                            <span class="feature-icon" role="img" aria-label="Open book">📖</span>
+                            <span class="feature-icon"><i data-lucide="book-open" class="icon-stroke"></i></span>
                             <span>Understand your diagnosis and treatment options</span>
                         </div>
                         <div class="welcome-feature">
-                            <span class="feature-icon" role="img" aria-label="Speech bubble">💬</span>
+                            <span class="feature-icon"><i data-lucide="message-circle" class="icon-stroke"></i></span>
                             <span>Explain medical terms in plain English</span>
                         </div>
                         <div class="welcome-feature">
-                            <span class="feature-icon" role="img" aria-label="Warning sign">⚠️</span>
+                            <span class="feature-icon"><i data-lucide="alert-triangle" class="icon-stroke"></i></span>
                             <span>Answer questions about side effects</span>
                         </div>
                         <div class="welcome-feature">
-                            <span class="feature-icon" role="img" aria-label="Notepad">📝</span>
+                            <span class="feature-icon"><i data-lucide="notebook-pen" class="icon-stroke"></i></span>
                             <span>Help you prepare for appointments</span>
                         </div>
                     </div>
@@ -9936,7 +10139,9 @@
             } else {
                 const vb = document.createElement('div');
                 vb.className = 'deepdive-badge ' + (payload.verified ? 'verified' : 'unverified');
-                vb.textContent = payload.verified ? '✓ Verified against sources' : '⚠ Not fully verified';
+                vb.innerHTML = payload.verified
+                    ? '<i data-lucide="check-circle-2" class="icon-stroke sm"></i><span>Verified against sources</span>'
+                    : '<i data-lucide="alert-triangle" class="icon-stroke sm"></i><span>Not fully verified</span>';
                 meta.appendChild(vb);
                 if (typeof payload.took_seconds === 'number') {
                     const tb = document.createElement('div');
@@ -10051,6 +10256,9 @@
             resultEl.appendChild(actions);
 
             resultEl.style.display = 'block';
+            if (typeof lucide !== 'undefined') {
+                try { lucide.createIcons(); } catch (_) {}
+            }
         }
 
         // Hide care-tools buttons whose features are turned off in FEATURES.
@@ -10071,6 +10279,18 @@
             document.addEventListener('DOMContentLoaded', applyFeatureFlagsToSidebar);
         } else {
             applyFeatureFlagsToSidebar();
+        }
+
+        // Initialize Lucide line icons (replaces all <i data-lucide="..."> with inline SVG).
+        function initLucideIcons() {
+            if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                lucide.createIcons();
+            }
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initLucideIcons);
+        } else {
+            initLucideIcons();
         }
 
         // =============================================
