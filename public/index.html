@@ -906,20 +906,19 @@
             padding: 2px 4px 0;
         }
 
+        /* Character counter is hidden by default — only flashes a small
+           pill when the user goes over the 2,000-character cap. */
         .char-counter {
+            display: none;
             font-size: 11px;
-            color: var(--text-muted);
-            transition: color var(--transition);
-        }
-
-        .char-counter.warning {
-            color: #f59e0b;
-        }
-
-        .char-counter.danger {
-            color: var(--danger);
             font-weight: 600;
+            color: var(--danger);
+            background: rgba(220, 38, 38, 0.08);
+            border: 1px solid rgba(220, 38, 38, 0.20);
+            padding: 3px 8px;
+            border-radius: var(--radius-full);
         }
+        .char-counter.show { display: inline-flex; }
 
         /* Urgency Banner */
         .urgency-banner {
@@ -4575,23 +4574,50 @@
             font-size: 10px;
             white-space: nowrap;
         }
+        /* Source excerpt popover — light card with a primary-tinted left
+           accent. Replaces the previous dark blob tooltip. */
         .source-item-preview {
             display: none;
             position: absolute;
-            bottom: calc(100% + 4px);
+            bottom: calc(100% + 8px);
             left: 0;
             right: 0;
-            padding: 8px 10px;
-            background: var(--text-primary);
-            color: var(--surface);
-            border-radius: var(--radius-sm);
-            font-size: 11px;
-            line-height: 1.4;
+            padding: 10px 12px 10px 14px;
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--primary);
+            border-radius: var(--radius-sm, 8px);
+            font-size: 12px;
+            line-height: 1.5;
             font-weight: 400;
-            box-shadow: var(--shadow-lg);
+            box-shadow: 0 8px 24px rgba(15, 32, 28, 0.10), 0 2px 6px rgba(15, 32, 28, 0.06);
             z-index: 10;
             text-transform: none;
             letter-spacing: 0;
+            font-style: italic;
+        }
+        .source-item-preview::before {
+            content: 'EXCERPT';
+            display: block;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: var(--primary);
+            margin-bottom: 4px;
+            font-style: normal;
+        }
+        .source-item-preview::after {
+            content: '';
+            position: absolute;
+            bottom: -7px;
+            left: 16px;
+            width: 12px;
+            height: 12px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            transform: rotate(45deg);
         }
         .source-item:hover .source-item-preview {
             display: block;
@@ -6430,10 +6456,6 @@
 
             <div class="input-section" role="form" aria-label="Send a message">
                 <label for="msgInput" class="visually-hidden">Type your question about colon cancer</label>
-                <button id="composerAttachBtn" type="button" class="composer-attach" disabled
-                    title="Upload lab results or imaging — coming soon" aria-label="Attach a file (coming soon)">
-                    <i data-lucide="paperclip" class="icon-stroke"></i>
-                </button>
                 <textarea id="msgInput" placeholder="Ask me about colon cancer" aria-label="Type your question" maxlength="2000"></textarea>
                 <button id="voiceBtn" class="voice-btn" title="Voice input" aria-label="Start voice input" aria-pressed="false">
                     <span class="voice-mic-icon" aria-hidden="true">
@@ -9750,16 +9772,20 @@
             }
         });
 
-        // Auto-resize textarea + character counter
+        // Auto-resize textarea. The character counter only shows as a small
+        // pill when the user goes OVER the 2,000-character cap — silent
+        // otherwise so the composer footer stays clean.
         const charCounter = document.getElementById('charCounter');
         msgInput.addEventListener("input", function () {
             this.style.height = "44px";
             this.style.height = Math.min(this.scrollHeight, 120) + "px";
-            // Update character counter
             const len = this.value.length;
-            charCounter.textContent = `${len.toLocaleString()} / 2,000`;
-            charCounter.classList.toggle('warning', len >= 1800 && len < 1950);
-            charCounter.classList.toggle('danger', len >= 1950);
+            if (len > 2000) {
+                charCounter.textContent = `${len.toLocaleString()} / 2,000`;
+                charCounter.classList.add('show');
+            } else {
+                charCounter.classList.remove('show');
+            }
         });
 
         // =====================
