@@ -74,15 +74,18 @@
             --text-muted: #828B86;
             --text-inverse: #FFFFFF;
 
-            /* Sidebar (dark) — used only by the left rail; chat stays light */
-            --sidebar-bg: #1F3A36;
-            --sidebar-bg-hover: #2A4A45;
-            --sidebar-bg-card: rgba(255, 255, 255, 0.04);
-            --sidebar-text: #E8EFEC;
-            --sidebar-text-muted: #9FB2AD;
-            --sidebar-border: #2E4540;
-            --sidebar-accent: #5FBFA3;
-            --sidebar-accent-text: #0E2723;
+            /* Sidebar (light, varied) — gentle sage so cards pop in white */
+            --sidebar-bg: #EDF2EF;
+            --sidebar-bg-hover: #E0E8E4;
+            --sidebar-bg-card: #FFFFFF;
+            --sidebar-bg-subtle: rgba(15, 32, 28, 0.04);   /* subtle dark tint on light surfaces */
+            --sidebar-bg-subtle-2: rgba(15, 32, 28, 0.02);
+            --sidebar-text: #15201D;
+            --sidebar-text-muted: #6B7570;
+            --sidebar-border: #D6DEDA;
+            --sidebar-accent: #1F5D4F;            /* brand primary back as the active color */
+            --sidebar-accent-text: #FFFFFF;
+            --sidebar-accent-hover: #154238;
 
             /* Shadows — warmer, layered */
             --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -4556,14 +4559,14 @@
             background: var(--sidebar-bg-card);
             border: 1px solid var(--sidebar-border);
             border-left: 1px solid var(--sidebar-border);
-            transition: background var(--transition), border-color var(--transition);
+            box-shadow: 0 1px 2px rgba(15, 32, 28, 0.04);
+            transition: border-color var(--transition), box-shadow var(--transition);
         }
         .sidebar .section-card:hover {
-            background: var(--sidebar-bg-hover);
             border-color: var(--sidebar-border);
             border-left-color: var(--sidebar-accent);
+            box-shadow: 0 2px 8px rgba(15, 32, 28, 0.06);
             transform: none;
-            box-shadow: none;
         }
 
         .sidebar .section-title { color: var(--sidebar-text); }
@@ -4600,13 +4603,13 @@
             color: var(--sidebar-text-muted);
         }
         .sidebar .clear-chat-btn:hover {
-            background: rgba(220, 38, 38, 0.12);
+            background: rgba(220, 38, 38, 0.08);
             border-color: var(--danger);
-            color: #FCA5A5;
+            color: var(--danger);
         }
         .sidebar .export-chat-btn:hover {
             background: var(--sidebar-bg-hover);
-            color: var(--sidebar-text);
+            color: var(--sidebar-accent);
             border-color: var(--sidebar-accent);
         }
 
@@ -4630,9 +4633,9 @@
             color: var(--sidebar-text);
         }
         .sidebar .suggestion-chip:hover {
-            background: var(--sidebar-bg-hover);
+            background: var(--primary-subtle);
             border-color: var(--sidebar-accent);
-            color: var(--sidebar-text);
+            color: var(--sidebar-accent);
         }
         .sidebar .build-profile-btn {
             background: var(--sidebar-accent);
@@ -4640,7 +4643,7 @@
             font-weight: 600;
         }
         .sidebar .build-profile-btn:hover {
-            background: #7BD2B7;
+            background: var(--sidebar-accent-hover);
         }
         .sidebar .edit-profile-btn {
             background: var(--sidebar-bg-card);
@@ -4650,6 +4653,7 @@
         .sidebar .edit-profile-btn:hover {
             background: var(--sidebar-bg-hover);
             border-color: var(--sidebar-accent);
+            color: var(--sidebar-accent);
         }
         .sidebar .status-bar {
             background: var(--sidebar-bg);
@@ -4659,7 +4663,7 @@
         .sidebar .watchlist-empty,
         .sidebar .watchlist-content { color: var(--sidebar-text-muted); }
         .sidebar a { color: var(--sidebar-accent); }
-        .sidebar a:hover { color: #7BD2B7; }
+        .sidebar a:hover { color: var(--sidebar-accent-hover); }
 
         /* Lucide icon stroke baseline */
         .icon-stroke,
@@ -4758,8 +4762,8 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--sidebar-text-muted);
+            background: var(--primary-subtle);
+            color: var(--primary);
             margin: 0 auto 10px;
         }
         .sidebar .empty-state-icon i[data-lucide] {
@@ -4786,8 +4790,8 @@
             padding: 8px 10px;
             border: 1px dashed var(--sidebar-border);
             border-radius: var(--radius-sm, 6px);
-            background: rgba(255, 255, 255, 0.025);
-            opacity: 0.55;
+            background: var(--sidebar-bg-subtle-2);
+            opacity: 0.75;
             pointer-events: none;
             font-size: 11px;
             text-align: left;
@@ -4814,7 +4818,7 @@
             font-weight: 600;
             padding: 4px 10px;
             border-radius: var(--radius-full);
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--sidebar-bg-card);
             border: 1px solid var(--sidebar-border);
             color: var(--sidebar-text-muted);
             text-transform: uppercase;
@@ -4955,20 +4959,20 @@
             font-weight: 600;
             padding: 3px 8px;
             border-radius: var(--radius-full);
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--sidebar-bg-subtle);
             color: var(--sidebar-text-muted);
         }
         .care-snapshot-trend-badge.improving {
-            background: rgba(232, 146, 96, 0.18);
-            color: #F2AE89;
+            background: var(--accent-subtle);
+            color: var(--accent-dark);
         }
         .care-snapshot-trend-badge.worsening {
-            background: rgba(220, 38, 38, 0.18);
-            color: #FCA5A5;
+            background: rgba(220, 38, 38, 0.10);
+            color: var(--danger);
         }
         .care-snapshot-trend-badge.stable {
-            background: rgba(95, 191, 163, 0.18);
-            color: var(--sidebar-accent);
+            background: var(--primary-subtle);
+            color: var(--primary);
         }
         .care-snapshot-spark {
             height: 36px;
@@ -4987,7 +4991,7 @@
             margin-top: 4px;
         }
         .care-snapshot-stat {
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--sidebar-bg);
             border: 1px solid var(--sidebar-border);
             border-radius: var(--radius-sm, 6px);
             padding: 8px 10px;
@@ -5977,7 +5981,7 @@
                                 <div style="font-size:12px;color:var(--sidebar-text-muted);line-height:1.5;margin-bottom:8px;">
                                     Help protect your family — screening saves lives.
                                 </div>
-                                <div style="background:rgba(255,255,255,0.05);border-radius:var(--radius-sm, 6px);padding:10px 12px;
+                                <div style="background:var(--sidebar-bg);border-radius:var(--radius-sm, 6px);padding:10px 12px;
                                             border:1px solid var(--sidebar-border);font-size:12px;line-height:1.5;color:var(--sidebar-text-muted);">
                                     "Colorectal cancer is #2 in cancer deaths — but a colonoscopy or simple at-home stool test can find it early when it's most treatable."
                                 </div>
@@ -6063,7 +6067,7 @@
                                     style="display: none; width: 100%;">Clear Profile</button>
                                 <button class="small" id="deleteAccountBtn"
                                     onclick="confirmDeleteAccount()"
-                                    style="width: 100%; background: transparent; color: #FCA5A5; border: 1px solid var(--danger); font-size: 11px;">
+                                    style="width: 100%; background: transparent; color: var(--danger); border: 1px solid var(--danger); font-size: 11px;">
                                     Delete Account
                                 </button>
                             </div>
