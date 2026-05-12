@@ -1,0 +1,44 @@
+/**
+ * Chat API wrappers.
+ *
+ * The backend does not auto-persist messages from /api/chat — the client is
+ * expected to POST /api/save_message for both the user message and the
+ * resulting bot message. That gives us the ability to optimistically render
+ * before the save round-trips.
+ */
+
+import { ENDPOINTS } from '@shared/api-contracts';
+import type {
+  ChatHistoryResponse,
+  ChatRequest,
+  ChatResponse,
+  SaveMessageRequest,
+} from '@shared/types';
+
+import { apiFetch } from './client';
+
+export function sendChatMessage(body: ChatRequest) {
+  return apiFetch<ChatResponse>(ENDPOINTS.chat, {
+    method: 'POST',
+    body,
+  });
+}
+
+export function fetchChatHistory(limit = 50) {
+  return apiFetch<ChatHistoryResponse>(`${ENDPOINTS.chatHistory}?limit=${limit}`, {
+    method: 'GET',
+  });
+}
+
+export function saveMessage(body: SaveMessageRequest) {
+  return apiFetch<{ status: 'ok' }>(ENDPOINTS.saveMessage, {
+    method: 'POST',
+    body,
+  });
+}
+
+export function clearChatHistory() {
+  return apiFetch<{ status: 'ok' }>(ENDPOINTS.clearChat, {
+    method: 'DELETE',
+  });
+}

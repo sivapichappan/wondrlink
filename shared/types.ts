@@ -127,6 +127,36 @@ export interface ChatClinicalTrialsBlock {
   search_criteria: Record<string, unknown>;
 }
 
+/**
+ * Persisted chat message as returned by /api/chat_history.
+ * For assistant messages, `metadata` mirrors the bot-side fields of
+ * ChatResponse so we can re-render BotResponseCard from history.
+ */
+export interface ChatHistoryMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+  metadata?: {
+    sources?: ChatSource[];
+    citations?: Record<string, string>;
+    followups?: string[];
+    resources?: ChatResource[];
+    urgency?: ChatUrgency | null;
+    clinical_trials?: ChatClinicalTrialsBlock | null;
+    api_used?: string;
+  };
+}
+
+export interface ChatHistoryResponse {
+  messages: ChatHistoryMessage[];
+}
+
+export interface SaveMessageRequest {
+  role: 'user' | 'assistant';
+  content: string;
+  metadata?: ChatHistoryMessage['metadata'];
+}
+
 export interface ChatResponse {
   answer: string;
   api_used: 'together' | 'groq' | 'greeting-shortcircuit' | 'off-topic-filter' | string;
