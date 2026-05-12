@@ -56,10 +56,23 @@ export interface SaveAcknowledgementResponse {
   consent_version: string;
 }
 
+export type PrivacyAppealType = 'access' | 'deletion' | 'consent_withdrawal' | 'other';
+
 export interface PrivacyAppealRequest {
-  request_type: 'access' | 'deletion' | 'consent_withdrawal' | 'correction';
-  description: string;
-  contact_email: string;
+  request_type: PrivacyAppealType;
+  reason: string;
+}
+
+export interface PrivacyAppealResponse {
+  status: 'ok';
+  appeal_id: string;
+  sla_due: string;
+  message: string;
+}
+
+export interface FeedbackRequest {
+  rating: 'up' | 'down';
+  message_preview?: string;
 }
 
 // =============================================================================

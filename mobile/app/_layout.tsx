@@ -98,6 +98,7 @@ function RootGate() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="profile" options={{ title: 'Profile' }} />
       <Stack.Screen name="tools" options={{ headerShown: false }} />
+      <Stack.Screen name="settings" options={{ headerShown: false }} />
     </Stack>
   );
 }
