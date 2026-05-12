@@ -1632,6 +1632,116 @@ def api_privacy_appeal():
         return jsonify({"error": "Could not record your appeal right now."}), 500
 
 
+@app.route("/api/hero", methods=["GET"])
+@require_auth
+def api_hero():
+    """
+    Return personalized hero-card data for the chat welcome surface.
+
+    Response shape:
+      {
+        "has_profile": bool,
+        "first_name": str | "",
+        "phase_description": str,          # "You're 14 days into FOLFOX, cycle 2."
+        "regimen": str | "",
+        "days_into": int | null,
+        "cycle": int | null,
+        "last_visit": { when, when_pretty, pending_followups, changed_treatment } | null,
+        "suggestions": [str, str, str]
+      }
+    """
+    try:
+        user_id = request.user["user_id"]
+        profile = load_profile(user_id) or {}
+        if not profile:
+            return jsonify({"has_profile": False})
+
+        ctx = extract_patient_context_complex(profile)
+        from hero import (
+            compute_days_into_treatment,
+            describe_phase,
+            format_visit_summary,
+            suggest_starter_questions,
+        )
+
+        first_name = (profile.get("patient") or {}).get("firstName") or \
+                     (profile.get("patient") or {}).get("name", "").split(" ")[0] or ""
+
+        recaps = profile.get("visit_recaps") or []
+        last_recap = recaps[-1] if (isinstance(recaps, list) and recaps) else None
+
+        return jsonify({
+            "has_profile": True,
+            "first_name": first_name,
+            "phase_description": describe_phase(profile, ctx),
+            "regimen": ctx.get("current_regimen") or "",
+            "days_into": compute_days_into_treatment(profile),
+            "cycle": ctx.get("current_cycle_number"),
+            "last_visit": format_visit_summary(last_recap),
+            "suggestions": suggest_starter_questions(profile, ctx),
+        })
+    except Exception as e:
+        logger.exception("hero error")
+        return jsonify({"has_profile": False, "error": str(e)}), 200
+
+
+@app.route("/api/care_snapshot", methods=["GET"])
+@require_auth
+def api_care_snapshot():
+    """
+    Compact longitudinal data for the Care Snapshot card at the top of the
+    sidebar. Bundles PHQ-9 trend, days since last symptom check-in, and a
+    coarse trend label into a single response.
+    """
+    try:
+        from supabase_storage import load_all_screening_history
+        user_id = request.user["user_id"]
+        history = load_all_screening_history(user_id) or {}
+
+        # PHQ-9: last 6 entries, oldest first
+        phq9 = (history.get("PHQ9") or [])[-6:]
+        phq9_points = []
+        for entry in phq9:
+            score = entry.get("total_score")
+            ts = entry.get("completed_at")
+            if score is not None:
+                phq9_points.append({"score": score, "completed_at": ts})
+
+        # Days since last symptom check-in
+        symptom = history.get("SYMPTOM") or []
+        days_since_symptom = None
+        if symptom:
+            last_ts = symptom[-1].get("completed_at")
+            if last_ts:
+                try:
+                    s = last_ts.replace("Z", "").split("+")[0].split(".")[0]
+                    last_dt = datetime.fromisoformat(s)
+                    days_since_symptom = max(0, (datetime.utcnow() - last_dt).days)
+                except Exception:
+                    pass
+
+        # Coarse PHQ-9 trend: look at the most-recent 3 points if available
+        trend = "none"
+        if len(phq9_points) >= 2:
+            scores = [p["score"] for p in phq9_points[-3:]]
+            if all(scores[i] > scores[i + 1] for i in range(len(scores) - 1)):
+                trend = "improving"
+            elif all(scores[i] < scores[i + 1] for i in range(len(scores) - 1)):
+                trend = "worsening"
+            else:
+                trend = "stable"
+
+        return jsonify({
+            "phq9_points": phq9_points,
+            "days_since_symptom": days_since_symptom,
+            "phq9_trend": trend,
+            "phq9_count": len(phq9_points),
+        })
+    except Exception as e:
+        logger.exception("care_snapshot error")
+        return jsonify({"phq9_points": [], "days_since_symptom": None, "phq9_trend": "none", "phq9_count": 0}), 200
+
+
 # -------------------------
 # -------------------------
 # Account Deletion (GDPR/CCPA)
