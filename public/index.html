@@ -2798,6 +2798,43 @@
             scrollbar-color: var(--border) transparent;
         }
 
+        /* Chat-header brand wordmark — hidden by default (the sidebar shows
+           WondrLink at desktop widths). At ≤900px the sidebar becomes a
+           drawer and the brand is no longer visible, so this surfaces in
+           the chat header instead so users always see the wordmark. */
+        .chat-header-brand {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: inherit;
+        }
+        .chat-header-logo {
+            height: 32px;
+            width: auto;
+            flex-shrink: 0;
+        }
+        .chat-header-brand-text {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .chat-header-brand-main {
+            font-family: var(--font-serif);
+            font-optical-sizing: auto;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: -0.015em;
+            line-height: 1.05;
+        }
+        .chat-header-brand-context {
+            font-size: 11.5px;
+            color: var(--text-muted);
+            margin-top: 2px;
+            font-weight: 500;
+        }
+
         /* Floating drawer-toggle (visible 601–900px). Below 600px the
            mobile-header has its own hamburger; above 900px the sidebar
            is visible side-by-side and no toggle is needed. */
@@ -2875,6 +2912,11 @@
             .drawer-toggle { display: inline-flex; }
             .chat-header { padding-left: 72px; }
 
+            /* Brand wordmark now visible in the chat header (sidebar is
+               drawer-mode and not showing the brand). */
+            .chat-header-brand { display: flex; }
+            .chat-header-text { display: none; }
+
             /* Bubble + response card use full width */
             .bot-response-card { max-width: 100%; padding: 14px 18px; }
             .bubble { max-width: 88%; }
@@ -2903,11 +2945,13 @@
             .app { padding: 8px; gap: 0; }
             /* mobile-header stays hidden; the drawer-toggle (from ≤900px
                block) continues to be the hamburger. chat-header stays
-               visible — but slimmer. */
-            .chat-header { padding: 14px 16px 14px 64px; }
-            .chat-title { font-size: 17px; }
-            .chat-subtitle { font-size: 12px; }
-            .drawer-toggle { top: 16px; left: 12px; width: 38px; height: 38px; }
+               visible — but slimmer. The WondrLink wordmark inside the
+               header is the brand anchor; tighten it on small phones. */
+            .chat-header { padding: 12px 14px 12px 60px; }
+            .chat-header-logo { height: 26px; }
+            .chat-header-brand-main { font-size: 18px; }
+            .chat-header-brand-context { font-size: 11px; }
+            .drawer-toggle { top: 12px; left: 10px; width: 38px; height: 38px; }
             .messages { padding: 16px; }
             .input-section { padding: 10px; gap: 8px; }
 
@@ -2960,8 +3004,11 @@
         @media (max-width: 360px) {
             .messages { padding: 12px; }
             .input-section { padding: 8px; }
-            .chat-header { padding: 12px 14px 12px 58px; }
-            .drawer-toggle { top: 14px; left: 10px; }
+            .chat-header { padding: 10px 12px 10px 54px; }
+            .chat-header-logo { height: 22px; }
+            .chat-header-brand-main { font-size: 16px; }
+            .chat-header-brand-context { font-size: 10.5px; }
+            .drawer-toggle { top: 8px; left: 8px; width: 36px; height: 36px; }
             .hero-greeting { font-size: 17px; }
             .hero-card { padding: 14px 14px 12px; }
             .bot-response-card { padding: 12px 14px; }
@@ -6304,6 +6351,13 @@
                 <i data-lucide="menu" class="icon-stroke"></i>
             </button>
             <div class="chat-header">
+                <div class="chat-header-brand" aria-label="WondrLink">
+                    <img src="/Logo.png" alt="" class="chat-header-logo">
+                    <div class="chat-header-brand-text">
+                        <span class="chat-header-brand-main">WondrLink</span>
+                        <span class="chat-header-brand-context">Your Colon Cancer Guide</span>
+                    </div>
+                </div>
                 <div class="chat-header-text">
                     <div class="chat-title">Your Colon Cancer Guide</div>
                     <div class="chat-subtitle">Evidence-based guidance in plain language</div>
