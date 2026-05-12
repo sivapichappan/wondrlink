@@ -254,25 +254,123 @@ export interface UploadProfileResponse {
 }
 
 // =============================================================================
-// SCREENING
+// SCREENING  (matches api/index.py:984 /api/screening/save)
 // =============================================================================
 
-export type ScreeningInstrument = 'PHQ9' | 'GAD7' | 'PSS10' | 'ISI' | 'PREMM5';
+export type ScreeningInstrument = 'PHQ9' | 'GAD7' | 'PSS10' | 'ISI';
 
 export interface ScreeningSaveRequest {
   instrument: ScreeningInstrument;
-  answers: number[];   // 0-3 per item for PHQ-9
-  score: number;
+  scores: Record<string, number>;   // e.g. { q1: 2, q2: 1, ... }
+  total_score: number;
+  severity_label?: string;
+}
+
+export interface ScreeningCrisisResources {
+  message: string;
+  resources: Array<{ name: string; contact: string }>;
 }
 
 export interface ScreeningSaveResponse {
+  status: 'ok' | 'error';
+  is_crisis: boolean;
+  crisis_resources: ScreeningCrisisResources | null;
+  total_score: number;
+  severity_label?: string;
+}
+
+// =============================================================================
+// SURVEILLANCE  (matches api/index.py:1069 /api/surveillance)
+// =============================================================================
+
+export interface SurveillanceMilestone {
+  test: string;
+  when: string;
+  due_date?: string | null;
+  rationale?: string;
+}
+
+export interface SurveillanceResponse {
+  status: 'ok';
+  schedule?: SurveillanceMilestone[] | null;
+  message?: string;
+  stage?: string;
+  surgery_date?: string;
+}
+
+// =============================================================================
+// PRE-VISIT QUESTIONS  (matches api/index.py:1170 /api/previsit_questions)
+// =============================================================================
+
+export interface PreVisitGroup {
+  topic: string;
+  questions: string[];
+}
+
+export interface PreVisitRequest {
+  context?: string;
+}
+
+export interface PreVisitResponse {
+  status: 'ok' | 'feature_disabled';
+  groups: PreVisitGroup[];
+  used_fallback: boolean;
+  cached: boolean;
   saved: boolean;
-  is_crisis?: boolean;           // PHQ-9 Q9 >= 1
-  crisis_resources?: {
-    title: string;
-    message: string;
-    helplines: Array<{ name: string; number: string; text?: string }>;
-  };
+}
+
+// =============================================================================
+// VISIT RECAP  (matches api/index.py:1247 /api/visit_recap)
+// =============================================================================
+
+export interface VisitRecapStructured {
+  discussed: string[];
+  treatment_changes: string[];
+  action_items: string[];
+  follow_up_questions: string[];
+  flags: string[];
+  used_fallback: boolean;
+}
+
+export interface VisitRecapRequest {
+  transcript: string;
+}
+
+export interface VisitRecapResponse {
+  status: 'ok' | 'feature_disabled';
+  recap: VisitRecapStructured;
+  saved: boolean;
+  truncated: boolean;
+}
+
+// =============================================================================
+// INSURANCE APPEAL  (matches api/index.py:1327 /api/insurance_appeal)
+// =============================================================================
+
+export interface InsuranceAppealResponse {
+  status: 'ok' | 'feature_disabled' | 'error';
+  draft: string;
+  citations: Record<string, string>;
+  sources: Array<{ title: string; section: number | null; preview: string }>;
+  saved: boolean;
+}
+
+// =============================================================================
+// DEEP RESEARCH  (matches api/index.py:1478 /api/deep_research)
+// =============================================================================
+
+export interface DeepResearchSection {
+  title: string;
+  body: string;
+}
+
+export interface DeepResearchResponse {
+  status: 'ok' | 'off_topic' | 'feature_disabled';
+  report: string;
+  sections: DeepResearchSection[];
+  citations: Record<string, string>;
+  sources: Array<{ title: string; section: number | null; preview: string }>;
+  verified: boolean;
 }
 
 // =============================================================================
@@ -286,9 +384,13 @@ export interface ClinicalTrialsQuery {
 }
 
 export interface ClinicalTrialsResponse {
+  status?: 'ok' | 'error';
   trials: ChatClinicalTrial[];
-  total: number;
-  search_criteria: Record<string, unknown>;
+  total_found?: number;
+  search_criteria?: Record<string, unknown>;
+  error?: string;
+  missing_critical?: string[];
+  missing_helpful?: string[];
 }
 
 // =============================================================================

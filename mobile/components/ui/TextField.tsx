@@ -1,16 +1,16 @@
 import { forwardRef, useState } from 'react';
-import { Text, TextInput, View, type TextInputProps } from 'react-native';
+import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 
 import { Colors, Fonts, Radius } from '@/constants/theme';
 
-interface Props extends Omit<TextInputProps, 'style'> {
+interface Props extends TextInputProps {
   label?: string;
   hint?: string;
   error?: string;
 }
 
 export const TextField = forwardRef<TextInput, Props>(function TextField(
-  { label, hint, error, onFocus, onBlur, ...rest },
+  { label, hint, error, onFocus, onBlur, style, ...rest },
   ref,
 ) {
   const [focused, setFocused] = useState(false);
@@ -33,17 +33,20 @@ export const TextField = forwardRef<TextInput, Props>(function TextField(
           setFocused(false);
           onBlur?.(e);
         }}
-        style={{
-          backgroundColor: Colors.surface,
-          borderWidth: 1,
-          borderColor,
-          borderRadius: Radius.sm,
-          paddingHorizontal: 12,
-          minHeight: 44,
-          color: Colors.textPrimary,
-          fontSize: 16, // iOS no-zoom
-          fontFamily: Fonts.sans,
-        }}
+        style={StyleSheet.flatten([
+          {
+            backgroundColor: Colors.surface,
+            borderWidth: 1,
+            borderColor,
+            borderRadius: Radius.sm,
+            paddingHorizontal: 12,
+            minHeight: 44,
+            color: Colors.textPrimary,
+            fontSize: 16, // iOS no-zoom
+            fontFamily: Fonts.sans,
+          },
+          style,
+        ])}
         {...rest}
       />
       {error ? (

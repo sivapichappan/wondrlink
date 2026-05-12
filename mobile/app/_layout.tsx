@@ -86,10 +86,18 @@ function RootGate() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="(onboarding)" />
-      <Stack.Screen name="(tabs)" />
+    <Stack
+      screenOptions={{
+        headerStyle: { backgroundColor: Colors.surface },
+        headerTintColor: Colors.textPrimary,
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: Colors.surface },
+      }}>
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="profile" options={{ title: 'Profile' }} />
+      <Stack.Screen name="tools" options={{ headerShown: false }} />
     </Stack>
   );
 }
