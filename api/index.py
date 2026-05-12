@@ -541,9 +541,13 @@ def api_chat():
 
         # Load patient profile from Supabase
         patient_profile = load_profile(user_id)
-        # load_profile returns {} if not found, which is falsy in Python. 
+        # load_profile returns {} if not found, which is falsy in Python.
         # We want to ensure extract_patient_context_complex is called even if profile is mostly empty.
         patient_context = extract_patient_context_complex(patient_profile) if (patient_profile is not None and len(patient_profile) > 0) else {}
+
+        # Classify query type early — it drives both the symptom-context injection
+        # below and the chunk-retrieval top_k. Must be set before any branch reads it.
+        query_type = classify_query_type(message)
 
         # Inject recent symptom check-in data for side_effect/treatment queries
         if query_type in ('side_effect', 'treatment'):
@@ -579,8 +583,7 @@ def api_chat():
                         mismatch_detected = True
                         break
 
-        # Classify query type early so we can adjust chunk retrieval
-        query_type = classify_query_type(message)
+        # (query_type already classified above)
         effective_top_k = 8 if query_type in ('treatment', 'clinical_trial') else 5
 
         # Search relevant chunks (hybrid: TF + vector with RRF)

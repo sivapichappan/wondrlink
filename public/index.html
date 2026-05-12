@@ -164,12 +164,12 @@
 
         /* Sidebar */
         .sidebar {
-            width: 320px;
+            width: 360px;
             background: var(--glass-bg);
             backdrop-filter: var(--glass-blur);
             -webkit-backdrop-filter: var(--glass-blur);
             border: 1px solid var(--glass-border);
-            border-radius: var(--radius-lg);
+            border-radius: var(--radius-xl);
             display: flex;
             flex-direction: column;
             box-shadow: var(--shadow-lg);
@@ -337,17 +337,14 @@
         .section-card {
             background: var(--surface);
             border: 1px solid var(--border-light);
-            border-left: 3px solid transparent;
-            border-radius: var(--radius);
+            border-radius: var(--radius-lg);
             padding: 16px;
-            transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
+            transition: border-color var(--transition), box-shadow var(--transition);
         }
 
         .section-card:hover {
             border-color: var(--border);
-            border-left-color: var(--primary-lighter);
             box-shadow: var(--shadow-sm);
-            transform: translateY(-1px);
         }
 
         .section-card.compact {
@@ -365,10 +362,10 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            padding: 8px 12px;
+            padding: 8px 14px;
             background: transparent;
             border: 1px solid var(--border-light);
-            border-radius: var(--radius);
+            border-radius: var(--radius-full);
             color: var(--text-secondary);
             font-size: 12px;
             cursor: pointer;
@@ -386,10 +383,10 @@
             align-items: center;
             justify-content: center;
             gap: 6px;
-            padding: 8px 12px;
+            padding: 8px 14px;
             background: transparent;
             border: 1px solid var(--border-light);
-            border-radius: var(--radius);
+            border-radius: var(--radius-full);
             color: var(--text-secondary);
             font-size: 12px;
             cursor: pointer;
@@ -782,7 +779,7 @@
         .chat-header {
             background: var(--surface);
             border: 1px solid var(--border-light);
-            border-radius: var(--radius-lg);
+            border-radius: var(--radius-xl);
             padding: 20px 24px;
             margin-bottom: 14px;
             box-shadow: var(--shadow-xs);
@@ -854,7 +851,7 @@
             overflow-y: auto;
             background: var(--surface);
             border: 1px solid var(--border-light);
-            border-radius: var(--radius-lg);
+            border-radius: var(--radius-xl);
             padding: 24px;
             margin-bottom: 14px;
             box-shadow: var(--shadow-xs);
@@ -863,8 +860,8 @@
         .input-section {
             background: var(--surface);
             border: 1px solid var(--border-light);
-            border-radius: var(--radius-lg);
-            padding: 10px;
+            border-radius: var(--radius-xl);
+            padding: 12px;
             display: flex;
             gap: 12px;
             align-items: stretch;
@@ -1870,9 +1867,11 @@
         }
 
         .suggestion-chip:hover {
-            background: var(--primary-ring);
+            background: var(--surface);
             border-color: var(--primary);
-            transform: translateY(-1px) scale(1.02);
+            color: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(31, 93, 79, 0.10);
         }
 
         .chat-footer-links {
@@ -4558,14 +4557,13 @@
         .sidebar .section-card {
             background: var(--sidebar-bg-card);
             border: 1px solid var(--sidebar-border);
-            border-left: 1px solid var(--sidebar-border);
+            border-radius: var(--radius-lg);
             box-shadow: 0 1px 2px rgba(15, 32, 28, 0.04);
             transition: border-color var(--transition), box-shadow var(--transition);
         }
         .sidebar .section-card:hover {
-            border-color: var(--sidebar-border);
-            border-left-color: var(--sidebar-accent);
-            box-shadow: 0 2px 8px rgba(15, 32, 28, 0.06);
+            border-color: rgba(31, 93, 79, 0.20);
+            box-shadow: 0 4px 14px rgba(15, 32, 28, 0.08);
             transform: none;
         }
 
