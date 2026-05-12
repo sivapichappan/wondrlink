@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { MessageCircle } from 'lucide-react-native';
+import { HeartPulse, MessageCircle } from 'lucide-react-native';
 
 import { Colors } from '@/constants/theme';
 
@@ -17,6 +17,13 @@ export default function TabLayout() {
         options={{
           title: 'Chat',
           tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="care"
+        options={{
+          title: 'Care',
+          tabBarIcon: ({ color, size }) => <HeartPulse color={color} size={size} />,
         }}
       />
     </Tabs>

@@ -29,7 +29,7 @@ export const ENDPOINTS = {
   clearChat: '/api/clear_chat',
   feedback: '/api/feedback',
 
-  // --- Profile ---
+  // --- Profile (clearProfile is POST per api/index.py:307) ---
   uploadProfile: '/api/upload_profile',
   getPatient: '/api/get_patient',
   clearProfile: '/api/clear_profile',

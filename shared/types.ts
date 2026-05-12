@@ -184,33 +184,73 @@ export interface ChatResponse {
 }
 
 // =============================================================================
-// HERO
+// HERO  (matches api/index.py:1701 /api/hero)
 // =============================================================================
 
+export interface HeroVisitSummary {
+  when: string | null;
+  when_pretty: string;
+  pending_followups: number;
+  changed_treatment: boolean;
+}
+
 export interface HeroResponse {
-  greeting: string;
-  phase_description: string;
-  suggested_questions: string[];
-  last_visit_summary: {
-    when: string | null;
-    when_pretty: string;
-    pending_followups: number;
-    changed_treatment: boolean;
-  } | null;
+  has_profile: boolean;
+  first_name?: string;
+  phase_description?: string;
+  regimen?: string;
+  days_into?: number | null;
+  cycle?: number | null;
+  last_visit?: HeroVisitSummary | null;
+  suggestions?: string[];
+  error?: string;
 }
 
 // =============================================================================
-// CARE SNAPSHOT
+// CARE SNAPSHOT  (matches api/index.py:1754 /api/care_snapshot)
 // =============================================================================
 
+export type Phq9Trend = 'improving' | 'stable' | 'worsening' | 'none';
+
+export interface Phq9Point {
+  score: number;
+  completed_at: string;
+}
+
 export interface CareSnapshotResponse {
-  phq9_trend: Array<{ date: string; score: number }>;
-  symptom_timeline: Array<{ date: string; symptom: string; severity: number }>;
-  stats: {
-    total_visits: number;
-    days_in_treatment: number;
-    pending_action_items: number;
-  };
+  phq9_points: Phq9Point[];
+  days_since_symptom: number | null;
+  phq9_trend: Phq9Trend;
+  phq9_count: number;
+}
+
+// =============================================================================
+// PROFILE
+// =============================================================================
+
+/**
+ * The patient profile is freeform JSON server-side. Mobile treats it as an
+ * opaque record + a couple of well-known top-level fields it can render.
+ */
+export type PatientProfile = Record<string, unknown> & {
+  patient?: { firstName?: string; name?: string; age?: number; sex?: string };
+  treatments?: unknown[];
+  biomarkers?: unknown[];
+  surgicalHistory?: unknown[];
+  visit_recaps?: unknown[];
+};
+
+export interface GetPatientResponse {
+  profile?: PatientProfile;
+  patient_summary?: string;
+  context?: Record<string, unknown>;
+}
+
+export interface UploadProfileResponse {
+  status: 'ok';
+  profile: PatientProfile;
+  patient_summary: string;
+  context: Record<string, unknown>;
 }
 
 // =============================================================================

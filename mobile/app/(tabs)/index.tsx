@@ -1,4 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { useLocalSearchParams, router } from 'expo-router';
 import { Bot, Trash2 } from 'lucide-react-native';
 import { useEffect, useRef } from 'react';
 import {
@@ -24,6 +25,8 @@ export default function ChatScreen() {
   const { messages, isLoading, isSending, sendMessage, clearAll } = useChat();
   const listRef = useRef<FlatList<ChatHistoryMessage>>(null);
   const qc = useQueryClient();
+  const params = useLocalSearchParams<{ q?: string }>();
+  const lastHandledQ = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -32,6 +35,17 @@ export default function ChatScreen() {
       return () => clearTimeout(id);
     }
   }, [messages.length]);
+
+  // Auto-send a question passed via ?q= (e.g. from a Care hero suggestion)
+  useEffect(() => {
+    const q = params.q;
+    if (!q || isSending) return;
+    if (lastHandledQ.current === q) return;
+    lastHandledQ.current = q;
+    sendMessage(q);
+    // Clear the param so a back-nav doesn't re-trigger
+    router.setParams({ q: undefined });
+  }, [params.q, isSending, sendMessage]);
 
   const handleClear = () => {
     Alert.alert(
