@@ -4636,6 +4636,153 @@
         i[data-lucide].lg { width: 22px; height: 22px; }
         .icon-stroke.sm,
         i[data-lucide].sm { width: 14px; height: 14px; }
+
+        /* ===========================================================
+           SIDEBAR ACCORDION GROUPS (Phase B.1)
+           Three collapsible <details> blocks: Your Care / Resources / Settings.
+           =========================================================== */
+        .sidebar-group {
+            background: transparent;
+            border: none;
+        }
+        .sidebar-group + .sidebar-group {
+            margin-top: 4px;
+        }
+        .sidebar-group > summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 12px 14px 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--sidebar-text-muted);
+            border-radius: var(--radius-sm, 6px);
+            user-select: none;
+            transition: color var(--transition), background var(--transition);
+        }
+        .sidebar-group > summary::-webkit-details-marker { display: none; }
+        .sidebar-group > summary::marker { display: none; }
+        .sidebar-group > summary:hover {
+            color: var(--sidebar-text);
+            background: var(--sidebar-bg-hover);
+        }
+        .sidebar-group-summary-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sidebar-group-chevron {
+            transition: transform 0.2s ease;
+            color: var(--sidebar-text-muted);
+        }
+        .sidebar-group[open] > summary .sidebar-group-chevron {
+            transform: rotate(180deg);
+            color: var(--sidebar-text);
+        }
+        .sidebar-group-body {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 6px 0 8px;
+        }
+        /* Hide individual section headers inside accordion bodies (group header
+           replaces them); preserve the badge if one exists. */
+        .sidebar-group-body .section-card.compact > .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 0 8px;
+            font-size: 12px;
+        }
+        .sidebar-group-body .section-card.compact > .section-header > .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--sidebar-text);
+            letter-spacing: 0;
+            text-transform: none;
+        }
+
+        /* ===========================================================
+           EMPTY STATES (Phase B.2)
+           Used by trial watchlist, profile pre-build, etc.
+           =========================================================== */
+        .empty-state {
+            padding: 18px 12px 14px;
+            text-align: center;
+        }
+        .empty-state-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--sidebar-text-muted);
+            margin: 0 auto 10px;
+        }
+        .sidebar .empty-state-icon i[data-lucide] {
+            width: 20px;
+            height: 20px;
+            stroke-width: 1.6;
+        }
+        .empty-state-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--sidebar-text);
+            margin-bottom: 4px;
+            letter-spacing: -0.005em;
+        }
+        .empty-state-body {
+            font-size: 12px;
+            color: var(--sidebar-text-muted);
+            line-height: 1.5;
+            margin: 0 auto;
+            max-width: 240px;
+        }
+        .empty-state-preview {
+            margin-top: 14px;
+            padding: 8px 10px;
+            border: 1px dashed var(--sidebar-border);
+            border-radius: var(--radius-sm, 6px);
+            background: rgba(255, 255, 255, 0.025);
+            opacity: 0.55;
+            pointer-events: none;
+            font-size: 11px;
+            text-align: left;
+            color: var(--sidebar-text-muted);
+        }
+        .empty-state-preview-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+        }
+        .empty-state-preview-row + .empty-state-preview-row {
+            margin-top: 4px;
+        }
+        .empty-state-badges {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 12px;
+        }
+        .empty-state-badge {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--sidebar-border);
+            color: var(--sidebar-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
     </style>
 </head>
 
@@ -5250,221 +5397,291 @@
             </div>
 
             <div class="sidebar-content">
-                <!-- Settings & Actions -->
-                <div class="section-card compact">
-                    <div class="settings-row">
-                        <label class="settings-label" for="responseLength">Detail Level
-                            <span class="help-tip" title="Brief: 2-3 sentences. Normal: balanced with key details. Detailed: comprehensive with full context.">(?)</span>
-                        </label>
-                        <select class="response-dropdown" id="responseLength">
-                            <option value="brief" title="Concise answers in 2-3 sentences">Brief</option>
-                            <option value="normal" selected title="Balanced responses with key details">Normal</option>
-                            <option value="detailed" title="Comprehensive responses with full context">Detailed</option>
-                        </select>
-                    </div>
-                    <div class="sidebar-actions">
-                        <button class="clear-chat-btn" onclick="confirmClearChat()">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
-                                </path>
-                            </svg>
-                            Clear History
-                        </button>
-                        <button class="export-chat-btn" onclick="exportConversation()" title="Export conversation as text file">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                <polyline points="7 10 12 15 17 10"></polyline>
-                                <line x1="12" y1="15" x2="12" y2="3"></line>
-                            </svg>
-                            Export
-                        </button>
-                    </div>
-                </div>
+                <!-- ============================================
+                     GROUP 1: YOUR CARE  (open by default)
+                     ============================================ -->
+                <details class="sidebar-group" open>
+                    <summary>
+                        <span class="sidebar-group-summary-left">
+                            <i data-lucide="heart-pulse" class="icon-stroke"></i>
+                            <span>Your Care</span>
+                        </span>
+                        <i data-lucide="chevron-down" class="icon-stroke sidebar-group-chevron"></i>
+                    </summary>
+                    <div class="sidebar-group-body">
 
-                <!-- Trial Watchlist -->
-                <div class="section-card compact" id="watchlistPanel">
-                    <div class="section-header">
-                        <div class="section-title">Saved Trials</div>
-                        <div class="section-badge" id="watchlistBadge">None saved</div>
-                    </div>
-                    <div id="watchlistList" class="watchlist-content">
-                        <p class="watchlist-empty">No trials saved yet. Bookmark trials from search results to track them here.</p>
-                    </div>
-                </div>
+                        <!-- Patient Profile -->
+                        <div class="section-card">
+                            <div class="section-header">
+                                <div class="section-title">
+                                    Patient Profile
+                                    <button class="info-btn" onclick="toggleProfileInfo()" title="What is this?">i</button>
+                                </div>
+                                <div class="section-badge" id="profileBadge">No profile</div>
+                            </div>
 
-                <!-- Wellness Check-In (Items 3,4,5) -->
-                <div class="section-card compact">
-                    <div class="section-header">
-                        <div class="section-title">Wellness Check-In</div>
-                        <button onclick="openDashboard()" style="background:none;border:none;color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;padding:2px 6px;">
-                            View Trends
-                        </button>
-                    </div>
-                    <div style="display:flex;flex-direction:column;gap:6px;padding:0 12px 12px;">
-                        <button onclick="startScreening('PHQ9')" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
-                            Depression (PHQ-9)
-                        </button>
-                        <button onclick="startScreening('GAD7')" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
-                            Anxiety (GAD-7)
-                        </button>
-                        <button onclick="startScreening('PSS10')" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
-                            Stress (PSS-10)
-                        </button>
-                        <button onclick="startScreening('ISI')" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
-                            Sleep (ISI)
-                        </button>
-                        <button onclick="startScreening('SYMPTOM')" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;background:var(--primary);color:white;">
-                            Symptom Check-In
-                        </button>
-                    </div>
-                </div>
+                            <!-- Info panel (hidden by default) -->
+                            <div class="profile-info-panel" id="profileInfoPanel" style="display: none;">
+                                <p><strong>What is a Patient Profile?</strong></p>
+                                <p>Your personalized profile helps WondrLink give you relevant guidance tailored to your
+                                    specific situation.</p>
+                                <p class="help-heading"><strong>We'll ask about:</strong></p>
+                                <ul>
+                                    <li>Your diagnosis (colon cancer type, stage)</li>
+                                    <li>Current treatments and any side effects</li>
+                                    <li>Test results (biomarkers like KRAS, BRAF)</li>
+                                </ul>
+                                <p class="help-note">Takes about 5 minutes to complete.</p>
+                            </div>
 
-                <!-- Care Tools (Pitch features: pre-visit, visit recap, insurance appeal, deep research) -->
-                <div class="section-card compact" id="careToolsPanel">
-                    <div class="section-header">
-                        <div class="section-title">Care Tools</div>
-                    </div>
-                    <div style="display:flex;flex-direction:column;gap:6px;padding:0 12px 12px;">
-                        <button id="previsitBtn" onclick="openPrevisit()" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
-                            Prepare for next visit
-                        </button>
-                        <button id="visitRecapBtn" onclick="openVisitRecap()" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
-                            Visit Companion (recap)
-                        </button>
-                        <button id="appealBtn" onclick="openAppeal()" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
-                            Insurance Appeal Letter
-                        </button>
-                        <button id="deepDiveBtn" onclick="openDeepDive()" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
-                            Deep-Dive Research
-                        </button>
-                    </div>
-                </div>
+                            <!-- Build profile button (shown when no profile) -->
+                            <div class="upload-area" id="uploadArea">
+                                <div class="empty-state">
+                                    <div class="empty-state-icon">
+                                        <i data-lucide="user-plus"></i>
+                                    </div>
+                                    <div class="empty-state-title">Build your profile</div>
+                                    <div class="empty-state-body">5 minutes. Drives every answer you'll get.</div>
+                                    <div class="empty-state-badges">
+                                        <span class="empty-state-badge">Trials</span>
+                                        <span class="empty-state-badge">Side effects</span>
+                                        <span class="empty-state-badge">Surveillance</span>
+                                    </div>
+                                </div>
+                                <button class="build-profile-btn" onclick="startProfileWizard(false)" style="margin-top:8px;">
+                                    Get started
+                                </button>
+                            </div>
 
-                <!-- Nutrition Quick Questions -->
-                <div class="section-card compact">
-                    <div class="section-header">
-                        <div class="section-title">Nutrition</div>
-                    </div>
-                    <div style="display:flex;flex-direction:column;gap:6px;padding:0 12px 12px;">
-                        <button onclick="askNutritionQuestion('What should I eat during chemotherapy?')" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
-                            Eating during chemo
-                        </button>
-                        <button onclick="askNutritionQuestion('What diet helps prevent colon cancer recurrence?')" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
-                            Anti-recurrence diet
-                        </button>
-                        <button onclick="askNutritionQuestion('What foods should I avoid after colon surgery?')" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
-                            Post-surgery foods
-                        </button>
-                    </div>
-                </div>
+                            <!-- Profile info (shown after profile created) -->
+                            <div class="profile-info" id="profileInfo" style="display: none;"></div>
 
-                <!-- Human Navigator -->
-                <div class="section-card compact">
-                    <div class="section-header">
-                        <div class="section-title">Need More Help?</div>
-                    </div>
-                    <div style="padding:0 12px 12px;">
-                        <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:8px;">
-                            Connect with a real person who can help navigate insurance, find trials, or provide emotional support.
+                            <!-- Edit button -->
+                            <button class="edit-profile-btn" id="editProfileBtn" onclick="startProfileWizard(true)"
+                                style="display: none;">Edit Profile</button>
                         </div>
-                        <a href="https://www.wondrlinkfoundation.org" target="_blank" rel="noopener"
-                           style="display:block;text-align:center;padding:10px;
-                                  background:var(--primary);color:white;border-radius:var(--radius-sm, 6px);
-                                  text-decoration:none;font-size:13px;font-weight:600;">
-                            Connect with a Navigator
-                        </a>
-                    </div>
-                </div>
 
-                <!-- Screening Ambassador (Item 9) -->
-                <div class="section-card compact" id="ambassadorSection" style="display:none;">
-                    <div class="section-header">
-                        <div class="section-title">Share with Loved Ones</div>
-                    </div>
-                    <div style="padding:0 12px 12px;">
-                        <div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:8px;">
-                            Help protect your family — screening saves lives.
+                        <!-- Wellness Check-In -->
+                        <div class="section-card compact">
+                            <div class="section-header">
+                                <div class="section-title">Wellness Check-In</div>
+                                <button onclick="openDashboard()" style="background:none;border:none;color:var(--sidebar-accent);font-size:11px;font-weight:600;cursor:pointer;padding:2px 6px;">
+                                    View Trends
+                                </button>
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:6px;padding:0 12px 12px;">
+                                <button onclick="startScreening('PHQ9')" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
+                                    Depression (PHQ-9)
+                                </button>
+                                <button onclick="startScreening('GAD7')" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
+                                    Anxiety (GAD-7)
+                                </button>
+                                <button onclick="startScreening('PSS10')" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
+                                    Stress (PSS-10)
+                                </button>
+                                <button onclick="startScreening('ISI')" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
+                                    Sleep (ISI)
+                                </button>
+                                <button onclick="startScreening('SYMPTOM')" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;background:var(--sidebar-accent);color:var(--sidebar-accent-text);">
+                                    Symptom Check-In
+                                </button>
+                            </div>
                         </div>
-                        <div style="background:var(--background);border-radius:var(--radius-sm, 6px);padding:10px 12px;
-                                    border:1px solid var(--border);font-size:12px;line-height:1.5;">
-                            "Colorectal cancer is #2 in cancer deaths — but a colonoscopy or simple at-home stool test can find it early when it's most treatable."
+
+                        <!-- Care Tools -->
+                        <div class="section-card compact" id="careToolsPanel">
+                            <div class="section-header">
+                                <div class="section-title">Care Tools</div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:6px;padding:0 12px 12px;">
+                                <button id="previsitBtn" onclick="openPrevisit()" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
+                                    Prepare for next visit
+                                </button>
+                                <button id="visitRecapBtn" onclick="openVisitRecap()" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
+                                    Visit Companion (recap)
+                                </button>
+                                <button id="appealBtn" onclick="openAppeal()" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
+                                    Insurance Appeal Letter
+                                </button>
+                                <button id="deepDiveBtn" onclick="openDeepDive()" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
+                                    Deep-Dive Research
+                                </button>
+                            </div>
                         </div>
-                        <div style="display:flex;gap:6px;margin-top:8px;">
-                            <a href="https://www.cdc.gov/colorectal-cancer/screening/index.html" target="_blank"
-                               class="suggestion-chip" style="font-size:11px;text-decoration:none;padding:6px 10px;">
-                                CDC Screening Info
-                            </a>
-                            <button onclick="copyAmbassadorMessage()" class="suggestion-chip" style="font-size:11px;padding:6px 10px;">
-                                Copy Message
-                            </button>
-                        </div>
-                        <button onclick="startScreening('PREMM5')" class="suggestion-chip" style="font-size:11px;padding:6px 10px;margin-top:6px;width:100%;text-align:left;">
-                            Check Lynch Syndrome Risk
-                        </button>
-                    </div>
-                </div>
 
-                <!-- Surveillance Schedule -->
-                <div class="section-card compact" id="surveillanceSection" style="display:none;">
-                    <div class="section-header">
-                        <div class="section-title">Follow-Up Schedule</div>
-                    </div>
-                    <div id="surveillanceContent" style="padding:0 12px 12px;font-size:12px;color:var(--text-muted);">
-                        Loading...
-                    </div>
-                </div>
-
-                <!-- Patient Profile -->
-                <div class="section-card">
-                    <div class="section-header">
-                        <div class="section-title">
-                            Patient Profile
-                            <button class="info-btn" onclick="toggleProfileInfo()" title="What is this?">i</button>
-                        </div>
-                        <div class="section-badge" id="profileBadge">No profile</div>
-                    </div>
-
-                    <!-- Info panel (hidden by default) -->
-                    <div class="profile-info-panel" id="profileInfoPanel" style="display: none;">
-                        <p><strong>What is a Patient Profile?</strong></p>
-                        <p>Your personalized profile helps WondrLink give you relevant guidance tailored to your
-                            specific situation.</p>
-                        <p class="help-heading"><strong>We'll ask about:</strong></p>
-                        <ul>
-                            <li>Your diagnosis (colon cancer type, stage)</li>
-                            <li>Current treatments and any side effects</li>
-                            <li>Test results (biomarkers like KRAS, BRAF)</li>
-                        </ul>
-                        <p class="help-note">Takes about 5 minutes to complete.</p>
-                    </div>
-
-                    <!-- Build profile button (shown when no profile) -->
-                    <div class="upload-area" id="uploadArea">
-                        <button class="build-profile-btn" onclick="startProfileWizard(false)">
-                            Build Your Profile
-                        </button>
-                        <div class="build-profile-hint">
-                            Answer a few questions to personalize your experience
+                        <!-- Surveillance Schedule -->
+                        <div class="section-card compact" id="surveillanceSection" style="display:none;">
+                            <div class="section-header">
+                                <div class="section-title">Follow-Up Schedule</div>
+                            </div>
+                            <div id="surveillanceContent" style="padding:0 12px 12px;font-size:12px;color:var(--sidebar-text-muted);">
+                                Loading...
+                            </div>
                         </div>
                     </div>
+                </details>
 
-                    <!-- Profile info (shown after profile created) -->
-                    <div class="profile-info" id="profileInfo" style="display: none;"></div>
+                <!-- ============================================
+                     GROUP 2: RESOURCES  (collapsed by default)
+                     ============================================ -->
+                <details class="sidebar-group">
+                    <summary>
+                        <span class="sidebar-group-summary-left">
+                            <i data-lucide="library" class="icon-stroke"></i>
+                            <span>Resources</span>
+                        </span>
+                        <i data-lucide="chevron-down" class="icon-stroke sidebar-group-chevron"></i>
+                    </summary>
+                    <div class="sidebar-group-body">
 
-                    <!-- Edit/Clear buttons -->
-                    <button class="edit-profile-btn" id="editProfileBtn" onclick="startProfileWizard(true)"
-                        style="display: none;">Edit Profile</button>
-                    <button class="small secondary" id="clearProfileBtn"
-                        style="display: none; margin-top: 8px; width: 100%;">Clear Profile</button>
-                    <button class="small" id="deleteAccountBtn"
-                        onclick="confirmDeleteAccount()"
-                        style="margin-top: 8px; width: 100%; background: transparent; color: var(--danger); border: 1px solid var(--danger); font-size: 11px;">
-                        Delete Account
-                    </button>
-                </div>
+                        <!-- Trial Watchlist -->
+                        <div class="section-card compact" id="watchlistPanel">
+                            <div class="section-header">
+                                <div class="section-title">Saved Trials</div>
+                                <div class="section-badge" id="watchlistBadge">None saved</div>
+                            </div>
+                            <div id="watchlistList" class="watchlist-content">
+                                <div class="empty-state">
+                                    <div class="empty-state-icon">
+                                        <i data-lucide="bookmark-plus"></i>
+                                    </div>
+                                    <div class="empty-state-title">No trials saved yet</div>
+                                    <div class="empty-state-body">Bookmark any clinical trial that appears in chat to track it here.</div>
+                                    <div class="empty-state-preview">
+                                        <div class="empty-state-preview-row">
+                                            <span>NCT05012345 · Phase 2 · FOLFOX +</span>
+                                            <i data-lucide="bookmark" style="width:11px;height:11px;"></i>
+                                        </div>
+                                        <div class="empty-state-preview-row">
+                                            <span>NCT05098765 · Phase 1/2 · KRAS targeted</span>
+                                            <i data-lucide="bookmark" style="width:11px;height:11px;"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Human Navigator -->
+                        <div class="section-card compact">
+                            <div class="section-header">
+                                <div class="section-title">Need More Help?</div>
+                            </div>
+                            <div style="padding:0 12px 12px;">
+                                <div style="font-size:12px;color:var(--sidebar-text-muted);line-height:1.5;margin-bottom:8px;">
+                                    Connect with a real person who can help navigate insurance, find trials, or provide emotional support.
+                                </div>
+                                <a href="https://www.wondrlinkfoundation.org" target="_blank" rel="noopener"
+                                   style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;
+                                          background:var(--sidebar-accent);color:var(--sidebar-accent-text);border-radius:var(--radius-sm, 6px);
+                                          text-decoration:none;font-size:13px;font-weight:600;">
+                                    <i data-lucide="life-buoy" class="icon-stroke"></i>
+                                    Connect with a Navigator
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Screening Ambassador -->
+                        <div class="section-card compact" id="ambassadorSection" style="display:none;">
+                            <div class="section-header">
+                                <div class="section-title">Share with Loved Ones</div>
+                            </div>
+                            <div style="padding:0 12px 12px;">
+                                <div style="font-size:12px;color:var(--sidebar-text-muted);line-height:1.5;margin-bottom:8px;">
+                                    Help protect your family — screening saves lives.
+                                </div>
+                                <div style="background:rgba(255,255,255,0.05);border-radius:var(--radius-sm, 6px);padding:10px 12px;
+                                            border:1px solid var(--sidebar-border);font-size:12px;line-height:1.5;color:var(--sidebar-text-muted);">
+                                    "Colorectal cancer is #2 in cancer deaths — but a colonoscopy or simple at-home stool test can find it early when it's most treatable."
+                                </div>
+                                <div style="display:flex;gap:6px;margin-top:8px;">
+                                    <a href="https://www.cdc.gov/colorectal-cancer/screening/index.html" target="_blank"
+                                       class="suggestion-chip" style="font-size:11px;text-decoration:none;padding:6px 10px;">
+                                        CDC Screening Info
+                                    </a>
+                                    <button onclick="copyAmbassadorMessage()" class="suggestion-chip" style="font-size:11px;padding:6px 10px;">
+                                        Copy Message
+                                    </button>
+                                </div>
+                                <button onclick="startScreening('PREMM5')" class="suggestion-chip" style="font-size:11px;padding:6px 10px;margin-top:6px;width:100%;text-align:left;">
+                                    Check Lynch Syndrome Risk
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Nutrition Quick Questions -->
+                        <div class="section-card compact">
+                            <div class="section-header">
+                                <div class="section-title">Nutrition</div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:6px;padding:0 12px 12px;">
+                                <button onclick="askNutritionQuestion('What should I eat during chemotherapy?')" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
+                                    Eating during chemo
+                                </button>
+                                <button onclick="askNutritionQuestion('What diet helps prevent colon cancer recurrence?')" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
+                                    Anti-recurrence diet
+                                </button>
+                                <button onclick="askNutritionQuestion('What foods should I avoid after colon surgery?')" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
+                                    Post-surgery foods
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- ============================================
+                     GROUP 3: SETTINGS  (collapsed by default)
+                     ============================================ -->
+                <details class="sidebar-group">
+                    <summary>
+                        <span class="sidebar-group-summary-left">
+                            <i data-lucide="settings" class="icon-stroke"></i>
+                            <span>Settings</span>
+                        </span>
+                        <i data-lucide="chevron-down" class="icon-stroke sidebar-group-chevron"></i>
+                    </summary>
+                    <div class="sidebar-group-body">
+
+                        <!-- Detail level + chat actions -->
+                        <div class="section-card compact">
+                            <div class="settings-row">
+                                <label class="settings-label" for="responseLength">Detail Level
+                                    <span class="help-tip" title="Brief: 2-3 sentences. Normal: balanced with key details. Detailed: comprehensive with full context.">(?)</span>
+                                </label>
+                                <select class="response-dropdown" id="responseLength">
+                                    <option value="brief" title="Concise answers in 2-3 sentences">Brief</option>
+                                    <option value="normal" selected title="Balanced responses with key details">Normal</option>
+                                    <option value="detailed" title="Comprehensive responses with full context">Detailed</option>
+                                </select>
+                            </div>
+                            <div class="sidebar-actions">
+                                <button class="clear-chat-btn" onclick="confirmClearChat()">
+                                    <i data-lucide="trash-2" class="icon-stroke sm"></i>
+                                    Clear History
+                                </button>
+                                <button class="export-chat-btn" onclick="exportConversation()" title="Export conversation as text file">
+                                    <i data-lucide="download" class="icon-stroke sm"></i>
+                                    Export
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Account management -->
+                        <div class="section-card compact">
+                            <div class="section-header">
+                                <div class="section-title">Account</div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:6px;padding:0 12px 12px;">
+                                <button class="small secondary" id="clearProfileBtn"
+                                    style="display: none; width: 100%;">Clear Profile</button>
+                                <button class="small" id="deleteAccountBtn"
+                                    onclick="confirmDeleteAccount()"
+                                    style="width: 100%; background: transparent; color: #FCA5A5; border: 1px solid var(--danger); font-size: 11px;">
+                                    Delete Account
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </details>
 
             </div>
 
@@ -8514,7 +8731,23 @@
             badge.textContent = watchlist.length > 0 ? watchlist.length + ' saved' : 'None saved';
 
             if (watchlist.length === 0) {
-                list.innerHTML = '<p class="watchlist-empty">No trials saved yet. Bookmark trials from search results to track them here.</p>';
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon"><i data-lucide="bookmark-plus"></i></div>
+                        <div class="empty-state-title">No trials saved yet</div>
+                        <div class="empty-state-body">Bookmark any clinical trial that appears in chat to track it here.</div>
+                        <div class="empty-state-preview">
+                            <div class="empty-state-preview-row">
+                                <span>NCT05012345 · Phase 2 · FOLFOX +</span>
+                                <i data-lucide="bookmark" style="width:11px;height:11px;"></i>
+                            </div>
+                            <div class="empty-state-preview-row">
+                                <span>NCT05098765 · Phase 1/2 · KRAS targeted</span>
+                                <i data-lucide="bookmark" style="width:11px;height:11px;"></i>
+                            </div>
+                        </div>
+                    </div>`;
+                if (typeof lucide !== 'undefined') { try { lucide.createIcons(); } catch (_) {} }
                 return;
             }
 
