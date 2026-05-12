@@ -1391,7 +1391,11 @@
             font-weight: 600;
             cursor: pointer;
         }
-        .feature-submit-btn:hover { background: var(--primary-dark, var(--primary)); }
+        .feature-submit-btn:hover {
+            background: var(--primary-light);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--primary-ring);
+        }
         .feature-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .feature-secondary-btn {
             padding: 10px 16px;
@@ -2753,7 +2757,9 @@
         }
 
         .mobile-profile-btn:hover {
-            background: var(--primary-dark);
+            background: var(--primary-light);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--primary-ring);
         }
 
         .mobile-profile-hint {
@@ -3136,7 +3142,9 @@
         }
 
         .acknowledgement-btn:not(:disabled):hover {
-            background: var(--primary-dark);
+            background: var(--primary-light);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--primary-ring);
         }
 
         /* Extended acknowledgement form fields */
@@ -3315,7 +3323,9 @@
         }
 
         .success-btn:hover {
-            background: var(--primary-dark);
+            background: var(--primary-light);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--primary-ring);
         }
 
         /* Profile update toast notification */
@@ -4851,14 +4861,54 @@
             border-color: var(--sidebar-accent);
             color: var(--sidebar-accent);
         }
+        /* Highlighted CTA variant (e.g. Symptom Check-In). Keeps dark-green
+           resting + white text; hover brightens like the other CTAs so text
+           stays readable. */
+        .sidebar .suggestion-chip.suggestion-chip-highlight {
+            background: var(--sidebar-accent);
+            color: var(--sidebar-accent-text);
+            border-color: var(--sidebar-accent);
+            font-weight: 600;
+        }
+        .sidebar .suggestion-chip.suggestion-chip-highlight:hover {
+            background: var(--primary-light);
+            color: var(--sidebar-accent-text);
+            border-color: var(--primary-light);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--primary-ring);
+        }
         .sidebar .build-profile-btn {
             background: var(--sidebar-accent);
             color: var(--sidebar-accent-text);
             font-weight: 600;
         }
         .sidebar .build-profile-btn:hover {
-            background: var(--sidebar-accent-hover);
+            background: var(--primary-light);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--primary-ring);
         }
+        .navigator-cta {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px;
+            background: var(--sidebar-accent);
+            color: var(--sidebar-accent-text);
+            border-radius: var(--radius-sm, 6px);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+        }
+        .navigator-cta:hover {
+            background: var(--primary-light);
+            color: var(--sidebar-accent-text);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--primary-ring);
+            text-decoration: none;
+        }
+        .sidebar .navigator-cta:hover { color: var(--sidebar-accent-text); }
         .sidebar .edit-profile-btn {
             background: var(--sidebar-bg-card);
             color: var(--sidebar-text);
@@ -6088,7 +6138,7 @@
                                 <button onclick="startScreening('ISI')" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
                                     Sleep (ISI)
                                 </button>
-                                <button onclick="startScreening('SYMPTOM')" class="suggestion-chip" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;background:var(--sidebar-accent);color:var(--sidebar-accent-text);">
+                                <button onclick="startScreening('SYMPTOM')" class="suggestion-chip suggestion-chip-highlight" style="text-align:left;width:100%;font-size:12px;padding:8px 12px;">
                                     Symptom Check-In
                                 </button>
                             </div>
@@ -6176,10 +6226,7 @@
                                 <div style="font-size:12px;color:var(--sidebar-text-muted);line-height:1.5;margin-bottom:8px;">
                                     Connect with a real person who can help navigate insurance, find trials, or provide emotional support.
                                 </div>
-                                <a href="https://www.wondrlinkfoundation.org" target="_blank" rel="noopener"
-                                   style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;
-                                          background:var(--sidebar-accent);color:var(--sidebar-accent-text);border-radius:var(--radius-sm, 6px);
-                                          text-decoration:none;font-size:13px;font-weight:600;">
+                                <a href="https://www.wondrlinkfoundation.org" target="_blank" rel="noopener" class="navigator-cta">
                                     <i data-lucide="life-buoy" class="icon-stroke"></i>
                                     Connect with a Navigator
                                 </a>
