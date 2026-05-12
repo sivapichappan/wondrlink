@@ -1,0 +1,24 @@
+import { Tabs } from 'expo-router';
+import { MessageCircle } from 'lucide-react-native';
+
+import { Colors } from '@/constants/theme';
+
+export default function TabLayout() {
+  return (
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.textMuted,
+        tabBarStyle: { backgroundColor: Colors.surface, borderTopColor: Colors.border },
+        headerShown: false,
+      }}>
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Chat',
+          tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={size} />,
+        }}
+      />
+    </Tabs>
+  );
+}
