@@ -2029,9 +2029,78 @@
         .bubble.bot {
             background: var(--surface-raised);
             color: var(--text-primary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+        }
+
+        /* ===========================================================
+           BOT RESPONSE CARD
+           Bot messages live inside a single card so the bubble, status
+           badges, follow-ups, resources, sources, and feedback all share
+           one outline. The legacy green left-bar on .bubble.bot is gone
+           inside the card; the card carries the visual identity.
+           =========================================================== */
+        .bot-response-card {
+            max-width: 78%;
+            background: var(--surface);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-xl);
+            padding: 18px 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            box-shadow: var(--shadow-xs);
+        }
+        .bot-response-card > .bubble.bot {
+            background: transparent;
             border: none;
-            border-left: 3px solid var(--primary-lighter);
-            border-radius: var(--radius-sm) var(--radius-lg) var(--radius-lg) var(--radius-lg);
+            border-left: none;
+            border-radius: 0;
+            padding: 0;
+            margin: 0;
+            max-width: 100%;
+            box-shadow: none;
+        }
+        .bot-response-card > .ai-status,
+        .bot-response-card > .msg-followups,
+        .bot-response-card > .msg-resources,
+        .bot-response-card > .msg-sources,
+        .bot-response-card > .msg-feedback {
+            max-width: 100%;
+            margin: 0;
+        }
+        /* Resources keeps a subtle background tint so it reads as a
+           cluster of links, not just inline text. */
+        .bot-response-card > .msg-resources {
+            background: var(--background);
+            border: 1px solid var(--border-light);
+            padding: 10px 14px;
+            border-radius: var(--radius-sm, 8px);
+        }
+        /* Sources panel inside the card loses its own border-left bar
+           (no more green vertical accent) and its standalone padding —
+           the card already pads everything. */
+        .bot-response-card > .msg-sources {
+            background: transparent;
+            border: none;
+            border-left: none;
+            border-radius: 0;
+            padding: 8px 0 0;
+            border-top: 1px solid var(--border-light);
+        }
+        .bot-response-card > .msg-followups {
+            padding: 2px 0 0;
+        }
+        .bot-response-card > .msg-feedback {
+            padding-top: 4px;
+            border-top: 1px solid var(--border-light);
+        }
+        /* On narrow viewports give the card more horizontal room. */
+        @media (max-width: 720px) {
+            .bot-response-card {
+                max-width: 100%;
+                padding: 14px 16px;
+            }
         }
 
         /* Markdown inside bot bubbles (Phase C.5) */
@@ -4445,7 +4514,7 @@
             margin-top: 10px;
             padding: 10px 12px;
             background: var(--background);
-            border-left: 3px solid var(--primary-lighter);
+            border: 1px solid var(--border-light);
             border-radius: var(--radius-sm);
             font-size: var(--font-xs);
         }
@@ -8805,6 +8874,16 @@
             const div = document.createElement("div");
             div.className = "msg " + who;
 
+            // Bot messages live inside a unified .bot-response-card so the
+            // answer, status badges, follow-up chips, resources, sources, and
+            // feedback all share one border, padding, and visual identity.
+            // User messages remain a simple bubble.
+            const container = (who === "bot") ? document.createElement("div") : div;
+            if (who === "bot") {
+                container.className = "bot-response-card";
+                div.appendChild(container);
+            }
+
             const bubble = document.createElement("div");
             bubble.className = "bubble " + who;
             if (who === "bot") {
@@ -8814,13 +8893,13 @@
                 // User messages stay plain text with linebreak conversion only.
                 bubble.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
             }
-            div.appendChild(bubble);
+            container.appendChild(bubble);
 
             if (who === "bot" && metadata && metadata.patient_context_used) {
                 const status = document.createElement("div");
                 status.className = "ai-status enhanced";
                 status.textContent = "Personalized response";
-                div.appendChild(status);
+                container.appendChild(status);
             }
 
             if (who === "bot" && metadata && metadata.has_guidelines) {
@@ -8828,7 +8907,7 @@
                 guidelineStatus.className = "ai-status guidelines";
                 guidelineStatus.innerHTML = '<span class="guideline-dot"></span> Medical Guidelines';
                 guidelineStatus.title = metadata.guidelines_used ? metadata.guidelines_used.join(', ') : 'Evidence-based guidance';
-                div.appendChild(guidelineStatus);
+                container.appendChild(guidelineStatus);
             }
 
             // Phase B.2 — follow-up suggestion chips (interactive). Render right
@@ -8844,7 +8923,7 @@
                     chip.innerHTML = '<span>' + escapeHtml(q) + '</span><i data-lucide="arrow-right" class="icon-stroke sm"></i>';
                     followupsRow.appendChild(chip);
                 });
-                div.appendChild(followupsRow);
+                container.appendChild(followupsRow);
             }
 
             // Phase A.2 — trusted resources as a subtle row, not inline in text.
@@ -8864,7 +8943,7 @@
                     link.textContent = r.name || "Resource";
                     resourcesRow.appendChild(link);
                 });
-                div.appendChild(resourcesRow);
+                container.appendChild(resourcesRow);
             }
 
             if (who === "bot" && metadata && metadata.sources && metadata.sources.length > 0) {
@@ -8912,7 +8991,7 @@
                     sourcesDiv.appendChild(item);
                 });
 
-                div.appendChild(sourcesDiv);
+                container.appendChild(sourcesDiv);
             }
 
             // Render clinical trials collapsible section INSIDE the bubble
@@ -9096,7 +9175,7 @@
                     <button class="feedback-btn" onclick="sendFeedback(this, 'up')" title="Helpful" aria-label="Mark as helpful"><i data-lucide="thumbs-up" class="icon-stroke sm"></i></button>
                     <button class="feedback-btn" onclick="sendFeedback(this, 'down')" title="Not helpful" aria-label="Mark as not helpful"><i data-lucide="thumbs-down" class="icon-stroke sm"></i></button>
                 `;
-                div.appendChild(feedbackDiv);
+                container.appendChild(feedbackDiv);
             }
 
             messages.appendChild(div);
