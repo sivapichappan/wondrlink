@@ -2046,56 +2046,46 @@
             border: 1px solid var(--border-light);
             border-radius: var(--radius-xl);
             padding: 18px 22px;
+            box-shadow: var(--shadow-xs);
             display: flex;
             flex-direction: column;
-            gap: 14px;
-            box-shadow: var(--shadow-xs);
+            /* gap removed — spacing now managed per-child below so we can
+               pair gaps with hairline separators consistently. */
         }
-        .bot-response-card > .bubble.bot {
+
+        /* Reset every direct child so the card owns the visual identity.
+           Inner elements (.followup-chip, .source-item, .msg-resource-link,
+           .feedback-btn) keep their own styling — only the row CONTAINERS
+           are flattened. */
+        .bot-response-card > * {
+            max-width: 100%;
+            margin: 0;
             background: transparent;
             border: none;
             border-left: none;
             border-radius: 0;
             padding: 0;
-            margin: 0;
-            max-width: 100%;
             box-shadow: none;
         }
-        .bot-response-card > .ai-status,
+
+        /* Badges (Personalized response, Medical Guidelines) sit tight
+           under the bubble — small gap, no hairline. */
+        .bot-response-card > .ai-status {
+            margin-top: 10px;
+        }
+
+        /* Sections with a hairline separator above. Same margin + padding
+           so the visual rhythm is identical between sections. */
         .bot-response-card > .msg-followups,
         .bot-response-card > .msg-resources,
         .bot-response-card > .msg-sources,
         .bot-response-card > .msg-feedback {
-            max-width: 100%;
-            margin: 0;
-        }
-        /* Resources keeps a subtle background tint so it reads as a
-           cluster of links, not just inline text. */
-        .bot-response-card > .msg-resources {
-            background: var(--background);
-            border: 1px solid var(--border-light);
-            padding: 10px 14px;
-            border-radius: var(--radius-sm, 8px);
-        }
-        /* Sources panel inside the card loses its own border-left bar
-           (no more green vertical accent) and its standalone padding —
-           the card already pads everything. */
-        .bot-response-card > .msg-sources {
-            background: transparent;
-            border: none;
-            border-left: none;
-            border-radius: 0;
-            padding: 8px 0 0;
+            margin-top: 14px;
+            padding-top: 14px;
             border-top: 1px solid var(--border-light);
         }
-        .bot-response-card > .msg-followups {
-            padding: 2px 0 0;
-        }
-        .bot-response-card > .msg-feedback {
-            padding-top: 4px;
-            border-top: 1px solid var(--border-light);
-        }
-        /* On narrow viewports give the card more horizontal room. */
+
+        /* On narrow viewports the card uses full width and tighter padding. */
         @media (max-width: 720px) {
             .bot-response-card {
                 max-width: 100%;
