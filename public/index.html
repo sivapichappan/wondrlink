@@ -1125,23 +1125,60 @@
             text-align: center;
         }
         .screening-result-score {
-            font-size: 36px;
-            font-weight: 700;
+            font-family: var(--font-serif);
+            font-optical-sizing: auto;
+            font-size: 44px;
+            font-weight: 600;
             color: var(--primary);
+            letter-spacing: -0.02em;
+            line-height: 1.05;
+            font-variant-numeric: tabular-nums;
+        }
+        .screening-result-bar {
+            position: relative;
+            width: 100%;
+            max-width: 280px;
+            height: 6px;
+            margin: 10px auto 0;
+            background: var(--background-alt);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+        }
+        .screening-result-bar-fill {
+            position: absolute;
+            inset: 0 auto 0 0;
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
+            width: 0;
+            border-radius: var(--radius-full);
+            transition: width 700ms cubic-bezier(0.22, 1, 0.36, 1);
         }
         .screening-result-label {
             font-size: 14px;
             color: var(--text-secondary);
-            margin-top: 4px;
+            margin-top: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 600;
         }
         .screening-result-message {
             font-size: 14px;
             line-height: 1.6;
             color: var(--text-primary);
-            margin-top: 16px;
+            margin-top: 14px;
             padding: 12px 16px;
             background: var(--background);
             border-radius: var(--radius, 8px);
+        }
+        /* Used with JS .visible class to fade in after the bar fills */
+        .fade-in-soon {
+            opacity: 0;
+            transform: translateY(4px);
+            transition: opacity 320ms ease, transform 320ms ease;
+        }
+        .fade-in-soon.visible {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         /* Mental Health Dashboard */
@@ -5061,6 +5098,52 @@
             0%, 100% { transform: scaleY(0.4); }
             50%      { transform: scaleY(1); }
         }
+
+        /* ===========================================================
+           SIGNATURE MOTION (Phase D.2)
+           Trial-card slide-in + progress-ring badge.
+           =========================================================== */
+        .trial-card {
+            animation: trialCardIn 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        @keyframes trialCardIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .trial-match-ring {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            margin-left: 4px;
+            color: var(--text-secondary);
+        }
+        .trial-match-ring .trial-ring-bg {
+            stroke: var(--border);
+        }
+        .trial-match-ring .trial-ring-fill {
+            transition: stroke-dashoffset 700ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .trial-match-ring.strong   { color: var(--primary); }
+        .trial-match-ring.strong   .trial-ring-fill { stroke: var(--primary); }
+        .trial-match-ring.moderate { color: var(--accent-dark); }
+        .trial-match-ring.moderate .trial-ring-fill { stroke: var(--accent); }
+        .trial-match-ring.general  { color: var(--text-muted); }
+        .trial-match-ring.general  .trial-ring-fill { stroke: var(--text-muted); }
+        .trial-match-ring-score {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: inherit;
+        }
     </style>
 </head>
 
@@ -8717,13 +8800,22 @@
                             ? `<span class="trial-distance">${location.distance_miles} mi</span>`
                             : '';
 
-                        // Relevance match badge
+                        // Relevance match — animated progress ring (Phase D.2)
                         const score = trial.relevance_score || 50;
                         let matchClass, matchText;
                         if (score >= 70) { matchClass = 'strong'; matchText = 'Strong match'; }
                         else if (score >= 55) { matchClass = 'moderate'; matchText = 'Moderate match'; }
                         else { matchClass = 'general'; matchText = 'General match'; }
-                        const matchBadge = `<span class="trial-match ${matchClass}">${matchText}</span>`;
+                        const matchBadge = `
+                            <span class="trial-match-ring ${matchClass}" data-score="${score}" title="${matchText}" aria-label="${matchText}: ${score} out of 100">
+                                <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+                                    <circle class="trial-ring-bg" cx="17" cy="17" r="13" fill="none" stroke-width="3"></circle>
+                                    <circle class="trial-ring-fill" cx="17" cy="17" r="13" fill="none" stroke-width="3"
+                                        stroke-linecap="round" stroke-dasharray="81.68" stroke-dashoffset="81.68"
+                                        transform="rotate(-90 17 17)"></circle>
+                                </svg>
+                                <span class="trial-match-ring-score" data-target="${score}">0</span>
+                            </span>`;
 
                         // Relevance reasons
                         const reasons = trial.relevance_reasons || [];
@@ -8796,6 +8888,9 @@
 
                     trialsSection.innerHTML = trialsHtml;
                     bubble.appendChild(trialsSection);
+                    // Phase D.2: animate the trial-match progress rings after the
+                    // cards have slid into view.
+                    requestAnimationFrame(() => animateTrialRings(trialsSection));
                 } else if (trialsData.found === 0) {
                     // No trials found - compact
                     const noTrialsDiv = document.createElement("div");
@@ -9854,15 +9949,26 @@
                 }
             }
 
-            // Show result
+            // Determine the instrument's max score (highest tier.max) so we can
+            // express `total` as a percentage of the scale for the result bar.
+            let maxScore = 0;
+            for (const tier of instrument.severity) {
+                if (typeof tier.max === 'number' && tier.max > maxScore) maxScore = tier.max;
+            }
+            const pct = maxScore > 0 ? Math.min(100, Math.round((total / maxScore) * 100)) : 0;
+
+            // Show result with animated count-up + bar fill + label fade-in (Phase D.1)
             document.getElementById('screeningQuestion').style.display = 'none';
             document.getElementById('screeningOptions').style.display = 'none';
             const resultEl = document.getElementById('screeningResult');
             resultEl.style.display = 'block';
             resultEl.innerHTML = `
-                <div class="screening-result-score">${total}</div>
-                <div class="screening-result-label">${severityLabel}</div>
-                <div class="screening-result-message">${severityMessage}</div>
+                <div class="screening-result-score" id="screeningResultScore" data-target="${total}">0</div>
+                <div class="screening-result-bar">
+                    <div class="screening-result-bar-fill" id="screeningResultBar" style="width:0%;"></div>
+                </div>
+                <div class="screening-result-label fade-in-soon" id="screeningResultLabel">${severityLabel}</div>
+                <div class="screening-result-message fade-in-soon" id="screeningResultMessage">${severityMessage}</div>
                 ${toxicityAlert}
                 <button onclick="document.getElementById('screeningOverlay').style.display='none'" style="
                     margin-top:16px;padding:10px 24px;
@@ -9871,6 +9977,62 @@
                     Close
                 </button>
             `;
+
+            // Kick off the count-up + bar fill + label fade.
+            animateScreeningResult(total, pct);
+        }
+
+        // ===== Phase D.1: screening result animation =====
+        function animateCount(el, from, to, ms) {
+            if (!el) return;
+            const start = performance.now();
+            function frame(now) {
+                const t = Math.min(1, (now - start) / ms);
+                // ease-out-cubic
+                const eased = 1 - Math.pow(1 - t, 3);
+                const v = Math.round(from + (to - from) * eased);
+                el.textContent = v;
+                if (t < 1) requestAnimationFrame(frame);
+            }
+            requestAnimationFrame(frame);
+        }
+
+        // Phase D.2: animate trial-card progress rings + score count-up.
+        function animateTrialRings(scope) {
+            if (!scope) return;
+            const rings = scope.querySelectorAll('.trial-match-ring');
+            const circumference = 2 * Math.PI * 13; // r=13
+            rings.forEach((ring, idx) => {
+                const score = parseInt(ring.getAttribute('data-score'), 10) || 0;
+                const fillEl = ring.querySelector('.trial-ring-fill');
+                const scoreEl = ring.querySelector('.trial-match-ring-score');
+                if (!fillEl || !scoreEl) return;
+                const targetOffset = circumference * (1 - Math.min(100, Math.max(0, score)) / 100);
+                // Slight stagger so multiple cards feel choreographed, not synchronized.
+                const delay = 250 + idx * 70;
+                setTimeout(() => {
+                    fillEl.style.strokeDashoffset = targetOffset.toFixed(2);
+                    animateCount(scoreEl, 0, score, 600);
+                }, delay);
+            });
+        }
+
+        function animateScreeningResult(total, pct) {
+            const scoreEl = document.getElementById('screeningResultScore');
+            const barEl = document.getElementById('screeningResultBar');
+            const labelEl = document.getElementById('screeningResultLabel');
+            const msgEl = document.getElementById('screeningResultMessage');
+
+            // Count up + bar fill simultaneously (700ms)
+            animateCount(scoreEl, 0, total, 700);
+            requestAnimationFrame(() => {
+                if (barEl) barEl.style.width = pct + '%';
+            });
+            // Label + message fade in after the bar settles (300ms delay, 300ms ease)
+            setTimeout(() => {
+                if (labelEl) labelEl.classList.add('visible');
+                if (msgEl) msgEl.classList.add('visible');
+            }, 350);
         }
 
         function closeCrisisModal() {
