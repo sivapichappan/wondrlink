@@ -532,6 +532,33 @@ def api_chat():
 
         logger.info(f"Chat request (session: {session_id}): {message[:50]}...")
 
+        # Greeting short-circuit: "hi", "thanks", etc. get a fast canned reply,
+        # no LLM call, no retrieval, no resources. Saves ~3s and avoids the
+        # full medical-info-dump template on trivial conversational openings.
+        try:
+            from llm_utils import is_greeting, greeting_response
+            if is_greeting(message):
+                quick_profile = load_profile(user_id) or {}
+                first_name = (quick_profile.get("patient") or {}).get("firstName") or ""
+                if not first_name:
+                    name = (quick_profile.get("patient") or {}).get("name") or ""
+                    first_name = name.split(" ")[0] if name else ""
+                logger.info(f"Greeting short-circuit fired for user {user_id}")
+                return jsonify({
+                    "status": "ok",
+                    "answer": greeting_response(first_name),
+                    "api_used": "greeting-shortcircuit",
+                    "retrieved_count": 0,
+                    "sources": [],
+                    "citations": {},
+                    "resources": [],
+                    "followups": [],
+                    "guidelines_used": [],
+                    "has_guidelines": False,
+                })
+        except Exception:
+            logger.exception("Greeting short-circuit failed (continuing with normal flow)")
+
         # Load chunks from Supabase
         indexed_chunks = load_all_chunks()
 
@@ -700,11 +727,27 @@ def api_chat():
                     logger.exception("Citation post-processing failed; continuing without inline citations")
                     citation_map = {}
 
-            # Add relevant patient resources (unless brief response)
+            # Phase B.1: parse the trailing FOLLOWUPS: block out of the answer
+            # so the frontend can render them as interactive chips below the bubble.
+            followups = []
+            try:
+                from llm_utils import extract_followups
+                final_answer, followups = extract_followups(final_answer)
+            except Exception:
+                logger.exception("Follow-up extraction failed; continuing without chips")
+                followups = []
+
+            # Pull relevant patient resources as a structured list. They render in
+            # a subdued row below the bubble (frontend), NOT inline in the answer
+            # text. The legacy behavior of appending a "📚 link | link | link"
+            # block to final_answer was noisy on every response.
+            resources_list = []
             if response_length != "brief":
-                resources_text = get_relevant_resources(query_type, include_resources=True, query=message)
-                if resources_text:
-                    final_answer = final_answer + resources_text
+                try:
+                    resources_list = get_relevant_resources(query_type, include_resources=True, query=message) or []
+                except Exception:
+                    logger.exception("Resource lookup failed; continuing without resources")
+                    resources_list = []
 
             # --- Feature: Clinical Trials Search ---
             # Return trials data separately for frontend rendering (not as markdown in answer)
@@ -744,6 +787,22 @@ def api_chat():
                 except Exception as e:
                     logger.error(f"Error searching clinical trials: {e}", exc_info=True)
 
+            # Phase D — Trial-search auto-fire. When the trial cards pipeline
+            # produced real matches, replace the LLM essay with a concise
+            # lead-in so the cards become the primary content. We also drop
+            # follow-ups and resources for this case — the cards carry their
+            # own context, footer links, and CTAs.
+            if (clinical_trials_data and isinstance(clinical_trials_data, dict)
+                    and clinical_trials_data.get("trials")
+                    and not clinical_trials_data.get("error")):
+                final_answer = (
+                    "Here are clinical trials that match your profile. "
+                    "Tap any card for details, or save trials to your watchlist for later."
+                )
+                followups = []
+                resources_list = []
+                citation_map = {}
+
             # Store conversation in Supabase (store original answer without resources for cleaner history)
             add_conversation(session_id, user_id, message, answer)
 
@@ -772,6 +831,7 @@ def api_chat():
             guidelines_used = []
             guideline_keywords = ['NCCN', 'guideline', 'ACS', 'ASCO', 'CDC', 'NCI', 'recommendation']
             try:
+                from llm_utils import get_friendly_source_name
                 seen_sources = set()
                 for chunk in retrieved[:5]:  # max 5 sources per response
                     if isinstance(chunk, dict) and chunk.get('filename'):
@@ -783,6 +843,7 @@ def api_chat():
                                 preview += '...'
                             sources_metadata.append({
                                 "title": fname,
+                                "display_name": get_friendly_source_name(fname),
                                 "type": "document",
                                 "section": chunk.get('chunk_index'),
                                 "preview": preview,
@@ -815,6 +876,8 @@ def api_chat():
                 "profile_updates_saved": update_success if profile_updates else None,
                 "sources": sources_metadata,
                 "citations": citation_map,
+                "resources": resources_list,
+                "followups": followups,
                 "guidelines_used": guidelines_used,
                 "has_guidelines": len(guidelines_used) > 0,
                 "clinical_trials": clinical_trials_data,

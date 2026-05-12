@@ -329,6 +329,15 @@ GROUNDING & CITATION RULES (CRITICAL — patient safety depends on this):
 - It is better to say "I don't have reliable information about that" than to fabricate plausible-sounding details.
 - When you cannot find supporting information in the sources, explicitly acknowledge this rather than guessing.
 
+RESPONSE FORMATTING (markdown supported — use it sparingly and only when it helps the reader):
+- For multi-part answers, use level-2 sub-headings: "## What to watch for", "## When to call your team", "## What you can do at home".
+- For lists of side effects, treatment options, or questions to ask the team, use bullet lists with "- item" on each line. Keep each bullet to one sentence where possible.
+- Use **bold** ONLY for the most critical phrase in the response — a drug name, an emergency trigger, a clear "do this" action. Do not bold every other sentence.
+- For simple single-topic answers (e.g. "what is FOLFOX") just write a short paragraph or two. Do not force structure for its own sake.
+- Do NOT use level-1 headings (#) — those are reserved for app chrome.
+- Do NOT wrap the entire response in markdown formatting if a paragraph would do.
+- Do NOT use horizontal rules (---) or tables.
+
 INLINE CITATION FORMAT (MANDATORY for medical claims):
 - When a medical claim comes from a specific source excerpt, append a numbered citation marker INLINE immediately after the claim, using the source's number from above.
 - Format: a single source → "[1]". Multiple sources for one claim → "[1, 3]".
@@ -348,14 +357,75 @@ INLINE CITATION FORMAT (MANDATORY for medical claims):
 
 FOLLOW_UP_INSTRUCTION = """
 FOLLOW-UP SUGGESTIONS:
-At the end of your response, suggest 2-3 related questions the patient might want to ask next.
-These should cover DIFFERENT aspects of their care (not all about the same drug/treatment):
+Suggest 2-3 related questions the patient might want to ask next, covering DIFFERENT aspects of their care:
 - A question about a different treatment option or drug
 - A question about side effect management or quality of life
 - A question about practical concerns or emotional support
 
-Format as: "You might also want to ask about: • [Question 1] • [Question 2] • [Question 3]"
+At the very end of your response, on its own line after a blank line, output exactly this block (the server parses it and renders the questions as interactive chips):
+
+FOLLOWUPS:
+- Question 1
+- Question 2
+- Question 3
+
+Do NOT include any header text like "You might also want to ask about:" — just the FOLLOWUPS: block. Each question on its own line prefixed with "- ".
 """
+
+
+# Server-side parser for the FOLLOWUPS block. Strips the block out of the
+# rendered text and returns the list separately so the frontend can render
+# them as interactive chips below the message.
+import re as _re_followups
+
+
+def extract_followups(text: str):
+    """
+    Pull the trailing FOLLOWUPS: block out of an LLM response.
+
+    Returns (cleaned_text, followups) where followups is a List[str] (0-3 items)
+    and cleaned_text has the block removed. Tolerant of minor format drift
+    (extra whitespace, the legacy "You might also want to ask about" preamble).
+    """
+    if not text:
+        return text, []
+    cleaned = text
+    followups = []
+    # Strip any legacy preamble line the LLM may emit out of habit.
+    legacy_pat = _re_followups.compile(
+        r'\s*You might also want to ask about:?\s*',
+        _re_followups.IGNORECASE,
+    )
+    cleaned = legacy_pat.sub('\n', cleaned)
+
+    # Find the FOLLOWUPS: marker (case-insensitive) and consume everything after.
+    marker = _re_followups.search(r'\n\s*FOLLOWUPS:\s*\n', cleaned, _re_followups.IGNORECASE)
+    if not marker:
+        return cleaned.strip(), []
+
+    tail = cleaned[marker.end():]
+    cleaned = cleaned[:marker.start()].rstrip()
+
+    # Parse "- item" or "• item" or numbered "1. item" lines from the tail.
+    for raw_line in tail.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        # Strip leading bullets / numbers
+        line = _re_followups.sub(r'^\s*(?:[-•*]|\d+[.)])\s+', '', line)
+        line = line.strip().rstrip('?').strip()
+        if not line:
+            continue
+        if not line.endswith('?'):
+            line = line + '?'
+        # Defensive max length
+        if len(line) > 200:
+            line = line[:200].rstrip() + '?'
+        followups.append(line)
+        if len(followups) >= 3:
+            break
+
+    return cleaned, followups
 
 
 # =============================================================================
@@ -675,9 +745,9 @@ PATIENT_RESOURCES = {
 }
 
 
-def get_relevant_resources(query_type: str, include_resources: bool = True, query: str = "") -> str:
+def get_relevant_resources(query_type: str, include_resources: bool = True, query: str = "") -> List[Dict[str, str]]:
     """
-    Return formatted resource links based on query type and specific symptoms.
+    Return relevant patient-facing resource links as a structured list.
 
     Args:
         query_type: One of 'treatment', 'side_effect', 'emotional', 'general', 'survivorship', etc.
@@ -685,10 +755,12 @@ def get_relevant_resources(query_type: str, include_resources: bool = True, quer
         query: The original user query for symptom-specific resource matching
 
     Returns:
-        Formatted string with relevant resource links, or empty string
+        List of {"name": str, "url": str} dicts (empty list when not applicable).
+        The frontend renders these in a subdued "Trusted resources" row below
+        the response rather than inline in the answer text.
     """
     if not include_resources:
-        return ""
+        return []
 
     query_lower = query.lower() if query else ""
 
@@ -748,23 +820,22 @@ def get_relevant_resources(query_type: str, include_resources: bool = True, quer
         }
         categories = type_mapping.get(query_type, ['general'])
 
-    resources = []
+    resources: List[Dict[str, str]] = []
+    seen_urls = set()
 
     for cat in categories:
-        if cat in PATIENT_RESOURCES:
-            resources.extend(PATIENT_RESOURCES[cat][:2])  # Max 2 per category
+        if cat not in PATIENT_RESOURCES:
+            continue
+        for r in PATIENT_RESOURCES[cat][:2]:  # Max 2 per category
+            url = r.get("url")
+            if not url or url in seen_urls:
+                continue
+            seen_urls.add(url)
+            resources.append({"name": r.get("name", "Resource"), "url": url})
+        if len(resources) >= 5:
+            break
 
-    if not resources:
-        return ""
-
-    # Limit to 5 resources max to provide more helpful links
-    resources = resources[:5]
-
-    # Format as pipe-separated for compact display
-    links = [f'<a href="{r["url"]}" target="_blank" rel="noopener noreferrer">{r["name"]}</a>' for r in resources]
-    formatted = "\n\n📚 " + " | ".join(links)
-
-    return formatted
+    return resources[:5]
 
 
 # =============================================================================
@@ -2817,6 +2888,107 @@ def trim_incomplete_sentence(response: str) -> str:
 
 
 # Disclaimer templates - context-aware
+# =============================================================================
+# GREETING SHORT-CIRCUIT
+# =============================================================================
+# Trivial conversational openings should NOT trigger the full LLM + retrieval +
+# resource scaffolding. They get a fast canned reply that names the patient
+# (if we know them) and invites the next message.
+
+_GREETING_TOKENS = {
+    "hi", "hello", "hey", "yo", "hiya", "howdy",
+    "good morning", "good afternoon", "good evening",
+    "morning", "evening",
+    "thanks", "thank you", "thx", "ty", "appreciate it",
+    "goodbye", "bye", "see ya", "later",
+}
+
+
+def is_greeting(message: str) -> bool:
+    """True if the message is a trivial greeting / thanks / goodbye."""
+    if not message:
+        return False
+    cleaned = message.strip().lower()
+    # Strip trailing punctuation
+    cleaned = cleaned.rstrip(".!?,;: ")
+    if not cleaned or len(cleaned) > 30:
+        return False
+    if cleaned in _GREETING_TOKENS:
+        return True
+    # Handle "hi there", "hello again", "thanks so much" — first word match
+    first_word = cleaned.split()[0] if cleaned.split() else ""
+    if first_word in {"hi", "hello", "hey", "thanks", "thank"} and len(cleaned) <= 30:
+        return True
+    return False
+
+
+def greeting_response(first_name: str = "") -> str:
+    """Return a short, warm greeting tailored to the patient (if we have a name)."""
+    name = (first_name or "").strip()
+    if name:
+        return f"Hi {name} — what would you like to talk through today?"
+    return "Hi — what would you like to talk through today?"
+
+
+# =============================================================================
+# FRIENDLY SOURCE NAMES
+# =============================================================================
+# Maps raw PDF filenames in data/ to clean display names shown in the
+# "Sources used in this response" panel. Anything not mapped falls back to
+# a cleaned-up version of the filename (Title Case, underscores -> spaces).
+
+FRIENDLY_SOURCE_NAMES = {
+    "acs_caregiver_support.pdf": "ACS Caregiver Support",
+    "crc_exercise_protocols.pdf": "CRC Exercise Protocols",
+    "crc_mucositis_management.pdf": "Mucositis Management",
+    "crc_nutrition_during_chemo.pdf": "Nutrition During Chemo",
+    "crc_post_colectomy_diet.pdf": "Post-Colectomy Diet",
+    "crc_screening_barriers.pdf": "Screening Barriers Reference",
+    "crc_survivorship_nutrition.pdf": "Survivorship Nutrition",
+    "crc_treatment_line_reference.pdf": "Treatment Line Reference",
+    "cancer_sleep_disorders.pdf": "Cancer Sleep Disorders",
+    "cancer_stress_dandre_2024.pdf": "Cancer & Stress (D'Andre 2024)",
+    "colon cancer_emergency_urgent_symptoms.docx.pdf": "Emergency & Urgent Symptoms",
+    "comprehensive_colon_cancer_guide_441_qa.pdf": "Comprehensive Colon Cancer Guide",
+    "nci_caring_for_caregiver_2024.pdf": "NCI Caring for the Caregiver",
+    "nci_stress_cancer_fact_sheet.pdf": "NCI Stress & Cancer Fact Sheet",
+    "pss10_clinical_reference.pdf": "PSS-10 Clinical Reference",
+    "perceived_stress_scale_reference.pdf": "Perceived Stress Scale Reference",
+    "prevention and screening strategies for colon cancer.pdf": "Prevention & Screening Strategies",
+    "colon cancer review 1.pdf": "Colon Cancer Clinical Review (Part 1)",
+    "colon cancer review 2.pdf": "Colon Cancer Clinical Review (Part 2)",
+    "colon cancer review 3.pdf": "Colon Cancer Clinical Review (Part 3)",
+    "colon cancer screening.pdf": "Colon Cancer Screening Guide",
+    "colon cancer survivorship.pdf": "Colon Cancer Survivorship",
+    "colon-patient.pdf": "Colon Cancer Patient Guide",
+    "colon.pdf": "Colon Cancer Reference",
+    "the_american_society_of_colon_and_rectal_surgeons.7.pdf": "ASCRS Reference",
+}
+
+
+def get_friendly_source_name(filename: str) -> str:
+    """Return a clean display name for a source PDF. Falls back to filename."""
+    if not filename:
+        return "Medical guideline"
+    key = filename.strip().lower()
+    if key in FRIENDLY_SOURCE_NAMES:
+        return FRIENDLY_SOURCE_NAMES[key]
+    # Fallback: strip extension, replace underscores, title-case
+    base = key.rsplit(".pdf", 1)[0].rsplit(".docx", 1)[0]
+    base = base.replace("_", " ").strip()
+    # Title-case but preserve all-caps acronyms (NCI, ACS, CRC)
+    parts = base.split()
+    out = []
+    for p in parts:
+        if p.upper() in {"NCI", "ACS", "CRC", "QA", "MSI", "KRAS", "NRAS", "BRAF"}:
+            out.append(p.upper())
+        elif p.isupper() and len(p) <= 4:
+            out.append(p)
+        else:
+            out.append(p.capitalize())
+    return " ".join(out) or filename
+
+
 DISCLAIMERS = {
     "action": "\n\n⚠️ Before making any changes to your treatment, please consult your healthcare team.",
     "general": "\n\n💡 This is general information. Your doctor can provide personalized guidance.",
@@ -2975,13 +3147,17 @@ def validate_response(response: str, user_question: str, patient_context: Dict[s
         logger.warning(f"LLM response contains NCT numbers: {nct_matches} — verify these are from API data, not hallucinated")
         validation_result['warnings'].append(f"Contains NCT numbers: {nct_matches}")
 
-    # Use smart disclaimer logic
+    # Use smart disclaimer logic. The "general" disclaimer ("This is general
+    # information. Your doctor can provide personalized guidance.") is now
+    # covered by the persistent AI banner above the chat, so we skip appending
+    # it per-response. The specific disclaimers (emergency, dosage, action)
+    # carry context the banner cannot, so they still apply.
     needs_disclaimer, disclaimer_type = should_add_disclaimer(user_question, current_response)
 
-    if needs_disclaimer and disclaimer_type:
+    if needs_disclaimer and disclaimer_type and disclaimer_type != 'general':
         validation_result['needs_disclaimer'] = True
         validation_result['disclaimer_type'] = disclaimer_type
-        current_response += DISCLAIMERS.get(disclaimer_type, DISCLAIMERS['general'])
+        current_response += DISCLAIMERS.get(disclaimer_type, '')
         logger.info(f"Added {disclaimer_type} disclaimer")
 
     validation_result['enhanced_response'] = current_response

@@ -14,6 +14,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3"></script>
     <!-- Lucide line icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Markdown rendering inside chat bubbles -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
     <!-- Fonts: Geist (sans/UI) + Fraunces (serif accent for wordmark/headlines) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2030,6 +2032,55 @@
             border: none;
             border-left: 3px solid var(--primary-lighter);
             border-radius: var(--radius-sm) var(--radius-lg) var(--radius-lg) var(--radius-lg);
+        }
+
+        /* Markdown inside bot bubbles (Phase C.5) */
+        .bubble.bot h1,
+        .bubble.bot h2,
+        .bubble.bot h3 {
+            font-family: var(--font-serif);
+            font-optical-sizing: auto;
+            color: var(--text-primary);
+            line-height: 1.25;
+            letter-spacing: -0.005em;
+            margin: 14px 0 6px;
+        }
+        .bubble.bot h1 { font-size: 17px; font-weight: 600; }
+        .bubble.bot h2 { font-size: 15px; font-weight: 600; }
+        .bubble.bot h3 { font-size: 14px; font-weight: 600; }
+        .bubble.bot h1:first-child,
+        .bubble.bot h2:first-child,
+        .bubble.bot h3:first-child,
+        .bubble.bot p:first-child { margin-top: 0; }
+        .bubble.bot p { margin: 0 0 10px; }
+        .bubble.bot p:last-child { margin-bottom: 0; }
+        .bubble.bot ul,
+        .bubble.bot ol {
+            margin: 4px 0 10px;
+            padding-left: 22px;
+        }
+        .bubble.bot li {
+            margin-bottom: 5px;
+            line-height: 1.55;
+        }
+        .bubble.bot li:last-child { margin-bottom: 0; }
+        .bubble.bot strong {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .bubble.bot a {
+            color: var(--primary);
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        .bubble.bot a:hover { color: var(--primary-dark); }
+        .bubble.bot code {
+            background: var(--background);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 12.5px;
+            font-family: var(--font-mono, ui-monospace, monospace);
+            color: var(--text-primary);
         }
 
         .bubble.bot strong {
@@ -4313,6 +4364,82 @@
         }
 
 
+        /* Follow-up suggestion chips below a bot message (Phase B.2) */
+        .msg-followups {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 10px 0 0;
+            max-width: 72%;
+        }
+        .followup-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-full);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 500;
+            font-family: inherit;
+            text-align: left;
+            cursor: pointer;
+            transition: background var(--transition), border-color var(--transition), transform var(--transition);
+        }
+        .followup-chip:hover {
+            background: var(--primary-subtle);
+            border-color: var(--primary-lighter);
+            color: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+        .followup-chip i[data-lucide] {
+            color: var(--primary);
+            opacity: 0.7;
+            flex-shrink: 0;
+        }
+        .followup-chip:hover i[data-lucide] { opacity: 1; }
+
+        /* Trusted resources row (Phase A.2) — subtle, inline, below the bubble */
+        .msg-resources {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px 12px;
+            margin: 10px 0 0;
+            padding: 8px 12px;
+            background: var(--background);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-sm, 8px);
+            font-size: 11px;
+            color: var(--text-muted);
+            max-width: 72%;
+        }
+        .msg-resources-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .msg-resources-label i[data-lucide] {
+            color: var(--primary);
+            opacity: 0.7;
+        }
+        .msg-resource-link {
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .msg-resource-link:hover {
+            text-decoration: underline;
+            color: var(--primary-dark);
+        }
+
         /* Sources Panel in Chat (Hallucination Mitigation) */
         .msg-sources {
             margin-top: 10px;
@@ -4377,12 +4504,14 @@
         /* Inline Citations (Feature 1) — numbered [N] markers in bot text */
         .citation {
             display: inline-block;
-            background: var(--primary-lighter);
-            color: var(--primary);
-            padding: 0 5px;
+            background: var(--primary-subtle);
+            color: var(--primary-dark);
+            padding: 1px 6px;
+            border: 1px solid var(--primary-lighter);
             border-radius: 4px;
-            font-size: 10px;
+            font-size: 10.5px;
             font-weight: 700;
+            font-variant-numeric: tabular-nums;
             margin: 0 1px;
             cursor: help;
             position: relative;
@@ -8678,11 +8807,13 @@
 
             const bubble = document.createElement("div");
             bubble.className = "bubble " + who;
-            let processedText = text;
-            if (who === "bot" && metadata && metadata.citations) {
-                processedText = renderCitations(text, metadata.citations);
+            if (who === "bot") {
+                // Bot messages get markdown rendering + inline citation badges.
+                bubble.innerHTML = renderBubbleHtml(text, metadata && metadata.citations);
+            } else {
+                // User messages stay plain text with linebreak conversion only.
+                bubble.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
             }
-            bubble.innerHTML = processedText.replace(/\n/g, '<br>');
             div.appendChild(bubble);
 
             if (who === "bot" && metadata && metadata.patient_context_used) {
@@ -8700,6 +8831,42 @@
                 div.appendChild(guidelineStatus);
             }
 
+            // Phase B.2 — follow-up suggestion chips (interactive). Render right
+            // below the bubble so they read as "what to ask next."
+            if (who === "bot" && metadata && Array.isArray(metadata.followups) && metadata.followups.length > 0) {
+                const followupsRow = document.createElement("div");
+                followupsRow.className = "msg-followups";
+                metadata.followups.forEach(q => {
+                    const chip = document.createElement("button");
+                    chip.type = "button";
+                    chip.className = "followup-chip";
+                    chip.onclick = () => askSuggestion(chip);
+                    chip.innerHTML = '<span>' + escapeHtml(q) + '</span><i data-lucide="arrow-right" class="icon-stroke sm"></i>';
+                    followupsRow.appendChild(chip);
+                });
+                div.appendChild(followupsRow);
+            }
+
+            // Phase A.2 — trusted resources as a subtle row, not inline in text.
+            if (who === "bot" && metadata && Array.isArray(metadata.resources) && metadata.resources.length > 0) {
+                const resourcesRow = document.createElement("div");
+                resourcesRow.className = "msg-resources";
+                const label = document.createElement("span");
+                label.className = "msg-resources-label";
+                label.innerHTML = '<i data-lucide="book-open" class="icon-stroke sm"></i>Trusted resources';
+                resourcesRow.appendChild(label);
+                metadata.resources.forEach(r => {
+                    const link = document.createElement("a");
+                    link.href = r.url;
+                    link.target = "_blank";
+                    link.rel = "noopener noreferrer";
+                    link.className = "msg-resource-link";
+                    link.textContent = r.name || "Resource";
+                    resourcesRow.appendChild(link);
+                });
+                div.appendChild(resourcesRow);
+            }
+
             if (who === "bot" && metadata && metadata.sources && metadata.sources.length > 0) {
                 const sourcesDiv = document.createElement("div");
                 sourcesDiv.className = "msg-sources";
@@ -8713,9 +8880,12 @@
                     const item = document.createElement("div");
                     item.className = "source-item";
 
-                    // Clean filename for display
-                    let displayTitle = source.title || "";
-                    displayTitle = displayTitle.replace(/\.pdf$/i, '').replace(/_/g, ' ');
+                    // Prefer the backend's friendly display name; fall back to a
+                    // cleaned-up filename for sources not in the friendly map.
+                    let displayTitle = source.display_name || source.title || "";
+                    if (!source.display_name) {
+                        displayTitle = displayTitle.replace(/\.pdf$/i, '').replace(/_/g, ' ');
+                    }
                     if (displayTitle.length > 60) {
                         displayTitle = displayTitle.substring(0, 58) + '...';
                     }
@@ -11093,6 +11263,35 @@
             if (typeof lucide !== 'undefined' && lucide.createIcons) {
                 lucide.createIcons();
             }
+        }
+
+        // Configure marked.js so bot bubble content renders as actual markdown.
+        // GFM (lists, bold, headings) with breaks preserved (so the LLM's plain
+        // \n line breaks still work). We disable raw HTML embedding from marked
+        // because renderCitations has already emitted the only <sup> tags we
+        // intend to allow through.
+        if (typeof marked !== 'undefined') {
+            marked.setOptions({
+                breaks: true,
+                gfm: true,
+                headerIds: false,
+                mangle: false,
+                pedantic: false,
+            });
+        }
+
+        // Render bot bubble text safely: citations first (returns HTML with
+        // <sup> badges), then markdown parse so lists / bold / headings show.
+        function renderBubbleHtml(text, citations) {
+            const withCitations = renderCitations(text || '', citations || {});
+            if (typeof marked !== 'undefined' && marked.parse) {
+                try {
+                    return marked.parse(withCitations);
+                } catch (e) {
+                    console.warn('marked.parse failed; falling back to <br> rendering:', e);
+                }
+            }
+            return withCitations.replace(/\n/g, '<br>');
         }
 
         // ===== Care Snapshot (Phase C.2) =====
