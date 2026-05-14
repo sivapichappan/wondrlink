@@ -1,0 +1,48 @@
+# Mirrors the existing logic in lib/hero.py:46 detect_treatment_phase and
+# lib/hero.py:80 _PHASE_SUGGESTIONS, lifted into declarative config.
+
+# Phase classification thresholds (days_into_treatment).
+phases:
+  early_chemo:    { min_days: 0,    max_days: 28 }
+  mid_chemo:      { min_days: 28,   max_days: 120 }
+  late_chemo:     { min_days: 120,  max_days: null }
+  surveillance:   {}
+  newly_diagnosed: {}
+  general:        {}
+
+# Three suggested starter questions per phase. Use {stage} placeholder
+# for stage substitution in newly_diagnosed.
+suggestions:
+  early_chemo:
+    - "What side effects from cycle 1 should I watch for?"
+    - "When does fatigue typically peak in this regimen?"
+    - "Help me prepare for my next visit"
+  mid_chemo:
+    - "How will we know if my treatment is working?"
+    - "Are there ways to manage neuropathy as it builds up?"
+    - "Help me prepare for my next visit"
+  late_chemo:
+    - "What questions should I bring to my next scan?"
+    - "What does life after treatment typically look like?"
+    - "Help me prepare for my next visit"
+  surveillance:
+    - "When is my next colonoscopy due?"
+    - "What signs of recurrence should I watch for?"
+    - "Help me prepare for my next visit"
+  newly_diagnosed:
+    - "Walk me through what stage {stage} means for my care"
+    - "What treatment options should I discuss with my team?"
+    - "Help me prepare for my first treatment visit"
+  general:
+    - "What questions should I ask my oncology team?"
+    - "How can I prepare for my next appointment?"
+    - "Help me prepare for my next visit"
+
+# describe_phase template fragments. Use {days_clause}, {regimen}, {cycle_clause},
+# {days}, {stage_clause}, {cancer_name} placeholders.
+descriptors:
+  active_treatment: "You're {days_clause}{regimen}{cycle_clause}."
+  surveillance:    "{days} days post-surgery — surveillance phase."
+  surveillance_no_date: "You're in the surveillance phase."
+  newly_diagnosed: "Newly diagnosed — {stage_clause}{cancer_name}."
+  fallback:        "Welcome back."

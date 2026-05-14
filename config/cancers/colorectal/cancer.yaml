@@ -1,0 +1,39 @@
+slug: colorectal
+display_name: Colorectal cancer
+short_name: CRC
+aliases:
+  - colon cancer
+  - rectal cancer
+  - bowel cancer
+icd10_prefix: [C18, C19, C20]
+staging_system: AJCC-TNM-8
+biomarker_panel:
+  - KRAS
+  - NRAS
+  - BRAF
+  - MSI
+  - MMR
+  - HER2
+  - NTRK
+  - PIK3CA
+common_regimens:
+  - FOLFOX
+  - FOLFIRI
+  - CAPOX
+  - FOLFOXIRI
+  - Bevacizumab
+  - Cetuximab
+  - Panitumumab
+  - Encorafenib
+  - Pembrolizumab
+default_screening_test: colonoscopy
+clinicaltrials_conditions:
+  - Colorectal Neoplasms
+  - Colon Cancer
+  - Rectal Cancer
+  - Colorectal Cancer
+stage_specific_conditions:
+  IV: ["Metastatic Colorectal Cancer"]
+  III: ["Stage III Colorectal Cancer"]
+  II: ["Stage II Colorectal Cancer"]
+ready: true

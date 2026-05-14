@@ -1,0 +1,12 @@
+slug: lung
+display_name: Lung cancer
+short_name: Lung
+icd10_prefix: [C34]
+staging_system: AJCC-TNM-8
+biomarker_panel: [EGFR, ALK, ROS1, KRAS, BRAF, MET, RET, NTRK, PD-L1]
+clinicaltrials_conditions:
+  - Lung Neoplasms
+  - Lung Cancer
+  - Non-Small Cell Lung Cancer
+  - Small Cell Lung Cancer
+ready: false

@@ -1,0 +1,10 @@
+slug: breast
+display_name: Breast cancer
+short_name: Breast
+icd10_prefix: [C50]
+staging_system: AJCC-TNM-8
+biomarker_panel: [ER, PR, HER2, BRCA1, BRCA2, Ki67, PIK3CA, PD-L1]
+clinicaltrials_conditions:
+  - Breast Neoplasms
+  - Breast Cancer
+ready: false

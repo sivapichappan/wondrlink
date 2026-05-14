@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wondrlink.foundation/schemas/cancers/colorectal/clinical.schema.json",
+  "title": "Colorectal Clinical Profile",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "primary_site": {
+      "type": "string",
+      "enum": ["colon", "rectum", "rectosigmoid", "appendix", "other", "unknown"]
+    },
+    "histology": { "type": "string" },
+    "stage_detail": { "type": "string" },
+    "diagnosis_date": { "type": "string", "format": "date" },
+    "biomarkers": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "KRAS": { "type": "string", "enum": ["wild-type", "mutated", "G12C", "G12D", "G12V", "G13D", "unknown"] },
+        "NRAS": { "type": "string", "enum": ["wild-type", "mutated", "unknown"] },
+        "BRAF": { "type": "string", "enum": ["wild-type", "V600E", "non-V600E", "unknown"] },
+        "MSI":  { "type": "string", "enum": ["MSI-H", "MSS", "MSI-L", "unknown"] },
+        "MMR":  { "type": "string", "enum": ["proficient", "deficient", "unknown"] },
+        "HER2": { "type": "string", "enum": ["positive", "negative", "low", "unknown"] },
+        "NTRK": { "type": "string", "enum": ["fusion", "no-fusion", "unknown"] },
+        "PIK3CA": { "type": "string", "enum": ["wild-type", "mutated", "unknown"] }
+      }
+    },
+    "treatments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "regimen": { "type": "string" },
+          "line": { "type": "string", "enum": ["first-line", "second-line", "third-line", "adjuvant", "neoadjuvant", "maintenance"] },
+          "status": { "type": "string", "enum": ["active", "completed", "discontinued"] },
+          "startDate": { "type": "string", "format": "date" },
+          "endDate": { "type": "string", "format": "date" },
+          "cycleNumber": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "surgical_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "procedure": { "type": "string" },
+          "date": { "type": "string", "format": "date" },
+          "approach": { "type": "string", "enum": ["open", "laparoscopic", "robotic", "unknown"] }
+        }
+      }
+    },
+    "has_ostomy": { "type": "boolean" },
+    "ostomy_type": { "type": "string", "enum": ["colostomy", "ileostomy", "none", "unknown"] }
+  }
+}

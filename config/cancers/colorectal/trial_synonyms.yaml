@@ -1,0 +1,13 @@
+# Optional override of cancer.yaml.clinicaltrials_conditions.
+# When present, this takes precedence in lib/clinical_trials.py build_search_query.
+
+conditions:
+  - Colorectal Neoplasms
+  - Colon Cancer
+  - Rectal Cancer
+  - Colorectal Cancer
+
+stage_specific:
+  IV: ["Metastatic Colorectal Cancer"]
+  III: ["Stage III Colorectal Cancer"]
+  II:  ["Stage II Colorectal Cancer"]

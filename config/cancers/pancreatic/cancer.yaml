@@ -1,0 +1,10 @@
+slug: pancreatic
+display_name: Pancreatic cancer
+short_name: Pancreatic
+icd10_prefix: [C25]
+staging_system: AJCC-TNM-8
+biomarker_panel: [KRAS, BRCA1, BRCA2, MSI, MMR, PALB2]
+clinicaltrials_conditions:
+  - Pancreatic Neoplasms
+  - Pancreatic Cancer
+ready: false

@@ -1,0 +1,13 @@
+slug: nhl
+display_name: Non-Hodgkin lymphoma
+short_name: NHL
+aliases: [non-Hodgkin's lymphoma]
+icd10_prefix: [C82, C83, C84, C85, C86]
+staging_system: Ann-Arbor
+biomarker_panel: [CD20, CD30, BCL2, MYC, TP53]
+clinicaltrials_conditions:
+  - Lymphoma, Non-Hodgkin
+  - Non-Hodgkin Lymphoma
+  - Diffuse Large B-Cell Lymphoma
+  - Follicular Lymphoma
+ready: false

@@ -1,0 +1,53 @@
+# Biomarker → drug-class mappings.
+# Consumed by:
+#   - lib/clinical_trials.py score_trial_relevance  (for bonus_points + warnings)
+#   - lib/prompts/overlay.py                        (to compile the biomarker section)
+# Mirrors the implications currently hardcoded in lib/clinical_trials.py:836.
+
+implications:
+
+  KRAS:
+    warns:
+      - when_state: mutated
+        when_state_aliases: [G12C, G12D, G12V, G13D]
+        warning: "Anti-EGFR antibodies (cetuximab, panitumumab) are ineffective in KRAS-mutated colorectal cancer."
+
+  NRAS:
+    warns:
+      - when_state: mutated
+        warning: "Anti-EGFR antibodies are ineffective in NRAS-mutated colorectal cancer."
+
+  MSI:
+    aligns:
+      - when_state: MSI-H
+        align_keywords: [pembrolizumab, nivolumab, ipilimumab, dostarlimab, immunotherapy, "immune checkpoint", "PD-1", "PD-L1"]
+        bonus_points: 25
+        reason: "MSI-H tumors are highly responsive to immune checkpoint inhibitors."
+
+  MMR:
+    aligns:
+      - when_state: deficient
+        align_keywords: [pembrolizumab, nivolumab, dostarlimab, immunotherapy, "immune checkpoint"]
+        bonus_points: 25
+        reason: "MMR-deficient tumors are highly responsive to immune checkpoint inhibitors."
+
+  BRAF:
+    aligns:
+      - when_state: V600E
+        align_keywords: [encorafenib, cetuximab, "BRAF inhibitor"]
+        bonus_points: 20
+        reason: "BRAF V600E aligns with targeted encorafenib-based regimens."
+
+  HER2:
+    aligns:
+      - when_state: positive
+        align_keywords: [trastuzumab, tucatinib, lapatinib, HER2]
+        bonus_points: 15
+        reason: "HER2-positive colorectal cancer responds to HER2-targeted therapy."
+
+  NTRK:
+    aligns:
+      - when_state: fusion
+        align_keywords: [larotrectinib, entrectinib, "TRK inhibitor"]
+        bonus_points: 18
+        reason: "NTRK fusion-positive tumors are highly responsive to TRK inhibitors."

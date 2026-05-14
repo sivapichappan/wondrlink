@@ -1,0 +1,12 @@
+slug: uterine
+display_name: Uterine (endometrial) cancer
+short_name: Uterine
+aliases: [endometrial cancer]
+icd10_prefix: [C54, C55]
+staging_system: FIGO
+biomarker_panel: [MSI, MMR, p53, ER, PR, HER2, POLE]
+clinicaltrials_conditions:
+  - Endometrial Neoplasms
+  - Uterine Cancer
+  - Endometrial Cancer
+ready: false

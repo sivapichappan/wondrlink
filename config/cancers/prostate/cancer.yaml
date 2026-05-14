@@ -1,0 +1,10 @@
+slug: prostate
+display_name: Prostate cancer
+short_name: Prostate
+icd10_prefix: [C61]
+staging_system: AJCC-TNM-8
+biomarker_panel: [PSA, Gleason, BRCA1, BRCA2, ATM, AR-V7]
+clinicaltrials_conditions:
+  - Prostatic Neoplasms
+  - Prostate Cancer
+ready: false

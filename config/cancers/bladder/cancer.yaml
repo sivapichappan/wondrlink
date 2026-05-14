@@ -1,0 +1,10 @@
+slug: bladder
+display_name: Bladder cancer
+short_name: Bladder
+icd10_prefix: [C67]
+staging_system: AJCC-TNM-8
+biomarker_panel: [FGFR3, PD-L1]
+clinicaltrials_conditions:
+  - Urinary Bladder Neoplasms
+  - Bladder Cancer
+ready: false

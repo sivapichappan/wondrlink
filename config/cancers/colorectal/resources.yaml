@@ -1,0 +1,48 @@
+# Per-cancer advocacy orgs, helplines, and topic resources.
+# Surfaced by lib/llm_utils.py get_relevant_resources for the colorectal slug.
+
+advocacy:
+  - name: Colorectal Cancer Alliance
+    url: https://www.ccalliance.org
+    desc: Patient advocacy + helpline
+  - name: Fight Colorectal Cancer
+    url: https://fightcolorectalcancer.org
+    desc: Patient advocacy + research
+
+helplines:
+  - name: CCA Helpline
+    number: 1-877-422-2030
+    tel: tel:18774222030
+    desc: M–F 9am–9pm ET — colorectal-specific
+
+screening:
+  - name: ACS CRC Screening Guidelines
+    url: https://www.cancer.org/cancer/colon-rectal-cancer/detection-diagnosis-staging/acs-recommendations.html
+    desc: When to screen and which test
+  - name: Colorectal Cancer Alliance Screening Info
+    url: https://www.ccalliance.org/screening
+    desc: Screening options + barriers
+
+ostomy:
+  - name: UOAA
+    url: https://www.ostomy.org
+    desc: Ostomy education and support
+  - name: ACS Colostomy Guide
+    url: https://www.cancer.org/cancer/managing-cancer/treatment-types/surgery/ostomies/colostomy.html
+    desc: Living with colostomy
+
+hereditary:
+  - name: Lynch Syndrome Info
+    url: https://www.cancer.net/cancer-types/lynch-syndrome
+    desc: Lynch syndrome patient guide
+  - name: FORCE
+    url: https://www.facingourrisk.org
+    desc: Hereditary cancer support
+
+surgery:
+  - name: ACS Colon Surgery
+    url: https://www.cancer.org/cancer/colon-rectal-cancer/treating/surgery.html
+    desc: Surgery for colon cancer
+  - name: ASCRS Patient Info
+    url: https://www.fascrs.org/patients
+    desc: Colorectal surgery info

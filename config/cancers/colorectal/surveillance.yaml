@@ -1,0 +1,34 @@
+# Deterministic surveillance rubric for colorectal cancer.
+# Mirrors the existing rules in lib/surveillance.py:31 generate_surveillance_schedule.
+# Source: NCCN Colon Cancer Survivorship Guidelines.
+
+milestones:
+  - id: office_visit
+    test: "Office visit with oncology"
+    cadence: "Every 3–6 months × 2 years, then every 6 months × 3 years"
+    applies_when:
+      stage_in: [II, III, IV]
+    rationale: "NCCN: monitor for recurrence, treatment-related toxicities, and psychosocial concerns."
+
+  - id: cea
+    test: "Carcinoembryonic antigen (CEA) blood test"
+    cadence: "Every 3–6 months × 2 years, then every 6 months × 3 years"
+    applies_when:
+      stage_in: [II, III, IV]
+    rationale: "NCCN: rising CEA can signal recurrence; combine with imaging."
+
+  - id: ct_imaging
+    test: "CT chest, abdomen, and pelvis"
+    cadence: "Annually × 5 years"
+    applies_when:
+      stage_in: [II, III]
+    rationale: "NCCN: imaging surveillance for metastatic recurrence in stage II–III."
+
+  - id: colonoscopy
+    test: "Surveillance colonoscopy"
+    schedule_after_surgery:
+      - at_months: 12
+        note: "First surveillance colonoscopy, ~1 year post-resection"
+      - at_months: 36
+        note: "Every 3 years thereafter; shorter intervals if polyps found"
+    rationale: "NCCN: detect metachronous lesions in the remaining colon."

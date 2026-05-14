@@ -1,0 +1,12 @@
+slug: kidney
+display_name: Kidney cancer
+short_name: Kidney
+aliases: [renal cell carcinoma, RCC]
+icd10_prefix: [C64]
+staging_system: AJCC-TNM-8
+biomarker_panel: [VHL, MET, PBRM1, BAP1, PD-L1]
+clinicaltrials_conditions:
+  - Kidney Neoplasms
+  - Renal Cell Carcinoma
+  - Kidney Cancer
+ready: false

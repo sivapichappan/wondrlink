@@ -1,0 +1,10 @@
+slug: melanoma
+display_name: Melanoma
+short_name: Melanoma
+icd10_prefix: [C43]
+staging_system: AJCC-TNM-8
+biomarker_panel: [BRAF, NRAS, KIT, LDH, PD-L1]
+clinicaltrials_conditions:
+  - Melanoma
+  - Skin Cancer
+ready: false

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wondrlink.foundation/schemas/cancer.schema.json",
+  "title": "Cancer Config",
+  "type": "object",
+  "required": ["slug", "display_name", "staging_system", "clinicaltrials_conditions"],
+  "additionalProperties": false,
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "Canonical lowercase slug. Used as the cancer_slug everywhere downstream."
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "short_name": {
+      "type": "string"
+    },
+    "aliases": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "icd10_prefix": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "staging_system": {
+      "type": "string",
+      "enum": ["AJCC-TNM-8", "FIGO", "Ann-Arbor", "Other"]
+    },
+    "biomarker_panel": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "common_regimens": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "default_screening_test": {
+      "type": "string"
+    },
+    "clinicaltrials_conditions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Condition terms passed to ClinicalTrials.gov query.cond."
+    },
+    "stage_specific_conditions": {
+      "type": "object",
+      "description": "Map from stage (II,III,IV,...) to additional condition terms.",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "ready": {
+      "type": "boolean",
+      "default": false,
+      "description": "When false, the system treats this cancer as a placeholder and falls back to general behavior."
+    }
+  }
+}
