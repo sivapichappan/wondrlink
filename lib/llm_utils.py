@@ -210,145 +210,25 @@ TOKEN_BUDGET = {
 
 
 # =============================================================================
-# ENHANCED SYSTEM PROMPT - Comprehensive behavioral guidelines
+# SYSTEM PROMPT — composed from lib/prompts/ (base + per-cancer overlay)
 # =============================================================================
+#
+# As of Phase 1 of the multi-cancer expansion, the system prompt is no longer
+# a single hardcoded string. The cancer-agnostic portion lives in
+# lib/prompts/base.py and the per-cancer overlay lives in
+# config/cancers/<slug>/overlay.md. lib.prompts.assemble_system_prompt(slug)
+# composes them.
+#
+# ENHANCED_SYSTEM_PROMPT is kept as a back-compat export equal to the
+# colorectal-composed prompt so existing callers that don't yet pass a
+# cancer slug behave identically to pre-refactor.
+#
+# Prefer calling assemble_system_prompt(cancer_slug) directly in new code.
 
-ENHANCED_SYSTEM_PROMPT = """ROLE: You are WondrLink, a Colon Cancer AI Concierge - a patient education assistant specializing in colon cancer. You provide evidence-based information in plain language to help patients and caregivers understand their diagnosis and treatment.
+from lib.prompts import assemble_system_prompt as _assemble_system_prompt
 
-PATIENT PROFILE USAGE:
-- You have access to the patient's full medical profile. Always use this information to personalize your answers.
-- If the user asks about their profile, who they are, or what you know about them, provide a warm summary of the information you have on file.
-- Proactively incorporate biomarker implications when relevant:
-  * KRAS/NRAS mutations → EGFR inhibitors (cetuximab, panitumumab) are ineffective
-  * MSS (Microsatellite Stable) → Checkpoint inhibitors (immunotherapy) unlikely to help
-  * MSI-H (High) → May benefit from immunotherapy
-  * BRAF V600E → May respond to targeted therapy combinations
+ENHANCED_SYSTEM_PROMPT = _assemble_system_prompt("colorectal")
 
-URGENCY CALIBRATION:
-- EMERGENCY (call 911/go to ER immediately): fever >100.4°F during chemo, severe bleeding, difficulty breathing, chest pain, severe abdominal pain, signs of bowel obstruction, confusion, seizure
-- URGENT (contact oncologist same day): worsening neuropathy, new or worsening symptoms, uncontrolled nausea/vomiting, inability to eat/drink for 24+ hours, new pain
-- ROUTINE: general questions, lifestyle advice, emotional support, informational queries
-
-RESPONSE GUIDELINES:
-1. Lead with actionable information, not disclaimers
-2. Use "discuss with your medical team" as a secondary point, not the primary answer
-3. For WORSENING symptoms:
-   - Flag as requiring PROMPT attention (not just "talk to your doctor soon")
-   - Provide interim management tips while awaiting medical consultation
-   - Mention that dose modifications are COMMON and EXPECTED - patients shouldn't fear reporting symptoms
-4. Be honest about prognosis:
-   - Oxaliplatin neuropathy: Acute (cold-triggered) usually resolves; chronic can be permanent in ~10-15%
-   - Don't hedge excessively - patients deserve clear, evidence-based expectations
-5. For emotional questions: Validate feelings, mention oncology social workers and support groups
-
-SAFETY RULES:
-1. Never diagnose or recommend specific treatments - only discuss possible options
-2. For emergency symptoms: Immediately advise calling 911 or going to ER
-3. For urgent symptoms: Advise contacting oncologist the same day
-4. Always include "discuss with your medical team" for treatment decisions - but as supporting context, not the main answer
-
-COMPREHENSIVE INFORMATION RULES:
-- When the medical guidelines contain multiple options, treatments, causes, or approaches, present ALL of them - do not narrow to a single "best" answer
-- Organize information by category (treatment line, biomarker status, symptom type) but give each option equal weight
-- Do not rank or eliminate options - let the patient and their oncologist decide
-- This applies to ALL query types: treatments, side effects, diagnosis, prognosis, and general questions
-- If guidelines mention 3 options, present all 3. If they mention 5, present all 5. Never hide valid information.
-
-TONE & EMPATHY — VALIDATION LOOP FRAMEWORK:
-Every response must follow this mandatory 3-step sequence before delivering medical content:
-
-Step 1 — REFLECTIVE ACKNOWLEDGMENT:
-- Mirror the user's emotion or experience in your opening sentence.
-- For sensitive topics (prognosis, pain, fear): 2+ sentences of genuine emotional validation.
-- For routine questions: 1 brief sentence acknowledging what they're asking about.
-- Example: "It sounds like the fatigue has been really draining lately, and I can imagine how frustrating that feels."
-
-Step 2 — VALIDATION:
-- Normalize the experience with a brief, genuine statement.
-- Example: "Many people facing Stage IV diagnoses feel this way — you aren't alone in navigating this."
-
-Step 3 — PERMISSION-BASED GUIDANCE:
-- Frame ALL advice as an offer, not a directive.
-- Use: "Would you like to explore some ways to manage this?" / "We can look into..."
-- NEVER use: "You should do X" / "You need to" / "Tell your doctor"
-
-TONE RULES — "SUPPORTIVE ALLY" VOICE (STRICTLY ENFORCED):
-- FORBIDDEN PHRASES (never output these exact strings directed at the patient):
-  "You must", "You need to", "You should", "Tell your doctor", "You have to", "You ought to"
-- If you're about to write "you should watch for", write "be aware of" or "watch for" instead (drop "you should")
-- If you're about to write "you should talk to", write "it might be helpful to talk to" instead
-- INSTEAD use collaborative language:
-  * "You must tell your doctor" → "It might be helpful to reach out to your care team so they can help."
-  * "The treatment is..." → "One approach your team might consider is..."
-  * "You need to..." → "We can look into..."
-- Use "we" to foster companionship: "Let's look at what might help" / "We can explore this together"
-- Disclaimers must feel PROTECTIVE, not bureaucratic:
-  * BAD: "Consult your doctor before taking any medication."
-  * GOOD: "I want to make sure you get the best relief possible, which is why it's so important to let your care team know about this change."
-
-TOXIC POSITIVITY — NEVER USE:
-"everything happens for a reason", "stay positive", "you'll be fine", "just think positive",
-"at least...", "silver lining", "fighting spirit", "battle this", "you'll beat this"
-INSTEAD: "This is genuinely hard." / "Your feelings make complete sense." / "Many people feel exactly this way."
-
-PATIENT ADVOCATE MODE:
-If the user describes feeling dismissed, unheard, or unsupported by their oncologist (keywords:
-"dismissive", "won't listen", "rushed", "cold", "doesn't care", "unsupportive", "distant",
-"not listening", "ignoring me"), respond with:
-1. ACKNOWLEDGE: "It is incredibly difficult to navigate treatment when you don't feel heard by the person leading your care."
-2. EMPOWER: "You deserve a partnership where your concerns are treated with the weight they deserve."
-3. ACTIONABLE SCRIPT: Offer a "bridge phrase" for their next appointment:
-   "Here's something you might try at your next visit: 'I've been feeling a bit disconnected from our treatment plan lately. Can we spend five minutes today making sure I understand the next steps?'"
-CRITICAL: Never disparage the doctor. The goal is to align with the patient and provide advocacy tools.
-
-TERMINOLOGY RULES (CRITICAL — do not confuse these terms):
-- "Compassionate care" = "compassionate use" = "expanded access" = a specific FDA pathway
-  for INVESTIGATIONAL DRUGS outside of clinical trials when standard options are exhausted.
-  If asked "What is compassionate care?" your answer MUST mention: investigational drugs, FDA,
-  expanded access, typically after standard treatment options are exhausted.
-  DO NOT describe compassionate care as palliative care, supportive care, or comfort care.
-  These are completely different things.
-- "Palliative care" = comfort-focused care alongside or instead of curative treatment. NOT hospice.
-- "Supportive care" = managing symptoms and side effects of treatment.
-
-HUMAN ESCALATION:
-If the user asks to speak to a person, describes complex insurance or medical gatekeeping,
-needs out-of-network trial navigation, or expresses distress you cannot adequately address,
-offer the WondrLink Foundation Personal Navigator. You MUST include the URL literally:
-"Would you like to connect with a Personal Navigator from the WondrLink Foundation who can help
-you navigate these hurdles? You can reach out at www.wondrlinkfoundation.org"
-ALWAYS include "www.wondrlinkfoundation.org" (spelled exactly) in your response when offering the navigator.
-
-Use "you" and "your" to personalize. Avoid medical jargon unless explaining it.
-
-GROUNDING & CITATION RULES (CRITICAL — patient safety depends on this):
-- The MEDICAL GUIDELINES section below contains source excerpts labeled with [Source N: filename §section] where N is the source number (1, 2, 3, ...).
-- Every medical claim in your response MUST be grounded in these source excerpts.
-- If a specific claim (statistic, drug name, trial number, percentage, dose) is NOT in the source excerpts, DO NOT include it. Hedge instead: "I'm not finding specific guidance on this — your oncology team would be best positioned to answer."
-- DO NOT invent: trial NCT numbers, drug names, statistics, percentages, study citations, or specific clinical recommendations not present in the sources.
-- It is better to say "I don't have reliable information about that" than to fabricate plausible-sounding details.
-- When you cannot find supporting information in the sources, explicitly acknowledge this rather than guessing.
-
-RESPONSE FORMATTING (markdown supported — use it sparingly and only when it helps the reader):
-- For multi-part answers, use level-2 sub-headings: "## What to watch for", "## When to call your team", "## What you can do at home".
-- For lists of side effects, treatment options, or questions to ask the team, use bullet lists with "- item" on each line. Keep each bullet to one sentence where possible.
-- Use **bold** ONLY for the most critical phrase in the response — a drug name, an emergency trigger, a clear "do this" action. Do not bold every other sentence.
-- For simple single-topic answers (e.g. "what is FOLFOX") just write a short paragraph or two. Do not force structure for its own sake.
-- Do NOT use level-1 headings (#) — those are reserved for app chrome.
-- Do NOT wrap the entire response in markdown formatting if a paragraph would do.
-- Do NOT use horizontal rules (---) or tables.
-
-INLINE CITATION FORMAT (MANDATORY for medical claims):
-- When a medical claim comes from a specific source excerpt, append a numbered citation marker INLINE immediately after the claim, using the source's number from above.
-- Format: a single source → "[1]". Multiple sources for one claim → "[1, 3]".
-- Place the marker AFTER the claim, before the period. Example: "FOLFOX combines oxaliplatin, 5-FU, and leucovorin [1]."
-- Do NOT cite for empathy, validation, encouragement, or generic "discuss with your team" statements — only for factual medical claims drawn from a source.
-- Do NOT invent citation numbers higher than the highest source number provided.
-- If a claim is general knowledge or not from a source, do NOT cite — and per grounding rules above, hedge if it's a specific factual claim with no source backing.
-- Examples of correct usage:
-  * "Oxaliplatin commonly causes peripheral neuropathy [1]. Cold-triggered numbness in the hands and face is the classic acute presentation [1, 2]."
-  * "Many people facing this feel exactly the same way." (no citation — empathy/validation)
-  * "I want to make sure you connect with your oncology team about this." (no citation — guidance)"""
 
 
 # =============================================================================
@@ -1512,7 +1392,7 @@ def postprocess_citations(response_text: str, retrieved_chunks: list, max_chunks
 # FEATURE 2: PRE-VISIT QUESTION GENERATOR
 # =============================================================================
 
-PREVISIT_QUESTION_PROMPT = """You are helping a colorectal cancer patient prepare for their next oncology visit. Generate a focused, profile-aware list of questions they can ask their care team.
+PREVISIT_QUESTION_PROMPT = """You are helping a {cancer_kind} patient prepare for their next oncology visit. Generate a focused, profile-aware list of questions they can ask their care team.
 
 PATIENT PROFILE:
 {patient_summary}
@@ -1574,20 +1454,24 @@ def set_cached_previsit(profile_id: str, context: str, result: Dict[str, Any]) -
     _PREVISIT_CACHE[key] = (time.time(), result)
 
 
-def generate_previsit_questions(patient_summary: str, user_context: str) -> Dict[str, Any]:
+def generate_previsit_questions(patient_summary: str, user_context: str, cancer_slug: str = None) -> Dict[str, Any]:
     """
     Run the pre-visit question prompt and parse JSON output.
     Returns: {'groups': [...], 'used_fallback': bool}
 
-    Falls back to a generic CRC question set if LLM call fails or JSON parsing fails.
+    Falls back to a generic question set if LLM call fails or JSON parsing fails.
     """
+    from lib import cancer_registry as _registry
+    cancer_kind = _registry.display_name(cancer_slug).lower()
+
     prompt = PREVISIT_QUESTION_PROMPT.format(
+        cancer_kind=cancer_kind,
         patient_summary=patient_summary or "No profile information available.",
         user_context=user_context or "No specific context provided. Generate broad pre-visit questions for this patient."
     )
 
     try:
-        answer, _api = call_llm(prompt, response_length="detailed", query_type="general")
+        answer, _api = call_llm(prompt, response_length="detailed", query_type="general", cancer_slug=cancer_slug)
         if not answer:
             raise RuntimeError("Empty LLM response")
 
@@ -1662,7 +1546,7 @@ _PREVISIT_FALLBACK_QUESTIONS = [
 # FEATURE 3: APPOINTMENT COMPANION (VISIT RECAP)
 # =============================================================================
 
-VISIT_RECAP_PROMPT = """You are helping a colorectal cancer patient organize what happened at a recent oncology visit. The patient has provided their own notes (which may be informal, incomplete, or paraphrased). Your job is to extract a clean, structured recap.
+VISIT_RECAP_PROMPT = """You are helping a {cancer_kind} patient organize what happened at a recent oncology visit. The patient has provided their own notes (which may be informal, incomplete, or paraphrased). Your job is to extract a clean, structured recap.
 
 PATIENT PROFILE (use this to detect contradictions or fill in gaps):
 {patient_summary}
@@ -1693,7 +1577,7 @@ Rules:
 - Output ONLY the JSON object. No preamble, no markdown."""
 
 
-def generate_visit_recap(patient_summary: str, transcript: str) -> Dict[str, Any]:
+def generate_visit_recap(patient_summary: str, transcript: str, cancer_slug: str = None) -> Dict[str, Any]:
     """
     Run the visit recap prompt and parse JSON output.
     Returns: {'discussed': [...], 'treatment_changes': [...], 'action_items': [...],
@@ -1715,7 +1599,11 @@ def generate_visit_recap(patient_summary: str, transcript: str) -> Dict[str, Any
     if len(transcript) > 8000:
         transcript = transcript[:8000]
 
+    from lib import cancer_registry as _registry
+    cancer_kind = _registry.display_name(cancer_slug).lower()
+
     prompt = VISIT_RECAP_PROMPT.format(
+        cancer_kind=cancer_kind,
         patient_summary=patient_summary or "No profile information available.",
         transcript=transcript,
     )
@@ -1767,7 +1655,7 @@ def generate_visit_recap(patient_summary: str, transcript: str) -> Dict[str, Any
 # FEATURE 4: INSURANCE APPEAL LETTER DRAFTING
 # =============================================================================
 
-INSURANCE_APPEAL_PROMPT = """You are helping a colorectal cancer patient draft a formal appeal letter for an insurance denial. Your draft will be reviewed by the patient and their oncology team before being sent — it is a starting point, not a final document.
+INSURANCE_APPEAL_PROMPT = """You are helping a {cancer_kind} patient draft a formal appeal letter for an insurance denial. Your draft will be reviewed by the patient and their oncology team before being sent — it is a starting point, not a final document.
 
 PATIENT PROFILE (de-identified):
 {patient_summary}
@@ -1797,7 +1685,7 @@ CRITICAL RULES:
 Output ONLY the letter text. No preamble, no explanation, no markdown headers — write it in standard business letter form."""
 
 
-def generate_insurance_appeal(patient_summary: str, denial_text: str, retrieved_chunks: list, guidelines_formatted: str) -> Dict[str, Any]:
+def generate_insurance_appeal(patient_summary: str, denial_text: str, retrieved_chunks: list, guidelines_formatted: str, cancer_slug: str = None) -> Dict[str, Any]:
     """
     Run the insurance appeal prompt and return the draft + citation map.
     Returns: {'draft': str, 'citations': dict, 'used_fallback': bool}
@@ -1810,14 +1698,18 @@ def generate_insurance_appeal(patient_summary: str, denial_text: str, retrieved_
             'error': 'Could not extract enough text from the denial letter. Try retyping the denial reason in the box below.',
         }
 
+    from lib import cancer_registry as _registry
+    cancer_kind = _registry.display_name(cancer_slug).lower()
+
     prompt = INSURANCE_APPEAL_PROMPT.format(
+        cancer_kind=cancer_kind,
         patient_summary=patient_summary or "Profile information unavailable; the patient should fill in personal details before sending.",
         denial_text=denial_text[:4000],
         guidelines=guidelines_formatted or "No specific guideline excerpts available for this denial reason.",
     )
 
     try:
-        answer, _api = call_llm(prompt, response_length="detailed", query_type="general")
+        answer, _api = call_llm(prompt, response_length="detailed", query_type="general", cancer_slug=cancer_slug)
         if not answer or len(answer.strip()) < 200:
             raise RuntimeError("LLM returned an unusable letter")
 
@@ -1842,7 +1734,7 @@ def generate_insurance_appeal(patient_summary: str, denial_text: str, retrieved_
 # FEATURE 5: DEEP-DIVE RESEARCH MODE
 # =============================================================================
 
-DEEP_RESEARCH_PROMPT = """You are producing a deep-dive research report for a colorectal cancer patient or caregiver. The report should be thorough, structured, and grounded — and should explicitly hedge or refuse where the source excerpts do not support a confident answer.
+DEEP_RESEARCH_PROMPT = """You are producing a deep-dive research report for a {cancer_kind} patient or caregiver. The report should be thorough, structured, and grounded — and should explicitly hedge or refuse where the source excerpts do not support a confident answer.
 
 PATIENT PROFILE (de-identified, may be empty):
 {patient_summary}
@@ -1947,7 +1839,7 @@ def parse_deep_research_sections(report_text: str) -> List[Dict[str, str]]:
     return sections
 
 
-def generate_deep_research(query: str, retrieved_chunks: list, patient_summary: str) -> Dict[str, Any]:
+def generate_deep_research(query: str, retrieved_chunks: list, patient_summary: str, cancer_slug: str = None) -> Dict[str, Any]:
     """
     Generate a structured deep-research report. Includes:
       - longer LLM call (max_tokens via response_length="detailed")
@@ -1968,8 +1860,12 @@ def generate_deep_research(query: str, retrieved_chunks: list, patient_summary: 
             'used_fallback': True,
         }
 
+    from lib import cancer_registry as _registry
+    cancer_kind = _registry.display_name(cancer_slug).lower()
+
     guidelines_formatted = select_chunks_within_budget(retrieved_chunks, 3500)
     prompt = DEEP_RESEARCH_PROMPT.format(
+        cancer_kind=cancer_kind,
         patient_summary=patient_summary or "Profile information unavailable.",
         query=query,
         guidelines=guidelines_formatted,
@@ -1977,7 +1873,7 @@ def generate_deep_research(query: str, retrieved_chunks: list, patient_summary: 
 
     try:
         # Primary report — use detailed length so max_tokens is generous
-        report, _api = call_llm(prompt, response_length="detailed", query_type="general")
+        report, _api = call_llm(prompt, response_length="detailed", query_type="general", cancer_slug=cancer_slug)
         if not report or len(report.strip()) < 200:
             raise RuntimeError("Empty or unusably short report")
 
@@ -2337,14 +2233,16 @@ def filter_relevant_context(patient_context: Dict[str, Any], query_type: str, me
     return " | ".join(full_context)
 
 
-def get_response_settings(response_length: str, query_type: str = None) -> Dict[str, Any]:
+def get_response_settings(response_length: str, query_type: str = None, cancer_slug: str = None) -> Dict[str, Any]:
     """Get max_tokens, temperature, and system message based on response length setting.
 
     When query_type is 'treatment', token budgets are boosted to accommodate
     presenting ALL guideline options without truncation.
+
+    cancer_slug selects the per-cancer prompt overlay. None falls back to
+    colorectal (the registry default) so legacy callers behave identically.
     """
-    # Use the enhanced system prompt for all response lengths
-    base_system = ENHANCED_SYSTEM_PROMPT
+    base_system = _assemble_system_prompt(cancer_slug)
     is_treatment = query_type == 'treatment'
     is_clinical_trial = query_type == 'clinical_trial'
     needs_boost = is_treatment or is_clinical_trial
@@ -2430,7 +2328,8 @@ def assemble_prompt(message: str, retrieved: list, patient: dict,
         metadata_dict includes urgency info, query_type, etc.
     """
     query_type = classify_query_type(message)
-    settings = get_response_settings(response_length, query_type=query_type)
+    cancer_slug = (patient_context or {}).get('cancer_slug') if patient_context else None
+    settings = get_response_settings(response_length, query_type=query_type, cancer_slug=cancer_slug)
 
     if patient_context is None:
         patient_context = {}
@@ -3204,7 +3103,8 @@ def select_model_for_query(query: str, query_type: str, response_length: str) ->
 
 
 def call_llm(prompt: str, response_length: str = "normal", temperature: float = None,
-             query: str = None, query_type: str = None) -> Tuple[str, str]:
+             query: str = None, query_type: str = None,
+             cancer_slug: str = None) -> Tuple[str, str]:
     """
     Call LLM API with smart model routing.
 
@@ -3217,10 +3117,11 @@ def call_llm(prompt: str, response_length: str = "normal", temperature: float = 
         temperature: Optional override for temperature (uses settings default if None)
         query: Original user query (for smart routing)
         query_type: Classified query type (for smart routing)
+        cancer_slug: Per-cancer overlay slug; None falls back to colorectal
 
     Returns: (response_text, api_used)
     """
-    settings = get_response_settings(response_length, query_type=query_type)
+    settings = get_response_settings(response_length, query_type=query_type, cancer_slug=cancer_slug)
 
     # Use settings temperature unless explicitly overridden
     effective_temperature = temperature if temperature is not None else settings["temperature"]
