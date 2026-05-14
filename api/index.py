@@ -638,13 +638,13 @@ def api_chat():
 
         # Off-topic detection — refuse with redirect if query is outside scope
         try:
-            from confidence import is_on_topic, OFF_TOPIC_RESPONSE
-            on_topic, ot_reason = is_on_topic(message, retrieved)
+            from confidence import is_in_oncology_domain, render_off_topic_response
+            on_topic, ot_reason = is_in_oncology_domain(message, retrieved)
             if not on_topic:
                 logger.info(f"Off-topic query refused: {ot_reason}")
                 return jsonify({
                     "status": "ok",
-                    "answer": OFF_TOPIC_RESPONSE,
+                    "answer": render_off_topic_response(cancer_slug),
                     "api_used": "off-topic-filter",
                     "retrieved_count": 0,
                     "off_topic": True,
@@ -1542,15 +1542,16 @@ def api_deep_research():
 
         # Off-topic guard (reuse hallucination-mitigation infra)
         try:
-            from confidence import is_on_topic, OFF_TOPIC_RESPONSE
+            from confidence import is_in_oncology_domain, render_off_topic_response
             chunks = load_all_chunks()
             quick_retrieved = hybrid_search(query, chunks, top_k=5, cancer_types=_dr_filter) if chunks else []
-            on_topic, _reason = is_on_topic(query, quick_retrieved)
+            on_topic, _reason = is_in_oncology_domain(query, quick_retrieved)
             if not on_topic:
+                _ot_text = render_off_topic_response(_dr_slug)
                 return jsonify({
                     "status": "off_topic",
-                    "report": OFF_TOPIC_RESPONSE,
-                    "sections": [{"title": "Outside scope", "body": OFF_TOPIC_RESPONSE}],
+                    "report": _ot_text,
+                    "sections": [{"title": "Outside scope", "body": _ot_text}],
                     "citations": {},
                     "sources": [],
                     "verified": True,
