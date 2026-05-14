@@ -30,19 +30,54 @@ logger = logging.getLogger(__name__)
 
 def generate_surveillance_schedule(stage: str, surgery_date: str,
                                     last_colonoscopy_date: str = None,
-                                    diagnosis_date: str = None) -> Dict[str, Any]:
+                                    diagnosis_date: str = None,
+                                    cancer_slug: str = None) -> Dict[str, Any]:
     """
-    Generate a personalized surveillance schedule based on NCCN guidelines.
+    Generate a personalized surveillance schedule based on guidelines for
+    the patient's cancer.
+
+    Phase 1 dispatch behavior:
+      - cancer_slug in (None, 'colorectal')  → run the colon-specific
+        procedural logic below. Unchanged from pre-refactor (preserves
+        eval parity).
+      - cancer_slug = any other slug         → return a "coming soon"
+        stub. Other cancers ship their own deterministic rubric (read
+        from config/cancers/<slug>/surveillance.yaml) when they flip
+        ready: true; until then the user is asked to defer to their
+        oncology team.
 
     Args:
         stage: Cancer stage (I, II, IIA, IIB, III, IIIA, IIIB, IIIC, IV)
-        surgery_date: Date of primary surgery (YYYY-MM-DD or relative like 'approximately 20 months ago')
-        last_colonoscopy_date: Date of last colonoscopy (optional)
+        surgery_date: Date of primary surgery (YYYY-MM-DD or relative)
+        last_colonoscopy_date: Date of last colonoscopy (colorectal only)
         diagnosis_date: Date of diagnosis (optional)
+        cancer_slug: Per-cancer dispatch. None = colorectal.
 
     Returns:
         Dict with 'schedule' (list of items), 'overdue' (list), 'stage_group'
     """
+    # Multi-cancer dispatch — Phase 1 keeps colorectal as the only
+    # implemented surveillance rubric. Other slugs return a stub so the
+    # frontend can render "coming soon" gracefully.
+    if cancer_slug and cancer_slug != 'colorectal':
+        try:
+            from lib.cancer_registry import display_name
+            label = display_name(cancer_slug)
+        except Exception:
+            label = "this cancer"
+        return {
+            'schedule': [],
+            'overdue': [],
+            'stage_group': 'unknown',
+            'cancer_slug': cancer_slug,
+            'message': (
+                f"A personalized surveillance schedule for {label} is coming soon. "
+                f"In the meantime, please follow the plan your oncology team has set "
+                f"for you — surveillance protocols differ meaningfully between cancers, "
+                f"and your team's recommendation is the one to trust."
+            ),
+        }
+
     now = datetime.now()
 
     # Parse surgery date

@@ -111,10 +111,31 @@ _PHASE_SUGGESTIONS = {
 }
 
 
-def suggest_starter_questions(profile: Dict[str, Any], ctx: Dict[str, Any]) -> List[str]:
+def _load_phase_suggestions(cancer_slug: Optional[str]) -> Dict[str, List[str]]:
+    """Load per-cancer phase suggestions from config/cancers/<slug>/phase_rubric.yaml.
+
+    Falls back to the in-module default (which mirrors the colorectal rubric)
+    when the cancer is missing a phase_rubric.yaml.
+    """
+    if not cancer_slug:
+        return _PHASE_SUGGESTIONS
+    try:
+        from lib.cancer_registry import load_phase_rubric
+        rubric = load_phase_rubric(cancer_slug) or {}
+        suggestions = rubric.get("suggestions")
+        if isinstance(suggestions, dict):
+            # Ensure every key returns a list of strings; missing keys fall back.
+            return {**_PHASE_SUGGESTIONS, **{k: v for k, v in suggestions.items() if isinstance(v, list)}}
+    except Exception:
+        pass
+    return _PHASE_SUGGESTIONS
+
+
+def suggest_starter_questions(profile: Dict[str, Any], ctx: Dict[str, Any], cancer_slug: str = None) -> List[str]:
     """Return three suggested questions based on the patient's treatment phase."""
     phase = detect_treatment_phase(profile, ctx)
-    raw = _PHASE_SUGGESTIONS.get(phase, _PHASE_SUGGESTIONS["general"])
+    suggestions = _load_phase_suggestions(cancer_slug)
+    raw = suggestions.get(phase) or suggestions.get("general") or _PHASE_SUGGESTIONS["general"]
     stage = (ctx or {}).get("stage") or "your stage"
     return [q.replace("{stage}", str(stage)) for q in raw]
 
@@ -155,7 +176,7 @@ def format_visit_summary(recap_entry: Optional[Dict[str, Any]]) -> Optional[Dict
 
 # --- Pretty descriptor of treatment phase --------------------------------
 
-def describe_phase(profile: Dict[str, Any], ctx: Dict[str, Any]) -> str:
+def describe_phase(profile: Dict[str, Any], ctx: Dict[str, Any], cancer_slug: str = None) -> str:
     """
     Human-readable description of where the patient is in their journey.
     Used as the subtitle line under the welcome greeting.
@@ -189,7 +210,15 @@ def describe_phase(profile: Dict[str, Any], ctx: Dict[str, Any]) -> str:
         return "You're in the surveillance phase."
     if phase == "newly_diagnosed":
         stage = (ctx or {}).get("stage") or ""
-        cancer = (ctx or {}).get("cancer_type") or "colorectal cancer"
+        # Cancer name: prefer ctx.cancer_type (the patient's reported site),
+        # else the per-cancer registry display name, else a sensible default.
+        cancer = (ctx or {}).get("cancer_type") or ""
+        if not cancer:
+            try:
+                from lib.cancer_registry import display_name
+                cancer = display_name(cancer_slug).lower()
+            except Exception:
+                cancer = "cancer"
         stage_clause = f"stage {stage}, " if stage else ""
         return f"Newly diagnosed — {stage_clause}{cancer}."
     return "Welcome back."

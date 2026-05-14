@@ -550,27 +550,41 @@ def build_search_query(patient_context: Dict[str, Any],
         "filter.overallStatus": "RECRUITING,ENROLLING_BY_INVITATION,ACTIVE_NOT_RECRUITING"
     }
 
-    # Build condition query - focus on colon/colorectal cancer
-    conditions = []
-    cancer_type = (patient_context.get("cancer_type") or "").lower()
+    # Build condition query — look up the per-cancer ClinicalTrials.gov
+    # synonyms from config/cancers/<slug>/trial_synonyms.yaml (or fall back
+    # to cancer.yaml.clinicaltrials_conditions). Fixes the previous bug
+    # that unconditionally appended "colorectal cancer" for every cancer.
+    cancer_slug = patient_context.get("cancer_slug")
+    if not cancer_slug:
+        # Legacy fallback: derive from the raw cancer_type string
+        try:
+            from lib.cancer_registry import resolve_slug
+            cancer_slug = resolve_slug(patient_context.get("cancer_type") or "")
+        except Exception:
+            cancer_slug = "colorectal"
 
-    if "colon" in cancer_type or "colorectal" in cancer_type:
-        conditions.append("colorectal cancer")
-    else:
-        # Default for this colon cancer app
-        conditions.append("colorectal cancer")
+    try:
+        from lib.cancer_registry import load_trial_synonyms
+        synonyms = load_trial_synonyms(cancer_slug) or {}
+    except Exception:
+        synonyms = {}
 
-    # Add stage-specific terms to broaden results across all stages
+    conditions = list(synonyms.get("conditions") or [])
+    if not conditions:
+        conditions = ["cancer"]
+
+    # Stage-specific terms — from per-cancer config when present
     stage = patient_context.get("stage") or ""
     stage_upper = stage.upper()
+    stage_specific = synonyms.get("stage_specific") or {}
     if "IV" in stage_upper or "4" in stage:
-        conditions.append("metastatic colorectal cancer")
+        conditions.extend(stage_specific.get("IV") or [])
     elif "III" in stage_upper or "3" in stage:
-        conditions.append("stage III colorectal cancer")
+        conditions.extend(stage_specific.get("III") or [])
     elif "II" in stage_upper or "2" in stage:
-        conditions.append("stage II colorectal cancer")
+        conditions.extend(stage_specific.get("II") or [])
     elif "I" in stage_upper or "1" in stage:
-        conditions.append("stage I colorectal cancer")
+        conditions.extend(stage_specific.get("I") or [])
 
     params["query.cond"] = " OR ".join(conditions)
 

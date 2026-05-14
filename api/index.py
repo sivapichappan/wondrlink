@@ -1101,8 +1101,14 @@ def api_surveillance():
             return jsonify({"status": "ok", "schedule": None,
                            "message": "Stage and surgery date needed for surveillance schedule"})
 
+        try:
+            from profile_validator import derive_universal_core as _derive_core
+            _surv_slug = _derive_core(profile or {}).get('cancer_slug') or 'colorectal'
+        except Exception:
+            _surv_slug = 'colorectal'
+
         from surveillance import generate_surveillance_schedule
-        schedule = generate_surveillance_schedule(stage, surgery_date,
+        schedule = generate_surveillance_schedule(stage, surgery_date, cancer_slug=_surv_slug,
                                                    diagnosis_date=diagnosis_date)
         return jsonify({"status": "ok", **schedule})
     except Exception as e:
@@ -1131,6 +1137,14 @@ def api_clinical_trials():
 
         # Extract patient context
         patient_context = extract_patient_context_complex(profile)
+        # Inject cancer_slug so build_search_query consults the right
+        # ClinicalTrials.gov condition synonyms instead of the legacy
+        # unconditional "colorectal cancer" default.
+        try:
+            from profile_validator import derive_universal_core as _derive_core
+            patient_context['cancer_slug'] = _derive_core(profile or {}).get('cancer_slug')
+        except Exception:
+            pass
 
         # Validate profile readiness for trial search
         readiness = validate_trial_search_readiness(patient_context)
@@ -1761,6 +1775,12 @@ def api_hero():
             return jsonify({"has_profile": False})
 
         ctx = extract_patient_context_complex(profile)
+        try:
+            from profile_validator import derive_universal_core as _derive_core
+            _hero_slug = _derive_core(profile or {}).get('cancer_slug')
+        except Exception:
+            _hero_slug = None
+
         from hero import (
             compute_days_into_treatment,
             describe_phase,
@@ -1777,12 +1797,13 @@ def api_hero():
         return jsonify({
             "has_profile": True,
             "first_name": first_name,
-            "phase_description": describe_phase(profile, ctx),
+            "phase_description": describe_phase(profile, ctx, cancer_slug=_hero_slug),
             "regimen": ctx.get("current_regimen") or "",
             "days_into": compute_days_into_treatment(profile),
             "cycle": ctx.get("current_cycle_number"),
             "last_visit": format_visit_summary(last_recap),
-            "suggestions": suggest_starter_questions(profile, ctx),
+            "suggestions": suggest_starter_questions(profile, ctx, cancer_slug=_hero_slug),
+            "cancer_slug": _hero_slug or "colorectal",
         })
     except Exception as e:
         logger.exception("hero error")
