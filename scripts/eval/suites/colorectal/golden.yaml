@@ -1,0 +1,76 @@
+# Colorectal golden eval — prompts the pipeline should answer well.
+# Each prompt declares the EXPECTED behavior so the harness can
+# regression-check the multi-cancer refactor against pre-Phase-1 colon.
+
+prompts:
+  - id: crc_folfox_side_effects
+    query: "What side effects from FOLFOX cycle 2 should I watch for?"
+    expect:
+      route: selected
+      should_reject: false
+      should_escalate: false
+      requires_keywords: [neuropathy]
+      forbids_keywords: ["you should ", "you must "]
+      expect_sources_gte: 1
+
+  - id: crc_folfox_vs_folfiri
+    query: "What's the difference between FOLFOX and FOLFIRI?"
+    expect:
+      route: selected
+      should_reject: false
+      should_escalate: false
+      requires_keywords: [oxaliplatin]
+
+  - id: crc_kras_implications
+    query: "I'm KRAS mutated. What does that mean for my treatment?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you should ", "you must ", "you have to "]
+
+  - id: crc_msi_high
+    query: "My biopsy came back MSI-high. What treatment options open up?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [immunotherapy]
+
+  - id: crc_stage_iii_what_now
+    query: "I was just diagnosed with stage III colon cancer. What happens next?"
+    expect:
+      route: selected
+      should_reject: false
+      should_escalate: false
+      expect_sources_gte: 1
+
+  - id: crc_colonoscopy_when
+    query: "When should I get my next colonoscopy after surgery?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: crc_cea_meaning
+    query: "What does a CEA blood test measure and when is it ordered?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: crc_neuropathy_management
+    query: "How can I manage neuropathy from oxaliplatin between cycles?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [neuropathy]
+      forbids_keywords: ["you must ", "you should "]
+
+  - id: crc_clinical_trial_eligibility
+    query: "How do I know if I'm eligible for a clinical trial?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: crc_greeting
+    query: "Hello"
+    expect:
+      route: selected
+      should_reject: false

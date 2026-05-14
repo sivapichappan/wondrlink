@@ -41,10 +41,12 @@ ONCOLOGY_KEYWORDS = {
     'chemoradiation',
     # Diagnostic categories (universal)
     'biopsy', 'screening', 'staging', 'biomarker', 'mutation', 'gene panel',
-    'pathology', 'tumor marker', 'pet scan', 'ct scan',
+    'pathology', 'tumor marker', 'pet scan', 'ct scan', 'mri',
+    'blood test', 'blood work', 'lab', 'labs', 'scan',
     # Symptoms / experience (universal — applies to most cancers)
     'nausea', 'fatigue', 'neuropathy', 'mucositis', 'recurrence', 'remission',
     'palliative', 'hospice', 'survivorship', 'side effect', 'side effects',
+    'fever', 'chills', 'bleeding', 'shortness of breath',
     # Care concepts
     'oncology team', 'care team', 'caregiver', 'patient', 'diagnosis',
     'treatment', 'prognosis', 'clinical trial', 'compassionate use',
@@ -56,6 +58,12 @@ ONCOLOGY_KEYWORDS = {
     'stress', 'sleep', 'insomnia',
     'wellness', 'wellbeing',
     'family', 'children', 'kids', 'sister', 'brother',
+    # Common emotional / caregiver-burden language patients use without
+    # invoking the formal clinical terms above.
+    'exhausted', 'overwhelmed', 'drained', 'worn out', 'burnout',
+    'hopeless', 'feeling down', 'feeling sad', 'so sad',
+    'caring for', 'caring for my', 'looking after',
+    'support group', 'support groups',
     # Generic medical / health vocabulary (broader catch)
     'doctor', 'physician', 'specialist', 'health', 'medical', 'medicine',
     'medication', 'drug', 'prescription', 'symptom', 'pain',
