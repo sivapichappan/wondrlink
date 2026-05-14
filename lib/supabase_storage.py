@@ -16,6 +16,12 @@ def save_profile(user_id: str, profile_data: dict) -> bool:
     """
     Save or update a patient profile for a user.
 
+    During the multi-cancer dual-write window, this writes BOTH the legacy
+    raw_profile + denormalized columns AND the v2 universal-core columns
+    (cancer_slug, role, stage_group, treatment_intent, clinical). If the
+    v2 columns don't exist yet (migration not applied), the write
+    transparently falls back to the legacy row.
+
     Args:
         user_id: The user's UUID
         profile_data: The patient profile JSON data
@@ -24,13 +30,11 @@ def save_profile(user_id: str, profile_data: dict) -> bool:
         True if successful, False otherwise
     """
     try:
-        # Use admin client to bypass RLS - user_id is verified in API layer
         client = get_admin_client()
 
-        # Extract key fields from profile_data for individual columns
+        # Legacy denormalized columns (existing behavior — unchanged).
         patient = profile_data.get('patient', {})
         diagnosis = profile_data.get('primaryDiagnosis', {})
-
         profile_row = {
             'user_id': user_id,
             'raw_profile': profile_data,
@@ -48,10 +52,51 @@ def save_profile(user_id: str, profile_data: dict) -> bool:
             'updated_at': datetime.now().isoformat()
         }
 
-        client.table('patient_profiles').upsert(
-            profile_row,
-            on_conflict='user_id'
-        ).execute()
+        # v2 universal-core columns + clinical JSONB payload.
+        v2_row = None
+        try:
+            from lib.profile_validator import (
+                derive_clinical_payload,
+                derive_universal_core,
+                validate_clinical,
+            )
+            core = derive_universal_core(profile_data)
+            clinical_payload = derive_clinical_payload(profile_data)
+            ok, errors = validate_clinical(core['cancer_slug'], clinical_payload)
+            if not ok:
+                logger.warning(
+                    "Clinical payload validation failed for user %s (cancer=%s): %s",
+                    user_id, core['cancer_slug'], '; '.join(errors[:3])
+                )
+                clinical_payload = {}
+            v2_row = {
+                **profile_row,
+                **core,
+                'clinical': clinical_payload,
+                'schema_version': 'v2',
+            }
+        except Exception as e:
+            logger.warning("v2 derivation failed for user %s: %s", user_id, e)
+
+        try:
+            client.table('patient_profiles').upsert(
+                v2_row if v2_row is not None else profile_row,
+                on_conflict='user_id'
+            ).execute()
+        except Exception as e:
+            err_msg = str(e).lower()
+            if v2_row is not None and ('column' in err_msg or 'does not exist' in err_msg):
+                logger.warning(
+                    "v2 columns missing — falling back to legacy row write "
+                    "(apply supabase_migrations/2026_05_14_profile_v2.sql to enable v2): %s",
+                    e,
+                )
+                client.table('patient_profiles').upsert(
+                    profile_row,
+                    on_conflict='user_id'
+                ).execute()
+            else:
+                raise
 
         logger.info(f"Saved patient profile for user {user_id}")
         return True
@@ -89,6 +134,55 @@ def load_profile(user_id: str) -> dict:
         if "0 rows" not in str(e).lower():
             logger.error(f"Failed to load profile: {e}")
         return {}
+
+
+def get_cancer_slug(user_id: str) -> Optional[str]:
+    """
+    Resolve the user's cancer slug.
+
+    Tries the v2 cancer_slug column first; on miss (or pre-migration), falls
+    back to deriving it from raw_profile.primaryDiagnosis.site via the
+    cancer_registry. Returns None when no profile exists.
+    """
+    try:
+        client = get_admin_client()
+        # Try v2 column first
+        try:
+            result = client.table('patient_profiles') \
+                .select('cancer_slug, raw_profile') \
+                .eq('user_id', user_id) \
+                .single() \
+                .execute()
+            if result.data:
+                slug = result.data.get('cancer_slug')
+                if slug:
+                    return slug
+                raw = result.data.get('raw_profile') or {}
+                site = (raw.get('primaryDiagnosis') or {}).get('site') or ''
+                if site:
+                    from lib.cancer_registry import resolve_slug
+                    return resolve_slug(site)
+        except Exception as e:
+            # cancer_slug column may not exist yet (pre-migration); fall back
+            if "0 rows" in str(e).lower():
+                return None
+            # Other errors → drop to legacy path
+        # Legacy: read only raw_profile (works pre-migration)
+        result = client.table('patient_profiles') \
+            .select('raw_profile') \
+            .eq('user_id', user_id) \
+            .single() \
+            .execute()
+        if result.data:
+            raw = result.data.get('raw_profile') or {}
+            site = (raw.get('primaryDiagnosis') or {}).get('site') or ''
+            if site:
+                from lib.cancer_registry import resolve_slug
+                return resolve_slug(site)
+    except Exception as e:
+        if "0 rows" not in str(e).lower():
+            logger.error(f"get_cancer_slug failed for user {user_id}: {e}")
+    return None
 
 
 def clear_profile(user_id: str) -> bool:
