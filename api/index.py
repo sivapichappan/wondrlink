@@ -572,6 +572,17 @@ def api_chat():
         # We want to ensure extract_patient_context_complex is called even if profile is mostly empty.
         patient_context = extract_patient_context_complex(patient_profile) if (patient_profile is not None and len(patient_profile) > 0) else {}
 
+        # Derive cancer slug from the loaded profile (or None if no profile yet).
+        # Threaded through retrieval (chunk filter) + LLM generators (overlay).
+        try:
+            from profile_validator import derive_universal_core as _derive_core
+            _core = _derive_core(patient_profile or {})
+            cancer_slug = _core.get('cancer_slug')
+        except Exception:
+            cancer_slug = None
+        cancer_types_filter = [cancer_slug, 'general'] if cancer_slug else None
+        patient_context['cancer_slug'] = cancer_slug
+
         # Classify query type early — it drives both the symptom-context injection
         # below and the chunk-retrieval top_k. Must be set before any branch reads it.
         query_type = classify_query_type(message)
@@ -616,8 +627,8 @@ def api_chat():
         # Search relevant chunks (hybrid: TF + vector with RRF)
         retrieved = []
         try:
-            retrieved = hybrid_search(message, indexed_chunks, top_k=effective_top_k)
-            logger.info(f"hybrid_search returned {len(retrieved)} chunks (top_k={effective_top_k}, query_type={query_type})")
+            retrieved = hybrid_search(message, indexed_chunks, top_k=effective_top_k, cancer_types=cancer_types_filter)
+            logger.info(f"hybrid_search returned {len(retrieved)} chunks (top_k={effective_top_k}, query_type={query_type}, cancer_types={cancer_types_filter})")
         except Exception:
             logger.exception("hybrid_search failed, falling back to TF-only")
             try:
@@ -1194,6 +1205,11 @@ def api_previsit_questions():
         patient_profile = load_profile(user_id) or {}
         patient_context = extract_patient_context_complex(patient_profile) if patient_profile else {}
         patient_summary = format_patient_summary_complex(patient_context) if patient_context else ""
+        try:
+            from profile_validator import derive_universal_core as _derive_core
+            _pv_slug = _derive_core(patient_profile or {}).get('cancer_slug')
+        except Exception:
+            _pv_slug = None
 
         # Cache check
         from llm_utils import get_cached_previsit, set_cached_previsit, generate_previsit_questions
@@ -1208,7 +1224,7 @@ def api_previsit_questions():
             })
 
         # Generate
-        result = generate_previsit_questions(patient_summary, context)
+        result = generate_previsit_questions(patient_summary, context, cancer_slug=_pv_slug)
         set_cached_previsit(user_id, context, result)
 
         # Persist to profile (max 10 entries, drop oldest)
@@ -1281,9 +1297,14 @@ def api_visit_recap():
         patient_profile = load_profile(user_id) or {}
         patient_context = extract_patient_context_complex(patient_profile) if patient_profile else {}
         patient_summary = format_patient_summary_complex(patient_context) if patient_context else ""
+        try:
+            from profile_validator import derive_universal_core as _derive_core
+            _vr_slug = _derive_core(patient_profile or {}).get('cancer_slug')
+        except Exception:
+            _vr_slug = None
 
         from llm_utils import generate_visit_recap
-        recap = generate_visit_recap(patient_summary, transcript_for_llm)
+        recap = generate_visit_recap(patient_summary, transcript_for_llm, cancer_slug=_vr_slug)
 
         # Save to profile (max 20 entries, drop oldest)
         saved = False
@@ -1394,6 +1415,13 @@ def api_insurance_appeal():
         patient_context = extract_patient_context_complex(patient_profile) if patient_profile else {}
         patient_summary = format_patient_summary_complex(patient_context) if patient_context else ""
 
+        try:
+            from profile_validator import derive_universal_core as _derive_core
+            _appeal_slug = _derive_core(patient_profile or {}).get('cancer_slug')
+        except Exception:
+            _appeal_slug = None
+        _appeal_filter = [_appeal_slug, 'general'] if _appeal_slug else None
+
         # Retrieve relevant guidelines using denial reason as query
         retrieved = []
         guidelines_formatted = ""
@@ -1402,7 +1430,7 @@ def api_insurance_appeal():
             if chunks:
                 # Use first 1000 chars of denial text as retrieval query
                 retrieval_query = denial_for_llm[:1000]
-                retrieved = hybrid_search(retrieval_query, chunks, top_k=5) or []
+                retrieved = hybrid_search(retrieval_query, chunks, top_k=5, cancer_types=_appeal_filter) or []
                 from llm_utils import select_chunks_within_budget
                 guidelines_formatted = select_chunks_within_budget(retrieved, 2000)
         except Exception as e:
@@ -1410,7 +1438,7 @@ def api_insurance_appeal():
 
         # Generate appeal letter (with inline citations)
         from llm_utils import generate_insurance_appeal
-        result = generate_insurance_appeal(patient_summary, denial_for_llm, retrieved, guidelines_formatted)
+        result = generate_insurance_appeal(patient_summary, denial_for_llm, retrieved, guidelines_formatted, cancer_slug=_appeal_slug)
 
         if result['used_fallback']:
             return jsonify({
@@ -1503,11 +1531,20 @@ def api_deep_research():
         if len(query) > 1000:
             query = query[:1000]
 
+        # Derive cancer slug for retrieval filter + LLM overlay.
+        try:
+            from profile_validator import derive_universal_core as _derive_core
+            _dr_profile = load_profile(user_id) or {}
+            _dr_slug = _derive_core(_dr_profile).get('cancer_slug')
+        except Exception:
+            _dr_slug = None
+        _dr_filter = [_dr_slug, 'general'] if _dr_slug else None
+
         # Off-topic guard (reuse hallucination-mitigation infra)
         try:
             from confidence import is_on_topic, OFF_TOPIC_RESPONSE
             chunks = load_all_chunks()
-            quick_retrieved = hybrid_search(query, chunks, top_k=5) if chunks else []
+            quick_retrieved = hybrid_search(query, chunks, top_k=5, cancer_types=_dr_filter) if chunks else []
             on_topic, _reason = is_on_topic(query, quick_retrieved)
             if not on_topic:
                 return jsonify({
@@ -1534,7 +1571,7 @@ def api_deep_research():
 
         # Pass 1: broaden top_k for the primary query
         try:
-            primary = hybrid_search(query, chunks, top_k=12) or []
+            primary = hybrid_search(query, chunks, top_k=12, cancer_types=_dr_filter) or []
             for c in primary:
                 if isinstance(c, dict):
                     key = (c.get('document_id'), c.get('chunk_index'))
@@ -1550,7 +1587,7 @@ def api_deep_research():
             subqueries = derive_subqueries(query) or []
             for sq in subqueries:
                 try:
-                    extra = hybrid_search(sq, chunks, top_k=4) or []
+                    extra = hybrid_search(sq, chunks, top_k=4, cancer_types=_dr_filter) or []
                     for c in extra:
                         if isinstance(c, dict):
                             key = (c.get('document_id'), c.get('chunk_index'))
@@ -1571,7 +1608,7 @@ def api_deep_research():
         patient_summary = format_patient_summary_complex(patient_context) if patient_context else ""
 
         # Generate report
-        result = generate_deep_research(query, retrieved, patient_summary)
+        result = generate_deep_research(query, retrieved, patient_summary, cancer_slug=_dr_slug)
 
         if result.get('used_fallback'):
             from verify import HEDGED_FALLBACK_RESPONSE

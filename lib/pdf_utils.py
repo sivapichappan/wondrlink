@@ -2,7 +2,7 @@
 import os
 import re
 import logging
-from typing import List, Tuple, Union, Dict, Any
+from typing import List, Tuple, Union, Dict, Any, Optional
 import math
 
 logger = logging.getLogger("pdf_utils")
@@ -327,7 +327,40 @@ def search_chunks(query: str, chunks: List[Any], top_k: int = 5) -> List[Any]:
     return result_chunks
 
 
-def hybrid_search(query: str, chunks: List[Any], top_k: int = 5) -> List[Any]:
+def _filter_chunks_by_cancer_types(chunks: List[Any], cancer_types: Optional[List[str]]) -> List[Any]:
+    """Hard-filter chunks by cancer_types metadata.
+
+    A chunk passes when its cancer_types array intersects with the requested
+    set, OR contains 'general' (cross-cutting docs are visible to every
+    cancer). If a chunk has no cancer_types tag yet (pre-backfill), it is
+    kept (permissive — we don't want to break retrieval before the backfill
+    runs).
+    """
+    if not cancer_types:
+        return chunks
+    wanted = set(cancer_types) | {"general"}
+    filtered: List[Any] = []
+    for c in chunks:
+        if isinstance(c, dict):
+            tags = c.get("cancer_types")
+        else:
+            tags = None
+        if not tags:
+            filtered.append(c)
+            continue
+        if isinstance(tags, str):
+            tags = [tags]
+        if any(t in wanted for t in tags):
+            filtered.append(c)
+    return filtered
+
+
+def hybrid_search(
+    query: str,
+    chunks: List[Any],
+    top_k: int = 5,
+    cancer_types: Optional[List[str]] = None,
+) -> List[Any]:
     """
     Hybrid search combining TF-based keyword search and vector similarity search
     using Reciprocal Rank Fusion (RRF).
@@ -342,14 +375,22 @@ def hybrid_search(query: str, chunks: List[Any], top_k: int = 5) -> List[Any]:
         query: The user's query text
         chunks: All loaded chunks (for TF search)
         top_k: Number of results to return
+        cancer_types: Optional list of canonical cancer slugs (e.g. ['colorectal']).
+            When provided, chunks are hard-filtered to those whose cancer_types
+            array intersects with the requested set OR contains 'general'.
+            None disables the filter (legacy behavior — for back-compat).
 
     Returns:
         List of chunk content strings (same format as search_chunks)
     """
     RRF_K = 60  # Standard RRF constant
 
+    # 0. Apply the cancer_type metadata filter up front so both TF + vector
+    #    paths search the same subset.
+    chunks_filtered = _filter_chunks_by_cancer_types(chunks, cancer_types)
+
     # 1. Run TF-based keyword search (existing method)
-    tf_results = search_chunks(query, chunks, top_k=top_k * 2)
+    tf_results = search_chunks(query, chunks_filtered, top_k=top_k * 2)
 
     # 2. Run vector search
     try:
@@ -358,6 +399,10 @@ def hybrid_search(query: str, chunks: List[Any], top_k: int = 5) -> List[Any]:
     except Exception as e:
         logger.warning(f"Vector search unavailable, using TF-only: {e}")
         vector_results = []
+    if cancer_types and vector_results:
+        # Post-filter vector results by cancer_types (vector_search reads from
+        # Supabase and doesn't know about the filter).
+        vector_results = _filter_chunks_by_cancer_types(vector_results, cancer_types)
 
     # If no vector results, fall back to TF-only
     if not vector_results:

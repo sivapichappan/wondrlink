@@ -41,6 +41,23 @@ supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 # Import PDF processing utilities
 from pdf_utils import process_pdf
+from pathlib import Path as _Path
+try:
+    import yaml as _yaml
+    _METADATA_MAP_PATH = _Path(__file__).resolve().parent.parent / 'data' / '_filename_to_metadata.yaml'
+    _METADATA_MAP = _yaml.safe_load(_METADATA_MAP_PATH.read_text()) if _METADATA_MAP_PATH.exists() else {}
+except Exception:
+    _METADATA_MAP = {}
+
+
+def _metadata_for_filename(filename):
+    entry = (_METADATA_MAP or {}).get(filename) or {}
+    return {
+        'cancer_types': entry.get('cancer_types') or ['general'],
+        'doc_type': entry.get('doc_type'),
+        'audience': entry.get('audience'),
+        'guideline_org': entry.get('guideline_org'),
+    }
 
 
 def get_data_directory():
@@ -123,12 +140,16 @@ def seed_document(filepath: str) -> dict:
         print(f"  Clearing existing chunks...")
         supabase.table('pdf_chunks').delete().eq('document_id', document_id).execute()
 
-        # Step 3: Insert new chunks with correct column names
+        # Step 3: Insert new chunks with correct column names.
+        # Inject multi-cancer metadata (cancer_types, doc_type, audience,
+        # guideline_org) so retrieval can filter by selected cancer.
+        _meta = _metadata_for_filename(filename)
         rows = [
             {
                 'document_id': document_id,
                 'content': chunk,
-                'chunk_index': i
+                'chunk_index': i,
+                **{k: v for k, v in _meta.items() if v is not None or k == 'cancer_types'},
             }
             for i, chunk in enumerate(chunks)
         ]

@@ -1,0 +1,143 @@
+# Curated map: PDF filename → chunk metadata.
+#
+# Consumed by:
+#   scripts/seed_chunks.py        — at ingestion of new PDFs
+#   scripts/backfill_chunk_metadata.py — to retro-tag the existing corpus
+#
+# Each entry can specify:
+#   cancer_types  list — defaults to ['general'] if missing
+#   doc_type      one of: clinician_guideline, patient_guideline,
+#                 survivorship, screening, supportive, reference
+#   audience      one of: patient, clinician
+#   guideline_org one of: NCCN, ASCO, ACS, NCI, CDC, UOAA, other
+#
+# If a filename isn't listed here, the seeding/backfill scripts assume
+# cancer_types=['general'] and leave doc_type/audience/guideline_org NULL.
+
+ACS_Caregiver_Support.pdf:
+  cancer_types: [general]
+  doc_type: supportive
+  audience: patient
+  guideline_org: ACS
+
+CRC_Exercise_Protocols.pdf:
+  cancer_types: [colorectal]
+  doc_type: survivorship
+  audience: patient
+
+CRC_Mucositis_Management.pdf:
+  cancer_types: [colorectal]
+  doc_type: supportive
+  audience: patient
+
+CRC_Nutrition_During_Chemo.pdf:
+  cancer_types: [colorectal]
+  doc_type: supportive
+  audience: patient
+
+CRC_Post_Colectomy_Diet.pdf:
+  cancer_types: [colorectal]
+  doc_type: supportive
+  audience: patient
+
+CRC_Screening_Barriers.pdf:
+  cancer_types: [colorectal]
+  doc_type: screening
+  audience: patient
+
+CRC_Survivorship_Nutrition.pdf:
+  cancer_types: [colorectal]
+  doc_type: survivorship
+  audience: patient
+
+CRC_Treatment_Line_Reference.pdf:
+  cancer_types: [colorectal]
+  doc_type: clinician_guideline
+  audience: clinician
+
+Cancer_Sleep_Disorders.pdf:
+  cancer_types: [general]
+  doc_type: supportive
+  audience: patient
+
+Cancer_Stress_DAndre_2024.pdf:
+  cancer_types: [general]
+  doc_type: supportive
+  audience: patient
+
+"Colon Cancer_Emergency_Urgent_Symptoms.docx.pdf":
+  cancer_types: [colorectal]
+  doc_type: clinician_guideline
+  audience: patient
+
+Comprehensive_Colon_Cancer_Guide_441_QA.pdf:
+  cancer_types: [colorectal]
+  doc_type: patient_guideline
+  audience: patient
+
+NCI_Caring_for_Caregiver_2024.pdf:
+  cancer_types: [general]
+  doc_type: supportive
+  audience: patient
+  guideline_org: NCI
+
+NCI_Stress_Cancer_Fact_Sheet.pdf:
+  cancer_types: [general]
+  doc_type: supportive
+  audience: patient
+  guideline_org: NCI
+
+PSS10_Clinical_Reference.pdf:
+  cancer_types: [general]
+  doc_type: reference
+  audience: clinician
+
+Perceived_Stress_Scale_Reference.pdf:
+  cancer_types: [general]
+  doc_type: reference
+  audience: clinician
+
+"Prevention and Screening Strategies for Colon Cancer.pdf":
+  cancer_types: [colorectal]
+  doc_type: screening
+  audience: patient
+
+colon.pdf:
+  cancer_types: [colorectal]
+  doc_type: patient_guideline
+  audience: patient
+
+"colon cancer review 1.pdf":
+  cancer_types: [colorectal]
+  doc_type: clinician_guideline
+  audience: clinician
+
+"colon cancer review 2.pdf":
+  cancer_types: [colorectal]
+  doc_type: clinician_guideline
+  audience: clinician
+
+"colon cancer review 3.pdf":
+  cancer_types: [colorectal]
+  doc_type: clinician_guideline
+  audience: clinician
+
+"colon cancer screening.pdf":
+  cancer_types: [colorectal]
+  doc_type: screening
+  audience: patient
+
+"colon cancer survivorship.pdf":
+  cancer_types: [colorectal]
+  doc_type: survivorship
+  audience: patient
+
+colon-patient.pdf:
+  cancer_types: [colorectal]
+  doc_type: patient_guideline
+  audience: patient
+
+the_american_society_of_colon_and_rectal_surgeons.7.pdf:
+  cancer_types: [colorectal]
+  doc_type: clinician_guideline
+  audience: clinician
