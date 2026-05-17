@@ -59,3 +59,5 @@ ready: true    # flipped 2026-05-17 — owner accepted shipping ahead of
                # clinician sign-off on surveillance.yaml and BRCA/GINA
                # compliance review. Eval baseline: 3/6 metrics PASS;
                # 3 known quality gaps tracked in the commit message.
+accent_color: "#F4A6C8"   # pink — breast cancer awareness ribbon
+icon: heart-pulse

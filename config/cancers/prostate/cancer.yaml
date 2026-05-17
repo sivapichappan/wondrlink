@@ -69,3 +69,5 @@ ready: true    # flipped 2026-05-17 — owner accepted shipping ahead of
                # 2 known gaps (Tier 1 misses bare safety prompts; escalation
                # language 71%). Same Tier-1 gap as breast, addressed in a
                # follow-up. See commit message.
+accent_color: "#B0D5E8"   # light blue — prostate cancer awareness ribbon
+icon: shield

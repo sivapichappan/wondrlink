@@ -8,3 +8,5 @@ clinicaltrials_conditions:
   - Urinary Bladder Neoplasms
   - Bladder Cancer
 ready: false
+accent_color: "#F2C249"
+icon: droplet

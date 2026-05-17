@@ -10,3 +10,5 @@ clinicaltrials_conditions:
   - Renal Cell Carcinoma
   - Kidney Cancer
 ready: false
+accent_color: "#FF9000"
+icon: droplets

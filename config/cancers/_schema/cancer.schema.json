@@ -59,6 +59,15 @@
       "type": "boolean",
       "default": false,
       "description": "When false, the system treats this cancer as a placeholder and falls back to general behavior."
+    },
+    "accent_color": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}$",
+      "description": "Awareness-ribbon color in hex. Surfaced by /api/cancer_options for the frontend to tint the cancer badge, header underline, source pills, and followup-chip borders."
+    },
+    "icon": {
+      "type": "string",
+      "description": "Lucide icon name shown in the cancer badge (e.g. 'heart-pulse', 'wind', 'sun'). See https://lucide.dev/icons."
     }
   }
 }

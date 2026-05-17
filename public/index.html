@@ -48,6 +48,14 @@
             --accent-dark: #C26A3F;
             --accent-subtle: #FBE9DD;
 
+            /* Cancer-focus accent (awareness-ribbon color per cancer).
+               Updated at runtime by setCancerAccent(hex) when /api/cancer_options
+               returns the user's selected cancer. Defaults to primary so the
+               app renders sanely before the badge loads. */
+            --cancer-accent: var(--primary);
+            --cancer-accent-soft: rgba(31, 93, 79, 0.08);
+            --cancer-accent-border: rgba(31, 93, 79, 0.25);
+
             /* Semantic */
             --success: #16A34A;
             --danger: #DC2626;
@@ -3400,22 +3408,157 @@
             align-items: center;
             gap: 6px;
             padding: 6px 10px 6px 12px;
-            background: rgba(31, 93, 79, 0.08);
-            color: var(--primary);
-            border: 1px solid rgba(31, 93, 79, 0.25);
+            background: var(--cancer-accent-soft);
+            color: var(--text-primary);
+            border: 1px solid var(--cancer-accent-border);
             border-radius: 999px;
             font-size: 12px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.15s, border-color 0.15s;
+            transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+            font-family: inherit;
+            white-space: nowrap;
+            box-shadow: inset 3px 0 0 var(--cancer-accent);
+            padding-left: 14px;
+        }
+        .cancer-badge .badge-icon {
+            color: var(--cancer-accent);
+            display: inline-flex;
+            align-items: center;
+        }
+        .cancer-badge .badge-icon svg {
+            width: 14px;
+            height: 14px;
+        }
+        .cancer-badge:hover {
+            background: var(--cancer-accent-border);
+        }
+        .cancer-badge[hidden] { display: none; }
+
+        /* Chat header gets a 3px top accent in the cancer color — primary visual
+           cue without dominating the layout. */
+        .chat-header {
+            border-top: 3px solid var(--cancer-accent);
+        }
+
+        /* Sidebar "Your focus" card. Active cancer + corpus stats + Switch
+           link. Sits above all other sidebar groups so the user instantly
+           sees what cancer WondrChat is currently tuned to. */
+        .focus-card {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin: 12px 14px 6px 14px;
+            padding: 10px 12px;
+            background: var(--cancer-accent-soft);
+            border: 1px solid var(--cancer-accent-border);
+            border-left: 4px solid var(--cancer-accent);
+            border-radius: var(--radius-md, 8px);
+            font-size: 12px;
+        }
+        .focus-card[hidden] { display: none; }
+        .focus-card-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .focus-card-icon {
+            color: var(--cancer-accent);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--surface);
+            flex-shrink: 0;
+        }
+        .focus-card-icon svg {
+            width: 16px;
+            height: 16px;
+        }
+        .focus-card-text {
+            flex: 1;
+            min-width: 0;
+        }
+        .focus-card-eyebrow {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            line-height: 1.2;
+        }
+        .focus-card-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.3;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .focus-card-switch {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-primary);
+            background: var(--surface);
+            border: 1px solid var(--cancer-accent-border);
+            padding: 4px 10px;
+            border-radius: var(--radius-full, 999px);
+            cursor: pointer;
             font-family: inherit;
             white-space: nowrap;
         }
-        .cancer-badge:hover {
-            background: rgba(31, 93, 79, 0.14);
-            border-color: rgba(31, 93, 79, 0.45);
+        .focus-card-switch:hover {
+            background: var(--cancer-accent-border);
         }
-        .cancer-badge[hidden] { display: none; }
+        .focus-card-stats {
+            font-size: 11px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+        .focus-card-stats em {
+            font-style: normal;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Next-milestone row inside the care snapshot. Shows the user's
+           upcoming cancer-specific surveillance milestone (e.g.
+           "Annual mammography" for breast, "PSA blood test q6-12mo" for
+           prostate). Pulled from config/cancers/<slug>/surveillance.yaml. */
+        .next-milestone {
+            margin-top: 10px;
+            padding: 8px 10px 10px;
+            background: var(--cancer-accent-soft);
+            border-left: 3px solid var(--cancer-accent);
+            border-radius: 6px;
+        }
+        .next-milestone[hidden] { display: none; }
+        .next-milestone-eyebrow {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            color: var(--cancer-accent);
+            margin-bottom: 4px;
+        }
+        .next-milestone-eyebrow i { width: 12px; height: 12px; }
+        .next-milestone-test {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.3;
+        }
+        .next-milestone-cadence {
+            font-size: 11px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+            margin-top: 3px;
+        }
         .ack-consents {
             background: var(--background);
             padding: 14px 16px;
@@ -4519,7 +4662,10 @@
             gap: 8px;
             padding: 8px 14px;
             background: var(--surface);
-            border: 1px solid var(--border);
+            /* Subtle cancer-color accent on the left edge — keeps the chip
+               visually grounded to the active cancer without dominating it. */
+            border: 1px solid var(--cancer-accent-border);
+            border-left: 3px solid var(--cancer-accent);
             border-radius: var(--radius-full);
             color: var(--text-primary);
             font-size: 13px;
@@ -4530,8 +4676,8 @@
             transition: background var(--transition), border-color var(--transition), transform var(--transition);
         }
         .followup-chip:hover {
-            background: var(--primary-subtle);
-            border-color: var(--primary-lighter);
+            background: var(--cancer-accent-soft);
+            border-color: var(--cancer-accent);
             color: var(--primary-dark);
             transform: translateY(-1px);
         }
@@ -4602,9 +4748,13 @@
             display: flex;
             align-items: flex-start;
             gap: 8px;
-            padding: 4px 0;
+            padding: 4px 0 4px 10px;
             position: relative;
             cursor: help;
+            /* Per-cancer left accent stripe makes the source visually grounded
+               to the active cancer's corpus. */
+            border-left: 3px solid var(--cancer-accent);
+            margin-left: 0;
         }
         .source-item:not(:last-child) {
             border-bottom: 1px dashed var(--border-light);
@@ -6119,6 +6269,22 @@
             </div>
 
             <div class="sidebar-content">
+                <!-- Cancer focus card — surfaces the active cancer + corpus
+                     stats + Switch link. Populated by updateFocusCard(). -->
+                <div id="focusCard" class="focus-card" hidden>
+                    <div class="focus-card-row">
+                        <span class="focus-card-icon" id="focusCardIcon" aria-hidden="true"></span>
+                        <div class="focus-card-text">
+                            <div class="focus-card-eyebrow">YOUR FOCUS</div>
+                            <div class="focus-card-name" id="focusCardName">Cancer</div>
+                        </div>
+                        <button type="button" class="focus-card-switch"
+                                onclick="openCancerSwitcher()"
+                                aria-label="Change cancer focus">Switch</button>
+                    </div>
+                    <div class="focus-card-stats" id="focusCardStats"></div>
+                </div>
+
                 <!-- ============================================
                      GROUP 1: YOUR CARE  (open by default)
                      ============================================ -->
@@ -6156,6 +6322,18 @@
                             </div>
                             <div class="care-snapshot-empty" id="careSnapshotEmpty" style="display:none;">
                                 Run a Wellness Check-In below to start seeing your trend.
+                            </div>
+                            <!-- Cancer-specific next surveillance milestone.
+                                 Populated by renderCareSnapshot() from /api/care_snapshot
+                                 .next_milestone (which reads config/cancers/<slug>/
+                                 surveillance.yaml). -->
+                            <div class="next-milestone" id="nextMilestone" hidden>
+                                <div class="next-milestone-eyebrow">
+                                    <i data-lucide="calendar-clock" class="icon-stroke sm"></i>
+                                    <span>NEXT FOR <span id="nextMilestoneCancer">YOU</span></span>
+                                </div>
+                                <div class="next-milestone-test" id="nextMilestoneTest"></div>
+                                <div class="next-milestone-cadence" id="nextMilestoneCadence"></div>
                             </div>
                         </div>
 
@@ -6459,6 +6637,7 @@
                 <button id="cancerBadge" class="cancer-badge" type="button"
                         onclick="openCancerSwitcher()" hidden
                         aria-label="Change cancer focus">
+                    <span id="cancerBadgeIcon" class="badge-icon" aria-hidden="true"></span>
                     <span id="cancerBadgeLabel">Cancer</span>
                     <i data-lucide="chevron-down" class="icon-stroke" style="width:14px;height:14px;"></i>
                 </button>
@@ -6511,7 +6690,7 @@
             <div class="messages" id="messages" role="log" aria-label="Chat messages" aria-live="polite">
                 <div class="msg bot">
                     <div class="bubble bot welcome-message">
-                        <p class="welcome-intro">I'm here to help you understand your <strong>colon cancer</strong>
+                        <p class="welcome-intro">I'm here to help you understand your <strong id="welcomeCancerName">cancer</strong>
                             diagnosis and treatment options in simple, everyday language. This is a support tool, not
                             medical advice.</p>
                         <div class="welcome-features">
@@ -6761,7 +6940,9 @@
                 // Multi-cancer badge in chat header. If the user hasn't picked
                 // yet (legacy account pre-W2-frontend) we fall back to showing
                 // the badge with "Colorectal cancer" so they at least see the
-                // change-flow entrypoint.
+                // change-flow entrypoint. Pre-load cancer meta first so the
+                // accent color + icon land on the very first render.
+                await ensureCancerMetaLoaded();
                 updateCancerBadge(
                     ackData.cancer_slug || 'colorectal',
                     ackData.cancer_display || 'Colorectal cancer'
@@ -6813,6 +6994,10 @@
                 const resp = await fetch('/api/cancer_options?include_preview=1');
                 const j = await resp.json();
                 (j.options || []).forEach(opt => {
+                    // Cache meta (accent_color, icon, doc_count, chunk_count)
+                    // so updateCancerBadge() / sidebar focus card can read it
+                    // without an extra fetch.
+                    _cancerMeta[opt.slug] = opt;
                     const o = document.createElement('option');
                     o.value = opt.slug;
                     o.textContent = opt.ready
@@ -6821,6 +7006,12 @@
                     sel.appendChild(o);
                 });
                 sel.dataset.populated = '1';
+                // If a cancer is already active on the page (returning user),
+                // re-render the badge now that we have its meta.
+                if (_currentCancerSlug && _cancerMeta[_currentCancerSlug]) {
+                    const m = _cancerMeta[_currentCancerSlug];
+                    updateCancerBadge(_currentCancerSlug, m.display_name);
+                }
             } catch (e) {
                 // Fallback: surface only colorectal so signup isn't blocked.
                 const o = document.createElement('option');
@@ -6839,22 +7030,102 @@
         // /api/update_cancer_slug respectively.
 
         let _currentCancerSlug = null;
+        // Cache of /api/cancer_options entries (slug → {accent_color, icon, doc_count, ...})
+        // populated on app boot by ensureCancerMetaLoaded() and on first dropdown
+        // load by populateCancerSelect().
+        let _cancerMeta = {};
+        let _cancerMetaLoading = null;
+
+        async function ensureCancerMetaLoaded() {
+            if (Object.keys(_cancerMeta).length > 0) return _cancerMeta;
+            if (_cancerMetaLoading) return _cancerMetaLoading;
+            _cancerMetaLoading = (async () => {
+                try {
+                    const resp = await fetch('/api/cancer_options?include_preview=1');
+                    const j = await resp.json();
+                    (j.options || []).forEach(opt => { _cancerMeta[opt.slug] = opt; });
+                } catch (_e) { /* leave _cancerMeta empty — accents fall back to primary */ }
+                _cancerMetaLoading = null;
+                return _cancerMeta;
+            })();
+            return _cancerMetaLoading;
+        }
+
+        // Convert "#F4A6C8" + alpha (0-1) → "rgba(244,166,200,A)".
+        function _hexToRgba(hex, a) {
+            const m = (hex || '').match(/^#([0-9a-f]{6})$/i);
+            if (!m) return null;
+            const n = parseInt(m[1], 16);
+            return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+        }
+
+        function updateFocusCard(meta, displayName) {
+            const card = document.getElementById('focusCard');
+            const nameEl = document.getElementById('focusCardName');
+            const iconHost = document.getElementById('focusCardIcon');
+            const statsEl = document.getElementById('focusCardStats');
+            if (!card || !nameEl) return;
+            card.hidden = false;
+            nameEl.textContent = displayName || 'Cancer';
+            if (iconHost) {
+                const iconName = (meta && meta.icon) || 'tag';
+                iconHost.innerHTML = `<i data-lucide="${iconName}"></i>`;
+            }
+            if (statsEl) {
+                if (meta && meta.chunk_count && meta.chunk_count > 0) {
+                    statsEl.innerHTML =
+                        `Tailored from <em>${meta.chunk_count.toLocaleString()}</em> guideline pages ` +
+                        `across <em>${meta.doc_count}</em> source documents.`;
+                } else if (meta && meta.ready === false) {
+                    statsEl.innerHTML =
+                        `Full ${displayName || 'this cancer'}-specific support is coming soon. ` +
+                        `WondrChat is using general cancer-care resources in the meantime.`;
+                } else {
+                    statsEl.textContent = '';
+                }
+            }
+        }
+
+        function setCancerAccent(hex) {
+            const root = document.documentElement.style;
+            const fallback = '#1F5D4F'; // matches CSS --primary
+            const base = hex || fallback;
+            root.setProperty('--cancer-accent', base);
+            root.setProperty('--cancer-accent-soft', _hexToRgba(base, 0.10) || 'rgba(31,93,79,0.08)');
+            root.setProperty('--cancer-accent-border', _hexToRgba(base, 0.32) || 'rgba(31,93,79,0.25)');
+        }
 
         function updateCancerBadge(slug, displayName) {
             _currentCancerSlug = slug || null;
             const btn = document.getElementById('cancerBadge');
             const label = document.getElementById('cancerBadgeLabel');
+            const iconHost = document.getElementById('cancerBadgeIcon');
             const brandCtx = document.getElementById('brandContextText');
             const title = document.getElementById('chatTitleText');
             if (!btn || !label) return;
             label.textContent = displayName || 'Cancer';
             btn.hidden = false;
-            // Also propagate into the chat header subtitle/brand-context so
-            // the rest of the chrome reflects the active cancer.
+
+            // Apply the per-cancer accent color + render the cancer icon.
+            const meta = _cancerMeta[slug] || null;
+            setCancerAccent(meta && meta.accent_color);
+            if (iconHost) {
+                const iconName = (meta && meta.icon) || 'tag';
+                iconHost.innerHTML = `<i data-lucide="${iconName}"></i>`;
+            }
+
+            // Propagate into the chat header chrome.
             const guide = `Your ${displayName || 'Cancer'} Guide`;
             if (brandCtx) brandCtx.textContent = guide;
             if (title) title.textContent = guide;
-            // Re-render lucide icons in case the badge was just unhidden.
+            // Welcome bubble strong tag — "your <cancer name>"
+            const welcomeStrong = document.getElementById('welcomeCancerName');
+            if (welcomeStrong) welcomeStrong.textContent = (displayName || 'cancer').toLowerCase();
+
+            // Update the sidebar focus card if it's rendered.
+            try { updateFocusCard(meta, displayName); } catch (_) {}
+
+            // Re-render lucide icons (badge icon, focus card icon, etc.).
             if (window.lucide && typeof window.lucide.createIcons === 'function') {
                 try { window.lucide.createIcons(); } catch (_) {}
             }
@@ -11778,6 +12049,25 @@
             const phqValEl = document.getElementById('snapshotPhq9');
             const daysValEl = document.getElementById('snapshotDays');
             const trendBadge = document.getElementById('careSnapshotTrend');
+
+            // Cancer-specific next-milestone row
+            const milestone = data && data.next_milestone;
+            const milestoneEl = document.getElementById('nextMilestone');
+            if (milestoneEl) {
+                if (milestone && milestone.test) {
+                    document.getElementById('nextMilestoneCancer').textContent =
+                        (milestone.cancer_display || 'YOU').toUpperCase();
+                    document.getElementById('nextMilestoneTest').textContent = milestone.test;
+                    document.getElementById('nextMilestoneCadence').textContent =
+                        milestone.cadence || '';
+                    milestoneEl.hidden = false;
+                    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                        try { window.lucide.createIcons(); } catch (_) {}
+                    }
+                } else {
+                    milestoneEl.hidden = true;
+                }
+            }
 
             if (!points.length) {
                 if (sparkEl) sparkEl.style.display = 'none';

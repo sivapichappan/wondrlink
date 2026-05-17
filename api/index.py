@@ -521,31 +521,61 @@ def api_cancer_options():
     """
     Public endpoint — return the list of cancers the user can pick from.
 
-    Used by the signup cancer-picker AND the settings change-flow. Only
-    cancers with `ready: true` are returned by default; pass ?include_preview=1
-    to also include not-yet-ready cancers (useful for previews / dev UI).
+    Used by the signup cancer-picker, the settings change-flow, and the
+    chat header badge / sidebar focus card. Only cancers with `ready: true`
+    are returned by default; pass ?include_preview=1 to also include
+    not-yet-ready cancers.
 
-    Response shape:
-      {
-        "options": [
-          {"slug": "colorectal", "display_name": "Colorectal cancer",
-           "short_name": "CRC", "ready": true},
-          ...
-        ]
-      }
+    Response shape per option:
+      {"slug": "colorectal", "display_name": "Colorectal cancer",
+       "short_name": "CRC", "ready": true,
+       "accent_color": "#1E5C8B", "icon": "shield-check",
+       "doc_count": 25, "chunk_count": 1737}
+
+    doc_count + chunk_count are computed from a single Supabase query and
+    cached for the lifetime of the lambda. They power the sidebar
+    "tailored from N guideline pages" credibility line.
     """
     try:
         include_preview = request.args.get('include_preview') in ('1', 'true', 'yes')
         from cancer_registry import list_all, list_ready, get
         slugs = list_all() if include_preview else list_ready()
+
+        # Per-cancer corpus stats. One query per request (fast — GIN-indexed).
+        corpus_stats = {}
+        try:
+            from supabase_client import get_admin_client
+            client = get_admin_client()
+            for slug in slugs:
+                # Documents whose chunks are tagged with this slug
+                doc_q = (client.table('pdf_chunks')
+                         .select('document_id', count='exact')
+                         .contains('cancer_types', [slug])
+                         .limit(1).execute())
+                chunk_count = doc_q.count or 0
+                # Distinct doc count via a second tiny query
+                docs_resp = (client.table('pdf_chunks')
+                             .select('document_id')
+                             .contains('cancer_types', [slug])
+                             .execute())
+                doc_ids = {row.get('document_id') for row in (docs_resp.data or []) if row.get('document_id')}
+                corpus_stats[slug] = {"doc_count": len(doc_ids), "chunk_count": chunk_count}
+        except Exception as _e:
+            logger.warning("cancer corpus stats unavailable: %s", _e)
+
         out = []
         for slug in slugs:
             cfg = get(slug) or {}
+            stats = corpus_stats.get(slug, {})
             out.append({
                 "slug": slug,
                 "display_name": cfg.get("display_name") or slug,
                 "short_name": cfg.get("short_name") or cfg.get("display_name") or slug,
                 "ready": bool(cfg.get("ready")),
+                "accent_color": cfg.get("accent_color") or "#1F5D4F",
+                "icon": cfg.get("icon") or "tag",
+                "doc_count": stats.get("doc_count", 0),
+                "chunk_count": stats.get("chunk_count", 0),
             })
         return jsonify({"options": out})
     except Exception as e:
@@ -2056,15 +2086,38 @@ def api_care_snapshot():
             else:
                 trend = "stable"
 
+        # Multi-cancer: surface the user's next surveillance milestone for
+        # their selected cancer. Pulled from config/cancers/<slug>/surveillance.yaml.
+        # First milestone in the YAML wins for the snapshot pill.
+        next_milestone = None
+        try:
+            from supabase_storage import get_cancer_slug
+            from cancer_registry import load_surveillance, display_name
+            slug = get_cancer_slug(user_id) or 'colorectal'
+            rubric = load_surveillance(slug) or {}
+            milestones = rubric.get('milestones') or []
+            if milestones:
+                m = milestones[0]
+                next_milestone = {
+                    "cancer_slug": slug,
+                    "cancer_display": display_name(slug),
+                    "test": m.get('test') or m.get('id') or 'Check-in',
+                    "cadence": m.get('cadence') or '',
+                    "rationale": m.get('rationale') or '',
+                }
+        except Exception as _e:
+            logger.warning("next_milestone unavailable: %s", _e)
+
         return jsonify({
             "phq9_points": phq9_points,
             "days_since_symptom": days_since_symptom,
             "phq9_trend": trend,
             "phq9_count": len(phq9_points),
+            "next_milestone": next_milestone,
         })
     except Exception as e:
         logger.exception("care_snapshot error")
-        return jsonify({"phq9_points": [], "days_since_symptom": None, "phq9_trend": "none", "phq9_count": 0}), 200
+        return jsonify({"phq9_points": [], "days_since_symptom": None, "phq9_trend": "none", "phq9_count": 0, "next_milestone": None}), 200
 
 
 # -------------------------

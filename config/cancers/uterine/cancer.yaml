@@ -10,3 +10,5 @@ clinicaltrials_conditions:
   - Uterine Cancer
   - Endometrial Cancer
 ready: false
+accent_color: "#FFB78F"
+icon: flower

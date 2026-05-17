@@ -37,3 +37,5 @@ stage_specific_conditions:
   III: ["Stage III Colorectal Cancer"]
   II: ["Stage II Colorectal Cancer"]
 ready: true
+accent_color: "#1E5C8B"   # dark blue — colorectal awareness ribbon
+icon: shield-check

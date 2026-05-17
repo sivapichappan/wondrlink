@@ -11,3 +11,5 @@ clinicaltrials_conditions:
   - Diffuse Large B-Cell Lymphoma
   - Follicular Lymphoma
 ready: false
+accent_color: "#9ACD32"
+icon: git-branch

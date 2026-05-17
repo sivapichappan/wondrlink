@@ -8,3 +8,5 @@ clinicaltrials_conditions:
   - Melanoma
   - Skin Cancer
 ready: false
+accent_color: "#4A4A4A"
+icon: sun

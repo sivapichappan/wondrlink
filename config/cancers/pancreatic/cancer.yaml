@@ -8,3 +8,5 @@ clinicaltrials_conditions:
   - Pancreatic Neoplasms
   - Pancreatic Cancer
 ready: false
+accent_color: "#7B3FA0"
+icon: flame

@@ -10,3 +10,5 @@ clinicaltrials_conditions:
   - Non-Small Cell Lung Cancer
   - Small Cell Lung Cancer
 ready: false
+accent_color: "#C8D6E0"
+icon: wind
