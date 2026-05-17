@@ -141,3 +141,149 @@ the_american_society_of_colon_and_rectal_surgeons.7.pdf:
   cancer_types: [colorectal]
   doc_type: clinician_guideline
   audience: clinician
+
+# =============================================================================
+# Wave 1 — Breast cancer
+# =============================================================================
+
+"9671.00.pdf":
+  cancer_types: [breast]
+  doc_type: screening
+  audience: patient
+  guideline_org: ACS
+
+"Breast Cancer Treatment (PDQ®) - NCI.pdf":
+  cancer_types: [breast]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: NCI
+
+"breast-cancer-fact-sheet-patient-version.pdf":
+  cancer_types: [breast]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: ACS
+
+"breast-cancer-facts-and-figures-2024.pdf":
+  cancer_types: [breast]
+  doc_type: reference
+  audience: clinician
+  guideline_org: ACS
+
+"breast-cancer-screening-clinician-summary.pdf":
+  cancer_types: [breast]
+  doc_type: screening
+  audience: clinician
+  guideline_org: USPSTF
+
+"breast-cancer-screening-final-rec.pdf":
+  cancer_types: [breast]
+  doc_type: screening
+  audience: clinician
+  guideline_org: USPSTF
+
+"breast-invasive-patient.pdf":
+  cancer_types: [breast]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCCN
+
+"breastcancerscreening-patient.pdf":
+  cancer_types: [breast]
+  doc_type: screening
+  audience: patient
+  guideline_org: NCCN
+
+"her2_breast_update_algorithms_2023.pdf":
+  cancer_types: [breast]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: ASCO
+
+"inflammatory-breast-patient.pdf":
+  cancer_types: [breast]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCCN
+
+"park-et-al-2025-sentinel-lymph-node-biopsy-in-early-stage-breast-cancer-asco-guideline-update.pdf":
+  cancer_types: [breast]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: ASCO
+
+"stage_0_breast-patient.pdf":
+  cancer_types: [breast]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCCN
+
+"stage_iv_breast-patient.pdf":
+  cancer_types: [breast]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCCN
+
+# =============================================================================
+# Wave 1 — Prostate cancer
+# =============================================================================
+
+"8795.00.pdf":
+  cancer_types: [prostate]
+  doc_type: screening
+  audience: patient
+  guideline_org: ACS
+
+"Early Detection of Prostate Cancer_ AUA_SUO Guideline (2026) - American Urological Association.pdf":
+  cancer_types: [prostate]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: other
+
+"Prostate Cancer Treatment - NCI.pdf":
+  cancer_types: [prostate]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: NCI
+
+"Recommendation_ Prostate Cancer_ Screening _ United States Preventive Services Taskforce.pdf":
+  cancer_types: [prostate]
+  doc_type: screening
+  audience: clinician
+  guideline_org: USPSTF
+
+"prostate-advanced-patient.pdf":
+  cancer_types: [prostate]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCCN
+
+"prostate-cancer-fact-sheet-patient-version.pdf":
+  cancer_types: [prostate]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: ACS
+
+"prostate-cancer-fact-sheet.pdf":
+  cancer_types: [prostate]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: ACS
+
+"prostate-early-patient.pdf":
+  cancer_types: [prostate]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCCN
+
+"prostate-screening-patient.pdf":
+  cancer_types: [prostate]
+  doc_type: screening
+  audience: patient
+  guideline_org: NCCN
+
+"taplin-et-al-2026-systemic-therapy-in-patients-with-metastatic-castration-resistant-prostate-cancer-asco-living.pdf":
+  cancer_types: [prostate]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: ASCO

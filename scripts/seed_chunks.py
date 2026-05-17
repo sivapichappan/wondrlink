@@ -90,6 +90,22 @@ def seed_document(filepath: str) -> dict:
     print(f"\nProcessing: {filename}")
 
     try:
+        # Step 0: Skip if already ingested AND has chunks. Wipe + re-embed is
+        # expensive (embedding tokens) and unnecessary for unchanged PDFs.
+        # Pass --force on the CLI to override and re-ingest everything.
+        if not _SEED_FORCE:
+            try:
+                existing_doc = supabase.table('pdf_documents').select('id').eq('filename', filename).execute()
+                if existing_doc.data:
+                    doc_id = existing_doc.data[0]['id']
+                    chunk_count = supabase.table('pdf_chunks').select('id', count='exact').eq('document_id', doc_id).execute().count or 0
+                    if chunk_count > 0:
+                        print(f"  SKIP (already ingested, {chunk_count} chunks). Pass --force to re-ingest.")
+                        return {'filename': filename, 'chunks': chunk_count, 'success': True, 'error': None, 'skipped': True}
+            except Exception as _e:
+                # If the skip-check fails, fall through to the normal path
+                print(f"  (skip-check failed, proceeding: {_e})")
+
         # Extract and chunk the PDF
         chunks = process_pdf(filepath)
 
@@ -178,9 +194,14 @@ def seed_document(filepath: str) -> dict:
         }
 
 
+_SEED_FORCE = False
+
+
 def main():
+    global _SEED_FORCE
+    _SEED_FORCE = '--force' in sys.argv
     print("=" * 60)
-    print("WondrLink PDF Seeding Script")
+    print("WondrLink PDF Seeding Script" + (" — FORCE mode (re-ingest all)" if _SEED_FORCE else ""))
     print("=" * 60)
 
     # Find data directory
