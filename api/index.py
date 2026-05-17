@@ -711,6 +711,67 @@ def api_chat():
         cancer_types_filter = [cancer_slug, 'general'] if cancer_slug else None
         patient_context['cancer_slug'] = cancer_slug
 
+        # ----- CRISIS SHORT-CIRCUIT --------------------------------------
+        # Runs BEFORE Tier 1. Bare crisis prompts ("I don't want to keep
+        # living", "I can't keep anything down for 36 hours") lack any
+        # oncology vocab and were being rejected by the off-topic filter
+        # — the exact wrong outcome. Detect those phrases here, bypass
+        # the LLM, and return a hardcoded safety response with helplines.
+        # The LLM cannot soften or hedge what it never sees.
+        try:
+            from confidence import (
+                detect_crisis_pattern, render_crisis_response,
+                crisis_resources_for,
+            )
+            _crisis_hit = detect_crisis_pattern(message)
+            if _crisis_hit:
+                _cat = _crisis_hit['category']
+                logger.warning(
+                    f"CRISIS_SHORTCIRCUIT user={user_id} category={_cat} matched={_crisis_hit['matched']!r}"
+                )
+                _crisis_answer = render_crisis_response(_cat)
+                _crisis_res = crisis_resources_for(_cat)
+                _crisis_level = {
+                    'self_harm': 'EMERGENCY',
+                    'medical_emergency': 'EMERGENCY',
+                    'urgent_oncology': 'URGENT',
+                }.get(_cat, 'URGENT')
+                return jsonify({
+                    "answer": _crisis_answer,
+                    "api_used": "crisis-shortcircuit",
+                    "retrieved_count": 0,
+                    "response_length": response_length,
+                    "patient_context_used": False,
+                    "mismatch_detected": False,
+                    "pii_filtered": False,
+                    "validation_warnings": [],
+                    "medical_safety_check": True,
+                    "conversation_length": 0,
+                    "has_profile_updates": False,
+                    "profile_updates_saved": None,
+                    "sources": [],
+                    "citations": {},
+                    "resources": [],
+                    "followups": [],
+                    "guidelines_used": [],
+                    "has_guidelines": False,
+                    "clinical_trials": None,
+                    "urgency": {
+                        "detected": True,
+                        "level": _crisis_level,
+                        "guidance": _crisis_res.get("message"),
+                    },
+                    "is_crisis": True,
+                    "crisis_resources": _crisis_res,
+                    "crisis_category": _cat,
+                    "debug_info": {
+                        "api_used": "crisis-shortcircuit",
+                        "crisis_matched": _crisis_hit['matched'],
+                    },
+                })
+        except Exception as _crisis_err:
+            logger.exception(f"Crisis shortcircuit failed (continuing to normal flow): {_crisis_err}")
+
         # Classify query type early — it drives both the symptom-context injection
         # below and the chunk-retrieval top_k. Must be set before any branch reads it.
         query_type = classify_query_type(message)
@@ -875,6 +936,17 @@ def api_chat():
             except Exception:
                 logger.exception("Follow-up extraction failed; continuing without chips")
                 followups = []
+
+            # Tone softener — belt-and-suspenders for "you should / you must".
+            # The system prompt forbids these phrases but LLMs slip ~5-22% of the
+            # time. Substituting in-place is cheap and idempotent; per-pattern
+            # counts logged for telemetry.
+            tone_meta = {"substitutions": 0, "by_pattern": {}}
+            try:
+                from llm_utils import soften_tone
+                final_answer, tone_meta = soften_tone(final_answer)
+            except Exception:
+                logger.exception("Tone softener failed; continuing with raw answer")
 
             # Pull relevant patient resources as a structured list. They render in
             # a subdued row below the bubble (frontend), NOT inline in the answer

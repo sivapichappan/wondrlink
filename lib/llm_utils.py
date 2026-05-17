@@ -1303,6 +1303,63 @@ def select_chunks_within_budget(chunks: list, max_tokens: int) -> str:
 
 
 # =============================================================================
+# TONE SOFTENER — belt-and-suspenders for the "you should / you must" rule.
+# =============================================================================
+# The base system prompt forbids "you should" / "you must" / "tell your doctor"
+# directed at the patient, and offers substitutions. LLMs still slip — ~5-22%
+# of responses in baseline evals contained at least one forbidden phrase.
+# This post-processor swaps the phrases in-place before the response reaches
+# the user. Idempotent + telemetry-logged so we can track slip rate over time.
+
+import re as _tone_re
+import logging as _tone_logging
+
+_tone_logger = _tone_logging.getLogger("llm_utils.tone")
+
+# (regex pattern, replacement, label). Patterns are case-insensitive; word
+# boundaries are explicit to avoid touching things like "youshouldbe" (rare
+# but possible in raw text).
+_TONE_SUBSTITUTIONS = [
+    # The strongest violations first
+    (r"\byou must\b", "it might help to", "you_must"),
+    (r"\byou have to\b", "it might help to", "you_have_to"),
+    (r"\byou need to\b", "it might help to", "you_need_to"),
+    (r"\byou ought to\b", "it might help to", "you_ought_to"),
+    (r"\byou should\b", "it might help to", "you_should"),
+    # "Tell your doctor" as a standalone directive
+    (r"\btell your (doctor|physician|oncologist|care team)\b",
+     r"let your \1 know", "tell_your_doctor"),
+]
+
+
+def soften_tone(text: str) -> tuple[str, dict]:
+    """
+    Replace forbidden directive phrases with collaborative substitutions.
+
+    Returns (softened_text, metadata) where metadata = {
+        'substitutions': int,           # total replacements made
+        'by_pattern': {label: count},   # per-pattern counts
+    }
+    """
+    if not text:
+        return text, {"substitutions": 0, "by_pattern": {}}
+    out = text
+    by_pattern: dict = {}
+    total = 0
+    for pattern, replacement, label in _TONE_SUBSTITUTIONS:
+        out, n = _tone_re.subn(pattern, replacement, out, flags=_tone_re.IGNORECASE)
+        if n:
+            by_pattern[label] = n
+            total += n
+    if total:
+        _tone_logger.info(
+            "tone_softened total=%d by_pattern=%s",
+            total, by_pattern,
+        )
+    return out, {"substitutions": total, "by_pattern": by_pattern}
+
+
+# =============================================================================
 # INLINE CITATION POST-PROCESSING (Feature 1)
 # =============================================================================
 

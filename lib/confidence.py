@@ -317,3 +317,198 @@ def render_off_topic_response(selected_cancer: Optional[str] = None) -> str:
 # Back-compat constant — older callers `from confidence import OFF_TOPIC_RESPONSE`.
 # Equals the colorectal-rendered template for parity with the pre-refactor literal.
 OFF_TOPIC_RESPONSE = render_off_topic_response("colorectal")
+
+
+# =============================================================================
+# Crisis detection — runs BEFORE Tier 1.
+# =============================================================================
+# Backstops the Tier-1 gap surfaced by the eval harness: bare "I don't want
+# to keep living" / "I haven't been able to keep anything down" prompts
+# contain zero oncology vocab and get rejected as off-topic. That's the
+# wrong outcome — these are the queries that most need to reach a safety
+# response.
+#
+# detect_crisis_pattern() runs as the very first thing in /api/chat. When
+# it fires we short-circuit with a deterministic, hardcoded crisis response
+# (988 for self-harm, 911 for medical emergency, "contact your oncology
+# team same day" for urgent treatment symptoms). The LLM is bypassed
+# entirely so the response cannot be softened, hedged, or hallucinated.
+
+CrisisCategory = Literal["self_harm", "medical_emergency", "urgent_oncology"]
+
+
+_CRISIS_PATTERNS: List[Tuple[str, CrisisCategory]] = [
+    # --- Self-harm / suicide ---
+    ("suicide", "self_harm"),
+    ("kill myself", "self_harm"),
+    ("end my life", "self_harm"),
+    ("end it all", "self_harm"),
+    ("hurt myself", "self_harm"),
+    ("cut myself", "self_harm"),
+    ("overdose", "self_harm"),
+    ("took too many", "self_harm"),
+    ("no reason to live", "self_harm"),
+    ("better off dead", "self_harm"),
+    ("want to die", "self_harm"),
+    ("don't want to keep living", "self_harm"),
+    ("don't want to live", "self_harm"),
+    ("what's the point", "self_harm"),  # only in combination with despair phrasing — see below
+    # --- Cardiac / respiratory emergency ---
+    ("chest pain", "medical_emergency"),
+    ("can't breathe", "medical_emergency"),
+    ("cant breathe", "medical_emergency"),
+    ("trouble breathing", "medical_emergency"),
+    ("severe shortness of breath", "medical_emergency"),
+    # --- Hemorrhage ---
+    ("severe bleeding", "medical_emergency"),
+    ("vomiting blood", "medical_emergency"),
+    ("coughing up blood", "medical_emergency"),
+    ("can't stop bleeding", "medical_emergency"),
+    ("cant stop bleeding", "medical_emergency"),
+    # --- Stroke ---
+    ("slurred speech", "medical_emergency"),
+    ("numb on one side", "medical_emergency"),
+    ("face drooping", "medical_emergency"),
+    # --- Spinal cord compression (oncology emergency) ---
+    ("legs feel weak", "medical_emergency"),
+    ("legs feel numb", "medical_emergency"),
+    # --- Raised ICP / brain metastases / intracranial bleed.
+    #     Severe headache + confusion is the classic oncology red flag.
+    ("severe headache", "medical_emergency"),
+    ("worst headache", "medical_emergency"),
+    ("sudden headache", "medical_emergency"),
+    ("headache with confusion", "medical_emergency"),
+    ("seizure", "medical_emergency"),
+    # --- Severe dehydration / treatment toxicity (oncology urgent) ---
+    ("can't keep anything down", "urgent_oncology"),
+    ("cant keep anything down", "urgent_oncology"),
+    ("haven't been able to keep", "urgent_oncology"),
+    ("havent been able to keep", "urgent_oncology"),
+    ("uncontrolled vomiting", "urgent_oncology"),
+    ("severe vomiting", "urgent_oncology"),
+    ("uncontrolled diarrhea", "urgent_oncology"),
+    ("severe diarrhea", "urgent_oncology"),
+    ("can't urinate", "urgent_oncology"),
+    ("cant urinate", "urgent_oncology"),
+    ("urinary retention", "urgent_oncology"),
+    # --- Cancer-treatment-related dyspnea / ILD (T-DXd, ICIs, bleomycin) ---
+    # "Shortness of breath" alone is broad in healthy people but in cancer-care
+    # context it's the sentinel symptom for drug-induced pneumonitis (T-DXd,
+    # checkpoint inhibitors), pulmonary embolism (advanced cancer is hyper-
+    # coagulable), or anthracycline cardiotoxicity. Urgent-oncology rather
+    # than full medical_emergency unless paired with "severe".
+    ("shortness of breath", "urgent_oncology"),
+    ("dry cough", "urgent_oncology"),
+    ("new cough", "urgent_oncology"),
+    ("trouble catching my breath", "urgent_oncology"),
+    # --- Fever during chemo ---
+    ("fever of 100", "urgent_oncology"),
+    ("fever of 101", "urgent_oncology"),
+    ("fever of 102", "urgent_oncology"),
+    ("fever of 103", "urgent_oncology"),
+    ("high fever", "urgent_oncology"),
+]
+
+# "what's the point" alone has high false-positive risk ("what's the point of
+# this lab test?"). Require it co-occur with a despair phrase to count as
+# self-harm.
+_DESPAIR_COMODIFIERS = [
+    "keep living", "live", "go on", "trying", "fight", "be here", "wake up",
+    "exhausted", "exhausting", "hopeless",
+]
+
+
+def detect_crisis_pattern(query: str) -> Optional[Dict[str, str]]:
+    """
+    Scan for crisis phrasing. Returns {'category': ..., 'matched': phrase} or None.
+
+    Cancer-agnostic — same fires regardless of selected_cancer. Designed to
+    run BEFORE Tier 1 so it catches bare crisis prompts that lack any
+    oncology vocab.
+    """
+    if not query:
+        return None
+    q_lower = query.lower()
+    for pattern, category in _CRISIS_PATTERNS:
+        if pattern == "what's the point":
+            # Only when co-located with a despair co-modifier (60-char window).
+            idx = q_lower.find(pattern)
+            if idx < 0:
+                continue
+            window = q_lower[max(0, idx - 60):idx + len(pattern) + 60]
+            if any(c in window for c in _DESPAIR_COMODIFIERS):
+                return {"category": category, "matched": pattern}
+            continue
+        if pattern in q_lower:
+            return {"category": category, "matched": pattern}
+    return None
+
+
+# Hardcoded crisis responses. Each must include the words listed by
+# escalation_accuracy metric tokens: "911" / "988" / "same day" / "urgent" /
+# "right away". The LLM is bypassed entirely for these.
+
+_CRISIS_RESPONSES: Dict[str, str] = {
+    "self_harm": (
+        "I'm really glad you reached out, and what you're describing tells me "
+        "you're carrying a heavy load right now. You deserve immediate, real "
+        "support — please reach out **right away** to one of these:\n\n"
+        "- **988 Suicide & Crisis Lifeline** — call or text **988**, free, 24/7\n"
+        "- **Crisis Text Line** — text **HOME** to **741741**, free, 24/7\n"
+        "- **Emergency services** — **911** if you are in immediate danger\n\n"
+        "You don't have to navigate this alone, and there is help available "
+        "this minute. Please reach out before doing anything else."
+    ),
+    "medical_emergency": (
+        "What you're describing sounds like a medical emergency. Please **call 911** "
+        "or go to the nearest emergency room **right away** — don't wait to message "
+        "us or anyone else.\n\n"
+        "If you have your oncology team's after-hours line, you can also call them "
+        "on the way to the ER. But the priority is getting evaluated **now**."
+    ),
+    "urgent_oncology": (
+        "This is the kind of symptom your oncology team needs to hear about "
+        "**the same day**. Please **call your oncologist's office now** — most "
+        "practices have a 24/7 nurse line for treatment-related symptoms.\n\n"
+        "If you cannot reach them within an hour, or if your symptoms get worse "
+        "(severe pain, confusion, can't keep down sips of water, fever above "
+        "101°F that won't break), go to the **emergency room** — don't wait."
+    ),
+}
+
+
+def render_crisis_response(category: str) -> str:
+    """Return the hardcoded crisis response text for the given category."""
+    return _CRISIS_RESPONSES.get(category, _CRISIS_RESPONSES["urgent_oncology"])
+
+
+def crisis_resources_for(category: str) -> Dict[str, Any]:
+    """
+    Structured crisis_resources payload (mirrors the PHQ-9 Q9 path's shape so
+    the frontend can render the same UI).
+    """
+    if category == "self_harm":
+        return {
+            "message": "You indicated thoughts of self-harm. Please reach out for support immediately.",
+            "resources": [
+                {"name": "988 Suicide & Crisis Lifeline", "contact": "Call or text 988"},
+                {"name": "Crisis Text Line", "contact": "Text HOME to 741741"},
+                {"name": "Emergency Services", "contact": "Call 911"},
+            ],
+        }
+    if category == "medical_emergency":
+        return {
+            "message": "What you're describing sounds like a medical emergency.",
+            "resources": [
+                {"name": "Emergency Services", "contact": "Call 911"},
+                {"name": "Oncology after-hours line", "contact": "Call your oncology team"},
+            ],
+        }
+    # urgent_oncology
+    return {
+        "message": "Contact your oncology team the same day.",
+        "resources": [
+            {"name": "Oncology team", "contact": "Call your oncologist's nurse line"},
+            {"name": "Emergency Services", "contact": "Call 911 if symptoms worsen"},
+        ],
+    }

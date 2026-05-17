@@ -100,20 +100,55 @@ def _load_all_chunks_quiet() -> List[Any]:
 
 
 def run_prompt(prompt: Dict[str, Any], cancer: str, chunks: List[Any], mode: str) -> Dict[str, Any]:
-    """Execute a single prompt in the requested mode and return a result dict."""
+    """Execute a single prompt in the requested mode and return a result dict.
+
+    Mirrors the production /api/chat flow:
+      1. Crisis short-circuit (NEW) — bare safety prompts bypass Tier 1
+         and return a hardcoded helplines response.
+      2. Tier 1 in-domain gate.
+      3. Tier 2 corpus routing.
+      4. (LLM mode) prompt assembly + call.
+    """
     query = prompt["query"]
     pid = prompt.get("id", query[:40])
 
-    # Tier 1 — in-domain gate
+    # Step 1 — Crisis short-circuit (production parity)
+    try:
+        from lib.confidence import detect_crisis_pattern, render_crisis_response
+        _crisis_hit = detect_crisis_pattern(query)
+    except Exception:
+        _crisis_hit = None
+
+    # Retrieval (still useful for telemetry even on crisis short-circuit)
     retrieved = []
     if chunks:
         try:
             retrieved = hybrid_search(query, chunks, top_k=5, cancer_types=[cancer, "general"])
         except Exception as e:
             logger.warning("[%s] retrieval failed: %s", pid, e)
+
+    if _crisis_hit:
+        # Skip Tier 1, return the hardcoded crisis response straight away.
+        result = {
+            "id": pid,
+            "query": query,
+            "expect": prompt.get("expect") or {},
+            "in_domain": True,
+            "tier1_reason": f"crisis-shortcircuit:{_crisis_hit['category']}",
+            "route": "selected",
+            "tier2_reason": f"crisis-shortcircuit:{_crisis_hit['matched']!r}",
+            "rejected": False,
+            "sources": retrieved,
+            "answer": render_crisis_response(_crisis_hit['category']),
+            "mode": mode,
+            "crisis": _crisis_hit,
+        }
+        return result
+
+    # Step 2 — Tier 1 in-domain gate
     in_domain, tier1_reason = is_in_oncology_domain(query, retrieved)
 
-    # Tier 2 — corpus routing (only if in-domain)
+    # Step 3 — Tier 2 corpus routing (only if in-domain)
     route = None
     tier2_reason = ""
     if in_domain:
@@ -158,6 +193,15 @@ def run_prompt(prompt: Dict[str, Any], cancer: str, chunks: List[Any], mode: str
                 query=query,
                 cancer_slug=cancer,
             )
+            # Production parity: run the tone softener over the answer so
+            # the eval reflects what the user actually sees.
+            try:
+                from llm_utils import soften_tone
+                answer, _tone_meta = soften_tone(answer or "")
+                if _tone_meta.get("substitutions"):
+                    result["tone_substitutions"] = _tone_meta
+            except Exception:
+                pass
             result["answer"] = answer or ""
         except Exception as e:
             logger.warning("[%s] LLM call failed: %s", pid, e)
