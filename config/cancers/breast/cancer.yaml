@@ -55,4 +55,7 @@ stage_specific_conditions:
   II:  ["Early Stage Breast Cancer", "Stage II Breast Cancer"]
   I:   ["Early Stage Breast Cancer", "Stage I Breast Cancer"]
   "0": ["Ductal Carcinoma In Situ", "DCIS"]
-ready: false   # flip to true after surveillance clinician sign-off + eval pass
+ready: true    # flipped 2026-05-17 — owner accepted shipping ahead of
+               # clinician sign-off on surveillance.yaml and BRCA/GINA
+               # compliance review. Eval baseline: 3/6 metrics PASS;
+               # 3 known quality gaps tracked in the commit message.
