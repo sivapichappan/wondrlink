@@ -362,8 +362,13 @@ def load_all_chunks() -> List[Dict[str, Any]]:
         offset = 0
 
         while offset < total_count:
+            # Include the multi-cancer metadata columns (cancer_types, doc_type,
+            # audience, guideline_org) so hybrid_search() can filter retrieval
+            # by {selected_cancer ∪ 'general'}. If a chunk hasn't been
+            # backfilled yet, the column comes back as None and the filter
+            # treats it as a pass-through.
             result = client.table('pdf_chunks') \
-                .select('document_id, chunk_index, content') \
+                .select('document_id, chunk_index, content, cancer_types, doc_type, audience, guideline_org') \
                 .order('document_id') \
                 .order('chunk_index') \
                 .range(offset, offset + page_size - 1) \

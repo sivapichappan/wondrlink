@@ -31,10 +31,14 @@ CREATE INDEX IF NOT EXISTS patient_profiles_cancer_slug_idx
 -- Role + stage_group sanity constraints. Permissive enums because we
 -- want write-side validation in Python (jsonschema-style errors)
 -- rather than opaque DB constraint failures.
+-- Drop-then-add pattern keeps this migration idempotent — re-running
+-- it after a partial prior application is safe.
+ALTER TABLE patient_profiles DROP CONSTRAINT IF EXISTS patient_profiles_role_chk;
 ALTER TABLE patient_profiles
   ADD CONSTRAINT patient_profiles_role_chk
   CHECK (role IS NULL OR role IN ('patient', 'caregiver'));
 
+ALTER TABLE patient_profiles DROP CONSTRAINT IF EXISTS patient_profiles_stage_group_chk;
 ALTER TABLE patient_profiles
   ADD CONSTRAINT patient_profiles_stage_group_chk
   CHECK (
@@ -42,6 +46,7 @@ ALTER TABLE patient_profiles
     OR stage_group IN ('0', 'I', 'II', 'III', 'IV', 'unknown')
   );
 
+ALTER TABLE patient_profiles DROP CONSTRAINT IF EXISTS patient_profiles_treatment_intent_chk;
 ALTER TABLE patient_profiles
   ADD CONSTRAINT patient_profiles_treatment_intent_chk
   CHECK (

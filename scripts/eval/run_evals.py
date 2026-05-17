@@ -29,7 +29,12 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(_REPO_ROOT))
+# lib/ also needs to be on sys.path because lib/supabase_storage.py does
+# `from supabase_client import …` (no `lib.` prefix), assuming the legacy
+# Flask/Vercel-style import root.
+sys.path.insert(0, str(_REPO_ROOT / "lib"))
 
 from lib import cancer_registry as registry  # noqa: E402
 from lib.confidence import is_in_oncology_domain, route_to_corpus  # noqa: E402
