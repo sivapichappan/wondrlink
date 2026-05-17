@@ -339,6 +339,7 @@ def api_check_acknowledgement():
     """
     try:
         from compliance import CURRENT_CONSENT_VERSION
+        from supabase_storage import get_cancer_slug
         user_id = request.user["user_id"]
         state = check_acknowledgement(user_id)
         acknowledged = state.get('acknowledged', False)
@@ -346,12 +347,27 @@ def api_check_acknowledgement():
         # User needs to re-consent if they've never acknowledged, OR if their
         # accepted version is below current.
         needs_consent = (not acknowledged) or (version != CURRENT_CONSENT_VERSION)
+        # Multi-cancer: surface the user's selected cancer_slug + display name
+        # so the frontend can render the header badge + skip the cancer-picker
+        # step on re-login.
+        cancer_slug = None
+        cancer_display = None
+        try:
+            cancer_slug = get_cancer_slug(user_id)
+            if cancer_slug:
+                from cancer_registry import display_name
+                cancer_display = display_name(cancer_slug)
+        except Exception as _e:
+            logger.warning("cancer_slug lookup failed: %s", _e)
         return jsonify({
             "acknowledged": acknowledged,
             "consent_version": version,
             "current_version": CURRENT_CONSENT_VERSION,
             "needs_consent": needs_consent,
             "state_restricted": state.get('state_restricted', False),
+            "cancer_slug": cancer_slug,
+            "cancer_display": cancer_display,
+            "needs_cancer_pick": cancer_slug is None,
         })
     except Exception as e:
         logger.exception("check_acknowledgement error")
@@ -404,9 +420,27 @@ def api_save_acknowledgement():
         if not ok:
             return jsonify({"error": msg}), 400
 
+        # Multi-cancer: accept cancer_slug + role from signup picker.
+        # Optional at signup time (user can pick later) but recommended.
+        cancer_slug = (payload.get("cancer_slug") or "").strip().lower() or None
+        role = (payload.get("role") or "patient").strip().lower()
+        if cancer_slug:
+            try:
+                from cancer_registry import exists as _cancer_exists
+                if not _cancer_exists(cancer_slug):
+                    return jsonify({
+                        "error": f"Unknown cancer type: {cancer_slug}",
+                        "field": "cancer_slug",
+                    }), 400
+            except Exception:
+                pass
+
         # Build the audit record and persist
         client_ip = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
         metadata = build_consent_metadata(payload, ip_address=client_ip)
+        if cancer_slug:
+            metadata['cancer_slug'] = cancer_slug
+            metadata['role'] = role
         success = save_acknowledgement(
             user_id,
             consent_metadata=metadata,
@@ -415,14 +449,108 @@ def api_save_acknowledgement():
         if not success:
             return jsonify({"error": "Failed to save acknowledgement"}), 500
 
+        # Persist cancer_slug + role on patient_profiles (creates a stub row
+        # if no full profile exists yet). Best-effort — if this fails we
+        # still return success on the consent itself.
+        if cancer_slug:
+            try:
+                from supabase_storage import save_cancer_slug
+                save_cancer_slug(user_id, cancer_slug, role)
+            except Exception as _e:
+                logger.warning("save_cancer_slug after acknowledgement failed: %s", _e)
+
         return jsonify({
             "status": "ok",
             "message": "Acknowledgement saved",
             "consent_version": CURRENT_CONSENT_VERSION,
+            "cancer_slug": cancer_slug,
+            "role": role if cancer_slug else None,
         })
     except Exception as e:
         logger.exception("save_acknowledgement error")
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/update_cancer_slug", methods=["POST"])
+@require_auth
+def api_update_cancer_slug():
+    """
+    Settings → "Change my cancer" flow.
+
+    Body:
+      - cancer_slug: str (required, must be a known slug)
+      - role: 'patient' | 'caregiver' (optional, defaults to current row value)
+
+    Used after signup when the user wants to switch which cancer WondrChat
+    is focused on (e.g. they were misdiagnosed, developed a second primary,
+    or want to research a family member's cancer).
+    """
+    try:
+        user_id = request.user["user_id"]
+        payload = request.get_json(silent=True) or {}
+        slug = (payload.get("cancer_slug") or "").strip().lower()
+        role = (payload.get("role") or "patient").strip().lower()
+        if role not in ("patient", "caregiver"):
+            role = "patient"
+        if not slug:
+            return jsonify({"error": "cancer_slug is required"}), 400
+        try:
+            from cancer_registry import exists as _cancer_exists, display_name
+        except Exception:
+            return jsonify({"error": "cancer registry unavailable"}), 500
+        if not _cancer_exists(slug):
+            return jsonify({"error": f"Unknown cancer type: {slug}"}), 400
+
+        from supabase_storage import save_cancer_slug
+        ok = save_cancer_slug(user_id, slug, role)
+        if not ok:
+            return jsonify({"error": "Failed to update cancer"}), 500
+        return jsonify({
+            "status": "ok",
+            "cancer_slug": slug,
+            "cancer_display": display_name(slug),
+            "role": role,
+        })
+    except Exception as e:
+        logger.exception("update_cancer_slug error")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/cancer_options", methods=["GET"])
+def api_cancer_options():
+    """
+    Public endpoint — return the list of cancers the user can pick from.
+
+    Used by the signup cancer-picker AND the settings change-flow. Only
+    cancers with `ready: true` are returned by default; pass ?include_preview=1
+    to also include not-yet-ready cancers (useful for previews / dev UI).
+
+    Response shape:
+      {
+        "options": [
+          {"slug": "colorectal", "display_name": "Colorectal cancer",
+           "short_name": "CRC", "ready": true},
+          ...
+        ]
+      }
+    """
+    try:
+        include_preview = request.args.get('include_preview') in ('1', 'true', 'yes')
+        from cancer_registry import list_all, list_ready, get
+        slugs = list_all() if include_preview else list_ready()
+        out = []
+        for slug in slugs:
+            cfg = get(slug) or {}
+            out.append({
+                "slug": slug,
+                "display_name": cfg.get("display_name") or slug,
+                "short_name": cfg.get("short_name") or cfg.get("display_name") or slug,
+                "ready": bool(cfg.get("ready")),
+            })
+        return jsonify({"options": out})
+    except Exception as e:
+        logger.exception("cancer_options error")
+        return jsonify({"error": str(e), "options": []}), 500
 
 
 # -------------------------

@@ -142,8 +142,22 @@ def run_prompt(prompt: Dict[str, Any], cancer: str, chunks: List[Any], mode: str
         try:
             from llm_utils import assemble_prompt, call_llm
             patient_context = {"cancer_slug": cancer}
-            prompt_text, _meta = assemble_prompt(query, patient_context, retrieved, "normal")
-            answer, _api = call_llm(prompt_text, response_length="normal", cancer_slug=cancer)
+            # NOTE: assemble_prompt signature is (message, retrieved, patient,
+            # response_length, conversation_context, patient_context) — keyword
+            # args to keep this robust against future signature changes.
+            prompt_text, _meta = assemble_prompt(
+                message=query,
+                retrieved=retrieved,
+                patient=patient_context,
+                response_length="normal",
+                patient_context=patient_context,
+            )
+            answer, _api = call_llm(
+                prompt_text,
+                response_length="normal",
+                query=query,
+                cancer_slug=cancer,
+            )
             result["answer"] = answer or ""
         except Exception as e:
             logger.warning("[%s] LLM call failed: %s", pid, e)

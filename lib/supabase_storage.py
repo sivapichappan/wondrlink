@@ -185,6 +185,55 @@ def get_cancer_slug(user_id: str) -> Optional[str]:
     return None
 
 
+def save_cancer_slug(user_id: str, cancer_slug: str, role: str = "patient") -> bool:
+    """
+    Set the user's cancer_slug + role on patient_profiles.
+
+    Used by:
+      - /api/save_acknowledgement (signup-time cancer pick)
+      - /api/update_cancer_slug (settings change-flow)
+
+    Creates a stub patient_profiles row if none exists yet (the user hasn't
+    built a full profile). Upsert semantics — safe to call repeatedly.
+
+    Returns True on success.
+    """
+    if role not in ("patient", "caregiver"):
+        role = "patient"
+    try:
+        client = get_admin_client()
+        # Try v2-aware upsert first
+        v2_row = {
+            'user_id': user_id,
+            'cancer_slug': cancer_slug,
+            'role': role,
+            'schema_version': 'v2',
+            'updated_at': datetime.now().isoformat(),
+        }
+        try:
+            client.table('patient_profiles').upsert(v2_row, on_conflict='user_id').execute()
+            logger.info(f"Saved cancer_slug={cancer_slug} role={role} for user {user_id}")
+            return True
+        except Exception as e:
+            err = str(e).lower()
+            if 'column' in err or 'does not exist' in err:
+                logger.warning(
+                    "v2 columns missing — falling back to raw_profile write "
+                    "(apply supabase_migrations/2026_05_14_profile_v2.sql to enable v2): %s", e
+                )
+                # Legacy fallback: stash the slug inside raw_profile so something is persisted
+                client.table('patient_profiles').upsert({
+                    'user_id': user_id,
+                    'raw_profile': {'cancer_slug': cancer_slug, 'role': role},
+                    'updated_at': datetime.now().isoformat(),
+                }, on_conflict='user_id').execute()
+                return True
+            raise
+    except Exception as e:
+        logger.error(f"save_cancer_slug failed for user {user_id}: {e}")
+        return False
+
+
 def clear_profile(user_id: str) -> bool:
     """
     Delete a patient profile for a user.

@@ -3370,6 +3370,52 @@
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
         }
+        .ack-role-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .ack-role-option {
+            flex: 1 1 180px;
+            display: flex !important;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm, 6px);
+            cursor: pointer;
+            font-weight: 500 !important;
+            margin-bottom: 0 !important;
+            background: var(--background);
+        }
+        .ack-role-option input[type=radio] { margin: 0; }
+        .ack-role-option:has(input:checked) {
+            border-color: var(--primary);
+            background: rgba(13, 148, 136, 0.06);
+        }
+        .cancer-badge {
+            margin-left: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px 6px 12px;
+            background: rgba(31, 93, 79, 0.08);
+            color: var(--primary);
+            border: 1px solid rgba(31, 93, 79, 0.25);
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        .cancer-badge:hover {
+            background: rgba(31, 93, 79, 0.14);
+            border-color: rgba(31, 93, 79, 0.45);
+        }
+        .cancer-badge[hidden] { display: none; }
         .ack-consents {
             background: var(--background);
             padding: 14px 16px;
@@ -5506,6 +5552,28 @@
                     <div id="ackStateNote" class="ack-state-note">WondrLink is not currently available to residents of Illinois or Nevada.</div>
                 </div>
 
+                <div class="ack-field-block">
+                    <label for="ackCancerSlug">Which cancer brings you here?</label>
+                    <select id="ackCancerSlug" class="ack-select" required>
+                        <option value="">— Select a cancer —</option>
+                    </select>
+                    <div id="ackCancerNote" class="ack-state-note">You can change this later in Settings.</div>
+                </div>
+
+                <div class="ack-field-block">
+                    <label>Are you the patient or supporting someone with cancer?</label>
+                    <div class="ack-role-row">
+                        <label class="ack-role-option">
+                            <input type="radio" name="ackRole" value="patient" checked>
+                            <span>I'm the patient</span>
+                        </label>
+                        <label class="ack-role-option">
+                            <input type="radio" name="ackRole" value="caregiver">
+                            <span>I'm a caregiver / supporter</span>
+                        </label>
+                    </div>
+                </div>
+
                 <div class="ack-consents">
                     <div class="ack-consents-title">Required consents (each is independent — please review and check all three)</div>
                     <label class="ack-field">
@@ -6381,12 +6449,57 @@
                     <img src="/Logo.png" alt="" class="chat-header-logo">
                     <div class="chat-header-brand-text">
                         <span class="chat-header-brand-main">WondrLink</span>
-                        <span class="chat-header-brand-context">Your Colon Cancer Guide</span>
+                        <span class="chat-header-brand-context" id="brandContextText">Your Cancer Guide</span>
                     </div>
                 </div>
                 <div class="chat-header-text">
-                    <div class="chat-title">Your Colon Cancer Guide</div>
+                    <div class="chat-title" id="chatTitleText">Your Cancer Guide</div>
                     <div class="chat-subtitle">Evidence-based guidance in plain language</div>
+                </div>
+                <button id="cancerBadge" class="cancer-badge" type="button"
+                        onclick="openCancerSwitcher()" hidden
+                        aria-label="Change cancer focus">
+                    <span id="cancerBadgeLabel">Cancer</span>
+                    <i data-lucide="chevron-down" class="icon-stroke" style="width:14px;height:14px;"></i>
+                </button>
+            </div>
+
+            <!-- Cancer switcher popover -->
+            <div id="cancerSwitcherOverlay" class="feature-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Change your cancer focus">
+                <div class="feature-modal" style="max-width:420px;">
+                    <div class="feature-modal-header">
+                        <div class="feature-modal-title">Change your cancer focus</div>
+                        <button class="feature-modal-close" type="button" onclick="closeCancerSwitcher()" aria-label="Close">&times;</button>
+                    </div>
+                    <div class="feature-modal-body" style="display:flex;flex-direction:column;gap:14px;">
+                        <div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">
+                            WondrChat tailors responses, surveillance, and trials to one cancer at a time. Switching changes what the assistant focuses on; your chat history is preserved.
+                        </div>
+                        <div class="ack-field-block">
+                            <label for="switcherCancer">Cancer</label>
+                            <select id="switcherCancer" class="ack-select" required>
+                                <option value="">— Select a cancer —</option>
+                            </select>
+                        </div>
+                        <div class="ack-field-block">
+                            <label>I am…</label>
+                            <div class="ack-role-row">
+                                <label class="ack-role-option">
+                                    <input type="radio" name="switcherRole" value="patient" checked>
+                                    <span>the patient</span>
+                                </label>
+                                <label class="ack-role-option">
+                                    <input type="radio" name="switcherRole" value="caregiver">
+                                    <span>a caregiver</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div id="switcherError" class="feature-error" style="display:none;"></div>
+                    </div>
+                    <div class="feature-modal-footer">
+                        <button type="button" class="feature-secondary-btn" onclick="closeCancerSwitcher()">Cancel</button>
+                        <button id="switcherSaveBtn" type="button" class="feature-submit-btn" onclick="saveCancerSwitcher()">Save</button>
+                    </div>
                 </div>
             </div>
 
@@ -6644,6 +6757,15 @@
                     showAcknowledgementModal();
                     return;
                 }
+
+                // Multi-cancer badge in chat header. If the user hasn't picked
+                // yet (legacy account pre-W2-frontend) we fall back to showing
+                // the badge with "Colorectal cancer" so they at least see the
+                // change-flow entrypoint.
+                updateCancerBadge(
+                    ackData.cancer_slug || 'colorectal',
+                    ackData.cancer_display || 'Colorectal cancer'
+                );
             } catch (e) {
                 console.error('Error checking acknowledgement:', e);
                 // Fall through to app to avoid lockout on transient errors
@@ -6674,25 +6796,162 @@
             sel.dataset.populated = '1';
         }
 
+        async function populateAckCancerDropdown() {
+            const sel = document.getElementById('ackCancerSlug');
+            if (!sel || sel.dataset.populated === '1') return;
+            await populateCancerSelect(sel);
+        }
+
+        // Shared dropdown populator — used by signup picker AND change-flow switcher.
+        // include_preview=1 surfaces not-yet-ready cancers too so users can pick
+        // breast/prostate/etc. during the Wave-rollout window. Non-ready cancers
+        // get a "(coming soon)" suffix in the dropdown label and fall back to
+        // the general corpus + a conservative prompt server-side.
+        async function populateCancerSelect(sel) {
+            try {
+                // Public endpoint — no auth header needed.
+                const resp = await fetch('/api/cancer_options?include_preview=1');
+                const j = await resp.json();
+                (j.options || []).forEach(opt => {
+                    const o = document.createElement('option');
+                    o.value = opt.slug;
+                    o.textContent = opt.ready
+                        ? opt.display_name
+                        : `${opt.display_name}  (preview — full support coming soon)`;
+                    sel.appendChild(o);
+                });
+                sel.dataset.populated = '1';
+            } catch (e) {
+                // Fallback: surface only colorectal so signup isn't blocked.
+                const o = document.createElement('option');
+                o.value = 'colorectal';
+                o.textContent = 'Colorectal cancer';
+                sel.appendChild(o);
+                sel.dataset.populated = '1';
+            }
+        }
+
+        // ===== Cancer-focus badge + change-flow ============================
+        // The badge in the chat header shows which cancer WondrChat is
+        // currently focused on. Clicking it opens the change-flow modal.
+        // Both signup picker (saveAcknowledgement) and the change-flow
+        // (saveCancerSwitcher) write through /api/save_acknowledgement and
+        // /api/update_cancer_slug respectively.
+
+        let _currentCancerSlug = null;
+
+        function updateCancerBadge(slug, displayName) {
+            _currentCancerSlug = slug || null;
+            const btn = document.getElementById('cancerBadge');
+            const label = document.getElementById('cancerBadgeLabel');
+            const brandCtx = document.getElementById('brandContextText');
+            const title = document.getElementById('chatTitleText');
+            if (!btn || !label) return;
+            label.textContent = displayName || 'Cancer';
+            btn.hidden = false;
+            // Also propagate into the chat header subtitle/brand-context so
+            // the rest of the chrome reflects the active cancer.
+            const guide = `Your ${displayName || 'Cancer'} Guide`;
+            if (brandCtx) brandCtx.textContent = guide;
+            if (title) title.textContent = guide;
+            // Re-render lucide icons in case the badge was just unhidden.
+            if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                try { window.lucide.createIcons(); } catch (_) {}
+            }
+        }
+
+        async function openCancerSwitcher() {
+            const sel = document.getElementById('switcherCancer');
+            const err = document.getElementById('switcherError');
+            err.style.display = 'none';
+            if (sel && sel.dataset.populated !== '1') {
+                await populateCancerSelect(sel);
+            }
+            if (_currentCancerSlug && sel) sel.value = _currentCancerSlug;
+            // Reset role to patient by default; the server is the source of
+            // truth and the user can flip per session.
+            const patientR = document.querySelector('input[name="switcherRole"][value="patient"]');
+            if (patientR) patientR.checked = true;
+            document.getElementById('cancerSwitcherOverlay').style.display = 'flex';
+        }
+
+        function closeCancerSwitcher() {
+            document.getElementById('cancerSwitcherOverlay').style.display = 'none';
+        }
+
+        async function saveCancerSwitcher() {
+            const sel = document.getElementById('switcherCancer');
+            const err = document.getElementById('switcherError');
+            const btn = document.getElementById('switcherSaveBtn');
+            err.style.display = 'none';
+            const slug = sel ? sel.value : '';
+            if (!slug) {
+                err.textContent = 'Please pick a cancer.';
+                err.style.display = 'block';
+                return;
+            }
+            if (slug === _currentCancerSlug) {
+                closeCancerSwitcher();
+                return;
+            }
+            const roleEl = document.querySelector('input[name="switcherRole"]:checked');
+            const role = roleEl ? roleEl.value : 'patient';
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+            try {
+                const resp = await authFetch('/api/update_cancer_slug', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({cancer_slug: slug, role: role}),
+                });
+                const j = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    err.textContent = j.error || 'Could not save. Please try again.';
+                    err.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Save';
+                    return;
+                }
+                updateCancerBadge(j.cancer_slug || slug, j.cancer_display || slug);
+                closeCancerSwitcher();
+                btn.disabled = false;
+                btn.textContent = 'Save';
+                // Reload care snapshot + hero so they reflect the new cancer.
+                try { if (typeof loadCareSnapshot === 'function') loadCareSnapshot(); } catch (_) {}
+                try { if (typeof loadHero === 'function') loadHero(); } catch (_) {}
+            } catch (e) {
+                err.textContent = 'Network error. Please try again.';
+                err.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Save';
+            }
+        }
+
         function updateAckContinueButton() {
             const btn = document.getElementById('ackContinueBtn');
             const age = document.getElementById('ackAge18').checked;
             const stateVal = document.getElementById('ackState').value;
+            const cancerVal = document.getElementById('ackCancerSlug').value;
             const c1 = document.getElementById('ackConsentCollection').checked;
             const c2 = document.getElementById('ackConsentSharing').checked;
             const c3 = document.getElementById('ackConsentTerms').checked;
-            btn.disabled = !(age && stateVal && c1 && c2 && c3);
+            btn.disabled = !(age && stateVal && cancerVal && c1 && c2 && c3);
         }
 
         function showAcknowledgementModal() {
             const overlay = document.getElementById('acknowledgementOverlay');
             populateAckStateDropdown();
+            populateAckCancerDropdown();
 
             ['ackAge18','ackConsentCollection','ackConsentSharing','ackConsentTerms'].forEach(id => {
                 const el = document.getElementById(id);
                 el.checked = false;
             });
             document.getElementById('ackState').value = '';
+            document.getElementById('ackCancerSlug').value = '';
+            // Default role to patient
+            const patientRadio = document.querySelector('input[name="ackRole"][value="patient"]');
+            if (patientRadio) patientRadio.checked = true;
             document.getElementById('ackError').style.display = 'none';
 
             const btn = document.getElementById('ackContinueBtn');
@@ -6705,6 +6964,10 @@
                     document.getElementById(id).addEventListener('change', updateAckContinueButton);
                 });
                 document.getElementById('ackState').addEventListener('change', updateAckContinueButton);
+                document.getElementById('ackCancerSlug').addEventListener('change', updateAckContinueButton);
+                document.querySelectorAll('input[name="ackRole"]').forEach(r => {
+                    r.addEventListener('change', updateAckContinueButton);
+                });
                 overlay.dataset.wired = '1';
             }
 
@@ -6718,9 +6981,12 @@
             btn.disabled = true;
             btn.textContent = 'Saving...';
 
+            const selectedRoleEl = document.querySelector('input[name="ackRole"]:checked');
             const payload = {
                 age_confirmed: document.getElementById('ackAge18').checked,
                 state: document.getElementById('ackState').value,
+                cancer_slug: document.getElementById('ackCancerSlug').value || null,
+                role: selectedRoleEl ? selectedRoleEl.value : 'patient',
                 consent_collection: document.getElementById('ackConsentCollection').checked,
                 consent_sharing: document.getElementById('ackConsentSharing').checked,
                 consent_terms: document.getElementById('ackConsentTerms').checked,
@@ -6752,6 +7018,19 @@
                 document.getElementById('acknowledgementOverlay').style.display = 'none';
                 mainApp.style.display = 'flex';
                 if (currentUser) userEmail.textContent = currentUser.email;
+                // Multi-cancer: surface the selected cancer in the header badge
+                // immediately after signup. saveAcknowledgement echoes the slug
+                // it persisted; fall back to whatever the form had if missing.
+                {
+                    const slug = (j && j.cancer_slug) || payload.cancer_slug;
+                    let display = null;
+                    if (slug) {
+                        const sel = document.getElementById('ackCancerSlug');
+                        const opt = sel && sel.querySelector(`option[value="${slug}"]`);
+                        display = opt ? opt.textContent : slug;
+                        updateCancerBadge(slug, display);
+                    }
+                }
                 updateWatchlistPanel();
                 await loadChatHistory();
             } catch (e) {
