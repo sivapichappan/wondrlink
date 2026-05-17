@@ -1,0 +1,73 @@
+# DRAFT — clinician sign-off required before flipping cancer.yaml ready: true.
+# Sources: NCCN Breast Cancer Survivorship (current), ASCO/ACS Survivorship
+# Care Guideline, ACR Practice Parameter for the Performance of Screening
+# and Diagnostic Mammography.
+#
+# Notable Choosing Wisely / ASCO guidance: in asymptomatic patients with
+# curatively-treated breast cancer, routine surveillance imaging beyond
+# annual mammography is NOT recommended (no CT, bone scan, PET, tumor
+# markers). This config reflects that — additional imaging is symptom-
+# driven, not scheduled.
+
+milestones:
+  - id: office_visit
+    test: "Office visit with oncology / survivorship clinic"
+    cadence: "Every 3–6 months × 3 years, then every 6–12 months × 2 years, then annually"
+    applies_when:
+      stage_in: [I, II, III]
+    rationale: "NCCN: monitor for recurrence, treatment-related toxicities, endocrine-therapy adherence, and psychosocial concerns."
+
+  - id: mammography
+    test: "Diagnostic mammography of the treated and contralateral breast"
+    cadence: "Annually, starting 6–12 months after radiation completion (or earlier per surgeon)"
+    applies_when:
+      stage_in: [0, I, II, III]
+      excludes:
+        - "bilateral mastectomy (no breast tissue to image)"
+    rationale: "Annual surveillance mammography is the cornerstone for detecting in-breast or contralateral recurrence."
+
+  - id: breast_mri_high_risk
+    test: "Annual breast MRI (in addition to mammography)"
+    cadence: "Annually"
+    applies_when:
+      stage_in: [0, I, II, III]
+      criteria_any:
+        - "Known BRCA1, BRCA2, PALB2, TP53, ATM, CHEK2 or other high-risk pathogenic variant"
+        - "Lifetime breast cancer risk ≥ 20% by accepted risk models"
+        - "Prior chest radiation between ages 10–30 (e.g. Hodgkin lymphoma)"
+    rationale: "ACS / NCCN: high-risk patients benefit from annual MRI in addition to mammography."
+
+  - id: bone_density
+    test: "Bone density scan (DEXA)"
+    cadence: "Baseline at AI initiation; repeat every 1–2 years while on therapy"
+    applies_when:
+      on_endocrine_therapy: "aromatase_inhibitor"
+    rationale: "Aromatase inhibitors accelerate bone loss; baseline + serial DEXA guide bisphosphonate / denosumab decisions."
+
+  - id: endocrine_adherence
+    test: "Endocrine-therapy adherence + tolerability check-in"
+    cadence: "Every 3–6 months while on therapy (5–10 years total)"
+    applies_when:
+      on_endocrine_therapy: "any"
+    rationale: "Long-course endocrine therapy has substantial discontinuation due to side effects; structured check-ins improve adherence and outcomes."
+
+  - id: gynecologic_followup_tamoxifen
+    test: "Gynecologic follow-up for tamoxifen-associated endometrial risk"
+    cadence: "Annually; promptly report any abnormal vaginal bleeding"
+    applies_when:
+      on_endocrine_therapy: "tamoxifen"
+    rationale: "Tamoxifen increases endometrial cancer risk; symptom-driven evaluation per NCCN."
+
+  - id: no_routine_imaging
+    test: "Routine CT, bone scan, PET, or tumor markers in asymptomatic survivors"
+    cadence: "NOT recommended"
+    applies_when:
+      stage_in: [I, II, III]
+    rationale: "ASCO Choosing Wisely + NCCN: in asymptomatic patients there is no survival benefit and high false-positive burden. Image symptomatic concerns only."
+
+  - id: stage_iv_active_management
+    test: "Imaging + tumor-marker cadence per active treatment plan"
+    cadence: "Per oncology team; typically every 2–3 cycles for response assessment"
+    applies_when:
+      stage_in: [IV]
+    rationale: "Stage IV breast cancer is active disease management, not surveillance — imaging and labs are driven by the regimen and response."

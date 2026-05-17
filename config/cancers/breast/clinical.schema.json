@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wondrlink.foundation/schemas/cancers/breast/clinical.schema.json",
+  "title": "Breast Clinical Profile",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "primary_site": {
+      "type": "string",
+      "enum": ["left_breast", "right_breast", "bilateral", "unknown"]
+    },
+    "histology": {
+      "type": "string",
+      "enum": [
+        "invasive_ductal",
+        "invasive_lobular",
+        "mixed",
+        "mucinous",
+        "tubular",
+        "medullary",
+        "inflammatory",
+        "paget",
+        "metaplastic",
+        "dcis",
+        "lcis",
+        "other",
+        "unknown"
+      ]
+    },
+    "subtype": {
+      "type": "string",
+      "description": "Receptor-based intrinsic subtype shorthand clinicians use.",
+      "enum": ["HR+/HER2-", "HR+/HER2+", "HR-/HER2+", "TNBC", "unknown"]
+    },
+    "stage_detail": { "type": "string" },
+    "diagnosis_date": { "type": "string", "format": "date" },
+    "menopausal_status": {
+      "type": "string",
+      "enum": ["pre", "peri", "post", "unknown"]
+    },
+    "biomarkers": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "ER":     { "type": "string", "enum": ["positive", "negative", "low", "unknown"] },
+        "PR":     { "type": "string", "enum": ["positive", "negative", "low", "unknown"] },
+        "HER2":   { "type": "string", "enum": ["positive", "negative", "low", "unknown"] },
+        "Ki67":   { "type": "string", "description": "Percentage as string ('15%' or 'low'/'high'/'unknown')." },
+        "BRCA1":  { "type": "string", "enum": ["pathogenic", "vus", "wild-type", "not-tested", "unknown"] },
+        "BRCA2":  { "type": "string", "enum": ["pathogenic", "vus", "wild-type", "not-tested", "unknown"] },
+        "PIK3CA": { "type": "string", "enum": ["wild-type", "mutated", "unknown"] },
+        "PD-L1":  { "type": "string", "enum": ["positive", "negative", "low", "unknown"] },
+        "PALB2":  { "type": "string", "enum": ["pathogenic", "vus", "wild-type", "not-tested", "unknown"] },
+        "ESR1":   { "type": "string", "enum": ["wild-type", "mutated", "unknown"] }
+      }
+    },
+    "treatments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "regimen": { "type": "string" },
+          "line": { "type": "string", "enum": ["first-line", "second-line", "third-line", "adjuvant", "neoadjuvant", "maintenance", "endocrine"] },
+          "status": { "type": "string", "enum": ["active", "completed", "discontinued"] },
+          "startDate": { "type": "string", "format": "date" },
+          "endDate": { "type": "string", "format": "date" },
+          "cycleNumber": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "surgical_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "procedure": {
+            "type": "string",
+            "enum": ["lumpectomy", "mastectomy", "bilateral_mastectomy", "slnb", "alnd", "reconstruction", "other"]
+          },
+          "date": { "type": "string", "format": "date" },
+          "laterality": { "type": "string", "enum": ["left", "right", "bilateral", "unknown"] }
+        }
+      }
+    },
+    "radiation_history": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "received": { "type": "boolean" },
+        "site": { "type": "string" },
+        "completion_date": { "type": "string", "format": "date" }
+      }
+    },
+    "family_history_significant": { "type": "boolean" },
+    "had_genetic_testing": { "type": "boolean" }
+  }
+}

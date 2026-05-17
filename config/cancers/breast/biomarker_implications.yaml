@@ -1,0 +1,89 @@
+# Biomarker → drug-class mappings for breast cancer.
+# Consumed by:
+#   lib/clinical_trials.py score_trial_relevance (warns + alignment bonuses)
+#   lib/prompts/overlay.py                       (rendered into the prompt)
+# Sources: NCCN Breast (current), ASCO HER2 update 2023, KEYNOTE-522 (TNBC),
+# SOLAR-1 (alpelisib), OlympiAD/EMBRACA (PARP-i in BRCA+ MBC).
+
+implications:
+
+  ER:
+    aligns:
+      - when_state: positive
+        align_keywords: [tamoxifen, anastrozole, letrozole, exemestane,
+                         fulvestrant, "aromatase inhibitor", "endocrine therapy",
+                         palbociclib, ribociclib, abemaciclib, "CDK4/6 inhibitor",
+                         elacestrant]
+        bonus_points: 25
+        reason: "ER-positive disease is endocrine-therapy responsive; CDK4/6 inhibitors + AI/fulvestrant are foundational in advanced disease."
+
+  PR:
+    aligns:
+      - when_state: positive
+        align_keywords: [tamoxifen, "aromatase inhibitor", "endocrine therapy"]
+        bonus_points: 5
+        reason: "PR-positivity reinforces hormone-driven biology and supports endocrine therapy choices."
+
+  HER2:
+    aligns:
+      - when_state: positive
+        align_keywords: [trastuzumab, pertuzumab, "T-DM1", "ado-trastuzumab",
+                         "trastuzumab deruxtecan", "T-DXd", tucatinib, lapatinib,
+                         margetuximab, "HER2 inhibitor"]
+        bonus_points: 25
+        reason: "HER2-positive disease is highly responsive to anti-HER2 antibodies and ADCs."
+      - when_state: low
+        align_keywords: ["trastuzumab deruxtecan", "T-DXd"]
+        bonus_points: 18
+        reason: "HER2-low (IHC 1+ or 2+ non-amplified) advanced breast cancer responds to trastuzumab deruxtecan (DESTINY-Breast04)."
+    warns:
+      - when_state: negative
+        warning: "HER2-targeted therapies (trastuzumab, pertuzumab, T-DM1) are not indicated in HER2-negative disease — but HER2-low expression now matters for T-DXd."
+
+  BRCA1:
+    aligns:
+      - when_state: pathogenic
+        align_keywords: [olaparib, talazoparib, "PARP inhibitor",
+                         "platinum chemotherapy", carboplatin, cisplatin]
+        bonus_points: 22
+        reason: "BRCA1 germline mutation aligns with PARP inhibitors (OlympiA adjuvant; OlympiAD/EMBRACA advanced) and platinum-sensitive disease."
+
+  BRCA2:
+    aligns:
+      - when_state: pathogenic
+        align_keywords: [olaparib, talazoparib, "PARP inhibitor",
+                         "platinum chemotherapy", carboplatin]
+        bonus_points: 22
+        reason: "BRCA2 germline mutation aligns with PARP inhibitors and platinum-based chemotherapy."
+
+  PALB2:
+    aligns:
+      - when_state: pathogenic
+        align_keywords: [olaparib, "PARP inhibitor", "platinum chemotherapy"]
+        bonus_points: 15
+        reason: "PALB2 pathogenic variants are increasingly recognized as PARP-inhibitor responsive."
+
+  PIK3CA:
+    aligns:
+      - when_state: mutated
+        align_keywords: [alpelisib, "PI3K inhibitor", capivasertib]
+        bonus_points: 18
+        reason: "PIK3CA mutation in HR+/HER2- advanced disease aligns with alpelisib + fulvestrant (SOLAR-1) or capivasertib + fulvestrant (CAPItello-291)."
+
+  PD-L1:
+    aligns:
+      - when_state: positive
+        align_keywords: [pembrolizumab, atezolizumab, "immune checkpoint",
+                         "PD-1 inhibitor", "PD-L1 inhibitor"]
+        bonus_points: 18
+        reason: "PD-L1 positive (CPS ≥ 10) metastatic TNBC aligns with pembrolizumab + chemo (KEYNOTE-355)."
+
+  ESR1:
+    aligns:
+      - when_state: mutated
+        align_keywords: [elacestrant, "oral SERD"]
+        bonus_points: 15
+        reason: "ESR1 activating mutation (post-AI progression) aligns with elacestrant (EMERALD)."
+    warns:
+      - when_state: mutated
+        warning: "ESR1 mutations confer resistance to aromatase inhibitors after prior endocrine therapy; consider oral SERDs."

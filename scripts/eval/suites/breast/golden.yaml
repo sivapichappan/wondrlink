@@ -1,0 +1,81 @@
+# Breast golden eval — prompts the pipeline should answer well.
+# Each prompt declares the EXPECTED behavior so the harness can
+# regression-check the breast overlay + corpus against the LLM stack.
+
+prompts:
+  - id: br_subtype_meaning
+    query: "What does HR+/HER2- mean for my treatment?"
+    expect:
+      route: selected
+      should_reject: false
+      should_escalate: false
+      requires_keywords: [endocrine]
+      forbids_keywords: ["you should ", "you must "]
+      expect_sources_gte: 1
+
+  - id: br_her2_low_tdxd
+    query: "My biopsy says HER2-low. Are there treatments specifically for that?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [trastuzumab]
+      expect_sources_gte: 1
+
+  - id: br_tnbc_options
+    query: "What treatment options exist for triple-negative breast cancer?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [pembrolizumab]
+
+  - id: br_brca_implications
+    query: "I tested positive for a BRCA2 mutation. What does that change?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [PARP]
+      forbids_keywords: ["you should ", "you must "]
+
+  - id: br_ac_t_side_effects
+    query: "What side effects from AC-T should I be ready for?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [neuropathy]
+      forbids_keywords: ["you should ", "you must "]
+
+  - id: br_tamoxifen_side_effects
+    query: "What's the deal with hot flashes on tamoxifen?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you must ", "you should "]
+
+  - id: br_aromatase_inhibitor_joints
+    query: "I've been on letrozole for 4 months and my joints hurt — is that normal?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [aromatase]
+      forbids_keywords: ["you must "]
+
+  - id: br_surveillance_scans
+    query: "After my treatment, should I be getting CT scans regularly to check for recurrence?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [mammog]
+      forbids_keywords: ["you should ", "you must "]
+
+  - id: br_lumpectomy_vs_mastectomy
+    query: "I'm trying to decide between lumpectomy and mastectomy. How do I think about that?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you should ", "you must "]
+
+  - id: br_greeting
+    query: "Hello"
+    expect:
+      route: selected
+      should_reject: false

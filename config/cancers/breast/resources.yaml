@@ -1,0 +1,95 @@
+# Per-cancer advocacy orgs, helplines, and topic-specific resources for breast cancer.
+# Surfaced by lib/llm_utils.py get_relevant_resources when patient cancer_slug == 'breast'.
+
+advocacy:
+  - name: Susan G. Komen
+    url: https://www.komen.org
+    desc: Patient advocacy, helpline, financial assistance
+  - name: Living Beyond Breast Cancer (LBBC)
+    url: https://www.lbbc.org
+    desc: Patient education + community for early-stage and metastatic
+  - name: Young Survival Coalition
+    url: https://www.youngsurvival.org
+    desc: For women diagnosed under 40
+  - name: TNBC Foundation
+    url: https://tnbcfoundation.org
+    desc: Triple-negative breast cancer focus
+  - name: METAvivor
+    url: https://www.metavivor.org
+    desc: Metastatic breast cancer research + support
+  - name: Breast Cancer Research Foundation (BCRF)
+    url: https://www.bcrf.org
+    desc: Research funding + patient education
+
+helplines:
+  - name: Komen Patient Care Center
+    number: 1-877-465-6636
+    tel: tel:18774656636
+    desc: Helpline + financial-assistance navigator
+  - name: LBBC Helpline
+    number: 1-888-753-5222
+    tel: tel:18887535222
+    desc: Education + peer support
+  - name: American Cancer Society
+    number: 1-800-227-2345
+    tel: tel:18002272345
+    desc: 24/7 general cancer information and support
+
+screening:
+  - name: ACS Breast Cancer Screening Guidelines
+    url: https://www.cancer.org/cancer/types/breast-cancer/screening-tests-and-early-detection.html
+    desc: When and how to screen
+  - name: USPSTF Breast Cancer Screening
+    url: https://www.uspreventiveservicestaskforce.org/uspstf/recommendation/breast-cancer-screening
+    desc: Updated 2024 screening recommendation (biennial mammo, ages 40–74)
+
+hereditary:
+  - name: FORCE — Facing Our Risk of Cancer Empowered
+    url: https://www.facingourrisk.org
+    desc: Hereditary breast + ovarian cancer support
+  - name: NCCN Genetic/Familial High-Risk Assessment
+    url: https://www.nccn.org/patients/guidelines/content/PDF/genetics-bop-patient.pdf
+    desc: When genetic testing is appropriate
+  - name: NSGC Find a Genetic Counselor
+    url: https://www.findageneticcounselor.com
+    desc: Locate a certified counselor
+
+surgery_reconstruction:
+  - name: Breastcancer.org — Surgery
+    url: https://www.breastcancer.org/treatment/surgery
+    desc: Lumpectomy, mastectomy, reconstruction overview
+  - name: ASPS Patient Resources — Breast Reconstruction
+    url: https://www.plasticsurgery.org/reconstructive-procedures/breast-reconstruction
+    desc: Reconstruction techniques + timing
+  - name: ALCC — Alliance in Reconstructive Surgery
+    url: https://www.aircorg.com
+    desc: Reconstruction education for patients
+
+lymphedema:
+  - name: National Lymphedema Network
+    url: https://lymphnet.org
+    desc: After axillary surgery / lymph node dissection
+  - name: Komen Lymphedema Info
+    url: https://www.komen.org/breast-cancer/treatment/side-effects/lymphedema/
+    desc: Prevention and management
+
+side_effects:
+  - name: NCCN Distress Management Guidelines (patient)
+    url: https://www.nccn.org/patients/guidelines/content/PDF/distress-patient.pdf
+    desc: Anxiety, sleep, mood — cross-cutting
+  - name: ASCO Survivorship Care
+    url: https://www.cancer.net/survivorship
+    desc: Cancer.Net survivorship resources
+
+fertility_sexual_health:
+  - name: Alliance for Fertility Preservation
+    url: https://www.allianceforfertilitypreservation.org
+    desc: Pre-treatment fertility options
+  - name: Komen Sexual Health Resources
+    url: https://www.komen.org/breast-cancer/treatment/side-effects/sexual-issues/
+    desc: Intimacy, vaginal health on endocrine therapy
+
+caregiver:
+  - name: ACS Caregiver Resource Guide
+    url: https://www.cancer.org/cancer/caregivers.html
+    desc: Practical guidance for supporting someone with breast cancer

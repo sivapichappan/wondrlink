@@ -1,0 +1,57 @@
+# Phase classification + per-phase suggested questions for breast cancer.
+# Mirrors the shape of colorectal/phase_rubric.yaml but tuned for the breast
+# patient journey (longer adjuvant chemo windows; long-tail endocrine
+# therapy is its own distinct phase; "newly diagnosed" branches by subtype).
+
+phases:
+  early_chemo:    { min_days: 0,    max_days: 28 }
+  mid_chemo:      { min_days: 28,   max_days: 180 }
+  late_chemo:    { min_days: 180,  max_days: null }
+  endocrine_long_term: {}
+  surveillance:   {}
+  newly_diagnosed: {}
+  metastatic:    {}
+  general:        {}
+
+suggestions:
+  early_chemo:
+    - "What side effects from cycle 1 of {regimen} should I watch for?"
+    - "When does fatigue usually peak in this regimen?"
+    - "Help me prepare for my next visit"
+  mid_chemo:
+    - "How will we know if my treatment is working?"
+    - "What can I do about chemo-related hair loss or scalp sensitivity?"
+    - "Help me prepare for my next visit"
+  late_chemo:
+    - "What does life after chemo typically look like?"
+    - "When should I expect to start endocrine therapy?"
+    - "Help me prepare for my next visit"
+  endocrine_long_term:
+    - "I'm having hot flashes / joint pain on my AI — what helps?"
+    - "How long do I need to stay on this medication?"
+    - "Help me prepare for my next visit"
+  surveillance:
+    - "When is my next mammogram due?"
+    - "What signs of recurrence should I watch for?"
+    - "Help me prepare for my next visit"
+  newly_diagnosed:
+    - "Walk me through what stage {stage} means for my care"
+    - "What does my receptor status (ER/PR/HER2) mean for treatment options?"
+    - "Should I consider genetic testing?"
+  metastatic:
+    - "What does my current regimen aim to do — control disease, shrink it, or both?"
+    - "How will we know if we should switch treatments?"
+    - "What does palliative care offer alongside my current treatment?"
+  general:
+    - "What questions should I ask my oncology team?"
+    - "How can I prepare for my next appointment?"
+    - "Help me prepare for my next visit"
+
+descriptors:
+  active_treatment: "You're {days_clause}{regimen}{cycle_clause}."
+  surveillance:    "{days} days post-surgery — surveillance phase."
+  surveillance_no_date: "You're in the surveillance phase."
+  endocrine_long_term: "On long-term endocrine therapy."
+  metastatic:      "Metastatic breast cancer — focus is on disease control and quality of life."
+  newly_diagnosed: "Newly diagnosed — {stage_clause}{cancer_name}."
+  fallback:        "Welcome back."

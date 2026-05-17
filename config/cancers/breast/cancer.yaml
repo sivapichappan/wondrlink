@@ -1,10 +1,58 @@
 slug: breast
 display_name: Breast cancer
 short_name: Breast
-icd10_prefix: [C50]
+aliases:
+  - breast carcinoma
+  - mammary carcinoma
+icd10_prefix: [C50, D05]
 staging_system: AJCC-TNM-8
-biomarker_panel: [ER, PR, HER2, BRCA1, BRCA2, Ki67, PIK3CA, PD-L1]
+biomarker_panel:
+  - ER
+  - PR
+  - HER2
+  - Ki67
+  - BRCA1
+  - BRCA2
+  - PIK3CA
+  - PD-L1
+  - PALB2
+  - ESR1
+common_regimens:
+  - AC-T            # doxorubicin + cyclophosphamide → paclitaxel
+  - dose-dense AC-T
+  - TC              # docetaxel + cyclophosphamide
+  - TCH             # docetaxel + carboplatin + trastuzumab
+  - TCHP            # TCH + pertuzumab
+  - AC-THP          # AC → THP
+  - Paclitaxel + trastuzumab
+  - Trastuzumab     # adjuvant single-agent in lower-risk HER2+
+  - T-DM1           # ado-trastuzumab emtansine
+  - T-DXd           # trastuzumab deruxtecan
+  - Pembrolizumab + chemo  # KEYNOTE-522 TNBC
+  - Capecitabine    # adjuvant after residual TNBC
+  - Tamoxifen
+  - Anastrozole
+  - Letrozole
+  - Exemestane
+  - Fulvestrant
+  - Palbociclib + AI/fulvestrant
+  - Ribociclib + AI/fulvestrant
+  - Abemaciclib + AI/fulvestrant
+  - Olaparib        # BRCA+
+  - Talazoparib     # BRCA+
+  - Alpelisib + fulvestrant  # PIK3CA-mutated
+  - Sacituzumab govitecan    # TNBC advanced
+default_screening_test: mammography
 clinicaltrials_conditions:
   - Breast Neoplasms
   - Breast Cancer
-ready: false
+  - Triple Negative Breast Cancer
+  - HER2-Positive Breast Cancer
+  - Hormone Receptor Positive Breast Cancer
+stage_specific_conditions:
+  IV: ["Metastatic Breast Cancer", "Advanced Breast Cancer"]
+  III: ["Locally Advanced Breast Cancer", "Stage III Breast Cancer"]
+  II:  ["Early Stage Breast Cancer", "Stage II Breast Cancer"]
+  I:   ["Early Stage Breast Cancer", "Stage I Breast Cancer"]
+  "0": ["Ductal Carcinoma In Situ", "DCIS"]
+ready: false   # flip to true after surveillance clinician sign-off + eval pass
