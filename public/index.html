@@ -3402,44 +3402,11 @@
             border-color: var(--primary);
             background: rgba(13, 148, 136, 0.06);
         }
-        .cancer-badge {
-            margin-left: auto;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 10px 6px 12px;
-            background: var(--cancer-accent-soft);
-            color: var(--text-primary);
-            border: 1px solid var(--cancer-accent-border);
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
-            font-family: inherit;
-            white-space: nowrap;
-            box-shadow: inset 3px 0 0 var(--cancer-accent);
-            padding-left: 14px;
-        }
-        .cancer-badge .badge-icon {
-            color: var(--cancer-accent);
-            display: inline-flex;
-            align-items: center;
-        }
-        .cancer-badge .badge-icon svg {
-            width: 14px;
-            height: 14px;
-        }
-        .cancer-badge:hover {
-            background: var(--cancer-accent-border);
-        }
-        .cancer-badge[hidden] { display: none; }
-
-        /* Chat header gets a 3px top accent in the cancer color — primary visual
-           cue without dominating the layout. */
-        .chat-header {
-            border-top: 3px solid var(--cancer-accent);
-        }
+        /* Note: the in-header cancer-badge + cancer-accent top border were
+           removed by user preference; cancer-color is now only expressed via
+           the sidebar focus card, source pills, followup chips, and the
+           sidebar next-milestone row. The change-flow entry point is the
+           Switch button on the sidebar focus card. */
 
         /* Sidebar "Your focus" card. Active cancer + corpus stats + Switch
            link. Sits above all other sidebar groups so the user instantly
@@ -6627,20 +6594,13 @@
                     <img src="/Logo.png" alt="" class="chat-header-logo">
                     <div class="chat-header-brand-text">
                         <span class="chat-header-brand-main">WondrLink</span>
-                        <span class="chat-header-brand-context" id="brandContextText">Your Cancer Guide</span>
+                        <span class="chat-header-brand-context">Your Cancer Guide</span>
                     </div>
                 </div>
                 <div class="chat-header-text">
-                    <div class="chat-title" id="chatTitleText">Your Cancer Guide</div>
+                    <div class="chat-title">Your Cancer Guide</div>
                     <div class="chat-subtitle">Evidence-based guidance in plain language</div>
                 </div>
-                <button id="cancerBadge" class="cancer-badge" type="button"
-                        onclick="openCancerSwitcher()" hidden
-                        aria-label="Change cancer focus">
-                    <span id="cancerBadgeIcon" class="badge-icon" aria-hidden="true"></span>
-                    <span id="cancerBadgeLabel">Cancer</span>
-                    <i data-lucide="chevron-down" class="icon-stroke" style="width:14px;height:14px;"></i>
-                </button>
             </div>
 
             <!-- Cancer switcher popover -->
@@ -7095,37 +7055,27 @@
             root.setProperty('--cancer-accent-border', _hexToRgba(base, 0.32) || 'rgba(31,93,79,0.25)');
         }
 
+        // Called whenever the user's active cancer changes. Sets the global
+        // CSS variable that themes source pills + followup chips + sidebar
+        // focus card, updates the welcome bubble's bold cancer name, and
+        // re-renders the sidebar focus card. The in-header cancer pill was
+        // removed by user preference — change-flow entry is via the sidebar
+        // focus card's Switch button.
         function updateCancerBadge(slug, displayName) {
             _currentCancerSlug = slug || null;
-            const btn = document.getElementById('cancerBadge');
-            const label = document.getElementById('cancerBadgeLabel');
-            const iconHost = document.getElementById('cancerBadgeIcon');
-            const brandCtx = document.getElementById('brandContextText');
-            const title = document.getElementById('chatTitleText');
-            if (!btn || !label) return;
-            label.textContent = displayName || 'Cancer';
-            btn.hidden = false;
-
-            // Apply the per-cancer accent color + render the cancer icon.
             const meta = _cancerMeta[slug] || null;
-            setCancerAccent(meta && meta.accent_color);
-            if (iconHost) {
-                const iconName = (meta && meta.icon) || 'tag';
-                iconHost.innerHTML = `<i data-lucide="${iconName}"></i>`;
-            }
 
-            // Propagate into the chat header chrome.
-            const guide = `Your ${displayName || 'Cancer'} Guide`;
-            if (brandCtx) brandCtx.textContent = guide;
-            if (title) title.textContent = guide;
-            // Welcome bubble strong tag — "your <cancer name>"
+            // CSS variable plumbing (themes source pills, chips, sidebar card).
+            setCancerAccent(meta && meta.accent_color);
+
+            // Welcome bubble strong tag — "your <cancer name>".
             const welcomeStrong = document.getElementById('welcomeCancerName');
             if (welcomeStrong) welcomeStrong.textContent = (displayName || 'cancer').toLowerCase();
 
-            // Update the sidebar focus card if it's rendered.
+            // Sidebar focus card.
             try { updateFocusCard(meta, displayName); } catch (_) {}
 
-            // Re-render lucide icons (badge icon, focus card icon, etc.).
+            // Re-render lucide icons (focus card icon, etc.).
             if (window.lucide && typeof window.lucide.createIcons === 'function') {
                 try { window.lucide.createIcons(); } catch (_) {}
             }
