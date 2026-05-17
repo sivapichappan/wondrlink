@@ -1,0 +1,78 @@
+# DRAFT — clinician sign-off required before flipping cancer.yaml ready: true.
+# Sources: NCCN Prostate Cancer (current), AUA/SUO Localized Prostate Cancer
+# Guideline, ASCO Survivorship Care, EAU follow-up recommendations.
+#
+# Prostate surveillance is dominated by PSA dynamics rather than imaging.
+# Active surveillance is a distinct pathway (not post-treatment surveillance)
+# and gets its own milestone set.
+
+milestones:
+  - id: psa_post_definitive_treatment
+    test: "PSA blood test"
+    cadence: "Every 6–12 months for 5 years, then annually"
+    applies_when:
+      after_local_therapy: any   # post-RP, post-EBRT/brachy, post-SBRT
+    rationale: "NCCN: PSA is the most sensitive marker for biochemical recurrence post-definitive treatment."
+
+  - id: dre_after_treatment
+    test: "Digital rectal examination (DRE)"
+    cadence: "Annually for the first 5 years; thereafter as clinically indicated"
+    applies_when:
+      after_local_therapy: any
+    rationale: "NCCN: complements PSA monitoring."
+
+  - id: imaging_for_biochemical_recurrence
+    test: "PSMA-PET, CT, MRI, or bone scan — for evaluating biochemical recurrence"
+    cadence: "ONLY when PSA rises to specific thresholds (post-RP ≥ 0.2 ng/mL × 2; post-radiation nadir + 2 ng/mL) OR new symptoms"
+    applies_when:
+      after_local_therapy: any
+    rationale: "NCCN: routine imaging in asymptomatic patients with undetectable/stable PSA is NOT recommended; PSMA-PET is the modern modality of choice when imaging is warranted."
+
+  - id: active_surveillance_psa
+    test: "PSA blood test (active surveillance)"
+    cadence: "Every 6 months"
+    applies_when:
+      on_active_surveillance: true
+    rationale: "AUA/NCCN: q6mo PSA is the cornerstone of active surveillance protocols."
+
+  - id: active_surveillance_dre
+    test: "Digital rectal examination (active surveillance)"
+    cadence: "Every 12 months"
+    applies_when:
+      on_active_surveillance: true
+    rationale: "Annual DRE complements PSA in active surveillance."
+
+  - id: active_surveillance_biopsy
+    test: "Confirmatory + serial prostate biopsy"
+    cadence: "Confirmatory biopsy within 6–12 months of diagnosis; serial biopsy every 2–5 years (or per mpMRI changes)"
+    applies_when:
+      on_active_surveillance: true
+    rationale: "AUA: confirmatory biopsy reduces grade-reclassification miss rate; serial biopsy detects progression triggering definitive treatment."
+
+  - id: active_surveillance_mpmri
+    test: "Multiparametric MRI of the prostate"
+    cadence: "Every 1–3 years (varies by protocol; some programs use mpMRI to defer biopsy)"
+    applies_when:
+      on_active_surveillance: true
+    rationale: "Increasingly used to risk-stratify and decide when biopsy is needed."
+
+  - id: bone_density_on_adt
+    test: "Bone density scan (DEXA)"
+    cadence: "Baseline at ADT initiation; repeat every 1–2 years"
+    applies_when:
+      on_adt: true
+    rationale: "Long-course ADT accelerates osteoporosis; baseline + serial DEXA guide bisphosphonate / denosumab decisions."
+
+  - id: cardiovascular_metabolic_on_adt
+    test: "Cardiovascular + metabolic monitoring (BP, lipid panel, glucose/HbA1c, weight)"
+    cadence: "Annually while on ADT; baseline before starting"
+    applies_when:
+      on_adt: true
+    rationale: "ADT increases cardiovascular events, insulin resistance, and metabolic syndrome; modifiable risk-factor control is high-leverage."
+
+  - id: mcrpc_active_management
+    test: "PSA + symptom-directed imaging per treatment plan"
+    cadence: "Per oncology team; typically every 3 months for PSA + every 3–6 months imaging on systemic therapy"
+    applies_when:
+      castration_resistant: true
+    rationale: "mCRPC is active disease management — cadence is driven by the regimen, response, and symptoms, not a fixed surveillance schedule."

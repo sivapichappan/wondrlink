@@ -1,0 +1,79 @@
+# Biomarker → drug-class mappings for prostate cancer.
+# Consumed by:
+#   lib/clinical_trials.py score_trial_relevance
+#   lib/prompts/overlay.py
+# Sources: NCCN Prostate (current), PROfound (olaparib), TRITON3 (rucaparib),
+# TALAPRO-2 (talazoparib + enzalutamide), VISION (Lu-177-PSMA), KEYNOTE-199
+# (pembrolizumab MSI-H).
+
+implications:
+
+  BRCA1:
+    aligns:
+      - when_state: pathogenic
+        align_keywords: [olaparib, rucaparib, talazoparib, niraparib,
+                         "PARP inhibitor", "PARP-i", "platinum chemotherapy", carboplatin]
+        bonus_points: 25
+        reason: "BRCA1 pathogenic variant aligns with PARP inhibitors in mCRPC (PROfound, TRITON3, TALAPRO-2) and is informative for family genetic testing."
+
+  BRCA2:
+    aligns:
+      - when_state: pathogenic
+        align_keywords: [olaparib, rucaparib, talazoparib, niraparib,
+                         "PARP inhibitor", "PARP-i", "platinum chemotherapy", carboplatin]
+        bonus_points: 28
+        reason: "BRCA2 has the strongest PARP-inhibitor response signal in mCRPC; also aligns with platinum-based chemotherapy."
+
+  ATM:
+    aligns:
+      - when_state: pathogenic
+        align_keywords: [olaparib, "PARP inhibitor"]
+        bonus_points: 15
+        reason: "ATM pathogenic variants confer some PARP-i sensitivity, though weaker than BRCA1/2 (PROfound cohort B)."
+
+  CDK12:
+    aligns:
+      - when_state: pathogenic
+        align_keywords: [olaparib, "PARP inhibitor", "immune checkpoint", pembrolizumab]
+        bonus_points: 12
+        reason: "CDK12 biallelic loss is associated with PARP-i and possibly immunotherapy responsiveness."
+
+  PALB2:
+    aligns:
+      - when_state: pathogenic
+        align_keywords: [olaparib, talazoparib, "PARP inhibitor", "platinum chemotherapy"]
+        bonus_points: 18
+        reason: "PALB2 pathogenic variants are included in HRR-positive PARP-i trials."
+
+  CHEK2:
+    aligns:
+      - when_state: pathogenic
+        align_keywords: [olaparib, "PARP inhibitor"]
+        bonus_points: 10
+        reason: "CHEK2 is part of the HRR gene panel; modest PARP-i activity."
+
+  MSI:
+    aligns:
+      - when_state: MSI-H
+        align_keywords: [pembrolizumab, "immune checkpoint", "PD-1 inhibitor"]
+        bonus_points: 22
+        reason: "MSI-H prostate cancer (~3-5% of advanced cases) responds to pembrolizumab (KEYNOTE-199 cohort 4)."
+
+  MMR:
+    aligns:
+      - when_state: deficient
+        align_keywords: [pembrolizumab, "immune checkpoint"]
+        bonus_points: 22
+        reason: "MMR-deficient disease aligns with pembrolizumab — tumor-agnostic FDA approval."
+
+  AR-V7:
+    warns:
+      - when_state: positive
+        warning: "AR-V7 positivity is associated with resistance to abiraterone and enzalutamide; taxane chemotherapy is more likely to be effective."
+
+  PSMA:
+    aligns:
+      - when_state: positive
+        align_keywords: ["Lu-177-PSMA-617", "PSMA-617", "Pluvicto", "radioligand", "theranostic"]
+        bonus_points: 22
+        reason: "PSMA-positive (on PSMA-PET) mCRPC after ARPI + taxane aligns with Lu-177-PSMA-617 (VISION)."

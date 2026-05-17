@@ -1,0 +1,87 @@
+# Per-cancer advocacy orgs, helplines, and topic-specific resources for prostate cancer.
+# Surfaced by lib/llm_utils.py get_relevant_resources when cancer_slug == 'prostate'.
+
+advocacy:
+  - name: ZERO Prostate Cancer
+    url: https://zerocancer.org
+    desc: Patient advocacy, helpline, financial assistance, support communities
+  - name: Prostate Cancer Foundation (PCF)
+    url: https://www.pcf.org
+    desc: Research funding + patient education
+  - name: Us TOO International
+    url: https://www.zerocancer.org/us-too
+    desc: Patient support groups (merged into ZERO in 2020)
+  - name: Malecare
+    url: https://malecare.org
+    desc: Support groups, including gay + bisexual men's resources
+  - name: Prostate Cancer Research Institute (PCRI)
+    url: https://pcri.org
+    desc: Patient education + helpline
+
+helplines:
+  - name: ZERO360 Patient Helpline
+    number: 1-844-244-1309
+    tel: tel:18442441309
+    desc: Free case-manager support — financial, insurance, treatment navigation
+  - name: PCF Helpline (NCI 1-800-4-CANCER)
+    number: 1-800-422-6237
+    tel: tel:18004226237
+    desc: National Cancer Institute information service
+  - name: American Cancer Society
+    number: 1-800-227-2345
+    tel: tel:18002272345
+    desc: 24/7 general cancer information and support
+
+screening:
+  - name: USPSTF Prostate Cancer Screening
+    url: https://www.uspreventiveservicestaskforce.org/uspstf/recommendation/prostate-cancer-screening
+    desc: Shared-decision-making recommendation for PSA screening (ages 55–69)
+  - name: ACS Prostate Cancer Early Detection
+    url: https://www.cancer.org/cancer/types/prostate-cancer/detection-diagnosis-staging/acs-recommendations.html
+    desc: When and how to be screened
+  - name: AUA/SUO Early Detection Guideline
+    url: https://www.auanet.org/guidelines-and-quality/guidelines/early-detection-of-prostate-cancer-guidelines
+    desc: 2026 AUA/SUO early-detection guideline
+
+hereditary:
+  - name: FORCE — Facing Our Risk of Cancer Empowered
+    url: https://www.facingourrisk.org
+    desc: Hereditary cancer support — BRCA1/2, ATM, etc. now relevant for prostate
+  - name: NCCN Genetic/Familial High-Risk Assessment
+    url: https://www.nccn.org/patients/guidelines/content/PDF/genetics-bop-patient.pdf
+    desc: When germline testing is appropriate
+  - name: NSGC Find a Genetic Counselor
+    url: https://www.findageneticcounselor.com
+    desc: Locate a certified counselor
+
+active_surveillance:
+  - name: PCRI — Active Surveillance Patient Guide
+    url: https://pcri.org/active-surveillance
+    desc: What active surveillance involves
+  - name: Smart Patients — Prostate Cancer Community
+    url: https://www.smartpatients.com/prostate-cancer
+    desc: Patient-to-patient discussion (incl. AS protocols)
+
+surgery_radiation:
+  - name: ZERO — Treatment Options Overview
+    url: https://zerocancer.org/treatment
+    desc: Surgery, radiation, ADT, ARPIs, chemo, immunotherapy
+  - name: American Society for Radiation Oncology (ASTRO) Patient Info
+    url: https://www.rtanswers.org
+    desc: External-beam radiation, brachytherapy patient guides
+
+side_effects:
+  - name: ZERO Sexual Health Resources
+    url: https://zerocancer.org/sexual-health
+    desc: ED management after treatment
+  - name: National Association for Continence
+    url: https://www.nafc.org
+    desc: Urinary incontinence after prostate surgery
+  - name: NCCN Distress Management Guidelines (patient)
+    url: https://www.nccn.org/patients/guidelines/content/PDF/distress-patient.pdf
+    desc: Anxiety, sleep, mood
+
+caregiver:
+  - name: ACS Caregiver Resource Guide
+    url: https://www.cancer.org/cancer/caregivers.html
+    desc: Practical guidance for supporting someone with prostate cancer

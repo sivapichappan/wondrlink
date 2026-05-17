@@ -1,10 +1,71 @@
 slug: prostate
 display_name: Prostate cancer
 short_name: Prostate
+aliases:
+  - prostatic adenocarcinoma
 icd10_prefix: [C61]
 staging_system: AJCC-TNM-8
-biomarker_panel: [PSA, Gleason, BRCA1, BRCA2, ATM, AR-V7]
+biomarker_panel:
+  - PSA
+  - Gleason
+  - Grade_Group
+  - Risk_Group        # NCCN: very low, low, favorable intermediate, unfavorable intermediate, high, very high
+  - BRCA1
+  - BRCA2
+  - ATM
+  - CDK12
+  - CHEK2
+  - PALB2
+  - MSI                # for mismatch-repair → pembrolizumab
+  - MMR
+  - AR-V7              # splice variant — resistance marker to AR-targeted therapy
+common_regimens:
+  # Local therapy
+  - Active surveillance
+  - Radical prostatectomy
+  - External beam radiation therapy (EBRT)
+  - Brachytherapy
+  - SBRT
+  # Androgen deprivation therapy (ADT)
+  - Leuprolide
+  - Goserelin
+  - Degarelix
+  - Relugolix          # oral GnRH antagonist
+  - Orchiectomy        # surgical castration
+  # Androgen-receptor pathway inhibitors (ARPIs)
+  - Abiraterone + prednisone
+  - Enzalutamide
+  - Apalutamide
+  - Darolutamide
+  # Chemotherapy
+  - Docetaxel
+  - Cabazitaxel
+  # PARP inhibitors (HRR-positive)
+  - Olaparib
+  - Rucaparib
+  - Niraparib
+  - Talazoparib
+  # Radiopharmaceuticals
+  - Radium-223         # bone-only mCRPC
+  - Lu-177-PSMA-617    # PSMA-positive mCRPC post-ARPI + taxane
+  # Immunotherapy
+  - Sipuleucel-T       # mCRPC autologous immunotherapy
+  - Pembrolizumab      # MSI-H / dMMR / TMB-high
+default_screening_test: PSA
 clinicaltrials_conditions:
   - Prostatic Neoplasms
   - Prostate Cancer
-ready: false
+  - Castration-Resistant Prostate Cancer
+  - Hormone-Sensitive Prostate Cancer
+  - Metastatic Castration-Resistant Prostate Cancer
+stage_specific_conditions:
+  IV: ["Metastatic Prostate Cancer", "Advanced Prostate Cancer", "Castration-Resistant Prostate Cancer"]
+  III: ["Locally Advanced Prostate Cancer", "High Risk Prostate Cancer"]
+  II:  ["Localized Prostate Cancer", "Intermediate Risk Prostate Cancer"]
+  I:   ["Localized Prostate Cancer", "Low Risk Prostate Cancer"]
+ready: true    # flipped 2026-05-17 — owner accepted shipping ahead of
+               # clinician sign-off on surveillance.yaml and the BRCA/GINA
+               # compliance review. Eval baseline: 4/6 metrics PASS;
+               # 2 known gaps (Tier 1 misses bare safety prompts; escalation
+               # language 71%). Same Tier-1 gap as breast, addressed in a
+               # follow-up. See commit message.

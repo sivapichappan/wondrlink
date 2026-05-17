@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wondrlink.foundation/schemas/cancers/prostate/clinical.schema.json",
+  "title": "Prostate Clinical Profile",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "primary_site": {
+      "type": "string",
+      "enum": ["prostate", "unknown"]
+    },
+    "histology": {
+      "type": "string",
+      "enum": ["adenocarcinoma", "ductal", "small_cell", "neuroendocrine", "sarcoma", "other", "unknown"]
+    },
+    "risk_group": {
+      "type": "string",
+      "description": "NCCN risk stratification for localized disease.",
+      "enum": ["very_low", "low", "favorable_intermediate", "unfavorable_intermediate", "high", "very_high", "regional", "metastatic", "unknown"]
+    },
+    "gleason_score": {
+      "type": "string",
+      "description": "e.g. '3+4=7' or 'unknown'. Use grade_group as the normalized form."
+    },
+    "grade_group": {
+      "type": "integer",
+      "description": "ISUP / NCCN Grade Group 1-5.",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "psa": {
+      "type": "object",
+      "description": "Snapshot of recent PSA values; the longitudinal series lives in PSA history.",
+      "additionalProperties": true,
+      "properties": {
+        "current_ng_ml": { "type": "number" },
+        "nadir_ng_ml": { "type": "number" },
+        "doubling_time_months": { "type": "number" }
+      }
+    },
+    "stage_detail": { "type": "string" },
+    "diagnosis_date": { "type": "string", "format": "date" },
+    "biomarkers": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "BRCA1":  { "type": "string", "enum": ["pathogenic", "vus", "wild-type", "not-tested", "unknown"] },
+        "BRCA2":  { "type": "string", "enum": ["pathogenic", "vus", "wild-type", "not-tested", "unknown"] },
+        "ATM":    { "type": "string", "enum": ["pathogenic", "vus", "wild-type", "not-tested", "unknown"] },
+        "CDK12":  { "type": "string", "enum": ["pathogenic", "vus", "wild-type", "not-tested", "unknown"] },
+        "CHEK2":  { "type": "string", "enum": ["pathogenic", "vus", "wild-type", "not-tested", "unknown"] },
+        "PALB2":  { "type": "string", "enum": ["pathogenic", "vus", "wild-type", "not-tested", "unknown"] },
+        "MSI":    { "type": "string", "enum": ["MSI-H", "MSS", "MSI-L", "unknown"] },
+        "MMR":    { "type": "string", "enum": ["proficient", "deficient", "unknown"] },
+        "AR-V7":  { "type": "string", "enum": ["positive", "negative", "unknown"] },
+        "PSMA":   { "type": "string", "enum": ["positive", "negative", "unknown"] }
+      }
+    },
+    "treatments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "regimen": { "type": "string" },
+          "line": { "type": "string", "enum": ["first-line", "second-line", "third-line", "adjuvant", "neoadjuvant", "maintenance", "hormone-sensitive", "castration-resistant"] },
+          "status": { "type": "string", "enum": ["active", "completed", "discontinued"] },
+          "startDate": { "type": "string", "format": "date" },
+          "endDate": { "type": "string", "format": "date" }
+        }
+      }
+    },
+    "local_therapy": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "modality": {
+          "type": "string",
+          "enum": ["active_surveillance", "radical_prostatectomy", "ebrt", "brachytherapy", "sbrt", "combined", "none", "unknown"]
+        },
+        "completion_date": { "type": "string", "format": "date" },
+        "approach": { "type": "string", "enum": ["open", "laparoscopic", "robotic", "n/a", "unknown"] }
+      }
+    },
+    "on_adt": { "type": "boolean", "description": "Currently on androgen-deprivation therapy." },
+    "castration_resistant": { "type": "boolean", "description": "Rising PSA on castrate testosterone (CRPC)." },
+    "family_history_significant": { "type": "boolean" },
+    "had_germline_testing": { "type": "boolean" }
+  }
+}

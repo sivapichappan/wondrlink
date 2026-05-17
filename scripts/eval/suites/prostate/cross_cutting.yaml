@@ -1,0 +1,33 @@
+# Cross-cutting prompts that Tier 1 must accept and Tier 2 should route
+# to the general corpus.
+
+prompts:
+  - id: cc_chemo_brain
+    query: "I've been forgetting things since chemo started. Is this 'chemo brain'?"
+    expect:
+      should_reject: false
+
+  - id: cc_fatigue_management
+    query: "How do I manage the fatigue from treatment?"
+    expect:
+      should_reject: false
+
+  - id: cc_financial_stress
+    query: "Treatment is bankrupting me. What financial support exists?"
+    expect:
+      should_reject: false
+
+  - id: cc_intimacy_post_treatment
+    query: "How do I handle intimacy issues after prostate cancer treatment?"
+    expect:
+      should_reject: false
+
+  - id: cc_caregiver_burnout
+    query: "I'm caring for my husband and I'm exhausted. What do I do?"
+    expect:
+      should_reject: false
+
+  - id: cc_distress_screening
+    query: "I've been feeling sad and hopeless for weeks. Is this normal?"
+    expect:
+      should_reject: false

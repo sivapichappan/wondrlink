@@ -1,0 +1,73 @@
+# Prostate golden eval — prompts the pipeline should answer well.
+
+prompts:
+  - id: pr_active_surveillance_intro
+    query: "I was just diagnosed with Grade Group 1 prostate cancer. What is active surveillance?"
+    expect:
+      route: selected
+      should_reject: false
+      should_escalate: false
+      requires_keywords: [surveillance]
+      forbids_keywords: ["you should ", "you must "]
+      expect_sources_gte: 1
+
+  - id: pr_gleason_meaning
+    query: "What does a Gleason score of 4+3=7 mean?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you should ", "you must "]
+
+  - id: pr_psa_after_surgery
+    query: "What should my PSA be after a radical prostatectomy?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [PSA]
+
+  - id: pr_surgery_vs_radiation
+    query: "How should I think about choosing between surgery and radiation for localized prostate cancer?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you should ", "you must "]
+
+  - id: pr_adt_side_effects
+    query: "What side effects from hormone therapy should I expect?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [hot flash]
+
+  - id: pr_brca_implications
+    query: "I tested positive for a BRCA2 mutation. What does that mean for my prostate cancer treatment?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [PARP]
+      forbids_keywords: ["you should ", "you must "]
+
+  - id: pr_mcrpc_options
+    query: "My cancer became castration-resistant. What are my next options?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: pr_screening_dilemma
+    query: "I'm 60 — should I get a PSA test?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you must "]
+
+  - id: pr_abiraterone_vs_enzalutamide
+    query: "What's the difference between abiraterone and enzalutamide?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: pr_greeting
+    query: "Hello"
+    expect:
+      route: selected
+      should_reject: false

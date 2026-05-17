@@ -1,0 +1,65 @@
+# Phase classification + per-phase suggested questions for prostate cancer.
+# Distinct from breast/colon because:
+#  - Active surveillance is a major path (not "no treatment" — it's an
+#    organized monitoring program).
+#  - "Chemo" isn't the default first-line for prostate; ADT + ARPIs are.
+#    The phases reflect that.
+
+phases:
+  newly_diagnosed:        {}
+  active_surveillance:    {}
+  local_therapy_recovery: {}    # post-RP or post-radiation, off systemic therapy
+  on_adt:                 {}    # androgen-deprivation therapy ongoing
+  on_arpi:                {}    # abiraterone / enzalutamide / apalutamide / darolutamide
+  chemo:                  {}    # docetaxel or cabazitaxel
+  mcrpc:                  {}    # castration-resistant, advanced
+  surveillance:           {}
+  general:                {}
+
+suggestions:
+  newly_diagnosed:
+    - "Walk me through what my Gleason score / Grade Group means"
+    - "What treatment options should I discuss with my urologist + oncologist?"
+    - "Should I consider genetic testing?"
+  active_surveillance:
+    - "What does active surveillance actually involve, and how is it different from doing nothing?"
+    - "When would my doctors recommend switching from surveillance to treatment?"
+    - "How will I know if my cancer is progressing?"
+  local_therapy_recovery:
+    - "What recovery should I expect after my treatment?"
+    - "What does my PSA after surgery / radiation mean?"
+    - "When is my next PSA check?"
+  on_adt:
+    - "What side effects from hormone therapy should I expect?"
+    - "How long will I be on hormone therapy?"
+    - "What can I do to protect my bones and heart while on ADT?"
+  on_arpi:
+    - "What's the difference between abiraterone and enzalutamide?"
+    - "What side effects should I watch for on this medication?"
+    - "Help me prepare for my next visit"
+  chemo:
+    - "What side effects from docetaxel should I be ready for?"
+    - "How will we know if chemo is working?"
+    - "Help me prepare for my next visit"
+  mcrpc:
+    - "What are my treatment options once my cancer becomes castration-resistant?"
+    - "Are there genomic tests that could open up new therapies for me?"
+    - "What does palliative care offer alongside my current treatment?"
+  surveillance:
+    - "When is my next PSA check?"
+    - "What PSA level would worry my doctors?"
+    - "What signs of recurrence should I watch for?"
+  general:
+    - "What questions should I ask my care team?"
+    - "How can I prepare for my next appointment?"
+    - "Help me prepare for my next visit"
+
+descriptors:
+  active_treatment:       "You're {days_clause}{regimen}{cycle_clause}."
+  active_surveillance:    "On active surveillance — structured monitoring of low-risk disease."
+  surveillance:           "{days} days post-treatment — surveillance phase."
+  surveillance_no_date:   "You're in the surveillance phase."
+  on_adt:                 "On androgen-deprivation therapy."
+  mcrpc:                  "Castration-resistant disease — focus is on disease control and quality of life."
+  newly_diagnosed:        "Newly diagnosed — {stage_clause}{cancer_name}."
+  fallback:               "Welcome back."
