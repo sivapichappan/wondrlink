@@ -1,0 +1,80 @@
+# Biomarker → drug-class mappings for melanoma.
+# Consumed by:
+#   lib/clinical_trials.py score_trial_relevance (warns + alignment bonuses)
+#   lib/prompts/overlay.py                       (rendered into the prompt)
+# Sources: NCCN Melanoma (current), ASCO Living Guideline (Seth 2023 update),
+# CheckMate 067 / 238 / 238 long-term, KEYNOTE-006 / -054 / -716 / S1801,
+# COMBI-AD / COLUMBUS, RELATIVITY-047 (relatlimab), C-144-01 (lifileucel),
+# IMCgp100-202 (tebentafusp in uveal).
+
+implications:
+
+  BRAF:
+    aligns:
+      - when_state: V600E
+        align_keywords: [dabrafenib, trametinib, encorafenib, binimetinib,
+                         vemurafenib, cobimetinib, "BRAF inhibitor",
+                         "MEK inhibitor", "BRAF/MEK"]
+        bonus_points: 26
+        reason: "BRAF V600E-mutant melanoma is highly responsive to BRAF/MEK combinations; encorafenib + binimetinib (COLUMBUS) or dabrafenib + trametinib (COMBI-d/v, COMBI-AD adjuvant) are standard."
+      - when_state: V600K
+        align_keywords: [dabrafenib, trametinib, encorafenib, binimetinib,
+                         "BRAF inhibitor", "MEK inhibitor"]
+        bonus_points: 22
+        reason: "BRAF V600K mutations also respond to BRAF/MEK combinations, though response rates trend slightly lower than V600E."
+    warns:
+      - when_state: wild-type
+        warning: "BRAF inhibitors are only effective in BRAF V600-mutant melanoma; BRAF wild-type disease relies on immunotherapy or other targeted approaches."
+
+  NRAS:
+    aligns:
+      - when_state: mutated
+        align_keywords: [binimetinib, "MEK inhibitor", "immune checkpoint",
+                         "PD-1 inhibitor", pembrolizumab, nivolumab]
+        bonus_points: 12
+        reason: "NRAS-mutant melanoma has limited targeted options today (MEK inhibition has modest activity); immunotherapy remains the backbone."
+
+  KIT:
+    aligns:
+      - when_state: mutated
+        align_keywords: [imatinib, nilotinib, dasatinib, "KIT inhibitor"]
+        bonus_points: 18
+        reason: "Activating KIT mutations in acral and mucosal melanoma can respond to KIT inhibitors (imatinib, nilotinib)."
+
+  PD-L1:
+    aligns:
+      - when_state: positive
+        align_keywords: [pembrolizumab, nivolumab, ipilimumab, "checkpoint inhibitor",
+                         "PD-1 inhibitor", relatlimab, "LAG-3 inhibitor", "immunotherapy"]
+        bonus_points: 15
+        reason: "PD-L1 expression supports immune checkpoint inhibitor activity, though immunotherapy is offered regardless of PD-L1 in melanoma — biomarker is prognostic, not gating."
+
+  TMB:
+    aligns:
+      - when_state: high
+        align_keywords: [pembrolizumab, nivolumab, ipilimumab, "checkpoint inhibitor",
+                         "PD-1 inhibitor", "immunotherapy"]
+        bonus_points: 12
+        reason: "High tumor mutational burden — typical of cutaneous melanoma — supports robust immune checkpoint inhibitor response."
+
+  GNAQ:
+    warns:
+      - when_state: mutated
+        warning: "GNAQ mutations are characteristic of uveal melanoma — a biologically distinct disease where standard cutaneous-melanoma immunotherapy and BRAF/MEK regimens have limited activity. Consider tebentafusp (HLA-A*02:01+) or clinical trials."
+
+  GNA11:
+    warns:
+      - when_state: mutated
+        warning: "GNA11 mutations are characteristic of uveal melanoma — same caveats as GNAQ apply. Tebentafusp is approved for HLA-A*02:01+ metastatic uveal melanoma."
+
+  BAP1:
+    warns:
+      - when_state: loss
+        warning: "BAP1 loss in uveal melanoma confers high metastatic risk (class 2 gene expression profile). Consider intensified surveillance imaging and adjuvant clinical-trial enrollment."
+
+  HLA_A_02_01:
+    aligns:
+      - when_state: positive
+        align_keywords: [tebentafusp]
+        bonus_points: 25
+        reason: "HLA-A*02:01 positivity is required for tebentafusp eligibility in metastatic uveal melanoma (IMCgp100-202 — first OS-improving therapy in this disease)."

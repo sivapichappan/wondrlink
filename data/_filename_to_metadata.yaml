@@ -287,3 +287,173 @@ the_american_society_of_colon_and_rectal_surgeons.7.pdf:
   doc_type: clinician_guideline
   audience: clinician
   guideline_org: ASCO
+
+# =============================================================================
+# Wave 2 — Lung cancer
+# =============================================================================
+
+"CA A Cancer J Clinicians - 2023 - Wolf - Screening for lung cancer  2023 guideline update from the American Cancer Society.pdf":
+  cancer_types: [lung]
+  doc_type: screening
+  audience: clinician
+  guideline_org: ACS
+
+"Non-Small Cell Lung Cancer Treatment (PDQ®) - NCI.pdf":
+  cancer_types: [lung]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCI
+
+"Non-Small Cell Lung Cancer Treatment - NCI.pdf":
+  cancer_types: [lung]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: NCI
+
+"SCLC-patient-guideline.pdf":
+  cancer_types: [lung]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCCN
+
+"Small Cell Lung Cancer Treatment (PDQ®) - NCI.pdf":
+  cancer_types: [lung]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCI
+
+"Small Cell Lung Cancer Treatment - NCI.pdf":
+  cancer_types: [lung]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: NCI
+
+"kalemkerian-et-al-2018-molecular-testing-guideline-for-the-selection-of-patients-with-lung-cancer-for-treatment-with.pdf":
+  cancer_types: [lung]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: ASCO
+
+"kalemkerian-et-al-2024-systemic-therapy-for-small-cell-lung-cancer-asco-guideline-rapid-recommendation-update.pdf":
+  cancer_types: [lung]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: ASCO
+
+"khurshid-et-al-2023-systemic-therapy-for-small-cell-lung-cancer-asco-ontario-health-(cancer-care-ontario)-guideline.pdf":
+  cancer_types: [lung]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: ASCO
+
+"lung-cancer-fact-sheet-patient-version.pdf":
+  cancer_types: [lung]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: ACS
+
+"lung-cancer-fact-sheet.pdf":
+  cancer_types: [lung]
+  doc_type: reference
+  audience: clinician
+  guideline_org: ACS
+
+"lung-cancer-screening-final-recommendation.pdf":
+  cancer_types: [lung]
+  doc_type: screening
+  audience: clinician
+  guideline_org: USPSTF
+
+"lung-early-stage-patient.pdf":
+  cancer_types: [lung]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCCN
+
+"lung-metastatic-patient.pdf":
+  cancer_types: [lung]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCCN
+
+"lung_screening-patient.pdf":
+  cancer_types: [lung]
+  doc_type: screening
+  audience: patient
+  guideline_org: NCCN
+
+"puri-et-al-2026-therapy-for-stage-iv-non-small-cell-lung-cancer-with-driver-alterations-asco-living-guideline-2026-3-0.pdf":
+  cancer_types: [lung]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: ASCO
+
+"reuss-et-al-2026-therapy-for-stage-iv-non-small-cell-lung-cancer-without-driver-alterations-asco-living-guideline-2026.pdf":
+  cancer_types: [lung]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: ASCO
+
+# =============================================================================
+# Wave 2 — Melanoma
+# =============================================================================
+
+"Intraocular (Eye) Melanoma Treatment (PDQ®) - NCI.pdf":
+  cancer_types: [melanoma]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCI
+
+"Intraocular (Uveal) Melanoma Treatment - NCI.pdf":
+  cancer_types: [melanoma]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: NCI
+
+"Melanoma Treatment (PDQ®) - NCI.pdf":
+  cancer_types: [melanoma]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCI
+
+"Melanoma Treatment - NCI.pdf":
+  cancer_types: [melanoma]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: NCI
+
+"melanoma-patient.pdf":
+  cancer_types: [melanoma]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCCN
+
+"seth-et-al-2023-systemic-therapy-for-melanoma-asco-guideline-update.pdf":
+  cancer_types: [melanoma]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: ASCO
+
+"skin-cancer-fact-sheet-patient-version.pdf":
+  cancer_types: [melanoma]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: ACS
+
+"skin-cancer-fact-sheet.pdf":
+  cancer_types: [melanoma]
+  doc_type: reference
+  audience: clinician
+  guideline_org: ACS
+
+"skin-cancer-screening-final-rec-bulletin.pdf":
+  cancer_types: [melanoma]
+  doc_type: screening
+  audience: patient
+  guideline_org: USPSTF
+
+"skin-cancer-screening-final-recommendation.pdf":
+  cancer_types: [melanoma]
+  doc_type: screening
+  audience: clinician
+  guideline_org: USPSTF

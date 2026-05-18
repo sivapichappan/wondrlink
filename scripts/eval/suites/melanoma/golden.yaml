@@ -1,0 +1,106 @@
+# Melanoma golden eval — prompts the pipeline should answer well.
+
+prompts:
+  - id: mel_braf_v600
+    query: "I have BRAF V600E melanoma. What does that mean for treatment?"
+    expect:
+      route: selected
+      should_reject: false
+      should_escalate: false
+      requires_keywords: [BRAF]
+      forbids_keywords: ["you should ", "you must "]
+      expect_sources_gte: 1
+
+  - id: mel_immunotherapy_options
+    query: "What are my immunotherapy options for advanced melanoma?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [pembrolizumab]
+      expect_sources_gte: 1
+
+  - id: mel_ipi_nivo_combo
+    query: "What's the difference between nivolumab alone and nivolumab plus ipilimumab?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [ipilimumab]
+
+  - id: mel_adjuvant_therapy
+    query: "I had surgery for stage III melanoma. What's adjuvant therapy and do I need it?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you should "]
+
+  - id: mel_uveal_melanoma
+    query: "I have uveal melanoma. How is it different from regular melanoma?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [uveal]
+
+  - id: mel_tebentafusp_uveal
+    query: "What is tebentafusp and would it work for me with uveal melanoma?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [HLA]
+
+  - id: mel_io_side_effects
+    query: "What immune-related side effects should I watch for on pembrolizumab?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [immune]
+      forbids_keywords: ["you should "]
+
+  - id: mel_braf_targeted_resistance
+    query: "What happens if my melanoma stops responding to dabrafenib and trametinib?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you must "]
+
+  - id: mel_sentinel_node
+    query: "Should I have a sentinel lymph node biopsy?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you should "]
+
+  - id: mel_skin_self_exam
+    query: "How do I do a thorough self-skin exam at home?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: mel_sun_protection
+    query: "What kind of sun protection do I need now that I've had melanoma?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: mel_surveillance_imaging
+    query: "Will I need CT scans after my melanoma surgery?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: mel_pseudoprogression
+    query: "My first scan on immunotherapy showed the tumor got bigger. Is that always bad?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: mel_lifileucel_tcr
+    query: "Have you heard of lifileucel? What kind of patient is it for?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: mel_greeting
+    query: "Hello"
+    expect:
+      route: selected
+      should_reject: false

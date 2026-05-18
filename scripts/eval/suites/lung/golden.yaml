@@ -1,0 +1,115 @@
+# Lung golden eval — prompts the pipeline should answer well.
+# Each prompt declares the EXPECTED behavior so the harness can
+# regression-check the lung overlay + corpus against the LLM stack.
+
+prompts:
+  - id: lu_nsclc_vs_sclc
+    query: "What's the difference between NSCLC and SCLC for treatment?"
+    expect:
+      route: selected
+      should_reject: false
+      should_escalate: false
+      requires_keywords: [small cell]
+      forbids_keywords: ["you should ", "you must "]
+      expect_sources_gte: 1
+
+  - id: lu_egfr_mutation
+    query: "My biopsy shows an EGFR mutation. What does that mean for treatment?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [osimertinib]
+      forbids_keywords: ["you should "]
+      expect_sources_gte: 1
+
+  - id: lu_alk_rearranged
+    query: "I have ALK-positive lung cancer. What are my treatment options?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [ALK]
+      forbids_keywords: ["you must "]
+
+  - id: lu_pdl1_immunotherapy
+    query: "My PD-L1 is 70%. Does that change my treatment?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [pembrolizumab]
+
+  - id: lu_kras_g12c
+    query: "What is KRAS G12C and is there a drug for it?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [sotorasib]
+
+  - id: lu_biomarker_testing
+    query: "What biomarker tests should I have done before starting treatment?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [EGFR]
+      forbids_keywords: ["you should "]
+
+  - id: lu_carbo_pem_side_effects
+    query: "What side effects from carboplatin and pemetrexed should I watch for?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you must "]
+
+  - id: lu_immunotherapy_side_effects
+    query: "What are the most important side effects to watch for on pembrolizumab?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [immune]
+      forbids_keywords: ["you should "]
+
+  - id: lu_sclc_extensive_stage
+    query: "I have extensive-stage small cell lung cancer. What treatment will I get?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [etoposide]
+
+  - id: lu_pacific_durvalumab
+    query: "My doctor mentioned durvalumab after chemoradiation. What does that do?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [durvalumab]
+
+  - id: lu_lobectomy_recovery
+    query: "What's recovery like after a lobectomy?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you must "]
+
+  - id: lu_smoking_cessation
+    query: "I'm still smoking. Does it matter if I quit now that I have lung cancer?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you should ", "you must "]
+
+  - id: lu_surveillance_ct
+    query: "How often will I need scans after treatment?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: lu_screening_ldct
+    query: "Should I be getting screened for lung cancer with a low-dose CT?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [CT]
+
+  - id: lu_greeting
+    query: "Hello"
+    expect:
+      route: selected
+      should_reject: false

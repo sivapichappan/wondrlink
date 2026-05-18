@@ -1,0 +1,101 @@
+# Per-cancer advocacy orgs, helplines, and topic-specific resources for melanoma.
+# Surfaced by lib/llm_utils.py get_relevant_resources when patient cancer_slug == 'melanoma'.
+
+advocacy:
+  - name: Melanoma Research Foundation (MRF)
+    url: https://melanoma.org
+    desc: Patient education, advocacy, research funding, peer support
+  - name: AIM at Melanoma
+    url: https://www.aimatmelanoma.org
+    desc: Patient + caregiver education and navigation
+  - name: Melanoma Research Alliance (MRA)
+    url: https://www.curemelanoma.org
+    desc: Research funding + treatment resources
+  - name: Skin Cancer Foundation
+    url: https://www.skincancer.org
+    desc: Prevention, early detection, screening events
+  - name: Ocular Melanoma Foundation
+    url: https://www.ocularmelanoma.org
+    desc: Uveal / ocular melanoma patient community and resources
+
+helplines:
+  - name: MRF Patient Resources
+    number: 1-800-673-1290
+    tel: tel:18006731290
+    desc: Melanoma navigation, treatment questions, support
+  - name: American Cancer Society
+    number: 1-800-227-2345
+    tel: tel:18002272345
+    desc: 24/7 general cancer information and support
+  - name: NCI Cancer Information Service
+    number: 1-800-422-6237
+    tel: tel:18004226237
+    desc: Treatment information, clinical trials, expert support
+
+screening:
+  - name: AAD SPOTme Skin Cancer Screening
+    url: https://www.aad.org/public/public-health/skin-cancer-screenings
+    desc: Free dermatologist-led screening events
+  - name: Skin Cancer Foundation Early Detection
+    url: https://www.skincancer.org/early-detection/
+    desc: ABCDE guide + self-exam instructions
+  - name: USPSTF Skin Cancer Screening
+    url: https://www.uspreventiveservicestaskforce.org/uspstf/recommendation/skin-cancer-screening
+    desc: Adult skin cancer screening recommendation
+
+sun_protection:
+  - name: Skin Cancer Foundation Sun Protection
+    url: https://www.skincancer.org/skin-cancer-prevention/
+    desc: SPF, clothing, UV-index awareness, ages-and-stages guidance
+  - name: ACS UV Protection
+    url: https://www.cancer.org/cancer/risk-prevention/sun-and-uv.html
+    desc: Sun-protection basics for survivors and families
+  - name: EPA UV Index
+    url: https://www.epa.gov/sunsafety/uv-index-1
+    desc: Daily UV-index forecast for sun-exposure planning
+
+biomarker_testing:
+  - name: MRF Biomarker Testing Guide
+    url: https://melanoma.org/melanoma-education/diagnosis/molecular-and-genetic-testing/
+    desc: Why BRAF and other biomarker testing matter for treatment selection
+  - name: AIM at Melanoma — BRAF Mutation
+    url: https://www.aimatmelanoma.org/melanoma-101/treatment/treatments-by-mutation/
+    desc: Plain-language explanation of BRAF + targeted-therapy options
+
+side_effects:
+  - name: NCCN Distress Management (patient)
+    url: https://www.nccn.org/patients/guidelines/content/PDF/distress-patient.pdf
+    desc: Anxiety, sleep, mood — cross-cutting
+  - name: ASCO Survivorship Care (Cancer.Net)
+    url: https://www.cancer.net/survivorship
+    desc: Survivorship resources
+  - name: MRF Immunotherapy Side Effects
+    url: https://melanoma.org/melanoma-education/treatment/immunotherapy/
+    desc: Recognizing immune-related adverse events early
+
+uveal_specific:
+  - name: A Cure In Sight
+    url: https://www.acureinsight.org
+    desc: Ocular melanoma research + patient education
+  - name: Ocular Melanoma Foundation Support
+    url: https://www.ocularmelanoma.org/support.htm
+    desc: Patient + caregiver peer support
+  - name: Cure OM (MRF)
+    url: https://www.curemelanoma.org/cure-om
+    desc: Ocular melanoma research initiative
+
+palliative_supportive:
+  - name: Get Palliative Care
+    url: https://getpalliativecare.org
+    desc: Find palliative care providers — early integration improves outcomes
+  - name: CaringInfo (NHPCO)
+    url: https://www.caringinfo.org
+    desc: Advance care planning + hospice information
+
+caregiver:
+  - name: ACS Caregiver Resource Guide
+    url: https://www.cancer.org/cancer/caregivers.html
+    desc: Practical guidance for supporting someone with melanoma
+  - name: MRF Caregiver Resources
+    url: https://melanoma.org/melanoma-community/melanoma-caregivers/
+    desc: Melanoma-specific caregiver support

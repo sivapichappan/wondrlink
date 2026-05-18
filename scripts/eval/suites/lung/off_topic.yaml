@@ -1,0 +1,27 @@
+# Off-topic prompts that Tier 1 (is_in_oncology_domain) must reject.
+
+prompts:
+  - id: ot_car_battery
+    query: "How do I fix my car battery?"
+    expect:
+      should_reject: true
+
+  - id: ot_cake_recipe
+    query: "Can you give me a chocolate cake recipe?"
+    expect:
+      should_reject: true
+
+  - id: ot_tax_advice
+    query: "What's the deadline to file my taxes this year?"
+    expect:
+      should_reject: true
+
+  - id: ot_python_help
+    query: "What's the syntax for a Python list comprehension?"
+    expect:
+      should_reject: true
+
+  - id: ot_movie_recommendation
+    query: "Recommend me a good action movie to watch tonight."
+    expect:
+      should_reject: true

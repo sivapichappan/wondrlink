@@ -1,0 +1,110 @@
+# Biomarker → drug-class mappings for lung cancer.
+# Consumed by:
+#   lib/clinical_trials.py score_trial_relevance (warns + alignment bonuses)
+#   lib/prompts/overlay.py                       (rendered into the prompt)
+# Sources: NCCN NSCLC + SCLC (current), ASCO Living Guideline (Kalemkerian /
+# Khurshid / Puri / Reuss), FLAURA / FLAURA2 (osimertinib), ALEX / CROWN
+# (alectinib / lorlatinib), CodeBreaK 100/200 (sotorasib), KEYNOTE-024 / -189 /
+# -407 (pembrolizumab), PACIFIC (durvalumab), IMpower133 / CASPIAN (SCLC IO).
+
+implications:
+
+  EGFR:
+    aligns:
+      - when_state: mutated
+        align_keywords: [osimertinib, erlotinib, gefitinib, afatinib,
+                         dacomitinib, "EGFR TKI", "tyrosine kinase inhibitor"]
+        bonus_points: 28
+        reason: "EGFR-sensitizing mutations (exon 19 del, L858R) are highly responsive to osimertinib (first-line preferred per FLAURA/FLAURA2) and other EGFR TKIs."
+      - when_state: T790M
+        align_keywords: [osimertinib]
+        bonus_points: 25
+        reason: "T790M resistance mutation aligns specifically with osimertinib."
+      - when_state: exon_20_ins
+        align_keywords: [amivantamab, mobocertinib]
+        bonus_points: 22
+        reason: "EGFR exon 20 insertions are typically TKI-resistant but respond to amivantamab and mobocertinib."
+    warns:
+      - when_state: mutated
+        warning: "EGFR-mutant NSCLC typically derives less benefit from first-line single-agent immunotherapy than wild-type; TKI is preferred."
+
+  ALK:
+    aligns:
+      - when_state: rearranged
+        align_keywords: [alectinib, brigatinib, lorlatinib, crizotinib,
+                         ceritinib, "ALK inhibitor"]
+        bonus_points: 28
+        reason: "ALK-rearranged NSCLC is highly responsive to ALK inhibitors; alectinib or lorlatinib are typical first-line per NCCN."
+
+  ROS1:
+    aligns:
+      - when_state: rearranged
+        align_keywords: [entrectinib, crizotinib, repotrectinib, lorlatinib,
+                         "ROS1 inhibitor"]
+        bonus_points: 26
+        reason: "ROS1 rearrangements respond to entrectinib, crizotinib, and repotrectinib; entrectinib and repotrectinib have CNS activity."
+
+  KRAS:
+    aligns:
+      - when_state: G12C
+        align_keywords: [sotorasib, adagrasib, "KRAS G12C inhibitor"]
+        bonus_points: 22
+        reason: "KRAS G12C-mutant NSCLC after prior systemic therapy aligns with sotorasib (CodeBreaK 200) or adagrasib (KRYSTAL-1)."
+
+  BRAF:
+    aligns:
+      - when_state: V600E
+        align_keywords: [dabrafenib, trametinib, "BRAF inhibitor", "MEK inhibitor"]
+        bonus_points: 24
+        reason: "BRAF V600E-mutant NSCLC responds to dabrafenib + trametinib combination."
+
+  MET:
+    aligns:
+      - when_state: exon_14_skip
+        align_keywords: [capmatinib, tepotinib, "MET inhibitor"]
+        bonus_points: 22
+        reason: "MET exon 14 skipping mutations align with capmatinib (GEOMETRY mono-1) or tepotinib (VISION)."
+      - when_state: amplified
+        align_keywords: [capmatinib, tepotinib, crizotinib, "MET inhibitor"]
+        bonus_points: 15
+        reason: "High-level MET amplification may respond to MET-directed therapy, especially as a resistance mechanism on EGFR TKIs."
+
+  RET:
+    aligns:
+      - when_state: rearranged
+        align_keywords: [selpercatinib, pralsetinib, "RET inhibitor"]
+        bonus_points: 24
+        reason: "RET fusions align with selpercatinib (LIBRETTO-001) or pralsetinib (ARROW)."
+
+  NTRK:
+    aligns:
+      - when_state: rearranged
+        align_keywords: [larotrectinib, entrectinib, repotrectinib, "TRK inhibitor"]
+        bonus_points: 22
+        reason: "NTRK gene fusions (rare in lung) align with tumor-agnostic TRK inhibitors larotrectinib or entrectinib."
+
+  HER2:
+    aligns:
+      - when_state: mutated
+        align_keywords: ["trastuzumab deruxtecan", "T-DXd", "HER2 ADC"]
+        bonus_points: 20
+        reason: "HER2-mutant (ERBB2) NSCLC after platinum chemo aligns with trastuzumab deruxtecan (DESTINY-Lung01/02)."
+
+  PD-L1:
+    aligns:
+      - when_state: positive
+        align_keywords: [pembrolizumab, atezolizumab, cemiplimab, nivolumab,
+                         durvalumab, "checkpoint inhibitor", "PD-1 inhibitor",
+                         "PD-L1 inhibitor", "immunotherapy"]
+        bonus_points: 22
+        reason: "High PD-L1 expression (TPS ≥ 50%) in metastatic NSCLC aligns with first-line single-agent pembrolizumab (KEYNOTE-024); lower TPS still benefits from IO+chemo combinations."
+
+  STK11:
+    warns:
+      - when_state: mutated
+        warning: "STK11 (LKB1) mutations are associated with reduced response to PD-(L)1 immunotherapy in NSCLC, particularly in combination with KEAP1 mutations."
+
+  KEAP1:
+    warns:
+      - when_state: mutated
+        warning: "KEAP1 mutations are associated with worse outcomes on immunotherapy and chemoradiation; consider this when interpreting treatment response."

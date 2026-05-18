@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wondrlink.foundation/schemas/cancers/lung/clinical.schema.json",
+  "title": "Lung Clinical Profile",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "subtype": {
+      "type": "string",
+      "description": "NSCLC vs SCLC drives nearly all treatment decisions.",
+      "enum": ["NSCLC_adenocarcinoma", "NSCLC_squamous", "NSCLC_large_cell", "NSCLC_other", "SCLC", "mixed_small_cell", "carcinoid", "mesothelioma_pleural", "unknown"]
+    },
+    "histology_detail": { "type": "string" },
+    "primary_site": {
+      "type": "string",
+      "enum": ["right_upper", "right_middle", "right_lower", "left_upper", "left_lower", "main_bronchus", "mediastinal", "bilateral", "unknown"]
+    },
+    "stage_detail": { "type": "string" },
+    "smoking_status": {
+      "type": "string",
+      "enum": ["never", "former", "current", "unknown"]
+    },
+    "pack_years": { "type": ["number", "string"] },
+    "diagnosis_date": { "type": "string", "format": "date" },
+    "ecog_performance_status": {
+      "type": ["integer", "string"],
+      "description": "0–4 ECOG; can be 'unknown'."
+    },
+    "biomarkers": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "EGFR":  { "type": "string", "enum": ["mutated", "exon_19_del", "L858R", "T790M", "exon_20_ins", "wild-type", "not-tested", "unknown"] },
+        "ALK":   { "type": "string", "enum": ["rearranged", "negative", "not-tested", "unknown"] },
+        "ROS1":  { "type": "string", "enum": ["rearranged", "negative", "not-tested", "unknown"] },
+        "KRAS":  { "type": "string", "enum": ["mutated", "G12C", "wild-type", "not-tested", "unknown"] },
+        "BRAF":  { "type": "string", "enum": ["mutated", "V600E", "non_V600", "wild-type", "not-tested", "unknown"] },
+        "MET":   { "type": "string", "enum": ["exon_14_skip", "amplified", "negative", "not-tested", "unknown"] },
+        "RET":   { "type": "string", "enum": ["rearranged", "negative", "not-tested", "unknown"] },
+        "NTRK":  { "type": "string", "enum": ["rearranged", "negative", "not-tested", "unknown"] },
+        "HER2":  { "type": "string", "enum": ["mutated", "amplified", "negative", "not-tested", "unknown"] },
+        "PD-L1": { "type": "string", "description": "TPS as percent string ('50%', '1–49%', '<1%', 'unknown')." },
+        "STK11": { "type": "string", "enum": ["mutated", "wild-type", "not-tested", "unknown"] },
+        "KEAP1": { "type": "string", "enum": ["mutated", "wild-type", "not-tested", "unknown"] },
+        "TP53":  { "type": "string", "enum": ["mutated", "wild-type", "not-tested", "unknown"] }
+      }
+    },
+    "treatments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "regimen": { "type": "string" },
+          "line": { "type": "string", "enum": ["first-line", "second-line", "third-line", "adjuvant", "neoadjuvant", "maintenance", "consolidation"] },
+          "status": { "type": "string", "enum": ["active", "completed", "discontinued"] },
+          "startDate": { "type": "string", "format": "date" },
+          "endDate": { "type": "string", "format": "date" },
+          "cycleNumber": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "surgical_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "procedure": {
+            "type": "string",
+            "enum": ["lobectomy", "wedge_resection", "segmentectomy", "pneumonectomy", "vats", "mediastinoscopy", "other"]
+          },
+          "date": { "type": "string", "format": "date" },
+          "approach": { "type": "string", "enum": ["open", "vats", "robotic", "unknown"] }
+        }
+      }
+    },
+    "radiation_history": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "received": { "type": "boolean" },
+        "modality": { "type": "string", "enum": ["sbrt", "ebrt", "imrt", "proton", "brachytherapy", "other", "unknown"] },
+        "site": { "type": "string" },
+        "completion_date": { "type": "string", "format": "date" }
+      }
+    },
+    "comorbid_pulmonary": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "copd": { "type": "boolean" },
+        "interstitial_lung_disease": { "type": "boolean" },
+        "home_oxygen": { "type": "boolean" }
+      }
+    },
+    "family_history_significant": { "type": "boolean" }
+  }
+}

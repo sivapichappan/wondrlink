@@ -1,0 +1,75 @@
+# DRAFT — clinician sign-off required before flipping cancer.yaml ready: true.
+# Sources: NCCN NSCLC + SCLC Surveillance, ACS/ASCO Lung Cancer Survivorship
+# Care Guideline, IASLC follow-up after curative-intent resection.
+#
+# Lung cancer surveillance is imaging-heavy compared to most cancers because
+# the recurrence risk after curative-intent treatment is substantial and
+# salvage options often depend on early detection. Schedule below reflects
+# current NCCN cadence; metastatic / stage IV is active disease management,
+# not surveillance.
+
+milestones:
+  - id: history_physical
+    test: "Office visit with oncology / pulmonology — history and physical"
+    cadence: "Every 6 months × 2–3 years, then annually"
+    applies_when:
+      stage_in: [I, II, III]
+    rationale: "NCCN: clinical assessment is the spine of follow-up; weight, symptoms, performance status, and treatment-related toxicities drive imaging and intervention decisions."
+
+  - id: chest_ct_curative
+    test: "Low-dose chest CT (with or without contrast)"
+    cadence: "Every 6 months × 2–3 years post-resection or definitive treatment, then annually"
+    applies_when:
+      stage_in: [I, II, III]
+      subtype_in: ["NSCLC_adenocarcinoma", "NSCLC_squamous", "NSCLC_large_cell", "NSCLC_other"]
+    rationale: "NCCN NSCLC: surveillance CT detects recurrence and second primary lung cancers at a curable stage; cadence tightens for higher-stage disease and loosens after 2–3 disease-free years."
+
+  - id: chest_ct_sclc
+    test: "Chest CT with contrast"
+    cadence: "Every 3 months × year 1, every 6 months × year 2, then annually"
+    applies_when:
+      stage_in: [I, II, III]
+      subtype_in: ["SCLC", "mixed_small_cell"]
+    rationale: "NCCN SCLC: SCLC has higher early-recurrence risk than NSCLC; tighter imaging cadence in the first 2 years."
+
+  - id: brain_mri_sclc
+    test: "Brain MRI"
+    cadence: "Every 3–4 months × year 1, every 6 months × year 2"
+    applies_when:
+      subtype_in: ["SCLC"]
+    rationale: "NCCN SCLC: high incidence of brain metastases — surveillance MRI is standard, particularly when prophylactic cranial irradiation was deferred."
+
+  - id: smoking_cessation
+    test: "Tobacco cessation counseling + nicotine replacement / pharmacotherapy"
+    cadence: "Every visit if current smoker; reinforce abstinence if former smoker"
+    applies_when:
+      smoking_status_in: ["current", "former"]
+    rationale: "USPHS / NCCN: continued smoking after diagnosis worsens treatment outcomes, second primary risk, and survival. Cessation support is part of every visit."
+
+  - id: pulmonary_rehab
+    test: "Pulmonary rehabilitation referral / pulmonary function testing"
+    cadence: "Post-resection baseline; repeat if symptomatic dyspnea or oxygen needs change"
+    applies_when:
+      stage_in: [I, II, III]
+    rationale: "Surgical resection and radiation reduce pulmonary reserve; rehab improves functional capacity and symptom burden."
+
+  - id: vaccination
+    test: "Influenza (annual), pneumococcal, COVID-19 (per current CDC schedule)"
+    cadence: "Per CDC adult immunization schedule; document at annual visit"
+    applies_when:
+      stage_in: [I, II, III, IV]
+    rationale: "Lung cancer survivors and patients on active treatment have elevated risk of respiratory-infection morbidity."
+
+  - id: no_routine_pet
+    test: "Routine PET/CT in asymptomatic survivors"
+    cadence: "NOT recommended for routine surveillance"
+    applies_when:
+      stage_in: [I, II, III]
+    rationale: "ASCO Choosing Wisely + NCCN: PET adds cost and false positives without survival benefit when used as scheduled surveillance. Use for indeterminate findings on CT or new symptoms."
+
+  - id: stage_iv_active_management
+    test: "Imaging cadence per active treatment plan"
+    cadence: "Per oncology team; typically every 6–12 weeks for response assessment"
+    applies_when:
+      stage_in: [IV]
+    rationale: "Stage IV / extensive-stage disease is active management — imaging cadence is dictated by the regimen, response, and decisions to escalate or change therapy."

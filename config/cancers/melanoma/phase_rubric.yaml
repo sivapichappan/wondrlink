@@ -1,0 +1,65 @@
+# Phase classification + per-phase suggested questions for melanoma.
+# Melanoma journeys often pivot rapidly between curative surgery, adjuvant
+# immunotherapy or targeted therapy, and metastatic care. Pseudoprogression
+# on immunotherapy is a phase-specific concept worth surfacing.
+
+phases:
+  early_immunotherapy: { min_days: 0,   max_days: 56 }
+  mid_immunotherapy:   { min_days: 56,  max_days: 365 }
+  targeted_therapy:    {}
+  post_surgery:        {}
+  adjuvant_therapy:    {}
+  surveillance:        {}
+  newly_diagnosed:     {}
+  metastatic:          {}
+  general:             {}
+
+suggestions:
+  early_immunotherapy:
+    - "What immune-related side effects should I watch for in the first weeks?"
+    - "How will we tell if my immunotherapy is working?"
+    - "Help me prepare for my next visit"
+  mid_immunotherapy:
+    - "What does pseudoprogression mean and how do we know if it's happening?"
+    - "How long will I stay on immunotherapy if it's working?"
+    - "Help me prepare for my next visit"
+  targeted_therapy:
+    - "What side effects from BRAF/MEK therapy should I watch for at home?"
+    - "What happens if my melanoma becomes resistant to this combination?"
+    - "Help me prepare for my next visit"
+  post_surgery:
+    - "What does recovery from wide local excision / lymph node surgery look like?"
+    - "What about lymphedema risk after lymph node dissection?"
+    - "Help me prepare for my next visit"
+  adjuvant_therapy:
+    - "Why are we doing adjuvant therapy if the surgery removed everything visible?"
+    - "How long does adjuvant immunotherapy or targeted therapy typically last?"
+    - "Help me prepare for my next visit"
+  surveillance:
+    - "When is my next skin exam due?"
+    - "What signs of recurrence should I watch for?"
+    - "How do I do a thorough self-skin check?"
+  newly_diagnosed:
+    - "Walk me through what stage {stage} means for my care"
+    - "What does my BRAF status mean for treatment options?"
+    - "Should I have my sentinel lymph node checked?"
+  metastatic:
+    - "What does my current regimen aim to do — control disease, shrink it, or both?"
+    - "What palliative care options can support me alongside active treatment?"
+    - "How will we know when it might be time to change treatment?"
+  general:
+    - "What questions should I ask my oncology team?"
+    - "How can I prepare for my next appointment?"
+    - "Help me prepare for my next visit"
+
+descriptors:
+  active_treatment: "You're {days_clause}{regimen}{cycle_clause}."
+  surveillance:     "{days} days post-treatment — surveillance phase."
+  surveillance_no_date: "You're in the surveillance phase."
+  targeted_therapy: "On BRAF/MEK-targeted therapy."
+  immunotherapy:    "On immunotherapy — durable long-tail benefit is possible."
+  adjuvant_therapy: "On adjuvant therapy to reduce recurrence risk."
+  post_surgery:     "{days} days post-surgery — recovery phase."
+  metastatic:       "Metastatic melanoma — focus is on disease control and quality of life."
+  newly_diagnosed:  "Newly diagnosed — {stage_clause}{cancer_name}."
+  fallback:         "Welcome back."

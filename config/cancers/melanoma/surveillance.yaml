@@ -1,0 +1,72 @@
+# DRAFT — clinician sign-off required before flipping cancer.yaml ready: true.
+# Sources: NCCN Cutaneous Melanoma Survivorship (current), ASCO/Cancer.Net
+# Survivorship for Melanoma, ACS Skin Cancer Survivorship.
+#
+# Melanoma surveillance is stratified by stage. Early-stage disease relies
+# heavily on skin exams (recurrence and second primaries are common);
+# higher-stage disease layers in periodic imaging. Routine cross-sectional
+# imaging is NOT recommended in stage I–IIA per NCCN — surface this.
+
+milestones:
+  - id: clinician_skin_exam
+    test: "Full-body skin exam by dermatology or oncology"
+    cadence: "Every 3–12 months for 2 years, then every 6–12 months for 3 years, then annually for life"
+    applies_when:
+      stage_in: ["0", I, II, III]
+    rationale: "NCCN: skin exam is the cornerstone of melanoma surveillance. Roughly 5–10% of melanoma patients develop a second primary; survivorship requires lifelong vigilance."
+
+  - id: self_skin_check
+    test: "Monthly self-skin exam (ABCDE — asymmetry, border, color, diameter, evolution)"
+    cadence: "Monthly, lifelong"
+    applies_when:
+      stage_in: ["0", I, II, III, IV]
+    rationale: "Most melanoma recurrences and second primaries are detected by the patient or partner. Patient education on self-skin exam is part of every visit."
+
+  - id: lymph_node_exam
+    test: "Lymph node exam at follow-up visits"
+    cadence: "Per scheduled clinician visit cadence"
+    applies_when:
+      stage_in: [I, II, III]
+    rationale: "Regional lymph node recurrence is a common pattern; structured exam at every visit catches palpable nodal recurrence early."
+
+  - id: imaging_higher_stage
+    test: "Cross-sectional imaging (CT chest/abdomen/pelvis or PET/CT) ± brain MRI"
+    cadence: "Every 3–12 months × 2–3 years, then every 6–12 months × 2 years; intervals tighten by stage and risk"
+    applies_when:
+      stage_in: [IIB, IIC, III]
+    rationale: "NCCN: routine imaging is an option for higher-risk resected stage IIB+ and stage III to detect asymptomatic recurrence at a treatable point."
+
+  - id: no_routine_imaging_low_risk
+    test: "Routine CT, PET, or MRI in asymptomatic stage 0 / IA / IB / IIA survivors"
+    cadence: "NOT recommended"
+    applies_when:
+      stage_in: ["0", I, IIA]
+    rationale: "ASCO Choosing Wisely / NCCN: routine cross-sectional imaging in low-risk early-stage melanoma has high false-positive burden without survival benefit. Image symptomatic concerns only."
+
+  - id: brain_mri_stage_iii_iv
+    test: "Brain MRI"
+    cadence: "Annually × 3 years for stage IIIC/D; consider at any surveillance time if new neurologic symptoms"
+    applies_when:
+      stage_in: [IIIC, IIID, IV]
+    rationale: "Higher-stage melanoma has substantial CNS metastasis risk; brain MRI is part of higher-risk surveillance and triggers prompt evaluation of any neurologic symptom."
+
+  - id: sun_protection
+    test: "Sun-protection counseling — broad-spectrum SPF 30+, sun-protective clothing, shade, avoid indoor tanning"
+    cadence: "Every visit; lifelong"
+    applies_when:
+      stage_in: ["0", I, II, III, IV]
+    rationale: "Ongoing UV protection reduces second primary melanoma and non-melanoma skin cancer risk in survivors."
+
+  - id: stage_iv_active_management
+    test: "Imaging cadence per active treatment plan"
+    cadence: "Per oncology team; typically every 8–12 weeks for response assessment"
+    applies_when:
+      stage_in: [IV]
+    rationale: "Stage IV / metastatic melanoma is active disease management — imaging cadence is dictated by the regimen, response, and pseudoprogression considerations on immunotherapy."
+
+  - id: vitamin_d
+    test: "Vitamin D level check"
+    cadence: "Per primary-care judgment; consider supplementation given strict sun avoidance"
+    applies_when:
+      stage_in: ["0", I, II, III, IV]
+    rationale: "Strict sun protection after a melanoma diagnosis can reduce vitamin D synthesis; check level if symptomatic or per primary-care guidance and supplement as needed."

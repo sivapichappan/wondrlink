@@ -1,14 +1,96 @@
 slug: lung
 display_name: Lung cancer
 short_name: Lung
-icd10_prefix: [C34]
+aliases:
+  - bronchogenic carcinoma
+  - pulmonary carcinoma
+  - NSCLC
+  - SCLC
+icd10_prefix: [C34, C33]
 staging_system: AJCC-TNM-8
-biomarker_panel: [EGFR, ALK, ROS1, KRAS, BRAF, MET, RET, NTRK, PD-L1]
+biomarker_panel:
+  - EGFR
+  - ALK
+  - ROS1
+  - KRAS              # incl. KRAS G12C
+  - BRAF              # incl. BRAF V600E
+  - MET               # MET exon 14 skipping, amplification
+  - RET
+  - NTRK
+  - HER2              # ERBB2 mutations
+  - PD-L1             # TPS for first-line IO decisions
+  - STK11
+  - KEAP1
+  - TP53
+common_regimens:
+  # NSCLC — targeted (oncogene-driven)
+  - Osimertinib              # EGFR
+  - Erlotinib
+  - Gefitinib
+  - Afatinib
+  - Dacomitinib
+  - Amivantamab              # EGFR exon 20 ins
+  - Mobocertinib             # EGFR exon 20 ins
+  - Alectinib                # ALK
+  - Brigatinib
+  - Lorlatinib
+  - Crizotinib
+  - Ceritinib
+  - Entrectinib              # ROS1 / NTRK
+  - Repotrectinib            # ROS1
+  - Larotrectinib            # NTRK
+  - Dabrafenib + trametinib  # BRAF V600E
+  - Selpercatinib            # RET
+  - Pralsetinib              # RET
+  - Capmatinib               # MET exon 14
+  - Tepotinib                # MET exon 14
+  - Sotorasib                # KRAS G12C
+  - Adagrasib                # KRAS G12C
+  - Trastuzumab deruxtecan   # HER2-mutant NSCLC
+  # NSCLC — immunotherapy
+  - Pembrolizumab
+  - Pembrolizumab + chemo
+  - Atezolizumab
+  - Nivolumab + ipilimumab
+  - Cemiplimab
+  - Durvalumab               # consolidation after CRT (PACIFIC)
+  - Tremelimumab + durvalumab + chemo
+  # NSCLC — chemotherapy
+  - Carboplatin + pemetrexed
+  - Cisplatin + pemetrexed
+  - Carboplatin + paclitaxel
+  - Carboplatin + nab-paclitaxel
+  - Docetaxel
+  - Gemcitabine
+  - Vinorelbine
+  # SCLC
+  - Carboplatin + etoposide + atezolizumab    # IMpower133
+  - Carboplatin + etoposide + durvalumab      # CASPIAN
+  - Cisplatin + etoposide
+  - Topotecan
+  - Lurbinectedin
+  - Tarlatamab               # DLL3 BiTE
+  # Local therapy
+  - Lobectomy
+  - Wedge resection
+  - SBRT                     # for early-stage inoperable
+  - Concurrent chemoradiation
+default_screening_test: low-dose CT (LDCT)
 clinicaltrials_conditions:
   - Lung Neoplasms
   - Lung Cancer
   - Non-Small Cell Lung Cancer
   - Small Cell Lung Cancer
-ready: false
-accent_color: "#C8D6E0"
+  - NSCLC
+  - SCLC
+stage_specific_conditions:
+  IV: ["Metastatic Non-Small Cell Lung Cancer", "Metastatic Lung Cancer", "Advanced Lung Cancer", "Extensive-Stage Small Cell Lung Cancer"]
+  III: ["Locally Advanced Non-Small Cell Lung Cancer", "Stage III NSCLC", "Unresectable Lung Cancer"]
+  II:  ["Early Stage Non-Small Cell Lung Cancer", "Resectable Lung Cancer"]
+  I:   ["Early Stage Non-Small Cell Lung Cancer", "Stage I NSCLC"]
+ready: true    # flipped 2026-05-17 — owner accepted shipping ahead of
+               # clinician sign-off on surveillance.yaml. Eval baseline
+               # captured against suites/lung/. Known follow-ups in the
+               # commit message and project memory.
+accent_color: "#D4D4FF"   # periwinkle — lung cancer (white/clear/pearl) awareness ribbon
 icon: wind

@@ -363,6 +363,12 @@ _CRISIS_PATTERNS: List[Tuple[str, CrisisCategory]] = [
     ("severe bleeding", "medical_emergency"),
     ("vomiting blood", "medical_emergency"),
     ("coughing up blood", "medical_emergency"),
+    ("coughed up blood", "medical_emergency"),
+    ("cough up blood", "medical_emergency"),
+    ("coughed up bright", "medical_emergency"),     # "coughed up bright red blood"
+    ("coughing up bright", "medical_emergency"),    # present continuous variant
+    ("spit up blood", "medical_emergency"),
+    ("spitting up blood", "medical_emergency"),
     ("can't stop bleeding", "medical_emergency"),
     ("cant stop bleeding", "medical_emergency"),
     # --- Stroke ---

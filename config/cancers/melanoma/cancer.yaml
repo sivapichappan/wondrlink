@@ -1,12 +1,74 @@
 slug: melanoma
 display_name: Melanoma
 short_name: Melanoma
-icd10_prefix: [C43]
+aliases:
+  - cutaneous melanoma
+  - malignant melanoma
+  - uveal melanoma
+  - mucosal melanoma
+icd10_prefix: [C43, C44, D03]
 staging_system: AJCC-TNM-8
-biomarker_panel: [BRAF, NRAS, KIT, LDH, PD-L1]
+biomarker_panel:
+  - BRAF              # ~50% cutaneous; V600E / V600K
+  - NRAS              # ~20% cutaneous
+  - KIT               # acral / mucosal subtypes
+  - NF1
+  - LDH               # AJCC stage IV modifier
+  - PD-L1
+  - TMB
+  - GNAQ              # uveal melanoma
+  - GNA11             # uveal melanoma
+  - BAP1              # uveal — prognostic
+common_regimens:
+  # Immunotherapy — the backbone for advanced disease and adjuvant
+  - Pembrolizumab
+  - Nivolumab
+  - Nivolumab + ipilimumab        # CheckMate 067
+  - Nivolumab + relatlimab        # RELATIVITY-047 — LAG-3 + PD-1
+  - Ipilimumab                    # historical first IO
+  # Targeted (BRAF V600-mutant)
+  - Dabrafenib + trametinib
+  - Encorafenib + binimetinib
+  - Vemurafenib + cobimetinib
+  # Intralesional / locoregional
+  - Talimogene laherparepvec (T-VEC)
+  - Isolated limb perfusion
+  # Adjuvant
+  - Pembrolizumab (adjuvant)      # KEYNOTE-054 / -716
+  - Nivolumab (adjuvant)          # CheckMate 238
+  - Dabrafenib + trametinib (adjuvant)   # COMBI-AD
+  # Neoadjuvant
+  - Pembrolizumab (neoadjuvant)   # SWOG S1801
+  - Nivolumab + ipilimumab (neoadjuvant)  # OpACIN-neo
+  # Cellular therapy
+  - Lifileucel                    # tumor-infiltrating lymphocyte therapy
+  # Uveal-specific
+  - Tebentafusp                   # HLA-A*02:01+ metastatic uveal melanoma (bispecific)
+  # Chemotherapy (mostly historical / salvage)
+  - Dacarbazine
+  - Temozolomide
+  - Carboplatin + paclitaxel
+  # Local therapy
+  - Wide local excision
+  - Sentinel lymph node biopsy
+  - Therapeutic lymph node dissection
+default_screening_test: skin self-exam + clinician skin exam
 clinicaltrials_conditions:
   - Melanoma
+  - Cutaneous Melanoma
+  - Malignant Melanoma
+  - Uveal Melanoma
+  - Mucosal Melanoma
   - Skin Cancer
-ready: false
-accent_color: "#4A4A4A"
+stage_specific_conditions:
+  IV: ["Metastatic Melanoma", "Advanced Melanoma", "Stage IV Melanoma"]
+  III: ["Locally Advanced Melanoma", "Stage III Melanoma", "Resected Stage III Melanoma"]
+  II:  ["Stage II Melanoma", "High Risk Resected Melanoma"]
+  I:   ["Early Stage Melanoma", "Stage I Melanoma"]
+  "0": ["Melanoma in Situ"]
+ready: true    # flipped 2026-05-17 — owner accepted shipping ahead of
+               # clinician sign-off on surveillance.yaml. Eval baseline
+               # captured against suites/melanoma/. Known follow-ups in
+               # the commit message and project memory.
+accent_color: "#1F1F1F"   # black — melanoma awareness ribbon
 icon: sun

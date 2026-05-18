@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wondrlink.foundation/schemas/cancers/melanoma/clinical.schema.json",
+  "title": "Melanoma Clinical Profile",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "subtype": {
+      "type": "string",
+      "description": "Anatomic / pathologic subtype — drives treatment trajectory.",
+      "enum": ["cutaneous", "acral", "mucosal", "uveal", "desmoplastic", "spitzoid", "unknown"]
+    },
+    "histologic_pattern": {
+      "type": "string",
+      "enum": ["superficial_spreading", "nodular", "lentigo_maligna", "acral_lentiginous", "amelanotic", "other", "unknown"]
+    },
+    "primary_site": {
+      "type": "string",
+      "description": "Body region of the primary lesion.",
+      "enum": ["head_neck", "trunk", "upper_extremity", "lower_extremity", "acral", "mucosal_oral", "mucosal_anorectal", "mucosal_genitourinary", "eye", "unknown"]
+    },
+    "breslow_depth_mm": { "type": ["number", "string"] },
+    "ulceration": { "type": "string", "enum": ["present", "absent", "unknown"] },
+    "mitotic_rate": { "type": "string" },
+    "stage_detail": { "type": "string" },
+    "diagnosis_date": { "type": "string", "format": "date" },
+    "sentinel_node_status": {
+      "type": "string",
+      "enum": ["positive", "negative", "not_performed", "unknown"]
+    },
+    "ecog_performance_status": { "type": ["integer", "string"] },
+    "biomarkers": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "BRAF":  { "type": "string", "enum": ["V600E", "V600K", "non_V600", "wild-type", "not-tested", "unknown"] },
+        "NRAS":  { "type": "string", "enum": ["mutated", "Q61", "wild-type", "not-tested", "unknown"] },
+        "KIT":   { "type": "string", "enum": ["mutated", "wild-type", "not-tested", "unknown"] },
+        "NF1":   { "type": "string", "enum": ["mutated", "wild-type", "not-tested", "unknown"] },
+        "LDH":   { "type": "string", "description": "Elevated / normal / value; AJCC stage IV uses elevated LDH as M1 subcategory modifier." },
+        "PD-L1": { "type": "string", "enum": ["positive", "negative", "low", "unknown"] },
+        "TMB":   { "type": "string", "description": "Tumor mutational burden — typically high in cutaneous, low in uveal/mucosal." },
+        "GNAQ":  { "type": "string", "enum": ["mutated", "wild-type", "not-tested", "unknown"] },
+        "GNA11": { "type": "string", "enum": ["mutated", "wild-type", "not-tested", "unknown"] },
+        "BAP1":  { "type": "string", "enum": ["loss", "intact", "not-tested", "unknown"] },
+        "HLA_A_02_01": { "type": "string", "enum": ["positive", "negative", "not-tested", "unknown"], "description": "Eligibility marker for tebentafusp in uveal melanoma." }
+      }
+    },
+    "treatments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "regimen": { "type": "string" },
+          "line": { "type": "string", "enum": ["first-line", "second-line", "third-line", "adjuvant", "neoadjuvant", "maintenance"] },
+          "status": { "type": "string", "enum": ["active", "completed", "discontinued"] },
+          "startDate": { "type": "string", "format": "date" },
+          "endDate": { "type": "string", "format": "date" },
+          "cycleNumber": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "surgical_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "procedure": {
+            "type": "string",
+            "enum": ["wide_local_excision", "slnb", "therapeutic_lnd", "mohs", "enucleation", "metastasectomy", "other"]
+          },
+          "date": { "type": "string", "format": "date" },
+          "site": { "type": "string" }
+        }
+      }
+    },
+    "radiation_history": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "received": { "type": "boolean" },
+        "site": { "type": "string" },
+        "completion_date": { "type": "string", "format": "date" }
+      }
+    },
+    "uv_risk_history": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "indoor_tanning_use": { "type": "boolean" },
+        "frequent_sunburns_youth": { "type": "boolean" },
+        "fair_skin_phototype": { "type": "boolean" }
+      }
+    },
+    "family_history_significant": { "type": "boolean" },
+    "had_genetic_testing": { "type": "boolean" },
+    "metastasis_sites": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}
