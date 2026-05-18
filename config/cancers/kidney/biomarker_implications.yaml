@@ -1,0 +1,75 @@
+# Biomarker → drug-class mappings for kidney cancer (RCC).
+# Sources: NCCN Kidney Cancer (current), ASCO mRCC clear-cell (Rathmell 2022
+# + Singer 2023 rapid update), KEYNOTE-426 / CLEAR / CheckMate 9ER / 214,
+# LITESPARK-005 (belzutifan in mRCC), SWOG 1500 (papillary).
+#
+# Note: AUA Renal Mass guideline (Campbell 2021) is the structural reference
+# for localized disease workup but precedes adjuvant pembrolizumab and the
+# integration of belzutifan — NCCN is the more current clinician anchor.
+
+implications:
+
+  VHL:
+    aligns:
+      - when_state: germline_pathogenic
+        align_keywords: [belzutifan, "HIF-2α inhibitor", "VHL syndrome"]
+        bonus_points: 26
+        reason: "VHL syndrome (germline VHL pathogenic variant) qualifies for belzutifan for RCC, CNS hemangioblastoma, and pancreatic NET indications (LITESPARK-004)."
+      - when_state: mutated
+        align_keywords: ["VEGF-targeted", axitinib, cabozantinib, lenvatinib,
+                         pazopanib, sunitinib, "TKI", belzutifan, "HIF-2α inhibitor"]
+        bonus_points: 12
+        reason: "Somatic VHL mutations are characteristic of clear-cell RCC and underlie the HIF/VEGF axis that VEGF-TKIs and HIF-2α inhibitors target."
+
+  PBRM1:
+    aligns:
+      - when_state: mutated
+        align_keywords: [nivolumab, pembrolizumab, "checkpoint inhibitor",
+                         "PD-1 inhibitor", "IO therapy"]
+        bonus_points: 10
+        reason: "PBRM1 mutations have been associated with response to immune checkpoint inhibition in clear-cell RCC, though the data are nuanced."
+
+  BAP1:
+    warns:
+      - when_state: mutated
+        warning: "BAP1 mutations in clear-cell RCC are associated with worse prognosis and aggressive disease; pair with intensified imaging and trial enrollment consideration."
+
+  MET:
+    aligns:
+      - when_state: altered
+        align_keywords: [cabozantinib, savolitinib, crizotinib, "MET inhibitor"]
+        bonus_points: 20
+        reason: "MET pathway alterations (particularly in papillary type 1 RCC) align with MET-targeted therapy; cabozantinib has activity across papillary subtypes (SWOG 1500)."
+
+  FH:
+    aligns:
+      - when_state: pathogenic
+        align_keywords: ["bevacizumab + erlotinib", "HLRCC", cabozantinib]
+        bonus_points: 18
+        reason: "FH pathogenic variants define hereditary leiomyomatosis and renal cell cancer (HLRCC) — aggressive papillary type 2 with bevacizumab + erlotinib as a regimen of interest."
+    warns:
+      - when_state: pathogenic
+        warning: "FH-deficient (HLRCC) tumors are aggressive papillary RCC; standard clear-cell regimens may be less effective. Refer to a center with HLRCC experience."
+
+  FLCN:
+    warns:
+      - when_state: pathogenic
+        warning: "FLCN pathogenic variants underlie Birt-Hogg-Dubé syndrome; renal tumors are usually multifocal and bilateral, favoring nephron-sparing approaches."
+
+  TFE3:
+    warns:
+      - when_state: rearranged
+        warning: "TFE3-rearranged (translocation) RCC is biologically distinct; standard clear-cell regimens have variable activity. Consider clinical trial enrollment."
+
+  PD-L1:
+    aligns:
+      - when_state: positive
+        align_keywords: [pembrolizumab, nivolumab, ipilimumab, "checkpoint inhibitor",
+                         "PD-1 inhibitor", "PD-L1 inhibitor", "immunotherapy"]
+        bonus_points: 12
+        reason: "PD-L1 positivity supports immune checkpoint inhibitor activity in mRCC, though IO is offered first-line regardless of PD-L1 in clear-cell disease."
+
+  SDH:
+    warns:
+      - when_state: deficient
+        warning: "SDH-deficient RCC is a hereditary syndrome (associated with paragangliomas/pheochromocytomas) and a distinct biological entity — refer to a hereditary-RCC specialist."

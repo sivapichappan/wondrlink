@@ -1,0 +1,105 @@
+# Biomarker → drug-class mappings for non-Hodgkin lymphoma (B-cell + T-cell + CLL/SLL).
+# Sources: NCCN B-Cell + T-Cell Lymphomas + CLL guidelines (current),
+# POLARIX (pola-R-CHP), ZUMA-7 / TRANSFORM (DLBCL CAR-T), L-MIND (tafa-len),
+# GO29781 (mosunetuzumab), ECHO (acala-BR in MCL), ZUMA-2 (brexu-cel),
+# CLL14 (veneto+obinu), AMPLIFY (acala+veneto), ECHELON-2 (A+CHP),
+# tazemetostat in EZH2-mutated FL.
+
+implications:
+
+  CD20:
+    aligns:
+      - when_state: positive
+        align_keywords: [rituximab, obinutuzumab, ofatumumab, "anti-CD20",
+                         "CD20-directed", "R-CHOP", "Pola-R-CHP",
+                         "R-bendamustine", "R-CVP", "R²"]
+        bonus_points: 22
+        reason: "CD20 expression is the foundation of B-cell NHL therapy — anti-CD20 monoclonal antibodies are integrated into nearly every first-line and many salvage regimens."
+
+  CD19:
+    aligns:
+      - when_state: positive
+        align_keywords: ["axicabtagene", "lisocabtagene", "tisagenlecleucel",
+                         "brexucabtagene", "CD19 CAR-T", "CAR-T",
+                         tafasitamab, "loncastuximab tesirine", "CD19 ADC",
+                         glofitamab, epcoritamab, mosunetuzumab,
+                         "CD20xCD3 bispecific", "CD19 bispecific"]
+        bonus_points: 24
+        reason: "CD19 is the target of CAR-T cell products and several ADCs/bispecifics in B-cell NHL — eligible across DLBCL, follicular, MCL, marginal zone, and CLL."
+
+  CD30:
+    aligns:
+      - when_state: positive
+        align_keywords: ["brentuximab vedotin", "A+CHP", "CD30 ADC"]
+        bonus_points: 22
+        reason: "CD30 expression in peripheral T-cell lymphoma (CD30+ PTCL, ALCL) aligns with brentuximab vedotin + CHP (ECHELON-2 — practice-changing OS benefit over CHOP)."
+
+  CD79b:
+    aligns:
+      - when_state: positive
+        align_keywords: ["polatuzumab vedotin", "Pola-R-CHP", "Pol-BR"]
+        bonus_points: 18
+        reason: "CD79b expression underlies polatuzumab vedotin activity — incorporated into Pola-R-CHP first-line DLBCL (POLARIX) and Pola-BR R/R DLBCL."
+
+  BCL2:
+    aligns:
+      - when_state: rearranged
+        align_keywords: [venetoclax, "BCL2 inhibitor"]
+        bonus_points: 18
+        reason: "BCL2 dependence underlies venetoclax sensitivity — central to CLL frontline (CLL14, AMPLIFY) and salvage; under study in lymphomas with double-hit biology."
+    warns:
+      - when_state: rearranged
+        warning: "BCL2 rearrangement with concurrent MYC rearrangement defines 'double-hit' high-grade B-cell lymphoma — usually treated with DA-EPOCH-R rather than R-CHOP, and R/R outcomes are worse."
+
+  MYC:
+    warns:
+      - when_state: rearranged
+        warning: "MYC rearrangement with concurrent BCL2 (double-hit) or BCL2 + BCL6 (triple-hit) defines high-grade B-cell lymphoma — DA-EPOCH-R or intensive regimens favored over R-CHOP; CNS prophylaxis considered."
+
+  TP53:
+    warns:
+      - when_state: mutated
+        warning: "TP53 mutation in CLL or MCL marks high-risk biology — favors targeted-agent (BTK inhibitor, venetoclax) over chemoimmunotherapy."
+
+  del_17p:
+    warns:
+      - when_state: present
+        warning: "17p deletion in CLL marks high-risk disease — chemoimmunotherapy is inadequate; favor BTK inhibitor, venetoclax-based regimens, or clinical trial."
+    aligns:
+      - when_state: present
+        align_keywords: [acalabrutinib, zanubrutinib, ibrutinib, venetoclax,
+                         pirtobrutinib, "BTK inhibitor", "BCL2 inhibitor"]
+        bonus_points: 22
+        reason: "17p-deleted CLL responds preferentially to targeted agents over chemoimmunotherapy."
+
+  IGHV:
+    warns:
+      - when_state: unmutated
+        warning: "Unmutated IGHV in CLL confers worse prognosis with chemoimmunotherapy; targeted-agent regimens are preferred and have changed the historical prognostic implication."
+
+  EZH2:
+    aligns:
+      - when_state: mutated
+        align_keywords: [tazemetostat, "EZH2 inhibitor"]
+        bonus_points: 22
+        reason: "EZH2-activating mutations in relapsed/refractory follicular lymphoma align with tazemetostat (approved in EZH2-mutant 3L+ and EZH2 wild-type 3L+ without alternative options)."
+
+  SOX11:
+    aligns:
+      - when_state: positive
+        align_keywords: ["BTK inhibitor", acalabrutinib, zanubrutinib,
+                         pirtobrutinib, ibrutinib, "MCL", "MIPI"]
+        bonus_points: 8
+        reason: "SOX11 positivity supports a mantle-cell lymphoma diagnosis — the standard MCL targeted therapies (BTK inhibitors, brexucabtagene) apply."
+
+  Ki67:
+    warns:
+      - when_state: high
+        warning: "High Ki67 (proliferation index, particularly > 30% in MCL or > 70% in indolent lymphomas) marks more aggressive biology — favor intensified regimens and consider transformation if formerly indolent."
+
+  ALK:
+    aligns:
+      - when_state: positive
+        align_keywords: ["ALK inhibitor", crizotinib, alectinib, "ALK-positive ALCL"]
+        bonus_points: 18
+        reason: "ALK-positive anaplastic large-cell lymphoma is biologically distinct, has substantially better prognosis than ALK-negative ALCL, and emerging ALK inhibitor evidence in R/R settings."

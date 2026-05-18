@@ -1,0 +1,74 @@
+# DRAFT — clinician sign-off required before flipping cancer.yaml ready: true.
+# Sources: NCCN B-Cell + T-Cell Lymphomas + CLL guidelines (current),
+# ESMO lymphoma follow-up.
+#
+# Lymphoma surveillance is dominated by clinic visits + history/physical
+# + labs. Routine surveillance imaging (CT or PET) in asymptomatic
+# patients in complete remission is NOT recommended per NCCN — image
+# only when symptoms, exam findings, or lab abnormalities suggest
+# recurrence. This is a deliberate departure from solid-tumor practice.
+
+milestones:
+  - id: office_visit_aggressive
+    test: "Office visit with hematology / oncology — history, physical, labs"
+    cadence: "Every 3 months × 1–2 years, every 6 months × 3 years, then annually"
+    applies_when:
+      subtype_in: [dlbcl, dlbcl_double_hit, dlbcl_triple_hit, high_grade_b_cell, primary_mediastinal_b_cell, mantle_cell, burkitt, peripheral_t_cell_nos, angioimmunoblastic_t_cell, anaplastic_large_cell_alk_positive, anaplastic_large_cell_alk_negative]
+    rationale: "NCCN: aggressive lymphomas have substantial early relapse risk; structured clinical surveillance catches recurrence at a treatable point."
+
+  - id: office_visit_indolent
+    test: "Office visit with hematology / oncology — history, physical, labs"
+    cadence: "Every 3–6 months × 2 years, then every 6–12 months indefinitely"
+    applies_when:
+      subtype_in: [follicular, marginal_zone_nodal, marginal_zone_extranodal_malt, marginal_zone_splenic, cll_sll, lymphoplasmacytic_waldenstrom, cutaneous_t_cell_mycosis_fungoides]
+    rationale: "NCCN: indolent lymphomas have a long relapse tail; surveillance often extends indefinitely with longer intervals."
+
+  - id: labs_cbc_cmp
+    test: "Complete blood count + comprehensive metabolic panel + LDH"
+    cadence: "Every clinic visit"
+    applies_when:
+      subtype_in: [dlbcl, dlbcl_double_hit, dlbcl_triple_hit, high_grade_b_cell, primary_mediastinal_b_cell, follicular, marginal_zone_nodal, marginal_zone_extranodal_malt, marginal_zone_splenic, mantle_cell, cll_sll, burkitt, peripheral_t_cell_nos, angioimmunoblastic_t_cell, anaplastic_large_cell_alk_positive, anaplastic_large_cell_alk_negative]
+    rationale: "Cytopenias, LDH elevation, hypercalcemia, or transaminase changes can flag recurrence or treatment-related issues before symptoms appear."
+
+  - id: no_routine_imaging
+    test: "Routine surveillance CT or PET in asymptomatic patients in remission"
+    cadence: "NOT recommended"
+    applies_when:
+      subtype_in: [dlbcl, dlbcl_double_hit, dlbcl_triple_hit, follicular, marginal_zone_nodal, marginal_zone_extranodal_malt, mantle_cell, cll_sll]
+    rationale: "NCCN + Choosing Wisely: routine surveillance imaging in asymptomatic lymphoma patients in remission has high false-positive burden without survival benefit. Image symptom-driven or lab-driven concerns only."
+
+  - id: vaccination
+    test: "Influenza (annual), pneumococcal, COVID-19, shingles, HBV per current ACIP schedule"
+    cadence: "Per ACIP adult immunization schedule; account for B-cell depletion timing"
+    applies_when:
+      subtype_in: [dlbcl, dlbcl_double_hit, dlbcl_triple_hit, follicular, marginal_zone_nodal, marginal_zone_extranodal_malt, marginal_zone_splenic, mantle_cell, cll_sll, burkitt, peripheral_t_cell_nos, angioimmunoblastic_t_cell, anaplastic_large_cell_alk_positive, anaplastic_large_cell_alk_negative]
+    rationale: "B-cell-depleting therapy (rituximab, obinutuzumab) impairs vaccine response for months; coordinate vaccine timing with treatment cycles."
+
+  - id: cardiac_post_anthracycline
+    test: "Echocardiogram for anthracycline-exposed survivors"
+    cadence: "Baseline, end-of-treatment, then per cardio-oncology guidance — typically every 5 years if asymptomatic"
+    applies_when:
+      had_anthracycline: true
+    rationale: "Lifetime anthracycline cardiotoxicity risk persists — survivors of R-CHOP, Pola-R-CHP, DA-EPOCH-R need cardiac follow-up especially with additional cardiovascular risk factors."
+
+  - id: secondary_malignancy
+    test: "Age-appropriate cancer screening + skin exam for survivors"
+    cadence: "Per age-appropriate guidelines; lower threshold for evaluation given elevated risk"
+    applies_when:
+      subtype_in: [dlbcl, dlbcl_double_hit, follicular, marginal_zone_nodal, mantle_cell, cll_sll, burkitt, peripheral_t_cell_nos]
+    rationale: "Lymphoma survivors have elevated risk for secondary malignancies (MDS, AML, solid tumors) and skin cancers; encourage age-appropriate screening + skin exams."
+
+  - id: cll_active_surveillance
+    test: "CBC + clinical exam — 'watch and wait'"
+    cadence: "Every 3–6 months until iwCLL treatment indications met"
+    applies_when:
+      subtype_in: [cll_sll]
+      on_active_surveillance: true
+    rationale: "CLL is the canonical watch-and-wait disease — early treatment of asymptomatic disease has not shown survival benefit; treatment initiated for symptomatic disease, rapid lymphocyte doubling, autoimmune cytopenias, bulky lymphadenopathy, or organ compromise."
+
+  - id: relapsed_active_management
+    test: "Imaging cadence per active treatment plan"
+    cadence: "Per oncology team; typically every 2–4 cycles for response assessment"
+    applies_when:
+      treatment_status: active_relapsed_or_refractory
+    rationale: "Relapsed/refractory disease is active management — imaging cadence is dictated by regimen and response."

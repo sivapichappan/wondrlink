@@ -1,12 +1,76 @@
 slug: bladder
 display_name: Bladder cancer
 short_name: Bladder
-icd10_prefix: [C67]
+aliases:
+  - urothelial carcinoma
+  - transitional cell carcinoma
+  - urothelial cancer
+  - UC
+icd10_prefix: [C67, C66, C65]
 staging_system: AJCC-TNM-8
-biomarker_panel: [FGFR3, PD-L1]
+biomarker_panel:
+  - FGFR3              # erdafitinib eligibility (BLC2001, THOR)
+  - FGFR2
+  - PD-L1              # CPS/IC scores — limited gating role since EV+pembro first-line
+  - Nectin-4           # target of enfortumab vedotin
+  - HER2               # disitamab vedotin context
+  - TROP2              # target of sacituzumab govitecan
+  - TMB
+  - MSI
+  - MMR                # mismatch repair deficiency
+common_regimens:
+  # Non-muscle-invasive (NMIBC) — intravesical
+  - Intravesical BCG
+  - Intravesical mitomycin C
+  - Intravesical gemcitabine
+  - Intravesical gemcitabine + docetaxel
+  - Nadofaragene firadenovec    # gene therapy, BCG-unresponsive NMIBC
+  - Nogapendekin alfa-inbakicept (N-803) + BCG  # BCG-unresponsive
+  - Pembrolizumab               # BCG-unresponsive CIS
+  # Local therapy
+  - TURBT                       # transurethral resection
+  - Radical cystectomy
+  - Partial cystectomy
+  - Trimodal therapy (chemoradiation)
+  # Muscle-invasive — perioperative
+  - Cisplatin + gemcitabine (neoadjuvant)
+  - Dose-dense MVAC (neoadjuvant)
+  - Nivolumab (adjuvant)        # CheckMate 274
+  # Metastatic urothelial — first-line (new standard)
+  - Enfortumab vedotin + pembrolizumab    # EV-302
+  - Cisplatin + gemcitabine
+  - Carboplatin + gemcitabine
+  - Cisplatin + gemcitabine + nivolumab   # CheckMate 901
+  # Metastatic — second-line and beyond
+  - Pembrolizumab               # post-platinum
+  - Nivolumab
+  - Avelumab maintenance        # JAVELIN Bladder 100 (post-platinum response)
+  - Atezolizumab
+  - Enfortumab vedotin (single agent)
+  - Sacituzumab govitecan
+  - Disitamab vedotin           # HER2-expressing
+  - Erdafitinib                 # FGFR3/2-altered
+  - Docetaxel
+  - Paclitaxel
+default_screening_test: none recommended (no population-level screening)
 clinicaltrials_conditions:
   - Urinary Bladder Neoplasms
   - Bladder Cancer
-ready: false
-accent_color: "#F2C249"
+  - Urothelial Carcinoma
+  - Transitional Cell Carcinoma
+  - Muscle-Invasive Bladder Cancer
+  - Non-Muscle-Invasive Bladder Cancer
+  - Metastatic Urothelial Carcinoma
+stage_specific_conditions:
+  IV: ["Metastatic Bladder Cancer", "Metastatic Urothelial Carcinoma", "Advanced Bladder Cancer"]
+  III: ["Locally Advanced Bladder Cancer", "Muscle-Invasive Bladder Cancer"]
+  II:  ["Muscle-Invasive Bladder Cancer", "T2 Bladder Cancer"]
+  I:   ["Non-Muscle-Invasive Bladder Cancer", "T1 Bladder Cancer", "High-Grade NMIBC"]
+  "0": ["CIS", "Carcinoma In Situ", "Ta Bladder Cancer", "Non-Muscle-Invasive Bladder Cancer"]
+ready: true    # flipped 2026-05-18 — owner accepted shipping ahead of
+               # clinician sign-off on surveillance.yaml. Wave 3 eval
+               # baseline captured. ASCO bladder guideline gap noted in
+               # commit message (NCCN + AUA/ASCO/ASTRO/SUO MIBC is the
+               # authoritative anchor; no standalone ASCO bladder doc).
+accent_color: "#F2C249"   # marigold / amber — bladder cancer awareness ribbon
 icon: droplet

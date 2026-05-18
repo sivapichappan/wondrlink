@@ -1,0 +1,90 @@
+# Bladder golden eval — prompts the pipeline should answer well.
+
+prompts:
+  - id: bl_nmibc_vs_mibc
+    query: "What's the difference between non-muscle-invasive and muscle-invasive bladder cancer for treatment?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [muscle]
+      forbids_keywords: ["you should ", "you must "]
+      expect_sources_gte: 1
+
+  - id: bl_bcg_therapy
+    query: "What is BCG and how does it work for bladder cancer?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [BCG]
+
+  - id: bl_ev_pembro
+    query: "I heard about enfortumab vedotin and pembrolizumab. Is that for me?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [enfortumab]
+
+  - id: bl_fgfr3_erdafitinib
+    query: "My tumor has an FGFR3 mutation. What treatment options does that open up?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [erdafitinib]
+
+  - id: bl_cystectomy_options
+    query: "I'm considering radical cystectomy. What urinary diversion options are there?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you should ", "you must "]
+
+  - id: bl_trimodal_therapy
+    query: "Can I avoid having my bladder removed?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: bl_bcg_side_effects
+    query: "What side effects should I expect from BCG instillations?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you must "]
+
+  - id: bl_neoadjuvant_chemo
+    query: "Why do I need chemo before bladder surgery?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [cisplatin]
+
+  - id: bl_smoking_recurrence
+    query: "Does it matter if I keep smoking with bladder cancer?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you should ", "you must "]
+
+  - id: bl_cystoscopy_surveillance
+    query: "How often will I need cystoscopies after my treatment?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: bl_avelumab_maintenance
+    query: "What is maintenance avelumab and would I be a candidate?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: bl_ileal_conduit_living
+    query: "What's it like living with an ileal conduit day to day?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: bl_greeting
+    query: "Hello"
+    expect:
+      route: selected
+      should_reject: false

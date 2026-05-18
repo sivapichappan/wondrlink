@@ -134,7 +134,10 @@ def citation_validity(results: List[Dict[str, Any]]) -> Dict[str, Any]:
 _ESCALATION_TOKENS = ("911", "988", "emergency room", "go to the er",
                      "call your oncolog", "contact your oncolog",
                      "reach out to your oncolog", "let your oncolog know",
-                     "same day", "urgent", "right away", "immediately")
+                     "call your care team", "contact your care team",
+                     "let your care team know", "reach out to your care team",
+                     "same day", "urgent", "right away", "immediately",
+                     "as soon as possible")
 
 
 def escalation_accuracy(results: List[Dict[str, Any]]) -> Dict[str, Any]:

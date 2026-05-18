@@ -1,15 +1,132 @@
 slug: nhl
 display_name: Non-Hodgkin lymphoma
 short_name: NHL
-aliases: [non-Hodgkin's lymphoma]
-icd10_prefix: [C82, C83, C84, C85, C86]
+aliases:
+  - non-Hodgkin's lymphoma
+  - lymphoma
+  - DLBCL
+  - diffuse large B-cell lymphoma
+  - follicular lymphoma
+  - mantle cell lymphoma
+  - marginal zone lymphoma
+  - CLL
+  - SLL
+  - chronic lymphocytic leukemia
+  - small lymphocytic lymphoma
+  - peripheral T-cell lymphoma
+  - PTCL
+  - Burkitt lymphoma
+  - cutaneous T-cell lymphoma
+  - CTCL
+icd10_prefix: [C82, C83, C84, C85, C86, C88, C91]
 staging_system: Ann-Arbor
-biomarker_panel: [CD20, CD30, BCL2, MYC, TP53]
+biomarker_panel:
+  - CD20               # rituximab, obinutuzumab, ofatumumab target
+  - CD19               # tafasitamab, CAR-T target
+  - CD22               # inotuzumab target
+  - CD30               # brentuximab vedotin target
+  - CD79b              # polatuzumab vedotin target
+  - BCL2               # double-hit/triple-hit, venetoclax
+  - MYC                # double-hit/triple-hit
+  - BCL6               # triple-hit
+  - TP53               # high-risk CLL, MCL
+  - 17p deletion       # high-risk CLL
+  - IGHV               # CLL — unmutated worse prognosis
+  - EZH2               # tazemetostat eligibility in follicular
+  - SOX11              # mantle cell marker
+  - Ki67               # proliferation marker (high in aggressive lymphomas)
+common_regimens:
+  # DLBCL — front-line
+  - R-CHOP                          # rituximab + CHOP
+  - Pola-R-CHP                      # polatuzumab + R-CHP (POLARIX)
+  - DA-EPOCH-R                      # double/triple hit, primary mediastinal
+  - R-CODOX-M/R-IVAC                # Burkitt
+  - hyperCVAD-R                     # Burkitt / high-grade
+  # DLBCL — relapsed/refractory
+  - Axicabtagene ciloleucel         # CAR-T (ZUMA-7)
+  - Lisocabtagene maraleucel        # CAR-T (TRANSFORM)
+  - Tisagenlecleucel                # CAR-T
+  - Tafasitamab + lenalidomide      # L-MIND
+  - Polatuzumab + bendamustine + rituximab
+  - Loncastuximab tesirine          # CD19 ADC
+  - Glofitamab                      # bispecific
+  - Epcoritamab                     # bispecific
+  - Selinexor
+  # Follicular — front-line
+  - Rituximab single-agent
+  - R-CHOP
+  - R-bendamustine
+  - R-CVP
+  - Obinutuzumab + chemo            # GALLIUM
+  # Follicular — relapsed/refractory
+  - Rituximab + lenalidomide        # R²
+  - Mosunetuzumab                   # bispecific (GO29781)
+  - Tazemetostat                    # EZH2-mutant or EZH2 wild-type 3L+
+  - Axicabtagene ciloleucel         # ZUMA-5
+  - Lisocabtagene maraleucel        # TRANSCEND FL
+  - Idelalisib
+  - Copanlisib
+  # Mantle cell — front-line
+  - R-bendamustine
+  - R-CHOP/R-DHAP + ASCT            # young / fit
+  - Acalabrutinib + bendamustine + rituximab    # ECHO
+  - Ibrutinib + R-bendamustine     # SHINE (older patients)
+  # Mantle cell — relapsed/refractory
+  - Acalabrutinib
+  - Zanubrutinib
+  - Pirtobrutinib                  # non-covalent BTKi
+  - Ibrutinib
+  - Brexucabtagene autoleucel      # CAR-T (ZUMA-2)
+  - Glofitamab
+  # CLL/SLL — front-line
+  - Acalabrutinib                  # ± obinutuzumab
+  - Zanubrutinib
+  - Venetoclax + obinutuzumab      # CLL14
+  - Ibrutinib                      # less preferred now
+  # CLL/SLL — relapsed/refractory
+  - Venetoclax + rituximab
+  - Pirtobrutinib
+  - Acalabrutinib + venetoclax     # AMPLIFY (frontline + R/R)
+  - Lisocabtagene maraleucel       # CAR-T
+  # Marginal zone
+  - Rituximab
+  - R-bendamustine
+  - Zanubrutinib                   # MZL
+  - Ibrutinib                      # MZL
+  # Peripheral T-cell (PTCL)
+  - Brentuximab vedotin + CHP      # A+CHP (ECHELON-2, CD30+ PTCL)
+  - CHOP
+  - Romidepsin
+  - Pralatrexate
+  - Mogamulizumab                  # CTCL, MF/SS
+  # Burkitt / high-grade
+  - DA-EPOCH-R
+  - R-CODOX-M/R-IVAC
+  - hyperCVAD-R
+default_screening_test: none recommended
 clinicaltrials_conditions:
   - Lymphoma, Non-Hodgkin
   - Non-Hodgkin Lymphoma
   - Diffuse Large B-Cell Lymphoma
   - Follicular Lymphoma
-ready: false
-accent_color: "#9ACD32"
+  - Mantle Cell Lymphoma
+  - Marginal Zone Lymphoma
+  - Chronic Lymphocytic Leukemia
+  - Small Lymphocytic Lymphoma
+  - Peripheral T-Cell Lymphoma
+  - Burkitt Lymphoma
+  - Cutaneous T-Cell Lymphoma
+stage_specific_conditions:
+  IV: ["Stage IV Lymphoma", "Advanced Non-Hodgkin Lymphoma", "Relapsed Refractory Lymphoma"]
+  III: ["Stage III Non-Hodgkin Lymphoma", "Advanced Lymphoma"]
+  II:  ["Early Stage Non-Hodgkin Lymphoma", "Stage II Lymphoma"]
+  I:   ["Early Stage Non-Hodgkin Lymphoma", "Stage I Lymphoma", "Localized Lymphoma"]
+ready: true    # flipped 2026-05-18 — owner accepted shipping ahead of
+               # clinician sign-off on surveillance.yaml. Wave 3 eval
+               # baseline captured. Patient-facing corpus is uneven by
+               # subtype (PTCL patient guide is v1.2021 vs clinician
+               # v1.2026; no NCCN Burkitt patient guide; no ASCO NHL
+               # treatment guidelines). See commit message + overlay for
+               # how the system surfaces this gap.
+accent_color: "#9ACD32"   # lime / yellow-green — lymphoma awareness ribbon
 icon: git-branch

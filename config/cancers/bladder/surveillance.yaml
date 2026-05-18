@@ -1,0 +1,70 @@
+# DRAFT — clinician sign-off required before flipping cancer.yaml ready: true.
+# Sources: AUA/SUO NMIBC 2024 amendment, AUA/ASCO/ASTRO/SUO MIBC,
+# NCCN Bladder Cancer Surveillance.
+#
+# Bladder surveillance is heavily cystoscopy-driven for NMIBC (high
+# recurrence rate) and imaging + lab-driven for MIBC / post-cystectomy.
+# Upper-tract surveillance becomes important after high-grade or CIS
+# disease because of synchronous/metachronous UTUC risk.
+
+milestones:
+  - id: cystoscopy_nmibc_high_risk
+    test: "Office cystoscopy"
+    cadence: "Every 3 months × 2 years, every 6 months × 2 years, then annually"
+    applies_when:
+      invasion_depth_in: [Ta, T1, CIS]
+      grade_in: [high_grade]
+    rationale: "AUA/SUO: high-grade NMIBC has substantial recurrence and progression risk; quarterly cystoscopy in the first 2 years catches recurrence at a treatable point."
+
+  - id: cystoscopy_nmibc_low_risk
+    test: "Office cystoscopy"
+    cadence: "At 3 months, then annually if negative"
+    applies_when:
+      invasion_depth_in: [Ta]
+      grade_in: [low_grade]
+    rationale: "AUA/SUO: low-grade Ta tumors have lower progression risk; less-intense cystoscopy schedule appropriate."
+
+  - id: urine_cytology_high_risk
+    test: "Urine cytology"
+    cadence: "Alongside cystoscopy for high-grade or CIS disease"
+    applies_when:
+      invasion_depth_in: [Ta, T1, CIS]
+      grade_in: [high_grade]
+    rationale: "AUA/SUO: urine cytology complements cystoscopy in detecting CIS and high-grade urothelial recurrence."
+
+  - id: upper_tract_imaging
+    test: "Upper-tract imaging (CT urogram preferred; MR urogram if iodine-contraindicated)"
+    cadence: "Baseline + annually for high-grade or CIS disease; less frequently for low-grade Ta"
+    applies_when:
+      invasion_depth_in: [T1, CIS]
+      grade_in: [high_grade]
+    rationale: "AUA/SUO: 2–5% of patients with high-grade or CIS bladder disease develop upper-tract urothelial carcinoma; annual imaging is appropriate."
+
+  - id: cross_sectional_imaging_mibc
+    test: "Cross-sectional imaging (CT chest/abdomen/pelvis or MRI)"
+    cadence: "Every 3–6 months × 2 years, every 6–12 months × 3 years, then annually"
+    applies_when:
+      invasion_depth_in: [T2, T3, T4]
+    rationale: "NCCN: post-cystectomy or post-trimodal-therapy patients need scheduled imaging to detect recurrence — pelvic, nodal, and distant metastatic — at a treatable point."
+
+  - id: labs_post_cystectomy
+    test: "Comprehensive metabolic panel + CBC; vitamin B12 annually after ileal-conduit / neobladder"
+    cadence: "Every 3–6 months × 2 years, then annually"
+    applies_when:
+      had_cystectomy: true
+    rationale: "Urinary diversion (ileal conduit, neobladder, continent cutaneous) predisposes to electrolyte abnormalities, metabolic acidosis, and B12 deficiency over time."
+
+  - id: smoking_cessation
+    test: "Tobacco cessation counseling + nicotine replacement / pharmacotherapy"
+    cadence: "Every visit if current smoker; reinforce abstinence if former smoker"
+    applies_when:
+      smoking_status_in: ["current", "former"]
+    rationale: "Continued smoking after bladder cancer diagnosis substantially increases recurrence and second-primary risk; cessation support belongs in every visit."
+
+  - id: stage_iv_active_management
+    test: "Imaging cadence per active treatment plan"
+    cadence: "Per oncology team; typically every 6–12 weeks for response assessment"
+    applies_when:
+      invasion_depth_in: [T4]
+      stage_in: [IV]
+    rationale: "Stage IV / metastatic urothelial is active disease management — imaging cadence is dictated by regimen and response, not surveillance."

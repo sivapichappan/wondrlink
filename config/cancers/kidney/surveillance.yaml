@@ -1,0 +1,73 @@
+# DRAFT — clinician sign-off required before flipping cancer.yaml ready: true.
+# Sources: NCCN Kidney Cancer (current), AUA Renal Mass + Localized Renal
+# Cancer (Campbell 2021 — note: pre-dates adjuvant pembrolizumab and
+# integrated belzutifan, so cadence is from NCCN where they diverge).
+#
+# Kidney cancer surveillance is imaging-driven; cadence varies sharply by
+# pathologic risk after nephrectomy. Active-surveillance pathways for small
+# renal masses have their own imaging protocol.
+
+milestones:
+  - id: office_visit
+    test: "Office visit with oncology / urology"
+    cadence: "Every 3–6 months × 2 years, every 6–12 months × 3 years, then annually"
+    applies_when:
+      stage_in: [I, II, III]
+    rationale: "NCCN: clinical assessment + renal-function monitoring is central; many post-nephrectomy patients have evolving CKD."
+
+  - id: imaging_low_risk
+    test: "Chest X-ray + abdominal imaging (CT or MRI; consider ultrasound for stage I)"
+    cadence: "Baseline at 3–12 months post-nephrectomy, then annually × 3–5 years"
+    applies_when:
+      stage_in: [I]
+    rationale: "NCCN: low-risk pT1a/pT1b disease has low recurrence rates; less-intense imaging cadence."
+
+  - id: imaging_intermediate_high_risk
+    test: "CT chest/abdomen/pelvis (MRI alternative if CKD)"
+    cadence: "Every 3–6 months × 2 years, every 6–12 months × 3 years, then annually × 5+ years"
+    applies_when:
+      stage_in: [II, III]
+    rationale: "NCCN: pT2+, pT3+, node-positive disease, or unfavorable histologic features warrant tighter imaging cadence — RCC has a longer recurrence tail than most solid tumors."
+
+  - id: brain_mri_symptomatic
+    test: "Brain MRI"
+    cadence: "Symptom-driven (new headache, neurological symptoms); also baseline if metastatic"
+    applies_when:
+      stage_in: [IV]
+    rationale: "Brain mets in RCC are not screened in localized disease but are common in metastatic; MRI is preferred over CT when feasible."
+
+  - id: renal_function_monitoring
+    test: "Comprehensive metabolic panel (creatinine + eGFR); urine protein"
+    cadence: "Every 6–12 months; more often if CKD or single-kidney"
+    applies_when:
+      had_nephrectomy: true
+    rationale: "Post-nephrectomy patients are at elevated CKD risk; serial monitoring guides referral, ACE-i / ARB decisions, and contrast choices for future imaging."
+
+  - id: blood_pressure_monitoring
+    test: "Blood pressure check"
+    cadence: "Every visit; home BP monitoring encouraged if on VEGF-TKI or with single-kidney"
+    applies_when:
+      stage_in: [I, II, III, IV]
+    rationale: "Single-kidney patients and patients on VEGF-targeted therapy have substantial hypertension risk; control matters for kidney + cardiovascular outcomes."
+
+  - id: active_surveillance_small_renal_mass
+    test: "Cross-sectional imaging (CT or MRI)"
+    cadence: "Every 3–6 months × 1 year, then every 6–12 months"
+    applies_when:
+      stage_in: [I]
+      on_active_surveillance: true
+    rationale: "AUA: active surveillance is appropriate for selected small (≤ 4 cm) renal masses; growth rate, patient comorbidity, and patient preference drive intervention timing."
+
+  - id: bone_imaging_symptomatic
+    test: "Bone imaging (X-ray, bone scan, or MRI)"
+    cadence: "Symptom-driven (bone pain, hypercalcemia, alkaline phosphatase elevation); annual in metastatic disease"
+    applies_when:
+      stage_in: [IV]
+    rationale: "Bone mets in RCC are lytic and can cause skeletal events; symptom-driven imaging plus bone-modifying agents (denosumab, zoledronic acid) considered in metastatic disease."
+
+  - id: stage_iv_active_management
+    test: "Imaging cadence per active treatment plan"
+    cadence: "Per oncology team; typically every 8–12 weeks for response assessment"
+    applies_when:
+      stage_in: [IV]
+    rationale: "Stage IV / metastatic RCC is active disease management — imaging cadence is dictated by regimen and response."

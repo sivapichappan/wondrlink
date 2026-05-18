@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wondrlink.foundation/schemas/cancers/bladder/clinical.schema.json",
+  "title": "Bladder Clinical Profile",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "subtype": {
+      "type": "string",
+      "description": "Histologic subtype — drives treatment trajectory.",
+      "enum": ["urothelial", "urothelial_variant", "squamous_cell", "adenocarcinoma", "small_cell", "sarcomatoid", "micropapillary", "plasmacytoid", "other", "unknown"]
+    },
+    "invasion_depth": {
+      "type": "string",
+      "description": "NMIBC (Ta/T1/CIS) vs MIBC (T2+) — the most consequential branch.",
+      "enum": ["Ta", "T1", "CIS", "T2", "T3", "T4", "unknown"]
+    },
+    "grade": {
+      "type": "string",
+      "enum": ["low_grade", "high_grade", "unknown"]
+    },
+    "stage_detail": { "type": "string" },
+    "diagnosis_date": { "type": "string", "format": "date" },
+    "primary_site": {
+      "type": "string",
+      "enum": ["bladder", "ureter", "renal_pelvis", "urethra", "other_urothelial", "unknown"]
+    },
+    "ecog_performance_status": { "type": ["integer", "string"] },
+    "cisplatin_eligible": { "type": ["boolean", "string"] },
+    "smoking_status": {
+      "type": "string",
+      "enum": ["never", "former", "current", "unknown"]
+    },
+    "biomarkers": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "FGFR3":   { "type": "string", "enum": ["altered", "wild-type", "not-tested", "unknown"] },
+        "FGFR2":   { "type": "string", "enum": ["altered", "wild-type", "not-tested", "unknown"] },
+        "PD-L1":   { "type": "string", "description": "CPS or IC percent / band; e.g. 'CPS 10', 'IC 5%', 'positive', 'negative', 'unknown'." },
+        "Nectin-4":{ "type": "string", "enum": ["positive", "negative", "not-tested", "unknown"] },
+        "HER2":    { "type": "string", "enum": ["overexpressed", "amplified", "negative", "not-tested", "unknown"] },
+        "TMB":     { "type": "string" },
+        "MSI":     { "type": "string", "enum": ["MSI-H", "MSI-L", "MSS", "not-tested", "unknown"] },
+        "MMR":     { "type": "string", "enum": ["deficient", "proficient", "not-tested", "unknown"] }
+      }
+    },
+    "bcg_history": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "received": { "type": "boolean" },
+        "courses_completed": { "type": "integer" },
+        "bcg_unresponsive": { "type": "boolean" },
+        "last_dose_date": { "type": "string", "format": "date" }
+      }
+    },
+    "treatments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "regimen": { "type": "string" },
+          "line": { "type": "string", "enum": ["first-line", "second-line", "third-line", "adjuvant", "neoadjuvant", "intravesical", "maintenance"] },
+          "status": { "type": "string", "enum": ["active", "completed", "discontinued"] },
+          "startDate": { "type": "string", "format": "date" },
+          "endDate": { "type": "string", "format": "date" },
+          "cycleNumber": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "surgical_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "procedure": {
+            "type": "string",
+            "enum": ["turbt", "radical_cystectomy", "partial_cystectomy", "trimodal_therapy", "urinary_diversion_ileal_conduit", "urinary_diversion_neobladder", "urinary_diversion_continent_cutaneous", "other"]
+          },
+          "date": { "type": "string", "format": "date" }
+        }
+      }
+    },
+    "radiation_history": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "received": { "type": "boolean" },
+        "completion_date": { "type": "string", "format": "date" }
+      }
+    },
+    "family_history_significant": { "type": "boolean" }
+  }
+}

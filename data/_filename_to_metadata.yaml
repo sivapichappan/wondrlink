@@ -457,3 +457,233 @@ the_american_society_of_colon_and_rectal_surgeons.7.pdf:
   doc_type: screening
   audience: clinician
   guideline_org: USPSTF
+
+# ============================================================
+# Wave 3 — bladder, kidney, NHL (added 2026-05-18)
+# ============================================================
+
+# --- Bladder ---
+"2025_BladderCancerBasics_screen-res-FINAL.pdf":
+  cancer_types: [bladder]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: BCAN
+
+"Bladder Cancer Treatment (PDQ®) - NCI.pdf":
+  cancer_types: [bladder]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCI
+
+"Bladder Cancer Treatment - NCI.pdf":
+  cancer_types: [bladder]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: NCI
+
+"Bladder Cancer_ Non-Muscle Invasive Guideline - American Urological Association.pdf":
+  cancer_types: [bladder]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: AUA
+
+"Bladder and Other Urothelial Cancers Screening (PDQ®) - NCI.pdf":
+  cancer_types: [bladder]
+  doc_type: screening
+  audience: patient
+  guideline_org: NCI
+
+"Treatment of Non-Metastatic Muscle-Invasive Bladder Cancer_ AUA_ASCO_ASTRO_SUO Guideline - American Urological Association.pdf":
+  cancer_types: [bladder]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: AUA
+
+"bladder-patient.pdf":
+  cancer_types: [bladder]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCCN
+
+"holzbeierlein-et-al-2024-diagnosis-and-treatment-of-non-muscle-invasive-bladder-cancer-aua-suo-guideline-2024-amendment.pdf":
+  cancer_types: [bladder]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: AUA
+
+"holzbeierlein-et-al-2024-treatment-of-non-metastatic-muscle-invasive-bladder-cancer-aua-asco-suo-guideline-(2017.pdf":
+  cancer_types: [bladder]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: AUA
+
+"PIIS0923753424000759.pdf":
+  cancer_types: [bladder]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: ESMO
+
+# --- Kidney ---
+"Kidney-Cancer-Treatment-Fact-Sheet.pdf":
+  cancer_types: [kidney]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: ACS
+
+"Renal Cell Cancer Treatment (PDQ®) - NCI.pdf":
+  cancer_types: [kidney]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCI
+
+"Renal Cell Cancer Treatment - NCI.pdf":
+  cancer_types: [kidney]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: NCI
+
+"Renal Mass and Localized Renal Cancer_ Evaluation, Management, and Follow Up (2021) - American Urological Association.pdf":
+  cancer_types: [kidney]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: AUA
+
+# Upper-tract urothelial — clinically managed like bladder UC; tag both
+"Transitional Cell Cancer (Kidney_Ureter) Treatment (PDQ®) - NCI.pdf":
+  cancer_types: [kidney, bladder]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCI
+
+"Transitional Cell Cancer (Kidney_Ureter) Treatment - NCI.pdf":
+  cancer_types: [kidney, bladder]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: NCI
+
+"campbell-et-al-2021-renal-mass-and-localized-renal-cancer-evaluation-management-and-follow-up-aua-guideline-part-i.pdf":
+  cancer_types: [kidney]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: AUA
+
+"campbell-et-al-2021-renal-mass-and-localized-renal-cancer-evaluation-management-and-follow-up-aua-guideline-part-ii.pdf":
+  cancer_types: [kidney]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: AUA
+
+"kidney-patient.pdf":
+  cancer_types: [kidney]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCCN
+
+"rathmell-et-al-2022-management-of-metastatic-clear-cell-renal-cell-carcinoma-asco-guideline.pdf":
+  cancer_types: [kidney]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: ASCO
+
+"singer-et-al-2023-management-of-metastatic-renal-clear-cell-cancer-asco-guideline-rapid-recommendation-update.pdf":
+  cancer_types: [kidney]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: ASCO
+
+# --- NHL (CLL/SLL bundled into NHL slug for retrieval) ---
+"Chronic Lymphocytic Leukemia Treatment (PDQ®) - NCI.pdf":
+  cancer_types: [nhl]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCI
+
+"Chronic Lymphocytic Leukemia Treatment - NCI.pdf":
+  cancer_types: [nhl]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: NCI
+
+"Diffuse_Large_B_Cell_Lymphoma_Fact_Sheet_2024.pdf":
+  cancer_types: [nhl]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: LRF
+
+"Diffuse_Large_B_Cell_Lymphoma_RR_Fact_Sheet_2024.pdf":
+  cancer_types: [nhl]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: LRF
+
+"Follicular_Lymphoma_Fact_Sheet_2024.pdf":
+  cancer_types: [nhl]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: LRF
+
+"Follicular_Lymphoma_Relapsed_Refractory_Fact_Sheet_2024.pdf":
+  cancer_types: [nhl]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: LRF
+
+"Indolent B-Cell Non-Hodgkin Lymphoma Treatment (PDQ®) - NCI.pdf":
+  cancer_types: [nhl]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCI
+
+"Mantle-patient-guideline.pdf":
+  cancer_types: [nhl]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCCN
+
+"Marginal_Zone_Lymphoma_Fact_Sheet_2024.pdf":
+  cancer_types: [nhl]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: LRF
+
+"Non-Hodgkin Lymphoma Treatment - NCI.pdf":
+  cancer_types: [nhl]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: NCI
+
+"Transformed_Lymphomas_Fact_Sheet_2024.pdf":
+  cancer_types: [nhl]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: LRF
+
+"cll-patient.pdf":
+  cancer_types: [nhl]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCCN
+
+"en-booklet-cll-basics-ps48.pdf":
+  cancer_types: [nhl]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: LLS
+
+"en-booklet-cll-detailed-ps34.pdf":
+  cancer_types: [nhl]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: LLS
+
+"nhl-diffuse-patient.pdf":
+  cancer_types: [nhl]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCCN
+
+"nhl-follicular-patient.pdf":
+  cancer_types: [nhl]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCCN

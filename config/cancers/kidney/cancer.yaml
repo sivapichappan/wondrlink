@@ -1,14 +1,73 @@
 slug: kidney
 display_name: Kidney cancer
 short_name: Kidney
-aliases: [renal cell carcinoma, RCC]
-icd10_prefix: [C64]
+aliases:
+  - renal cell carcinoma
+  - RCC
+  - renal cancer
+  - renal cell cancer
+icd10_prefix: [C64, C65]
 staging_system: AJCC-TNM-8
-biomarker_panel: [VHL, MET, PBRM1, BAP1, PD-L1]
+biomarker_panel:
+  - VHL                # von Hippel-Lindau — clear-cell RCC driver
+  - PBRM1              # clear-cell RCC mutation, prognostic
+  - BAP1               # poor-risk marker in clear-cell RCC
+  - SETD2
+  - MET                # papillary RCC type 1
+  - FH                 # HLRCC syndrome
+  - FLCN               # Birt-Hogg-Dubé
+  - TFE3               # translocation RCC
+  - PD-L1
+  - SDH                # SDH-deficient RCC syndromes
+common_regimens:
+  # Local therapy
+  - Active surveillance              # small renal mass
+  - Partial nephrectomy
+  - Radical nephrectomy
+  - Cytoreductive nephrectomy        # in selected metastatic
+  - Cryoablation
+  - Radiofrequency ablation
+  # Adjuvant
+  - Pembrolizumab (adjuvant)         # KEYNOTE-564
+  # First-line metastatic clear-cell — IO + TKI / IO + IO standard
+  - Pembrolizumab + axitinib         # KEYNOTE-426
+  - Pembrolizumab + lenvatinib       # CLEAR
+  - Nivolumab + cabozantinib         # CheckMate 9ER
+  - Nivolumab + ipilimumab           # CheckMate 214 (intermediate / poor-risk)
+  # Second-line and beyond — TKIs and others
+  - Cabozantinib
+  - Axitinib
+  - Lenvatinib + everolimus
+  - Tivozanib
+  - Sunitinib
+  - Pazopanib
+  - Sorafenib
+  - Belzutifan                       # HIF-2α inhibitor — VHL syndrome + advanced clear-cell
+  - Everolimus
+  - Temsirolimus
+  # Non-clear-cell options
+  - Cabozantinib                     # papillary RCC (SWOG 1500)
+  - Sunitinib                        # historical non-clear-cell standard
+  # Cytokine therapy (historical)
+  - HD interleukin-2
+default_screening_test: none recommended (no population-level screening)
 clinicaltrials_conditions:
   - Kidney Neoplasms
   - Renal Cell Carcinoma
   - Kidney Cancer
-ready: false
-accent_color: "#FF9000"
+  - Clear Cell Renal Cell Carcinoma
+  - Papillary Renal Cell Carcinoma
+  - Non-Clear Cell Renal Cell Carcinoma
+  - Metastatic Renal Cell Carcinoma
+stage_specific_conditions:
+  IV: ["Metastatic Renal Cell Carcinoma", "Metastatic Kidney Cancer", "Advanced Renal Cell Carcinoma"]
+  III: ["Locally Advanced Renal Cell Carcinoma", "Stage III Renal Cell Carcinoma"]
+  II:  ["Stage II Renal Cell Carcinoma", "Localized Kidney Cancer"]
+  I:   ["Stage I Renal Cell Carcinoma", "Small Renal Mass", "Localized Kidney Cancer"]
+ready: true    # flipped 2026-05-18 — owner accepted shipping ahead of
+               # clinician sign-off on surveillance.yaml. Wave 3 eval
+               # baseline captured. AUA Renal Mass guideline is 2021 —
+               # NCCN is the modern clinician anchor for adjuvant pembro
+               # and belzutifan integration. See commit message.
+accent_color: "#FF9000"   # orange — kidney cancer awareness ribbon
 icon: droplets

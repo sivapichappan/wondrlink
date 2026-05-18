@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wondrlink.foundation/schemas/cancers/kidney/clinical.schema.json",
+  "title": "Kidney Clinical Profile",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "subtype": {
+      "type": "string",
+      "description": "Histologic subtype — clear cell vs non-clear cell drives most treatment decisions.",
+      "enum": ["clear_cell", "papillary_type1", "papillary_type2", "chromophobe", "collecting_duct", "renal_medullary", "translocation", "sdh_deficient", "fh_deficient_hlrcc", "unclassified", "mixed", "other", "unknown"]
+    },
+    "laterality": {
+      "type": "string",
+      "enum": ["left", "right", "bilateral", "unknown"]
+    },
+    "fuhrman_isup_grade": {
+      "type": "string",
+      "enum": ["G1", "G2", "G3", "G4", "unknown"]
+    },
+    "stage_detail": { "type": "string" },
+    "diagnosis_date": { "type": "string", "format": "date" },
+    "imdc_risk_group": {
+      "type": "string",
+      "description": "IMDC / Heng risk stratification for metastatic disease.",
+      "enum": ["favorable", "intermediate", "poor", "unknown"]
+    },
+    "ecog_performance_status": { "type": ["integer", "string"] },
+    "hereditary_syndrome": {
+      "type": "string",
+      "description": "Hereditary RCC syndrome if known.",
+      "enum": ["none", "vhl", "hlrcc", "bhd", "bap1", "sdh", "tuberous_sclerosis", "other", "unknown"]
+    },
+    "biomarkers": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "VHL":   { "type": "string", "enum": ["mutated", "wild-type", "germline_pathogenic", "not-tested", "unknown"] },
+        "PBRM1": { "type": "string", "enum": ["mutated", "wild-type", "not-tested", "unknown"] },
+        "BAP1":  { "type": "string", "enum": ["mutated", "wild-type", "not-tested", "unknown"] },
+        "SETD2": { "type": "string", "enum": ["mutated", "wild-type", "not-tested", "unknown"] },
+        "MET":   { "type": "string", "enum": ["altered", "wild-type", "not-tested", "unknown"] },
+        "FH":    { "type": "string", "enum": ["pathogenic", "wild-type", "vus", "not-tested", "unknown"] },
+        "FLCN":  { "type": "string", "enum": ["pathogenic", "wild-type", "vus", "not-tested", "unknown"] },
+        "TFE3":  { "type": "string", "enum": ["rearranged", "negative", "not-tested", "unknown"] },
+        "PD-L1": { "type": "string", "enum": ["positive", "negative", "low", "unknown"] },
+        "SDH":   { "type": "string", "enum": ["deficient", "intact", "not-tested", "unknown"] }
+      }
+    },
+    "treatments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "regimen": { "type": "string" },
+          "line": { "type": "string", "enum": ["first-line", "second-line", "third-line", "adjuvant", "neoadjuvant", "maintenance"] },
+          "status": { "type": "string", "enum": ["active", "completed", "discontinued"] },
+          "startDate": { "type": "string", "format": "date" },
+          "endDate": { "type": "string", "format": "date" },
+          "cycleNumber": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "surgical_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "procedure": {
+            "type": "string",
+            "enum": ["partial_nephrectomy", "radical_nephrectomy", "cytoreductive_nephrectomy", "cryoablation", "rfa", "metastasectomy", "other"]
+          },
+          "date": { "type": "string", "format": "date" },
+          "approach": { "type": "string", "enum": ["open", "laparoscopic", "robotic", "unknown"] }
+        }
+      }
+    },
+    "renal_function": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "egfr": { "type": ["number", "string"] },
+        "creatinine": { "type": ["number", "string"] },
+        "ckd_stage": { "type": "string" }
+      }
+    },
+    "metastasis_sites": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "family_history_significant": { "type": "boolean" },
+    "had_genetic_testing": { "type": "boolean" }
+  }
+}

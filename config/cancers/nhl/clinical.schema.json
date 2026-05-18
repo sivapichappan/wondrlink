@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wondrlink.foundation/schemas/cancers/nhl/clinical.schema.json",
+  "title": "NHL Clinical Profile",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "subtype": {
+      "type": "string",
+      "description": "NHL subtype — the most consequential clinical attribute.",
+      "enum": [
+        "dlbcl",
+        "dlbcl_double_hit",
+        "dlbcl_triple_hit",
+        "high_grade_b_cell",
+        "primary_mediastinal_b_cell",
+        "follicular",
+        "marginal_zone_nodal",
+        "marginal_zone_extranodal_malt",
+        "marginal_zone_splenic",
+        "mantle_cell",
+        "cll_sll",
+        "burkitt",
+        "lymphoplasmacytic_waldenstrom",
+        "peripheral_t_cell_nos",
+        "angioimmunoblastic_t_cell",
+        "anaplastic_large_cell_alk_positive",
+        "anaplastic_large_cell_alk_negative",
+        "cutaneous_t_cell_mycosis_fungoides",
+        "cutaneous_t_cell_sezary",
+        "other_b_cell",
+        "other_t_cell",
+        "unknown"
+      ]
+    },
+    "cell_of_origin": {
+      "type": "string",
+      "description": "DLBCL cell-of-origin classification (GCB vs ABC).",
+      "enum": ["gcb", "abc", "unclassified", "not_applicable", "unknown"]
+    },
+    "ann_arbor_stage": {
+      "type": "string",
+      "enum": ["I", "II", "III", "IV", "unknown"]
+    },
+    "ipi_score": {
+      "type": "string",
+      "description": "International Prognostic Index — DLBCL prognosis."
+    },
+    "flipi_score": {
+      "type": "string",
+      "description": "FLIPI — Follicular Lymphoma International Prognostic Index."
+    },
+    "mipi_score": {
+      "type": "string",
+      "description": "MIPI — Mantle Cell Lymphoma International Prognostic Index."
+    },
+    "stage_detail": { "type": "string" },
+    "diagnosis_date": { "type": "string", "format": "date" },
+    "ecog_performance_status": { "type": ["integer", "string"] },
+    "b_symptoms": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "fever": { "type": "boolean" },
+        "night_sweats": { "type": "boolean" },
+        "weight_loss_10_pct": { "type": "boolean" }
+      }
+    },
+    "bulky_disease": { "type": "boolean" },
+    "extranodal_involvement": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "biomarkers": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "CD20":  { "type": "string", "enum": ["positive", "negative", "unknown"] },
+        "CD19":  { "type": "string", "enum": ["positive", "negative", "unknown"] },
+        "CD22":  { "type": "string", "enum": ["positive", "negative", "unknown"] },
+        "CD30":  { "type": "string", "enum": ["positive", "negative", "unknown"] },
+        "CD79b": { "type": "string", "enum": ["positive", "negative", "unknown"] },
+        "BCL2":  { "type": "string", "enum": ["rearranged", "overexpressed", "negative", "unknown"] },
+        "MYC":   { "type": "string", "enum": ["rearranged", "overexpressed", "negative", "unknown"] },
+        "BCL6":  { "type": "string", "enum": ["rearranged", "overexpressed", "negative", "unknown"] },
+        "TP53":  { "type": "string", "enum": ["mutated", "wild-type", "unknown"] },
+        "del_17p": { "type": "string", "enum": ["present", "absent", "unknown"] },
+        "IGHV":  { "type": "string", "enum": ["unmutated", "mutated", "unknown"] },
+        "EZH2":  { "type": "string", "enum": ["mutated", "wild-type", "unknown"] },
+        "SOX11": { "type": "string", "enum": ["positive", "negative", "unknown"] },
+        "Ki67":  { "type": "string", "description": "Proliferation index — high in aggressive lymphomas; >30% in MCL conveys higher-risk biology." },
+        "ALK":   { "type": "string", "enum": ["positive", "negative", "unknown"], "description": "ALK status in anaplastic large-cell lymphoma." }
+      }
+    },
+    "treatments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "regimen": { "type": "string" },
+          "line": { "type": "string", "enum": ["first-line", "second-line", "third-line", "fourth-line-plus", "consolidation", "maintenance", "salvage"] },
+          "status": { "type": "string", "enum": ["active", "completed", "discontinued"] },
+          "startDate": { "type": "string", "format": "date" },
+          "endDate": { "type": "string", "format": "date" },
+          "cycleNumber": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "transplant_history": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "asct_received": { "type": "boolean" },
+        "allo_sct_received": { "type": "boolean" },
+        "car_t_received": { "type": "boolean" },
+        "car_t_product": { "type": "string" },
+        "transplant_date": { "type": "string", "format": "date" }
+      }
+    },
+    "radiation_history": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "received": { "type": "boolean" },
+        "site": { "type": "string" },
+        "completion_date": { "type": "string", "format": "date" }
+      }
+    },
+    "family_history_significant": { "type": "boolean" }
+  }
+}

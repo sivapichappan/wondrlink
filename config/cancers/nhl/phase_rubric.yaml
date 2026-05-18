@@ -1,0 +1,80 @@
+# Phase classification + per-phase suggested questions for non-Hodgkin lymphoma.
+# NHL is a family of diseases; phase suggestions must work across aggressive
+# (DLBCL, MCL, Burkitt) and indolent (FL, MZL, CLL) subtypes.
+
+phases:
+  early_chemo:    { min_days: 0,    max_days: 28 }
+  mid_chemo:      { min_days: 28,   max_days: 180 }
+  late_chemo:     { min_days: 180,  max_days: null }
+  targeted_therapy: {}
+  immunotherapy:  {}
+  car_t_therapy:  {}
+  watch_and_wait: {}
+  post_transplant: {}
+  surveillance:   {}
+  newly_diagnosed: {}
+  relapsed_refractory: {}
+  general:        {}
+
+suggestions:
+  early_chemo:
+    - "What side effects from cycle 1 of {regimen} should I watch for?"
+    - "What is tumor lysis syndrome and when should I worry about it?"
+    - "Help me prepare for my next visit"
+  mid_chemo:
+    - "How will we know if my treatment is working?"
+    - "What can I do about chemo-related fatigue, nausea, and infection risk?"
+    - "Help me prepare for my next visit"
+  late_chemo:
+    - "What does life after chemo typically look like for lymphoma?"
+    - "When will we restage / decide on next steps or maintenance?"
+    - "Help me prepare for my next visit"
+  targeted_therapy:
+    - "What side effects from my BTK inhibitor / venetoclax should I watch for?"
+    - "How long will I stay on targeted therapy?"
+    - "Help me prepare for my next visit"
+  immunotherapy:
+    - "What is a bispecific (mosunetuzumab / glofitamab / epcoritamab) and how is it different from chemo?"
+    - "What is cytokine release syndrome and when should I worry?"
+    - "Help me prepare for my next visit"
+  car_t_therapy:
+    - "What is CAR-T therapy and what's the day-by-day timeline?"
+    - "What is ICANS (neurotoxicity) and what should I watch for?"
+    - "Help me prepare for my next visit"
+  watch_and_wait:
+    - "What does 'watch and wait' really mean — and when would we start treatment?"
+    - "What signs would tell us it's time to begin therapy?"
+    - "Help me prepare for my next visit"
+  post_transplant:
+    - "What does recovery from stem-cell transplant look like in the first 100 days?"
+    - "What infection-prevention practices matter most right now?"
+    - "Help me prepare for my next visit"
+  surveillance:
+    - "When is my next surveillance visit due?"
+    - "What signs of recurrence or transformation should I watch for?"
+    - "Help me prepare for my next visit"
+  newly_diagnosed:
+    - "Walk me through what stage {stage} means for my care"
+    - "What does my specific lymphoma subtype mean for treatment?"
+    - "Should I consider a second opinion at a lymphoma-specialty center?"
+  relapsed_refractory:
+    - "What are my options now that my lymphoma has come back?"
+    - "Am I a candidate for CAR-T or a bispecific?"
+    - "What does palliative care offer alongside salvage treatment?"
+  general:
+    - "What questions should I ask my oncology team?"
+    - "How can I prepare for my next appointment?"
+    - "Help me prepare for my next visit"
+
+descriptors:
+  active_treatment: "You're {days_clause}{regimen}{cycle_clause}."
+  watch_and_wait:   "On watch-and-wait — your lymphoma is being monitored without active treatment."
+  targeted_therapy: "On targeted therapy."
+  immunotherapy:    "On immunotherapy — long-tail benefit possible but immune-related side effects matter."
+  car_t_therapy:    "Within the CAR-T window."
+  post_transplant:  "{days} days post-transplant — recovery phase."
+  surveillance:     "{days} days post-treatment — surveillance phase."
+  surveillance_no_date: "You're in the surveillance phase."
+  relapsed_refractory: "Relapsed/refractory disease — focus is on additional options and quality of life."
+  newly_diagnosed:  "Newly diagnosed — {stage_clause}{cancer_name}."
+  fallback:         "Welcome back."

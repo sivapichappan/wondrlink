@@ -1,0 +1,93 @@
+# Per-cancer advocacy orgs, helplines, and topic-specific resources for kidney cancer.
+
+advocacy:
+  - name: Kidney Cancer Association (KCA)
+    url: https://www.kidneycancer.org
+    desc: Premier US kidney-cancer patient organization — education, navigation, research funding
+  - name: KidneyCAN
+    url: https://kidneycan.org
+    desc: Patient + caregiver advocacy + research funding
+  - name: Action to Cure Kidney Cancer (ACKC)
+    url: https://ackcorg.org
+    desc: Research advocacy
+  - name: Urology Care Foundation
+    url: https://www.urologyhealth.org
+    desc: AUA-affiliated patient resources for urologic cancers
+  - name: American Cancer Society — Kidney Cancer
+    url: https://www.cancer.org/cancer/types/kidney-cancer.html
+    desc: General overview, treatment, survivorship
+
+hereditary:
+  - name: VHL Alliance
+    url: https://www.vhl.org
+    desc: Authority for von Hippel-Lindau syndrome — clinical care, surveillance, family resources
+  - name: HLRCC Family Alliance
+    url: https://www.hlrccinfo.org
+    desc: Hereditary leiomyomatosis and renal cell cancer support
+  - name: BHD Foundation
+    url: https://www.bhdsyndrome.org
+    desc: Birt-Hogg-Dubé syndrome resources
+  - name: NSGC Find a Genetic Counselor
+    url: https://www.findageneticcounselor.com
+    desc: Locate a certified counselor for hereditary RCC syndromes
+
+helplines:
+  - name: KCA Patient Helpline
+    url: https://www.kidneycancer.org/patient-support/
+    desc: Patient + caregiver navigation
+  - name: American Cancer Society
+    number: 1-800-227-2345
+    tel: tel:18002272345
+    desc: 24/7 general cancer information and support
+  - name: NCI Cancer Information Service
+    number: 1-800-422-6237
+    tel: tel:18004226237
+    desc: Treatment information, clinical trials, expert support
+
+screening:
+  - name: NCI PDQ Kidney Cancer Screening Summary
+    url: https://www.cancer.gov/types/kidney/hp/kidney-screening-pdq
+    desc: No population-level screening recommendation; most renal masses are incidental
+  - name: VHL Alliance Surveillance Guidelines
+    url: https://www.vhl.org/patients/active-surveillance/
+    desc: Recommended imaging cadence for VHL patients across organ systems
+
+treatment_decisions:
+  - name: KCA — Treatment Options
+    url: https://www.kidneycancer.org/treatment-options/
+    desc: Patient-facing summary of surgery, ablation, targeted therapy, immunotherapy
+  - name: NCCN Guidelines for Patients — Kidney Cancer
+    url: https://www.nccn.org/patients/guidelines/content/PDF/kidney-patient.pdf
+    desc: Plain-language NCCN guide
+
+post_nephrectomy:
+  - name: National Kidney Foundation — Living with One Kidney
+    url: https://www.kidney.org/atoz/content/onekidney
+    desc: Practical guidance after partial or radical nephrectomy
+  - name: Kidney Disease Improving Global Outcomes (KDIGO)
+    url: https://kdigo.org
+    desc: CKD staging + management — useful for post-nephrectomy patients
+
+side_effects:
+  - name: NCCN Distress Management (patient)
+    url: https://www.nccn.org/patients/guidelines/content/PDF/distress-patient.pdf
+    desc: Anxiety, sleep, mood — cross-cutting
+  - name: ASCO Survivorship Care (Cancer.Net)
+    url: https://www.cancer.net/survivorship
+    desc: Survivorship resources
+
+palliative_supportive:
+  - name: Get Palliative Care
+    url: https://getpalliativecare.org
+    desc: Find palliative care providers
+  - name: CaringInfo (NHPCO)
+    url: https://www.caringinfo.org
+    desc: Advance care planning + hospice information
+
+caregiver:
+  - name: ACS Caregiver Resource Guide
+    url: https://www.cancer.org/cancer/caregivers.html
+    desc: Practical guidance for supporting someone with kidney cancer
+  - name: KCA Caregiver Resources
+    url: https://www.kidneycancer.org/patient-support/caregivers/
+    desc: Kidney-cancer-specific caregiver support

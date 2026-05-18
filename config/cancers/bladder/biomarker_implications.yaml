@@ -1,0 +1,72 @@
+# Biomarker → drug-class mappings for bladder cancer.
+# Sources: NCCN Bladder Cancer (current), AUA/SUO NMIBC 2024 amendment,
+# AUA/ASCO/ASTRO/SUO MIBC, EV-302 (enfortumab vedotin + pembrolizumab),
+# THOR / BLC2001 (erdafitinib), JAVELIN Bladder 100 (avelumab maintenance),
+# KEYNOTE-057 (pembro for BCG-unresponsive CIS), TROPHY-U-01 (saci-G).
+
+implications:
+
+  FGFR3:
+    aligns:
+      - when_state: altered
+        align_keywords: [erdafitinib, "FGFR inhibitor", pemigatinib]
+        bonus_points: 26
+        reason: "FGFR3-altered metastatic urothelial after platinum + IO aligns with erdafitinib (THOR — OS benefit over chemo)."
+
+  FGFR2:
+    aligns:
+      - when_state: altered
+        align_keywords: [erdafitinib, "FGFR inhibitor"]
+        bonus_points: 18
+        reason: "FGFR2 fusions or activating mutations are less common than FGFR3 but also confer erdafitinib eligibility."
+
+  PD-L1:
+    aligns:
+      - when_state: positive
+        align_keywords: [pembrolizumab, nivolumab, atezolizumab, avelumab,
+                         "checkpoint inhibitor", "PD-1 inhibitor",
+                         "PD-L1 inhibitor", "immunotherapy"]
+        bonus_points: 12
+        reason: "PD-L1 expression supports immune checkpoint inhibitor activity, though in metastatic urothelial first-line the EV+pembro standard is offered regardless of PD-L1."
+
+  Nectin-4:
+    aligns:
+      - when_state: positive
+        align_keywords: ["enfortumab vedotin", "EV", "Nectin-4 ADC"]
+        bonus_points: 22
+        reason: "Nectin-4 is the target of enfortumab vedotin; combined with pembrolizumab (EV-302) it is the new metastatic-urothelial first-line standard."
+
+  HER2:
+    aligns:
+      - when_state: overexpressed
+        align_keywords: ["disitamab vedotin", "trastuzumab deruxtecan", "T-DXd",
+                         "HER2 ADC"]
+        bonus_points: 18
+        reason: "HER2-overexpressing urothelial carcinoma may respond to HER2-directed ADCs such as disitamab vedotin and T-DXd."
+      - when_state: amplified
+        align_keywords: ["disitamab vedotin", "trastuzumab deruxtecan", "T-DXd"]
+        bonus_points: 20
+        reason: "HER2-amplified urothelial carcinoma is increasingly studied with HER2-directed ADCs."
+
+  MSI:
+    aligns:
+      - when_state: MSI-H
+        align_keywords: [pembrolizumab, nivolumab, "checkpoint inhibitor",
+                         "tumor-agnostic", "MSI-high"]
+        bonus_points: 22
+        reason: "MSI-H tumors qualify for tumor-agnostic pembrolizumab approval and benefit from checkpoint inhibition."
+
+  MMR:
+    aligns:
+      - when_state: deficient
+        align_keywords: [pembrolizumab, nivolumab, "checkpoint inhibitor",
+                         dostarlimab]
+        bonus_points: 20
+        reason: "Mismatch-repair-deficient tumors are highly responsive to immune checkpoint inhibition (tumor-agnostic indication)."
+
+  TROP2:
+    aligns:
+      - when_state: positive
+        align_keywords: ["sacituzumab govitecan", "TROP2 ADC"]
+        bonus_points: 15
+        reason: "TROP2 expression is the target of sacituzumab govitecan (TROPHY-U-01) — option after platinum + IO."

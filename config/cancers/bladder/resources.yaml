@@ -1,0 +1,85 @@
+# Per-cancer advocacy orgs, helplines, and topic-specific resources for bladder cancer.
+
+advocacy:
+  - name: Bladder Cancer Advocacy Network (BCAN)
+    url: https://bcan.org
+    desc: Premier US bladder-cancer patient organization — education, navigation, peer support, research funding
+  - name: American Bladder Cancer Society
+    url: https://www.bladdercancersupport.org
+    desc: Community + peer support
+  - name: Urology Care Foundation
+    url: https://www.urologyhealth.org
+    desc: AUA-affiliated patient resources for urologic cancers
+  - name: American Cancer Society — Bladder Cancer
+    url: https://www.cancer.org/cancer/types/bladder-cancer.html
+    desc: General overview, treatment, survivorship resources
+
+helplines:
+  - name: BCAN Survivor-to-Survivor Network
+    url: https://bcan.org/inspire-network/
+    desc: 1:1 peer matching with bladder-cancer survivors
+  - name: American Cancer Society
+    number: 1-800-227-2345
+    tel: tel:18002272345
+    desc: 24/7 general cancer information and support
+  - name: NCI Cancer Information Service
+    number: 1-800-422-6237
+    tel: tel:18004226237
+    desc: Treatment information, clinical trials, expert support
+
+screening_surveillance:
+  - name: NCI PDQ Bladder Cancer Screening Summary
+    url: https://www.cancer.gov/types/bladder/patient/bladder-screening-pdq
+    desc: No population-level screening recommendation; symptom-driven diagnosis is the norm
+  - name: BCAN — Hematuria Awareness
+    url: https://bcan.org/learn/blood-in-urine/
+    desc: Blood in the urine should never be ignored — patient-facing education
+
+intravesical_therapy:
+  - name: BCAN — BCG Treatment
+    url: https://bcan.org/treatment/bcg/
+    desc: Patient-facing guide to BCG induction and maintenance
+  - name: BCAN — Treatments Overview
+    url: https://bcan.org/treatment/
+    desc: NMIBC + MIBC treatment overviews
+
+cystectomy_diversion:
+  - name: BCAN — Living with a Urinary Diversion
+    url: https://bcan.org/living-with-bladder-cancer/urinary-diversion/
+    desc: Practical day-to-day guidance for ileal conduit, neobladder, continent cutaneous
+  - name: United Ostomy Associations of America
+    url: https://www.ostomy.org
+    desc: Patient support for urostomy / ileal conduit
+
+smoking_cessation:
+  - name: SmokeFree.gov
+    url: https://smokefree.gov
+    desc: Free quit-coaching, texts, and apps
+  - name: 1-800-QUIT-NOW
+    number: 1-800-784-8669
+    tel: tel:18007848669
+    desc: State quitline — free counseling and (often) free NRT
+
+side_effects:
+  - name: NCCN Distress Management (patient)
+    url: https://www.nccn.org/patients/guidelines/content/PDF/distress-patient.pdf
+    desc: Anxiety, sleep, mood — cross-cutting
+  - name: ASCO Survivorship Care (Cancer.Net)
+    url: https://www.cancer.net/survivorship
+    desc: Survivorship resources
+
+palliative_supportive:
+  - name: Get Palliative Care
+    url: https://getpalliativecare.org
+    desc: Find palliative care providers — early integration is associated with better outcomes
+  - name: CaringInfo (NHPCO)
+    url: https://www.caringinfo.org
+    desc: Advance care planning + hospice information
+
+caregiver:
+  - name: ACS Caregiver Resource Guide
+    url: https://www.cancer.org/cancer/caregivers.html
+    desc: Practical guidance for supporting someone with bladder cancer
+  - name: BCAN Caregivers
+    url: https://bcan.org/living-with-bladder-cancer/caregivers/
+    desc: Bladder-cancer-specific caregiver support

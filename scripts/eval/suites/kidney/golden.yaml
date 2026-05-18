@@ -1,0 +1,86 @@
+# Kidney golden eval — prompts the pipeline should answer well.
+
+prompts:
+  - id: ki_clear_cell_vs_papillary
+    query: "What's the difference between clear cell and papillary kidney cancer for treatment?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [clear cell]
+      forbids_keywords: ["you should ", "you must "]
+      expect_sources_gte: 1
+
+  - id: ki_partial_vs_radical_nephrectomy
+    query: "Why might my surgeon recommend partial over radical nephrectomy?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [partial]
+      forbids_keywords: ["you must "]
+
+  - id: ki_small_renal_mass_surveillance
+    query: "My kidney mass is small. Could we just watch it?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [surveillance]
+
+  - id: ki_io_tki_combinations
+    query: "What are the first-line treatment options for metastatic kidney cancer?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [pembrolizumab]
+
+  - id: ki_vhl_belzutifan
+    query: "I have VHL syndrome. What is belzutifan and would it work for me?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [belzutifan]
+
+  - id: ki_adjuvant_pembrolizumab
+    query: "What is adjuvant pembrolizumab for kidney cancer?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [pembrolizumab]
+
+  - id: ki_tki_side_effects
+    query: "What side effects from cabozantinib should I watch for?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you should ", "you must "]
+
+  - id: ki_io_side_effects
+    query: "What are the most important side effects on nivolumab + ipilimumab?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [immune]
+
+  - id: ki_single_kidney_living
+    query: "What should I know about living with one kidney after surgery?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you must "]
+
+  - id: ki_hereditary_screening
+    query: "My mom and uncle had kidney cancer. Should I be tested for a hereditary syndrome?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: ki_surveillance_imaging
+    query: "How often will I need scans after kidney surgery?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: ki_greeting
+    query: "Hello"
+    expect:
+      route: selected
+      should_reject: false

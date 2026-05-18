@@ -1,0 +1,110 @@
+# Per-cancer advocacy orgs, helplines, and topic-specific resources for non-Hodgkin lymphoma.
+
+advocacy:
+  - name: Leukemia & Lymphoma Society (LLS)
+    url: https://www.lls.org
+    desc: Premier US blood-cancer organization — patient education, navigation, copay assistance, peer support
+  - name: Lymphoma Research Foundation (LRF)
+    url: https://www.lymphoma.org
+    desc: Lymphoma-specific patient education, fact sheets, helpline, research
+  - name: CLL Society
+    url: https://cllsociety.org
+    desc: CLL/SLL-specific patient education and advocacy
+  - name: Cutaneous Lymphoma Foundation
+    url: https://www.clfoundation.org
+    desc: CTCL / Mycosis fungoides / Sezary syndrome patient resources
+  - name: International Waldenstrom's Macroglobulinemia Foundation
+    url: https://iwmf.com
+    desc: Waldenstrom macroglobulinemia (lymphoplasmacytic lymphoma)
+  - name: American Cancer Society — Non-Hodgkin Lymphoma
+    url: https://www.cancer.org/cancer/types/non-hodgkin-lymphoma.html
+    desc: General overview, treatment, survivorship
+
+helplines:
+  - name: LLS Information Resource Center
+    number: 1-800-955-4572
+    tel: tel:18009554572
+    desc: Information specialists for blood-cancer patients + families
+  - name: LRF Helpline
+    number: 1-800-500-9976
+    tel: tel:18005009976
+    desc: Lymphoma-specific helpline
+  - name: American Cancer Society
+    number: 1-800-227-2345
+    tel: tel:18002272345
+    desc: 24/7 general cancer information and support
+  - name: NCI Cancer Information Service
+    number: 1-800-422-6237
+    tel: tel:18004226237
+    desc: Treatment information, clinical trials, expert support
+
+subtype_specific:
+  - name: LRF — DLBCL
+    url: https://lymphoma.org/aboutlymphoma/nhl/dlbcl/
+    desc: Diffuse large B-cell lymphoma patient resources
+  - name: LRF — Follicular Lymphoma
+    url: https://lymphoma.org/aboutlymphoma/nhl/fl/
+    desc: Follicular lymphoma patient resources
+  - name: LRF — Mantle Cell Lymphoma
+    url: https://lymphoma.org/aboutlymphoma/nhl/mcl/
+    desc: Mantle cell lymphoma patient resources
+  - name: LRF — Marginal Zone Lymphoma
+    url: https://lymphoma.org/aboutlymphoma/nhl/mzl/
+    desc: Marginal zone lymphoma patient resources
+  - name: LRF — Peripheral T-Cell Lymphoma
+    url: https://lymphoma.org/aboutlymphoma/nhl/ptcl/
+    desc: PTCL patient resources — patient-facing material lags clinician guideline
+  - name: LRF — Burkitt Lymphoma
+    url: https://lymphoma.org/aboutlymphoma/nhl/burkitt/
+    desc: Burkitt and aggressive lymphoma patient resources
+  - name: LLS — CLL/SLL
+    url: https://www.lls.org/leukemia/chronic-lymphocytic-leukemia
+    desc: CLL/SLL patient education
+
+car_t_bispecifics:
+  - name: LLS — CAR-T Therapy
+    url: https://www.lls.org/treatment/types-treatment/immunotherapy/chimeric-antigen-receptor-car-t-cell-therapy
+    desc: Patient-facing CAR-T overview
+  - name: LRF — CAR-T Information
+    url: https://lymphoma.org/research/clinical-trials/car-t-cell-therapy/
+    desc: CAR-T in lymphoma — eligibility, process, side effects
+
+watch_and_wait:
+  - name: CLL Society — Watch and Wait
+    url: https://cllsociety.org/2021/04/cll-watch-and-wait/
+    desc: Patient-facing guide to why early treatment isn't always better
+  - name: LRF — Watchful Waiting
+    url: https://lymphoma.org/aboutlymphoma/treatment/watchful-waiting/
+    desc: Indolent lymphoma + watch-and-wait
+
+financial:
+  - name: LLS Co-Pay Assistance
+    url: https://www.lls.org/finances/copay
+    desc: Disease-specific copay assistance for blood-cancer patients
+  - name: LRF Financial Assistance
+    url: https://lymphoma.org/resources/financial-assistance/
+    desc: Lymphoma-specific financial-resource navigation
+
+side_effects:
+  - name: NCCN Distress Management (patient)
+    url: https://www.nccn.org/patients/guidelines/content/PDF/distress-patient.pdf
+    desc: Anxiety, sleep, mood — cross-cutting
+  - name: ASCO Survivorship Care (Cancer.Net)
+    url: https://www.cancer.net/survivorship
+    desc: Survivorship resources
+
+palliative_supportive:
+  - name: Get Palliative Care
+    url: https://getpalliativecare.org
+    desc: Find palliative care providers
+  - name: CaringInfo (NHPCO)
+    url: https://www.caringinfo.org
+    desc: Advance care planning + hospice information
+
+caregiver:
+  - name: ACS Caregiver Resource Guide
+    url: https://www.cancer.org/cancer/caregivers.html
+    desc: Practical guidance for supporting someone with lymphoma
+  - name: LLS Caregiver Resources
+    url: https://www.lls.org/support/caregiver-support
+    desc: Blood-cancer-specific caregiver support

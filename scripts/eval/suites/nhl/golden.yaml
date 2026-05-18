@@ -1,0 +1,97 @@
+# NHL golden eval — prompts the pipeline should answer well across subtypes.
+
+prompts:
+  - id: nhl_dlbcl_rchop
+    query: "I have DLBCL. What is R-CHOP?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [rituximab]
+      forbids_keywords: ["you should ", "you must "]
+      expect_sources_gte: 1
+
+  - id: nhl_dlbcl_polarix
+    query: "What is Pola-R-CHP and how is it different from R-CHOP?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [polatuzumab]
+
+  - id: nhl_follicular_watchful_waiting
+    query: "I have follicular lymphoma and my doctor wants to watch and wait. Why not treat now?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you should ", "you must "]
+
+  - id: nhl_cll_btk_inhibitors
+    query: "What is a BTK inhibitor for CLL and which ones are used?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [acalabrutinib]
+
+  - id: nhl_cll_sll_same
+    query: "Is SLL the same as CLL?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [same]
+
+  - id: nhl_mcl_brutinib
+    query: "I have mantle cell lymphoma. What are my treatment options?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you should "]
+
+  - id: nhl_car_t_dlbcl
+    query: "My DLBCL has come back. Am I a candidate for CAR-T therapy?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [CAR]
+
+  - id: nhl_bispecific
+    query: "What is a bispecific antibody and how is it different from CAR-T?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: nhl_cytokine_release_syndrome
+    query: "What is cytokine release syndrome and what should I watch for?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [fever]
+
+  - id: nhl_b_symptoms
+    query: "I've been having night sweats and losing weight. Should I worry about my lymphoma coming back?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: nhl_ptcl_a_chp
+    query: "I have CD30-positive peripheral T-cell lymphoma. What treatment options do I have?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [brentuximab]
+
+  - id: nhl_surveillance_imaging
+    query: "After my lymphoma is in remission, will I need regular CT scans to check on it?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: nhl_vaccination_after_rituximab
+    query: "I just finished rituximab. When can I get my flu shot?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: nhl_greeting
+    query: "Hello"
+    expect:
+      route: selected
+      should_reject: false

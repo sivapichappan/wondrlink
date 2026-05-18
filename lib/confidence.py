@@ -373,11 +373,19 @@ _CRISIS_PATTERNS: List[Tuple[str, CrisisCategory]] = [
     ("cant stop bleeding", "medical_emergency"),
     # --- Stroke ---
     ("slurred speech", "medical_emergency"),
+    ("speech is slurred", "medical_emergency"),
+    ("speech is slurring", "medical_emergency"),
+    ("slurring my speech", "medical_emergency"),
     ("numb on one side", "medical_emergency"),
     ("face drooping", "medical_emergency"),
     # --- Spinal cord compression (oncology emergency) ---
     ("legs feel weak", "medical_emergency"),
     ("legs feel numb", "medical_emergency"),
+    ("legs are weak", "medical_emergency"),
+    ("legs getting weak", "medical_emergency"),
+    ("legs are numb", "medical_emergency"),
+    ("legs are getting weak", "medical_emergency"),
+    ("legs are getting numb", "medical_emergency"),
     # --- Raised ICP / brain metastases / intracranial bleed.
     #     Severe headache + confusion is the classic oncology red flag.
     ("severe headache", "medical_emergency"),
@@ -404,6 +412,8 @@ _CRISIS_PATTERNS: List[Tuple[str, CrisisCategory]] = [
     # coagulable), or anthracycline cardiotoxicity. Urgent-oncology rather
     # than full medical_emergency unless paired with "severe".
     ("shortness of breath", "urgent_oncology"),
+    ("short of breath", "urgent_oncology"),
+    ("getting very short of breath", "urgent_oncology"),
     ("dry cough", "urgent_oncology"),
     ("new cough", "urgent_oncology"),
     ("trouble catching my breath", "urgent_oncology"),
