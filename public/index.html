@@ -19,7 +19,7 @@
     <!-- Fonts: Geist (sans/UI) + Fraunces (serif accent for wordmark/headlines) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
     <style>
 
         * {
@@ -144,6 +144,24 @@
 
             /* Mobile header */
             --header-bg: var(--primary);
+
+            /* Bot-response design system — Claude-style inline article.
+               Lives alongside --primary tokens; only the new .bot-msg
+               components consume these. */
+            --brand-900: #0E3A31;
+            --brand-700: #1F5D4F;
+            --brand-500: #3F8F7C;
+            --brand-50:  #F0F5F3;
+            --ink-900: #0C1513;
+            --ink-700: #2B3633;
+            --ink-600: #475450;
+            --ink-500: #6A7773;
+            --ink-400: #8E9893;
+            --ink-300: #B8C0BC;
+            --line-strong: #D8DED9;
+            --line:        #E8ECE9;
+            --line-soft:   #F0F3F1;
+            --bg-warm: #F6F4EE;
         }
 
         body {
@@ -2037,11 +2055,527 @@
         }
 
         /* ===========================================================
-           BOT RESPONSE CARD
-           Bot messages live inside a single card so the bubble, status
-           badges, follow-ups, resources, sources, and feedback all share
-           one outline. The legacy green left-bar on .bubble.bot is gone
-           inside the card; the card carries the visual identity.
+           BOT MESSAGE — inline-article system (Claude-style)
+           One coherent composition: avatar + body. Body has meta-strip,
+           prose, response-extras (followups / resources / trials /
+           citations), and a feedback row. No chat-bubble framing — the
+           response sits inline against the page background.
+           =========================================================== */
+        .bot-msg {
+            display: flex;
+            gap: 18px;
+            max-width: 100%;
+            background: transparent;
+            border: none;
+            padding: 0;
+            box-shadow: none;
+        }
+
+        .bot-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--brand-900);
+            color: #fff;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: "Newsreader", Georgia, serif;
+            font-weight: 600;
+            font-size: 16px;
+            margin-top: 2px;
+            user-select: none;
+        }
+
+        .bot-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* Meta strip — verified / NCCN / time / location, joined by gray dots. */
+        .bot-msg .meta-strip {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 12px;
+            color: var(--ink-500);
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        .bot-msg .meta-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+            letter-spacing: 0.01em;
+        }
+        .bot-msg .meta-item.verified { color: var(--brand-700); }
+        .bot-msg .meta-item.verified .icon-stroke { stroke: var(--brand-700); }
+        .bot-msg .meta-item .icon-stroke,
+        .bot-msg .meta-item svg {
+            width: 12px;
+            height: 12px;
+        }
+        .bot-msg .meta-dot {
+            width: 3px;
+            height: 3px;
+            border-radius: 50%;
+            background: var(--ink-300);
+            flex-shrink: 0;
+        }
+
+        /* Prose body — Geist 15.5 / 1.65, max 68ch, inline citations. */
+        .bot-msg .prose {
+            font-family: "Geist", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+            font-size: 15.5px;
+            line-height: 1.65;
+            color: var(--ink-900);
+            max-width: 68ch;
+            font-feature-settings: "ss01", "ss02", "cv11";
+        }
+        .bot-msg .prose p { margin: 0 0 14px; }
+        .bot-msg .prose p:last-child { margin-bottom: 0; }
+        .bot-msg .prose strong { font-weight: 600; color: var(--ink-900); }
+        .bot-msg .prose h1,
+        .bot-msg .prose h2,
+        .bot-msg .prose h3 {
+            font-family: "Newsreader", Georgia, serif;
+            font-optical-sizing: auto;
+            color: var(--ink-900);
+            line-height: 1.25;
+            letter-spacing: -0.005em;
+            margin: 18px 0 8px;
+            font-weight: 600;
+        }
+        .bot-msg .prose h1 { font-size: 19px; }
+        .bot-msg .prose h2 { font-size: 17px; }
+        .bot-msg .prose h3 { font-size: 15px; }
+        .bot-msg .prose h1:first-child,
+        .bot-msg .prose h2:first-child,
+        .bot-msg .prose h3:first-child,
+        .bot-msg .prose p:first-child { margin-top: 0; }
+        .bot-msg .prose ul,
+        .bot-msg .prose ol {
+            margin: 0 0 14px 22px;
+            padding: 0;
+        }
+        .bot-msg .prose li { margin: 0 0 6px; }
+        .bot-msg .prose li:last-child { margin-bottom: 0; }
+        .bot-msg .prose a {
+            color: var(--brand-700);
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: border-color var(--transition);
+        }
+        .bot-msg .prose a:hover { border-bottom-color: var(--brand-700); }
+
+        /* Inline citation marker — superscript [N] with dotted underline. */
+        .bot-msg .cite-ref {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--brand-700);
+            vertical-align: super;
+            line-height: 1;
+            padding: 0 2px 0 3px;
+            cursor: pointer;
+            font-feature-settings: "tnum";
+            border-bottom: 1px dotted var(--brand-500);
+            transition: background var(--transition);
+            border-radius: 2px;
+        }
+        .bot-msg .cite-ref:hover,
+        .bot-msg .cite-ref:focus-visible {
+            background: var(--brand-50);
+            outline: none;
+        }
+
+        /* Lucide icon swapped in from emoji (rendered inline with prose). */
+        .bot-msg .prose .inline-icon {
+            display: inline-flex;
+            align-items: center;
+            vertical-align: -2px;
+            color: var(--brand-700);
+            margin: 0 2px;
+        }
+        .bot-msg .prose .inline-icon svg {
+            width: 15px;
+            height: 15px;
+            stroke-width: 2;
+        }
+
+        /* Response-extras container — one top border, sections inside. */
+        .bot-msg .response-extras {
+            margin-top: 22px;
+            border-top: 1px solid var(--line);
+        }
+        .bot-msg .response-extras[hidden] { display: none; }
+        .bot-msg .response-extras .section {
+            padding: 18px 0;
+            border-bottom: 1px solid var(--line-soft);
+        }
+        .bot-msg .response-extras .section:last-child {
+            border-bottom: none;
+            padding-bottom: 4px;
+        }
+        .bot-msg .response-extras .section-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .bot-msg .response-extras .section-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink-500);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .bot-msg .response-extras .section-label .icon-stroke,
+        .bot-msg .response-extras .section-label svg {
+            width: 13px;
+            height: 13px;
+            stroke: var(--ink-400);
+        }
+        .bot-msg .response-extras .section-meta {
+            font-size: 11.5px;
+            color: var(--ink-400);
+        }
+
+        /* Follow-up rows — full-width, hairline dividers, arrow square on right. */
+        .bot-msg .followups {
+            display: flex;
+            flex-direction: column;
+        }
+        .bot-msg .followup {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 11px 0;
+            border-top: 1px solid var(--line-soft);
+            cursor: pointer;
+            color: var(--ink-700);
+            font-size: 14.5px;
+            line-height: 1.4;
+            background: transparent;
+            border-left: none;
+            border-right: none;
+            border-bottom: none;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+            transition: color 0.12s, padding 0.12s;
+        }
+        .bot-msg .followup:first-child {
+            border-top: none;
+            padding-top: 4px;
+        }
+        .bot-msg .followup .text { flex: 1; }
+        .bot-msg .followup .arrow {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            background: var(--line-soft);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+        .bot-msg .followup .arrow .icon-stroke,
+        .bot-msg .followup .arrow svg {
+            width: 13px;
+            height: 13px;
+            stroke: var(--ink-500);
+            transition: transform 0.15s, stroke 0.15s;
+        }
+        .bot-msg .followup:hover { color: var(--brand-900); }
+        .bot-msg .followup:hover .arrow { background: var(--brand-900); }
+        .bot-msg .followup:hover .arrow .icon-stroke,
+        .bot-msg .followup:hover .arrow svg {
+            stroke: #fff;
+            transform: translateX(2px);
+        }
+
+        /* Resource chips — favicon + label + external icon. */
+        .bot-msg .resource-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .bot-msg .resource {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px 6px 8px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            background: #fff;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--ink-700);
+            text-decoration: none;
+            transition: border-color 0.12s, color 0.12s;
+        }
+        .bot-msg .resource:hover {
+            border-color: var(--ink-400);
+            color: var(--brand-900);
+        }
+        .bot-msg .resource .favicon {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            background: var(--brand-50);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            font-weight: 700;
+            color: var(--brand-700);
+            flex-shrink: 0;
+            text-transform: uppercase;
+        }
+        .bot-msg .resource .ext-ico {
+            width: 11px;
+            height: 11px;
+            opacity: 0.5;
+            margin-left: 2px;
+            stroke-width: 2;
+        }
+
+        /* Sources list — § serif marker, title + subline, hover reveal. */
+        .bot-msg .sources {
+            display: flex;
+            flex-direction: column;
+        }
+        .bot-msg .source {
+            display: flex;
+            align-items: baseline;
+            gap: 14px;
+            padding: 10px 0;
+            border-top: 1px solid var(--line-soft);
+            font-size: 13.5px;
+            cursor: pointer;
+            transition: padding 0.12s, background 0.6s ease-out;
+            border-radius: 4px;
+        }
+        .bot-msg .source:first-child {
+            border-top: none;
+            padding-top: 4px;
+        }
+        .bot-msg .source:hover { padding-left: 4px; }
+        .bot-msg .source.cite-flash {
+            background: var(--brand-50);
+        }
+        .bot-msg .source-num {
+            font-family: "Newsreader", Georgia, serif;
+            font-feature-settings: "tnum";
+            color: var(--brand-700);
+            font-weight: 600;
+            font-size: 14px;
+            min-width: 28px;
+            letter-spacing: -0.01em;
+            flex-shrink: 0;
+        }
+        .bot-msg .source-body {
+            flex: 1;
+            min-width: 0;
+        }
+        .bot-msg .source-title {
+            color: var(--ink-900);
+            font-weight: 500;
+        }
+        .bot-msg .source-sub {
+            font-size: 12px;
+            color: var(--ink-500);
+            margin-top: 2px;
+        }
+        .bot-msg .source-action {
+            font-size: 11.5px;
+            color: var(--ink-400);
+            opacity: 0;
+            transition: opacity 0.12s, color 0.12s;
+            flex-shrink: 0;
+        }
+        .bot-msg .source:hover .source-action {
+            opacity: 1;
+            color: var(--brand-700);
+        }
+
+        /* Clinical trials summary card — warm header, collapsed body. */
+        .bot-msg .trial-row {
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: #fff;
+            overflow: hidden;
+        }
+        .bot-msg .trial-summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            background: var(--bg-warm);
+            border-bottom: 1px solid var(--line);
+            cursor: pointer;
+            gap: 12px;
+        }
+        .bot-msg .trial-summary-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+            flex: 1;
+        }
+        .bot-msg .trial-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            background: var(--brand-900);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .bot-msg .trial-icon .icon-stroke,
+        .bot-msg .trial-icon svg {
+            width: 14px;
+            height: 14px;
+            stroke: #fff;
+        }
+        .bot-msg .trial-summary h4 {
+            margin: 0;
+            font-size: 14.5px;
+            font-weight: 600;
+            color: var(--ink-900);
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .bot-msg .trial-count {
+            font-weight: 400;
+            color: var(--ink-500);
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        .bot-msg .trial-summary-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--ink-500);
+            font-size: 12px;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+        .bot-msg .trial-summary:hover .trial-summary-right { color: var(--brand-900); }
+        .bot-msg .trial-summary-right .icon-stroke,
+        .bot-msg .trial-summary-right svg {
+            width: 14px;
+            height: 14px;
+            stroke: currentColor;
+            transition: transform 0.15s;
+        }
+        .bot-msg .trial-row.expanded .trial-summary-right .icon-stroke,
+        .bot-msg .trial-row.expanded .trial-summary-right svg {
+            transform: rotate(90deg);
+        }
+        .bot-msg .trial-row .trial-body[hidden] { display: none; }
+        .bot-msg .trial-body {
+            padding: 14px 16px;
+            font-size: 13.5px;
+            color: var(--ink-600);
+            line-height: 1.55;
+        }
+        .bot-msg .trial-body-intro {
+            margin: 0 0 10px;
+        }
+        .bot-msg .trial-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            font-size: 13px;
+            margin: 10px 0 14px;
+        }
+        .bot-msg .trial-links a {
+            color: var(--brand-700);
+            text-decoration: none;
+            font-weight: 500;
+            border-bottom: 1px solid transparent;
+            padding-bottom: 1px;
+        }
+        .bot-msg .trial-links a:hover { border-bottom-color: var(--brand-700); }
+
+        /* Feedback row — top-bordered, ghost icon buttons, latency stamp. */
+        .bot-msg .feedback {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 22px;
+            padding-top: 18px;
+            border-top: 1px solid var(--line);
+        }
+        .bot-msg .fb-btn {
+            width: 30px;
+            height: 30px;
+            border: 1px solid transparent;
+            border-radius: 7px;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--ink-400);
+            transition: background 0.12s, color 0.12s;
+            padding: 0;
+        }
+        .bot-msg .fb-btn:hover {
+            background: var(--line-soft);
+            color: var(--ink-700);
+        }
+        .bot-msg .fb-btn.selected {
+            background: var(--brand-50);
+            color: var(--brand-700);
+            border-color: var(--brand-500);
+        }
+        .bot-msg .fb-btn .icon-stroke,
+        .bot-msg .fb-btn svg {
+            width: 15px;
+            height: 15px;
+        }
+        .bot-msg .fb-spacer { flex: 1; }
+        .bot-msg .fb-stamp {
+            font-size: 11.5px;
+            color: var(--ink-400);
+            font-feature-settings: "tnum";
+            letter-spacing: 0.005em;
+        }
+
+        /* Mobile: meta strip wraps, trial summary keeps single row via ellipsis. */
+        @media (max-width: 640px) {
+            .bot-msg { gap: 12px; }
+            .bot-avatar { width: 28px; height: 28px; font-size: 14px; }
+            .bot-msg .meta-strip { gap: 10px; }
+            .bot-msg .prose { font-size: 15px; }
+            .bot-msg .response-extras { margin-top: 18px; }
+            .bot-msg .response-extras .section { padding: 14px 0; }
+            .bot-msg .feedback { margin-top: 18px; padding-top: 14px; }
+        }
+
+        /* ===========================================================
+           LEGACY BOT RESPONSE CARD — retained only for backward compat
+           with any history-replay path that still creates the old DOM.
+           New addMessage() builds .bot-msg instead.
            =========================================================== */
         .bot-response-card {
             max-width: 78%;
@@ -2052,8 +2586,6 @@
             box-shadow: var(--shadow-xs);
             display: flex;
             flex-direction: column;
-            /* gap removed — spacing now managed per-child below so we can
-               pair gaps with hairline separators consistently. */
         }
 
         /* Reset row CONTAINERS so the card owns the visual identity.
@@ -9427,7 +9959,11 @@
             })[c]);
         }
 
-        // Feature 1: render inline [N] markers as hover-preview citation badges.
+        // Render inline [N] markers as superscript citation refs that scroll
+        // their matching source row into view + briefly flash it on click.
+        // The legacy `.citation` class is retained as an alias so the existing
+        // CSS hover-preview rules keep working alongside the new `.cite-ref`
+        // styling.
         // citations: { "1": {filename, section, preview}, "2": {...} }
         function renderCitations(text, citations) {
             if (!FEATURES.inlineCitations) return text;
@@ -9441,7 +9977,7 @@
                     const filename = c.filename || 'guideline';
                     const section = (c.section !== undefined && c.section !== null && c.section !== '') ? ` §${c.section}` : '';
                     const preview = c.preview || '';
-                    return '<sup class="citation" data-cite="' + n + '" tabindex="0">[' + n + ']' +
+                    return '<sup class="cite-ref citation" data-cite="' + n + '" tabindex="0" role="link" aria-label="Jump to source ' + n + '">[' + n + ']' +
                         '<span class="citation-preview">' +
                         '<span class="citation-preview-title">' + escapeHtml(filename + section) + '</span>' +
                         '<span class="citation-preview-text">' + escapeHtml(preview) + '</span>' +
@@ -9450,325 +9986,543 @@
             });
         }
 
+        // Emoji-to-Lucide substitution. The LLM occasionally returns bullet
+        // emoji (📖 💬 ⚠️ 📝 🆘) which don't match the rest of the UI's icon
+        // language. Swap them for inline Lucide markers so they pick up the
+        // brand stroke + color set by .bot-msg .prose .inline-icon CSS.
+        const EMOJI_TO_LUCIDE = {
+            '📖': 'book-open',
+            '💬': 'message-circle',
+            '⚠️': 'alert-triangle',
+            '⚠':  'alert-triangle',
+            '📝': 'clipboard-list',
+            '🆘': 'life-buoy',
+            '🩺': 'stethoscope',
+            '💊': 'pill',
+            '🔬': 'microscope',
+        };
+        function swapEmojiToLucide(html) {
+            if (!html) return html;
+            let out = html;
+            for (const [emoji, name] of Object.entries(EMOJI_TO_LUCIDE)) {
+                // Replace globally; rendering happens once per message so this
+                // is cheap. Use a literal search/replace via split-join since
+                // emoji include combining characters that can confuse regex.
+                if (out.indexOf(emoji) !== -1) {
+                    out = out.split(emoji).join(
+                        '<span class="inline-icon" aria-hidden="true"><i data-lucide="' + name + '" class="icon-stroke"></i></span>'
+                    );
+                }
+            }
+            return out;
+        }
+
+        // Delegated click handler: clicking a [N] superscript scrolls the
+        // matching .source[data-num="N"] row into view and toggles a one-time
+        // `.cite-flash` class for an 800ms background flash.
+        document.addEventListener('click', function(e) {
+            const cite = e.target.closest && e.target.closest('.cite-ref');
+            if (!cite) return;
+            const num = cite.getAttribute('data-cite');
+            if (!num) return;
+            // Find the matching source row within this bot message.
+            const botMsg = cite.closest('.bot-msg');
+            if (!botMsg) return;
+            const target = botMsg.querySelector('.source[data-num="' + num + '"]');
+            if (!target) return;
+            e.preventDefault();
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            target.classList.add('cite-flash');
+            setTimeout(() => target.classList.remove('cite-flash'), 800);
+        });
+
         function addMessage(text, who = "bot", metadata = null) {
             const div = document.createElement("div");
             div.className = "msg " + who;
 
-            // Bot messages live inside a unified .bot-response-card so the
-            // answer, status badges, follow-up chips, resources, sources, and
-            // feedback all share one border, padding, and visual identity.
-            // User messages and the transient "thinking..." placeholder skip
-            // the wrapper — the placeholder would otherwise show a chunky
-            // card padded around three tiny animated dots.
             const isThinking = (who === "bot" && typeof text === "string" && text.includes("thinking-dots"));
-            const container = (who === "bot" && !isThinking) ? document.createElement("div") : div;
-            if (who === "bot" && !isThinking) {
-                container.className = "bot-response-card";
-                div.appendChild(container);
+
+            // ===== User message OR transient "thinking" placeholder =====
+            // Both keep the legacy bubble. Only the user bubble is visible chat
+            // chrome now; the thinking placeholder is just three animated dots.
+            if (who === "user" || isThinking) {
+                const bubble = document.createElement("div");
+                bubble.className = "bubble " + who;
+                if (who === "user") {
+                    bubble.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
+                } else {
+                    bubble.innerHTML = text;
+                }
+                div.appendChild(bubble);
+                messages.appendChild(div);
+                messages.scrollTop = messages.scrollHeight;
+                return;
             }
 
-            const bubble = document.createElement("div");
-            bubble.className = "bubble " + who;
-            if (who === "bot") {
-                // Bot messages get markdown rendering + inline citation badges.
-                bubble.innerHTML = renderBubbleHtml(text, metadata && metadata.citations);
-            } else {
-                // User messages stay plain text with linebreak conversion only.
-                bubble.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
-            }
-            container.appendChild(bubble);
+            // ===== Bot message — inline-article layout =====
+            // .msg.bot > .bot-msg > [.bot-avatar, .bot-body]
+            // .bot-body > [.meta-strip, .prose, .response-extras, .feedback]
+            const botMsg = document.createElement("div");
+            botMsg.className = "bot-msg";
 
-            if (who === "bot" && metadata && metadata.patient_context_used) {
-                const status = document.createElement("div");
-                status.className = "ai-status enhanced";
-                status.textContent = "Personalized response";
-                container.appendChild(status);
-            }
+            const avatar = document.createElement("div");
+            avatar.className = "bot-avatar";
+            avatar.textContent = "W";
+            botMsg.appendChild(avatar);
 
-            if (who === "bot" && metadata && metadata.has_guidelines) {
-                const guidelineStatus = document.createElement("div");
-                guidelineStatus.className = "ai-status guidelines";
-                guidelineStatus.innerHTML = '<span class="guideline-dot"></span> Medical Guidelines';
-                guidelineStatus.title = metadata.guidelines_used ? metadata.guidelines_used.join(', ') : 'Evidence-based guidance';
-                container.appendChild(guidelineStatus);
-            }
+            const body = document.createElement("div");
+            body.className = "bot-body";
+            botMsg.appendChild(body);
 
-            // Phase B.2 — follow-up suggestion chips (interactive). Render right
-            // below the bubble so they read as "what to ask next."
-            if (who === "bot" && metadata && Array.isArray(metadata.followups) && metadata.followups.length > 0) {
-                const followupsRow = document.createElement("div");
-                followupsRow.className = "msg-followups";
+            // ---- Meta strip ----
+            const metaStrip = buildMetaStrip(metadata);
+            if (metaStrip) body.appendChild(metaStrip);
+
+            // ---- Prose (markdown + inline citations + emoji-to-Lucide) ----
+            const prose = document.createElement("div");
+            prose.className = "prose";
+            prose.innerHTML = renderBubbleHtml(text, metadata && metadata.citations);
+            body.appendChild(prose);
+
+            // ---- Response-extras (followups / resources / trials / citations) ----
+            const extras = document.createElement("div");
+            extras.className = "response-extras";
+            let extrasHasContent = false;
+
+            // Suggested follow-ups
+            if (metadata && Array.isArray(metadata.followups) && metadata.followups.length > 0) {
+                const sec = document.createElement("div");
+                sec.className = "section section-followups";
+                sec.innerHTML = `
+                    <div class="section-head">
+                        <div class="section-label"><i data-lucide="message-circle" class="icon-stroke"></i>Suggested follow-ups</div>
+                    </div>
+                    <div class="followups"></div>
+                `;
+                const list = sec.querySelector('.followups');
                 metadata.followups.forEach(q => {
-                    const chip = document.createElement("button");
-                    chip.type = "button";
-                    chip.className = "followup-chip";
-                    chip.onclick = () => askSuggestion(chip);
-                    chip.innerHTML = '<span>' + escapeHtml(q) + '</span><i data-lucide="arrow-right" class="icon-stroke sm"></i>';
-                    followupsRow.appendChild(chip);
+                    const row = document.createElement("button");
+                    row.type = "button";
+                    row.className = "followup";
+                    row.onclick = () => askSuggestion(row);
+                    row.innerHTML =
+                        '<span class="text">' + escapeHtml(q) + '</span>' +
+                        '<span class="arrow"><i data-lucide="arrow-right" class="icon-stroke"></i></span>';
+                    list.appendChild(row);
                 });
-                container.appendChild(followupsRow);
+                extras.appendChild(sec);
+                extrasHasContent = true;
             }
 
-            // Phase A.2 — trusted resources as a subtle row, not inline in text.
-            if (who === "bot" && metadata && Array.isArray(metadata.resources) && metadata.resources.length > 0) {
-                const resourcesRow = document.createElement("div");
-                resourcesRow.className = "msg-resources";
-                const label = document.createElement("span");
-                label.className = "msg-resources-label";
-                label.innerHTML = '<i data-lucide="book-open" class="icon-stroke sm"></i>Trusted resources';
-                resourcesRow.appendChild(label);
+            // Trusted resources
+            if (metadata && Array.isArray(metadata.resources) && metadata.resources.length > 0) {
+                const sec = document.createElement("div");
+                sec.className = "section section-resources";
+                sec.innerHTML = `
+                    <div class="section-head">
+                        <div class="section-label"><i data-lucide="book-open" class="icon-stroke"></i>Trusted resources</div>
+                    </div>
+                    <div class="resource-row"></div>
+                `;
+                const row = sec.querySelector('.resource-row');
                 metadata.resources.forEach(r => {
                     const link = document.createElement("a");
                     link.href = r.url;
                     link.target = "_blank";
                     link.rel = "noopener noreferrer";
-                    link.className = "msg-resource-link";
-                    link.textContent = r.name || "Resource";
-                    resourcesRow.appendChild(link);
+                    link.className = "resource";
+                    const initial = (r.name || "?").trim().charAt(0).toUpperCase();
+                    link.innerHTML =
+                        '<span class="favicon">' + escapeHtml(initial) + '</span>' +
+                        escapeHtml(r.name || "Resource") +
+                        '<svg class="ext-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+                    row.appendChild(link);
                 });
-                container.appendChild(resourcesRow);
+                extras.appendChild(sec);
+                extrasHasContent = true;
             }
 
-            if (who === "bot" && metadata && metadata.sources && metadata.sources.length > 0) {
-                const sourcesDiv = document.createElement("div");
-                sourcesDiv.className = "msg-sources";
+            // Clinical trials — summary card with View-all toggle
+            if (metadata && metadata.clinical_trials) {
+                const trialSec = buildTrialsSection(metadata.clinical_trials);
+                if (trialSec) {
+                    extras.appendChild(trialSec);
+                    extrasHasContent = true;
+                }
+            }
 
-                const header = document.createElement("div");
-                header.className = "msg-sources-header";
-                header.textContent = "Sources used in this response";
-                sourcesDiv.appendChild(header);
-
-                metadata.sources.forEach(source => {
+            // Sources / citations — § serif markers with click-to-flash
+            if (metadata && Array.isArray(metadata.sources) && metadata.sources.length > 0) {
+                const sec = document.createElement("div");
+                sec.className = "section section-citations";
+                sec.innerHTML = `
+                    <div class="section-head">
+                        <div class="section-label"><i data-lucide="bookmark" class="icon-stroke"></i>Citations · ${metadata.sources.length} source${metadata.sources.length === 1 ? '' : 's'}</div>
+                        <span class="section-meta">Click § for excerpt</span>
+                    </div>
+                    <div class="sources"></div>
+                `;
+                const list = sec.querySelector('.sources');
+                metadata.sources.forEach((source, idx) => {
                     const item = document.createElement("div");
-                    item.className = "source-item";
+                    item.className = "source";
+                    const num = (source.cite_num !== undefined && source.cite_num !== null) ? source.cite_num : (idx + 1);
+                    item.setAttribute('data-num', num);
 
-                    // Prefer the backend's friendly display name; fall back to a
-                    // cleaned-up filename for sources not in the friendly map.
                     let displayTitle = source.display_name || source.title || "";
                     if (!source.display_name) {
                         displayTitle = displayTitle.replace(/\.pdf$/i, '').replace(/_/g, ' ');
                     }
-                    if (displayTitle.length > 60) {
-                        displayTitle = displayTitle.substring(0, 58) + '...';
+                    if (displayTitle.length > 80) {
+                        displayTitle = displayTitle.substring(0, 78) + '…';
                     }
 
-                    const titleEl = document.createElement("div");
-                    titleEl.className = "source-item-title";
-                    titleEl.textContent = displayTitle;
-                    item.appendChild(titleEl);
+                    const publisher = source.publisher || source.guideline_org || '';
+                    const year = source.year || '';
+                    const sectionRef = (source.section !== undefined && source.section !== null && source.section !== '')
+                        ? `§${source.section}` : '';
+                    const subParts = [publisher, year, sectionRef].filter(Boolean);
+                    const subText = subParts.join(' · ');
 
-                    if (source.section !== undefined && source.section !== null && source.section !== '') {
-                        const sectionEl = document.createElement("div");
-                        sectionEl.className = "source-item-section";
-                        sectionEl.textContent = `§${source.section}`;
-                        item.appendChild(sectionEl);
-                    }
+                    item.innerHTML =
+                        '<span class="source-num">§' + escapeHtml(String(num)) + '</span>' +
+                        '<div class="source-body">' +
+                            '<div class="source-title">' + escapeHtml(displayTitle) + '</div>' +
+                            (subText ? '<div class="source-sub">' + escapeHtml(subText) + '</div>' : '') +
+                        '</div>' +
+                        (source.preview ? '<span class="source-action">Read excerpt →</span>' : '');
 
                     if (source.preview) {
-                        const previewEl = document.createElement("div");
-                        previewEl.className = "source-item-preview";
-                        previewEl.textContent = source.preview;
-                        item.appendChild(previewEl);
+                        item.title = source.preview;
                     }
-
-                    sourcesDiv.appendChild(item);
+                    list.appendChild(item);
                 });
-
-                container.appendChild(sourcesDiv);
+                extras.appendChild(sec);
+                extrasHasContent = true;
             }
 
-            // Render clinical trials collapsible section INSIDE the bubble
-            if (who === "bot" && metadata && metadata.clinical_trials) {
-                const trialsData = metadata.clinical_trials;
-
-                if (trialsData.error) {
-                    // Show error message (including incomplete_profile)
-                    const errorDiv = document.createElement("div");
-                    errorDiv.className = "clinical-trials-section";
-                    let errorHtml = `<div class="clinical-trials-no-results">`;
-                    if (trialsData.error === 'incomplete_profile') {
-                        errorHtml += `<p>${trialsData.message || 'Please complete your profile to search for clinical trials.'}</p>`;
-                        if (trialsData.missing_critical && trialsData.missing_critical.length > 0) {
-                            errorHtml += `<p style="font-size:10px;color:var(--text-muted);">Missing: ${trialsData.missing_critical.join(', ')}</p>`;
-                        }
-                    } else {
-                        errorHtml += `<p>${trialsData.message || 'Unable to search for clinical trials.'}</p>`;
-                    }
-                    errorHtml += `</div>`;
-                    errorDiv.innerHTML = errorHtml;
-                    bubble.appendChild(errorDiv);
-                } else if (trialsData.trials && trialsData.trials.length > 0) {
-                    const trialsSection = document.createElement("div");
-                    trialsSection.className = "clinical-trials-section collapsed";
-
-                    // Build trials HTML - more compact
-                    let trialsHtml = `
-                        <div class="clinical-trials-header" onclick="this.parentElement.classList.toggle('collapsed'); if(!this.parentElement.classList.contains('collapsed')){addJargonTooltips(this.parentElement.querySelector('.clinical-trials-content'));}">
-                            <div class="clinical-trials-header-left">
-                                <span class="clinical-trials-icon"></span>
-                                <span class="clinical-trials-title">Clinical Trials</span>
-                                <span class="clinical-trials-count">(${trialsData.found} near you)</span>
-                            </div>
-                            <div class="clinical-trials-toggle">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="6 9 12 15 18 9"></polyline>
-                                </svg>
-                            </div>
-                        </div>
-                        <div class="clinical-trials-content">
-                            <div class="clinical-trials-disclaimer">
-                                <span class="clinical-trials-disclaimer-icon" role="img" aria-label="Warning">&#x26A0;&#xFE0F;</span>
-                                <span>Trial information was retrieved from ClinicalTrials.gov and may have changed. Always verify availability directly with the trial site or your oncologist.</span>
-                            </div>
-                    `;
-
-                    trialsData.trials.forEach(trial => {
-                        const statusClass = trial.status === 'RECRUITING' ? 'status' : 'status active';
-                        const statusText = trial.status === 'RECRUITING' ? 'Recruiting' :
-                                           trial.status === 'ACTIVE_NOT_RECRUITING' ? 'Active' : trial.status;
-
-                        // Get first location with distance
-                        const location = trial.locations && trial.locations.length > 0 ? trial.locations[0] : null;
-                        const locationCity = location ? `${location.city || ''}, ${location.state || ''}` : '';
-                        const distanceHtml = location && location.distance_miles !== null && location.distance_miles !== undefined
-                            ? `<span class="trial-distance">${location.distance_miles} mi</span>`
-                            : '';
-
-                        // Relevance match — animated progress ring (Phase D.2)
-                        const score = trial.relevance_score || 50;
-                        let matchClass, matchText;
-                        if (score >= 70) { matchClass = 'strong'; matchText = 'Strong match'; }
-                        else if (score >= 55) { matchClass = 'moderate'; matchText = 'Moderate match'; }
-                        else { matchClass = 'general'; matchText = 'General match'; }
-                        const matchBadge = `
-                            <span class="trial-match-ring ${matchClass}" data-score="${score}" title="${matchText}" aria-label="${matchText}: ${score} out of 100">
-                                <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
-                                    <circle class="trial-ring-bg" cx="17" cy="17" r="13" fill="none" stroke-width="3"></circle>
-                                    <circle class="trial-ring-fill" cx="17" cy="17" r="13" fill="none" stroke-width="3"
-                                        stroke-linecap="round" stroke-dasharray="81.68" stroke-dashoffset="81.68"
-                                        transform="rotate(-90 17 17)"></circle>
-                                </svg>
-                                <span class="trial-match-ring-score" data-target="${score}">0</span>
-                            </span>`;
-
-                        // Relevance reasons
-                        const reasons = trial.relevance_reasons || [];
-                        const reasonsHtml = reasons.length > 0
-                            ? `<div class="trial-reasons">${reasons.slice(0, 3).join(' · ')}</div>`
-                            : '';
-
-                        // Warnings
-                        const warnings = trial.relevance_warnings || [];
-                        const warningsHtml = warnings.length > 0
-                            ? `<div class="trial-warnings"><i data-lucide="alert-triangle" class="icon-stroke sm"></i> ${warnings.slice(0, 2).join('; ')}</div>`
-                            : '';
-
-                        // Eligibility concern
-                        const ineligibleHtml = trial.likely_eligible === false
-                            ? `<div class="trial-ineligible">May not meet some eligibility criteria</div>`
-                            : '';
-
-                        // Truncate title
-                        const title = trial.title.length > 80 ? trial.title.substring(0, 77) + '...' : trial.title;
-
-                        const safeTitle = title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                        const isSaved = isTrialSaved(trial.nct_id);
-
-                        trialsHtml += `
-                            <div class="trial-card">
-                                <div class="trial-card-header">
-                                    <div class="trial-title"><a href="${trial.url}" target="_blank" rel="noopener noreferrer">${title}</a></div>
-                                    <button class="trial-save-btn ${isSaved ? 'saved' : ''}"
-                                        onclick="toggleSaveTrial(this, '${trial.nct_id}', '${safeTitle}', '${trial.phase || ''}', '${trial.url}')"
-                                        title="${isSaved ? 'Remove from watchlist' : 'Save to watchlist'}"
-                                        aria-label="${isSaved ? 'Remove from watchlist' : 'Save to watchlist'}">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="${isSaved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
-                                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-                                        </svg>
-                                    </button>
-                                </div>
-                                <div class="trial-meta">
-                                    <span class="trial-badge phase">${trial.phase || 'N/A'}</span>
-                                    <span class="trial-badge ${statusClass}">${statusText}</span>
-                                    ${matchBadge}
-                                    ${locationCity ? `<span class="trial-location-inline">${locationCity}</span>` : ''}
-                                    ${distanceHtml}
-                                </div>
-                                ${reasonsHtml}
-                                ${warningsHtml}
-                                ${ineligibleHtml}
-                            </div>
-                        `;
-                    });
-
-                    // Profile completeness tip
-                    if (trialsData.profile_completeness) {
-                        trialsHtml += `<div class="trial-profile-tip">${trialsData.profile_completeness}</div>`;
-                    }
-
-                    trialsHtml += `
-                        </div>
-                        <div class="clinical-trials-footer">
-                            <div>Discuss options with your oncologist before enrolling.</div>
-                            <div class="clinical-trials-finder-links">
-                                <a href="https://clinicaltrials.gov/search?cond=colorectal+cancer&aggFilters=status:rec" target="_blank" rel="noopener noreferrer">ClinicalTrials.gov</a>
-                                <span class="footer-separator">|</span>
-                                <a href="https://colorectalcancer.org/treatment/types-treatment/clinical-trials/clinical-trial-finder" target="_blank" rel="noopener noreferrer">CCA Trial Finder</a>
-                                <span class="footer-separator">|</span>
-                                <a href="https://www.cancer.gov/research/participate/clinical-trials-search" target="_blank" rel="noopener noreferrer">NCI Trial Search</a>
-                            </div>
-                        </div>
-                    `;
-
-                    trialsSection.innerHTML = trialsHtml;
-                    bubble.appendChild(trialsSection);
-                    // Phase D.2: animate the trial-match progress rings after the
-                    // cards have slid into view.
-                    requestAnimationFrame(() => animateTrialRings(trialsSection));
-                } else if (trialsData.found === 0) {
-                    // No trials found - compact
-                    const noTrialsDiv = document.createElement("div");
-                    noTrialsDiv.className = "clinical-trials-section";
-                    noTrialsDiv.innerHTML = `
-                        <div class="clinical-trials-no-results">
-                            <div style="display:flex;align-items:center;gap:8px;"><i data-lucide="microscope" class="icon-stroke"></i><span>No recruiting trials found matching your profile in your area. Try searching:</span></div>
-                            <div class="clinical-trials-finder-links" style="margin-top:4px;">
-                                <a href="https://clinicaltrials.gov/search?cond=colorectal+cancer&aggFilters=status:rec" target="_blank" rel="noopener noreferrer">ClinicalTrials.gov</a>
-                                <span class="footer-separator">|</span>
-                                <a href="https://colorectalcancer.org/treatment/types-treatment/clinical-trials/clinical-trial-finder" target="_blank" rel="noopener noreferrer">CCA Trial Finder</a>
-                                <span class="footer-separator">|</span>
-                                <a href="https://www.cancer.gov/research/participate/clinical-trials-search" target="_blank" rel="noopener noreferrer">NCI Trial Search</a>
-                            </div>
-                        </div>
-                    `;
-                    bubble.appendChild(noTrialsDiv);
-                }
+            if (extrasHasContent) {
+                body.appendChild(extras);
             }
 
-            // Show urgency banner if emergency/urgent detected
-            if (who === "bot" && metadata && metadata.urgency && metadata.urgency.detected) {
-                showUrgencyBanner(metadata.urgency);
-            }
+            // ---- Feedback row ----
+            const feedback = document.createElement("div");
+            feedback.className = "feedback";
+            const latencyTxt = formatLatencyStamp(metadata);
+            feedback.innerHTML = `
+                <button class="fb-btn" onclick="sendFeedback(this, 'up')" title="Helpful" aria-label="Mark as helpful"><i data-lucide="thumbs-up" class="icon-stroke"></i></button>
+                <button class="fb-btn" onclick="sendFeedback(this, 'down')" title="Not helpful" aria-label="Mark as not helpful"><i data-lucide="thumbs-down" class="icon-stroke"></i></button>
+                <button class="fb-btn" onclick="copyBotMessage(this)" title="Copy response" aria-label="Copy response"><i data-lucide="copy" class="icon-stroke"></i></button>
+                <button class="fb-btn" onclick="shareBotMessage(this)" title="Share with care team" aria-label="Share with care team"><i data-lucide="share-2" class="icon-stroke"></i></button>
+                <span class="fb-spacer"></span>
+                <span class="fb-stamp">${escapeHtml(latencyTxt)}</span>
+            `;
+            body.appendChild(feedback);
 
-            // Add feedback buttons to bot messages (skip thinking/loading indicators)
-            if (who === "bot" && !text.includes('thinking-dots')) {
-                const feedbackDiv = document.createElement("div");
-                feedbackDiv.className = "msg-feedback";
-                feedbackDiv.innerHTML = `
-                    <button class="feedback-btn" onclick="sendFeedback(this, 'up')" title="Helpful" aria-label="Mark as helpful"><i data-lucide="thumbs-up" class="icon-stroke sm"></i></button>
-                    <button class="feedback-btn" onclick="sendFeedback(this, 'down')" title="Not helpful" aria-label="Mark as not helpful"><i data-lucide="thumbs-down" class="icon-stroke sm"></i></button>
-                `;
-                container.appendChild(feedbackDiv);
-            }
-
+            div.appendChild(botMsg);
             messages.appendChild(div);
             messages.scrollTop = messages.scrollHeight;
 
-            // Render any newly-inserted Lucide placeholders (feedback btns, trial
-            // warnings, no-trials icon, etc.).
+            // Urgency banner is still a separate page-level overlay; unchanged.
+            if (metadata && metadata.urgency && metadata.urgency.detected) {
+                showUrgencyBanner(metadata.urgency);
+            }
+
+            // Render newly-inserted Lucide placeholders inside this message only.
             if (typeof lucide !== 'undefined') {
                 try { lucide.createIcons(); } catch (_) {}
             }
+        }
+
+        // Build the meta strip from response metadata. Returns the element or null.
+        function buildMetaStrip(metadata) {
+            const items = [];
+            const trials = metadata && metadata.clinical_trials;
+            const trialCount = trials && Array.isArray(trials.trials) ? trials.trials.length : 0;
+
+            // 1. Personalized (only when profile is active)
+            if (metadata && metadata.patient_context_used) {
+                items.push({
+                    cls: 'verified',
+                    icon: 'check-circle-2',
+                    text: 'Personalized for your profile',
+                });
+            }
+
+            // 2. Trial count OR NCCN guidelines (mutually exclusive — trials take
+            //    priority when present, mirroring Response 2 of the reference)
+            if (trialCount > 0) {
+                items.push({
+                    icon: 'map-pin',
+                    text: trialCount + ' trial' + (trialCount === 1 ? '' : 's') + ' near you',
+                });
+            } else if (metadata && metadata.has_guidelines) {
+                items.push({
+                    icon: 'book-open',
+                    text: 'Reviewed against NCCN guidelines',
+                    title: metadata.guidelines_used ? metadata.guidelines_used.join(', ') : 'Evidence-based guidance',
+                });
+            }
+
+            // 3. Timestamp — always shown
+            items.push({
+                icon: 'clock',
+                text: 'Updated just now',
+            });
+
+            if (items.length === 0) return null;
+
+            const strip = document.createElement('div');
+            strip.className = 'meta-strip';
+            items.forEach((it, idx) => {
+                if (idx > 0) {
+                    const dot = document.createElement('span');
+                    dot.className = 'meta-dot';
+                    strip.appendChild(dot);
+                }
+                const el = document.createElement('span');
+                el.className = 'meta-item' + (it.cls ? ' ' + it.cls : '');
+                if (it.title) el.title = it.title;
+                el.innerHTML = '<i data-lucide="' + it.icon + '" class="icon-stroke"></i>' + escapeHtml(it.text);
+                strip.appendChild(el);
+            });
+            return strip;
+        }
+
+        // Build the clinical-trials section. Collapsed-by-default summary card;
+        // tapping "View all" expands the existing detailed cards (unchanged
+        // match rings, eligibility flags, reasons, warnings) inside the body.
+        function buildTrialsSection(trialsData) {
+            const sec = document.createElement("div");
+            sec.className = "section section-trials";
+
+            // Error / incomplete-profile / no-results cases — surface a single
+            // compact card; no expand affordance, no details.
+            if (trialsData.error) {
+                const msg = trialsData.error === 'incomplete_profile'
+                    ? (trialsData.message || 'Please complete your profile to search for clinical trials.')
+                    : (trialsData.message || 'Unable to search for clinical trials.');
+                const missing = (trialsData.error === 'incomplete_profile' && Array.isArray(trialsData.missing_critical) && trialsData.missing_critical.length > 0)
+                    ? `<div class="trial-body-intro" style="margin-top:6px;font-size:12px;color:var(--ink-500);">Missing: ${escapeHtml(trialsData.missing_critical.join(', '))}</div>`
+                    : '';
+                sec.innerHTML = `
+                    <div class="trial-row">
+                        <div class="trial-summary" style="cursor:default;">
+                            <div class="trial-summary-left">
+                                <div class="trial-icon"><i data-lucide="flask-conical" class="icon-stroke"></i></div>
+                                <h4>Clinical Trials</h4>
+                            </div>
+                        </div>
+                        <div class="trial-body">
+                            <p class="trial-body-intro">${escapeHtml(msg)}</p>
+                            ${missing}
+                        </div>
+                    </div>
+                `;
+                return sec;
+            }
+            if (!Array.isArray(trialsData.trials) || trialsData.trials.length === 0) {
+                if (trialsData.found === 0) {
+                    sec.innerHTML = `
+                        <div class="trial-row">
+                            <div class="trial-summary" style="cursor:default;">
+                                <div class="trial-summary-left">
+                                    <div class="trial-icon"><i data-lucide="flask-conical" class="icon-stroke"></i></div>
+                                    <h4>Clinical Trials <span class="trial-count">none matching your profile</span></h4>
+                                </div>
+                            </div>
+                            <div class="trial-body">
+                                <p class="trial-body-intro">No recruiting trials matched your profile in your area. Try a wider search:</p>
+                                <div class="trial-links">
+                                    <a href="https://clinicaltrials.gov/search?aggFilters=status:rec" target="_blank" rel="noopener noreferrer">ClinicalTrials.gov ↗</a>
+                                    <a href="https://www.cancer.gov/research/participate/clinical-trials-search" target="_blank" rel="noopener noreferrer">NCI Trial Search ↗</a>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    return sec;
+                }
+                return null;
+            }
+
+            // Happy path — summary header + collapsed detail body
+            const found = trialsData.found || trialsData.trials.length;
+            sec.innerHTML = `
+                <div class="trial-row" data-expanded="false">
+                    <div class="trial-summary">
+                        <div class="trial-summary-left">
+                            <div class="trial-icon"><i data-lucide="flask-conical" class="icon-stroke"></i></div>
+                            <h4>Clinical Trials <span class="trial-count">${found} match${found === 1 ? '' : 'es'} near you</span></h4>
+                        </div>
+                        <div class="trial-summary-right">
+                            <span class="trial-summary-label">View all</span>
+                            <i data-lucide="chevron-right" class="icon-stroke"></i>
+                        </div>
+                    </div>
+                    <div class="trial-body" hidden>
+                        <p class="trial-body-intro">Discuss options with your oncologist before enrolling. Match scores consider stage, biomarkers, prior treatment, and travel radius.</p>
+                        <div class="trial-links">
+                            <a href="https://clinicaltrials.gov/search?cond=colorectal+cancer&aggFilters=status:rec" target="_blank" rel="noopener noreferrer">ClinicalTrials.gov ↗</a>
+                            <a href="https://colorectalcancer.org/treatment/types-treatment/clinical-trials/clinical-trial-finder" target="_blank" rel="noopener noreferrer">CCA Trial Finder ↗</a>
+                            <a href="https://www.cancer.gov/research/participate/clinical-trials-search" target="_blank" rel="noopener noreferrer">NCI Trial Search ↗</a>
+                        </div>
+                        <div class="trial-detail-list"></div>
+                    </div>
+                </div>
+            `;
+
+            // Build detailed cards (existing match rings, eligibility, reasons,
+            // warnings — same data, just rehoused inside the new chrome).
+            const detailHost = sec.querySelector('.trial-detail-list');
+            trialsData.trials.forEach(trial => {
+                detailHost.insertAdjacentHTML('beforeend', buildLegacyTrialCardHtml(trial));
+            });
+            if (trialsData.profile_completeness) {
+                detailHost.insertAdjacentHTML('beforeend', `<div class="trial-profile-tip">${escapeHtml(trialsData.profile_completeness)}</div>`);
+            }
+
+            // Wire the toggle
+            const row = sec.querySelector('.trial-row');
+            const summary = sec.querySelector('.trial-summary');
+            const bodyEl = sec.querySelector('.trial-body');
+            summary.addEventListener('click', () => {
+                const isExpanded = row.classList.toggle('expanded');
+                row.setAttribute('data-expanded', String(isExpanded));
+                bodyEl.hidden = !isExpanded;
+                sec.querySelector('.trial-summary-label').textContent = isExpanded ? 'Hide details' : 'View all';
+                if (isExpanded) {
+                    requestAnimationFrame(() => animateTrialRings(sec));
+                    if (typeof addJargonTooltips === 'function') {
+                        try { addJargonTooltips(bodyEl); } catch (_) {}
+                    }
+                }
+            });
+
+            return sec;
+        }
+
+        // Render one legacy trial card (existing match rings, badges, etc.).
+        // Extracted from the old inline addMessage trial loop so the new
+        // collapsed body can host it unchanged.
+        function buildLegacyTrialCardHtml(trial) {
+            const statusClass = trial.status === 'RECRUITING' ? 'status' : 'status active';
+            const statusText = trial.status === 'RECRUITING' ? 'Recruiting' :
+                               trial.status === 'ACTIVE_NOT_RECRUITING' ? 'Active' : trial.status;
+
+            const location = trial.locations && trial.locations.length > 0 ? trial.locations[0] : null;
+            const locationCity = location ? `${location.city || ''}, ${location.state || ''}` : '';
+            const distanceHtml = location && location.distance_miles !== null && location.distance_miles !== undefined
+                ? `<span class="trial-distance">${location.distance_miles} mi</span>`
+                : '';
+
+            const score = trial.relevance_score || 50;
+            let matchClass, matchText;
+            if (score >= 70) { matchClass = 'strong'; matchText = 'Strong match'; }
+            else if (score >= 55) { matchClass = 'moderate'; matchText = 'Moderate match'; }
+            else { matchClass = 'general'; matchText = 'General match'; }
+            const matchBadge = `
+                <span class="trial-match-ring ${matchClass}" data-score="${score}" title="${matchText}" aria-label="${matchText}: ${score} out of 100">
+                    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+                        <circle class="trial-ring-bg" cx="17" cy="17" r="13" fill="none" stroke-width="3"></circle>
+                        <circle class="trial-ring-fill" cx="17" cy="17" r="13" fill="none" stroke-width="3"
+                            stroke-linecap="round" stroke-dasharray="81.68" stroke-dashoffset="81.68"
+                            transform="rotate(-90 17 17)"></circle>
+                    </svg>
+                    <span class="trial-match-ring-score" data-target="${score}">0</span>
+                </span>`;
+
+            const reasons = trial.relevance_reasons || [];
+            const reasonsHtml = reasons.length > 0
+                ? `<div class="trial-reasons">${reasons.slice(0, 3).join(' · ')}</div>`
+                : '';
+
+            const warnings = trial.relevance_warnings || [];
+            const warningsHtml = warnings.length > 0
+                ? `<div class="trial-warnings"><i data-lucide="alert-triangle" class="icon-stroke sm"></i> ${warnings.slice(0, 2).join('; ')}</div>`
+                : '';
+
+            const ineligibleHtml = trial.likely_eligible === false
+                ? `<div class="trial-ineligible">May not meet some eligibility criteria</div>`
+                : '';
+
+            const title = trial.title.length > 80 ? trial.title.substring(0, 77) + '...' : trial.title;
+            const safeTitle = title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const isSaved = isTrialSaved(trial.nct_id);
+
+            return `
+                <div class="trial-card">
+                    <div class="trial-card-header">
+                        <div class="trial-title"><a href="${trial.url}" target="_blank" rel="noopener noreferrer">${title}</a></div>
+                        <button class="trial-save-btn ${isSaved ? 'saved' : ''}"
+                            onclick="toggleSaveTrial(this, '${trial.nct_id}', '${safeTitle}', '${trial.phase || ''}', '${trial.url}')"
+                            title="${isSaved ? 'Remove from watchlist' : 'Save to watchlist'}"
+                            aria-label="${isSaved ? 'Remove from watchlist' : 'Save to watchlist'}">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="${isSaved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+                                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="trial-meta">
+                        <span class="trial-badge phase">${trial.phase || 'N/A'}</span>
+                        <span class="trial-badge ${statusClass}">${statusText}</span>
+                        ${matchBadge}
+                        ${locationCity ? `<span class="trial-location-inline">${locationCity}</span>` : ''}
+                        ${distanceHtml}
+                    </div>
+                    ${reasonsHtml}
+                    ${warningsHtml}
+                    ${ineligibleHtml}
+                </div>
+            `;
+        }
+
+        // Format the latency stamp shown in the feedback row.
+        // Uses metadata.client_latency_ms (set by sendMessage) + metadata.api_used.
+        function formatLatencyStamp(metadata) {
+            if (!metadata) return 'Response';
+            const ms = metadata.client_latency_ms;
+            const api = metadata.api_used || '';
+            const parts = ['Response'];
+            if (typeof ms === 'number' && isFinite(ms)) {
+                parts.push((ms / 1000).toFixed(1) + 's');
+            }
+            if (api) parts.push(api);
+            return parts.join(' · ');
+        }
+
+        // Copy a bot response's prose text to clipboard.
+        function copyBotMessage(btn) {
+            try {
+                const botMsg = btn.closest('.bot-msg');
+                if (!botMsg) return;
+                const prose = botMsg.querySelector('.prose');
+                const txt = prose ? (prose.innerText || prose.textContent || '') : '';
+                navigator.clipboard.writeText(txt).then(() => {
+                    btn.classList.add('selected');
+                    setTimeout(() => btn.classList.remove('selected'), 1200);
+                });
+            } catch (_) {}
+        }
+
+        // Share-with-care-team affordance. Falls back to clipboard copy of the
+        // prose plus a leading "Shared from WondrLink:" header until a real
+        // share flow ships.
+        function shareBotMessage(btn) {
+            try {
+                const botMsg = btn.closest('.bot-msg');
+                if (!botMsg) return;
+                const prose = botMsg.querySelector('.prose');
+                const txt = prose ? (prose.innerText || prose.textContent || '') : '';
+                const payload = 'Shared from WondrLink:\n\n' + txt;
+                if (navigator.share) {
+                    navigator.share({ text: payload, title: 'WondrLink response' }).catch(() => {});
+                } else {
+                    navigator.clipboard.writeText(payload).then(() => {
+                        btn.classList.add('selected');
+                        setTimeout(() => btn.classList.remove('selected'), 1200);
+                    });
+                }
+            } catch (_) {}
         }
 
         function showUrgencyBanner(urgency) {
@@ -9981,11 +10735,12 @@
         async function sendFeedback(btn, rating) {
             const feedbackDiv = btn.parentElement;
             const msgDiv = feedbackDiv.closest('.msg');
-            const bubble = msgDiv.querySelector('.bubble');
-            const messageText = bubble ? bubble.textContent.trim().substring(0, 200) : '';
+            // New layout uses .prose; legacy history replay uses .bubble.
+            const proseEl = msgDiv && (msgDiv.querySelector('.prose') || msgDiv.querySelector('.bubble'));
+            const messageText = proseEl ? proseEl.textContent.trim().substring(0, 200) : '';
 
-            // Toggle selection
-            feedbackDiv.querySelectorAll('.feedback-btn').forEach(b => {
+            // Toggle selection across both old (.feedback-btn) and new (.fb-btn) variants.
+            feedbackDiv.querySelectorAll('.feedback-btn, .fb-btn').forEach(b => {
                 b.classList.remove('selected', 'down');
             });
             btn.classList.add('selected');
@@ -10209,6 +10964,7 @@
             await saveChatMessage('user', msg);
 
             let j = null;
+            const perfStart = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
             try {
                 const resp = await authFetch("/api/chat", {
                     method: "POST",
@@ -10220,6 +10976,12 @@
                     })
                 });
                 j = await resp.json();
+
+                // Capture round-trip latency for the feedback-row stamp.
+                const perfEnd = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+                if (j && typeof j === 'object') {
+                    j.client_latency_ms = perfEnd - perfStart;
+                }
 
                 // Remove thinking message
                 messages.lastChild.remove();
@@ -11947,17 +12709,21 @@
         }
 
         // Render bot bubble text safely: citations first (returns HTML with
-        // <sup> badges), then markdown parse so lists / bold / headings show.
+        // <sup> badges), then markdown parse so lists / bold / headings show,
+        // then swap any straggler emoji bullets to Lucide markers.
         function renderBubbleHtml(text, citations) {
             const withCitations = renderCitations(text || '', citations || {});
+            let html;
             if (typeof marked !== 'undefined' && marked.parse) {
                 try {
-                    return marked.parse(withCitations);
+                    html = marked.parse(withCitations);
                 } catch (e) {
-                    console.warn('marked.parse failed; falling back to <br> rendering:', e);
+                    html = withCitations.replace(/\n/g, '<br>');
                 }
+            } else {
+                html = withCitations.replace(/\n/g, '<br>');
             }
-            return withCitations.replace(/\n/g, '<br>');
+            return swapEmojiToLucide(html);
         }
 
         // ===== Care Snapshot (Phase C.2) =====
