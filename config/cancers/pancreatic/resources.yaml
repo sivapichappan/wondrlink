@@ -1,0 +1,111 @@
+# Per-cancer advocacy orgs, helplines, and topic-specific resources for pancreatic cancer.
+
+advocacy:
+  - name: Pancreatic Cancer Action Network (PanCAN)
+    url: https://www.pancan.org
+    desc: Premier US pancreatic-cancer organization — Patient Services, Know Your Tumor molecular profiling, financial navigation, clinical-trial matching
+  - name: Lustgarten Foundation
+    url: https://www.lustgarten.org
+    desc: Research funding + patient education
+  - name: Hirshberg Foundation for Pancreatic Cancer Research
+    url: https://pancreatic.org
+    desc: Research + patient resources + survivor stories
+  - name: Project Purple
+    url: https://projectpurple.org
+    desc: Patient support + financial assistance for pancreatic-cancer families
+  - name: American Cancer Society — Pancreatic Cancer
+    url: https://www.cancer.org/cancer/types/pancreatic-cancer.html
+    desc: General overview, treatment, survivorship
+
+helplines:
+  - name: PanCAN Patient Services
+    number: 1-877-272-6226
+    tel: tel:18772726226
+    desc: PanCAN's dedicated case-manager helpline — clinical-trial navigation, treatment questions, support
+  - name: American Cancer Society
+    number: 1-800-227-2345
+    tel: tel:18002272345
+    desc: 24/7 general cancer information and support
+  - name: NCI Cancer Information Service
+    number: 1-800-422-6237
+    tel: tel:18004226237
+    desc: Treatment information, clinical trials, expert support
+
+biomarker_testing:
+  - name: PanCAN Know Your Tumor
+    url: https://www.pancan.org/facing-pancreatic-cancer/patient-services/know-your-tumor/
+    desc: Free molecular profiling for pancreatic-cancer patients via PanCAN
+  - name: NCCN — Germline Testing for All Pancreatic Cancer
+    url: https://www.nccn.org/patients/
+    desc: NCCN now recommends germline testing for all pancreatic-cancer patients
+
+hereditary:
+  - name: FORCE — Facing Our Risk of Cancer Empowered
+    url: https://www.facingourrisk.org
+    desc: Hereditary breast / ovarian / pancreatic cancer support (BRCA1/2, PALB2)
+  - name: Lynch Syndrome International
+    url: https://lynchcancers.com
+    desc: Lynch syndrome resources
+  - name: National Familial Pancreatic Tumor Registry (NFPTR)
+    url: https://www.pathology.jhu.edu/pancreas/nfptr/
+    desc: Johns Hopkins-based registry for familial pancreatic cancer screening
+  - name: NSGC Find a Genetic Counselor
+    url: https://www.findageneticcounselor.com
+    desc: Locate a certified counselor
+
+nutrition_supportive:
+  - name: PanCAN — Diet and Nutrition
+    url: https://www.pancan.org/facing-pancreatic-cancer/living-with-pancreatic-cancer/diet-and-nutrition/
+    desc: Pancreatic-enzyme replacement, weight management, nausea
+  - name: Lustgarten — Living with Pancreatic Cancer
+    url: https://www.lustgarten.org/patient-resources
+    desc: Patient resource library
+  - name: National Pancreas Foundation
+    url: https://pancreasfoundation.org
+    desc: Patient resources for pancreatic disease including PERT guidance
+  - name: Oncology Nutrition (Academy of Nutrition and Dietetics)
+    url: https://www.oncologynutrition.org/erfc/healthy-nutrition-now/cancer-types/pancreatic-cancer
+    desc: Evidence-based nutrition guidance
+
+pain_palliative:
+  - name: Get Palliative Care
+    url: https://getpalliativecare.org
+    desc: Find palliative care providers — early integration is associated with better outcomes
+  - name: CaringInfo (NHPCO)
+    url: https://www.caringinfo.org
+    desc: Advance care planning + hospice information
+  - name: PanCAN — Pain Management Resources
+    url: https://www.pancan.org/facing-pancreatic-cancer/living-with-pancreatic-cancer/managing-symptoms/
+    desc: Pain control, celiac plexus block, palliative care
+
+financial:
+  - name: PanCAN Financial Assistance
+    url: https://www.pancan.org/facing-pancreatic-cancer/patient-services/financial-assistance/
+    desc: Financial-navigation help for pancreatic-cancer patients
+  - name: CancerCare Financial Assistance
+    url: https://www.cancercare.org/financial
+    desc: Co-pay assistance + transportation help
+
+side_effects:
+  - name: NCCN Distress Management (patient)
+    url: https://www.nccn.org/patients/guidelines/content/PDF/distress-patient.pdf
+    desc: Anxiety, sleep, mood — cross-cutting
+  - name: ASCO Survivorship Care (Cancer.Net)
+    url: https://www.cancer.net/survivorship
+    desc: Survivorship resources
+
+pannet_specific:
+  - name: NET Research Foundation
+    url: https://netrf.org
+    desc: Pancreatic + GI neuroendocrine tumor patient resources
+  - name: Carcinoid Cancer Foundation
+    url: https://www.carcinoid.org
+    desc: NET / carcinoid patient education + support
+
+caregiver:
+  - name: ACS Caregiver Resource Guide
+    url: https://www.cancer.org/cancer/caregivers.html
+    desc: Practical guidance for supporting someone with pancreatic cancer
+  - name: PanCAN Caregivers
+    url: https://www.pancan.org/facing-pancreatic-cancer/living-with-pancreatic-cancer/caregivers/
+    desc: Pancreatic-cancer-specific caregiver support

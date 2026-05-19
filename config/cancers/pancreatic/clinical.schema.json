@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wondrlink.foundation/schemas/cancers/pancreatic/clinical.schema.json",
+  "title": "Pancreatic Clinical Profile",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "histology": {
+      "type": "string",
+      "description": "PDAC vs PanNET drives nearly all treatment decisions.",
+      "enum": ["pdac_ductal_adenocarcinoma", "pannet_well_differentiated_g1", "pannet_well_differentiated_g2", "pannet_well_differentiated_g3", "pancreatic_neuroendocrine_carcinoma", "acinar_cell", "intraductal_papillary_mucinous_neoplasm_ipmn", "mucinous_cystic_neoplasm", "solid_pseudopapillary", "ampullary", "other", "unknown"]
+    },
+    "resectability": {
+      "type": "string",
+      "description": "Cornerstone clinical branch for treatment planning.",
+      "enum": ["resectable", "borderline_resectable", "locally_advanced_unresectable", "metastatic", "unknown"]
+    },
+    "primary_site": {
+      "type": "string",
+      "enum": ["head", "uncinate", "neck", "body", "tail", "diffuse", "unknown"]
+    },
+    "stage_detail": { "type": "string" },
+    "diagnosis_date": { "type": "string", "format": "date" },
+    "ecog_performance_status": { "type": ["integer", "string"] },
+    "ca19_9_at_diagnosis": { "type": ["number", "string"] },
+    "biomarkers": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "KRAS":   { "type": "string", "enum": ["mutated", "G12C", "G12D", "G12R", "G12V", "wild-type", "not-tested", "unknown"] },
+        "BRCA1":  { "type": "string", "enum": ["pathogenic", "vus", "wild-type", "not-tested", "unknown"] },
+        "BRCA2":  { "type": "string", "enum": ["pathogenic", "vus", "wild-type", "not-tested", "unknown"] },
+        "PALB2":  { "type": "string", "enum": ["pathogenic", "vus", "wild-type", "not-tested", "unknown"] },
+        "ATM":    { "type": "string", "enum": ["pathogenic", "vus", "wild-type", "not-tested", "unknown"] },
+        "MSI":    { "type": "string", "enum": ["MSI-H", "MSI-L", "MSS", "not-tested", "unknown"] },
+        "MMR":    { "type": "string", "enum": ["deficient", "proficient", "not-tested", "unknown"] },
+        "NTRK":   { "type": "string", "enum": ["rearranged", "negative", "not-tested", "unknown"] },
+        "RET":    { "type": "string", "enum": ["rearranged", "negative", "not-tested", "unknown"] },
+        "BRAF":   { "type": "string", "enum": ["V600E", "non_V600", "wild-type", "not-tested", "unknown"] },
+        "NRG1":   { "type": "string", "enum": ["fusion", "negative", "not-tested", "unknown"] },
+        "CDKN2A": { "type": "string", "enum": ["altered", "wild-type", "not-tested", "unknown"] },
+        "TP53":   { "type": "string", "enum": ["mutated", "wild-type", "not-tested", "unknown"] },
+        "SMAD4":  { "type": "string", "enum": ["altered", "wild-type", "not-tested", "unknown"] }
+      }
+    },
+    "germline_testing": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "completed": { "type": "boolean" },
+        "pathogenic_variant_gene": { "type": "string" },
+        "hereditary_syndrome": { "type": "string", "enum": ["hboc_brca", "lynch", "fap", "peutz_jeghers", "fammm", "hereditary_pancreatitis_prss1", "none", "unknown"] }
+      }
+    },
+    "treatments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "regimen": { "type": "string" },
+          "line": { "type": "string", "enum": ["first-line", "second-line", "third-line", "adjuvant", "neoadjuvant", "maintenance", "concurrent_chemoradiation"] },
+          "status": { "type": "string", "enum": ["active", "completed", "discontinued"] },
+          "startDate": { "type": "string", "format": "date" },
+          "endDate": { "type": "string", "format": "date" },
+          "cycleNumber": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "surgical_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "procedure": {
+            "type": "string",
+            "enum": ["whipple_pancreaticoduodenectomy", "distal_pancreatectomy", "distal_pancreatectomy_splenectomy", "total_pancreatectomy", "biliary_stent_ercp", "biliary_bypass", "gastrojejunostomy", "celiac_plexus_block", "other"]
+          },
+          "date": { "type": "string", "format": "date" }
+        }
+      }
+    },
+    "radiation_history": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "received": { "type": "boolean" },
+        "modality": { "type": "string", "enum": ["sbrt", "ebrt", "imrt", "concurrent_chemoradiation", "other", "unknown"] },
+        "completion_date": { "type": "string", "format": "date" }
+      }
+    },
+    "supportive_care": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "on_pert": { "type": "boolean" },
+        "has_biliary_stent": { "type": "boolean" },
+        "has_celiac_block": { "type": "boolean" },
+        "on_vte_prophylaxis": { "type": "boolean" },
+        "diabetes_secondary": { "type": "boolean" }
+      }
+    },
+    "family_history_significant": { "type": "boolean" }
+  }
+}

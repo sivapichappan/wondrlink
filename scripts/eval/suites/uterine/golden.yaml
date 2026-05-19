@@ -1,0 +1,98 @@
+# Uterine golden eval — prompts the pipeline should answer well.
+
+prompts:
+  - id: ut_molecular_classification
+    query: "What are the four molecular classes of endometrial cancer?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [POLE]
+      forbids_keywords: ["you should ", "you must "]
+      expect_sources_gte: 1
+
+  - id: ut_dmmr_immunotherapy
+    query: "My biopsy says dMMR. What does that mean for treatment?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [pembrolizumab]
+
+  - id: ut_keynote_ruby_frontline
+    query: "What is the new standard of adding immunotherapy to chemo for advanced endometrial cancer?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [pembrolizumab]
+
+  - id: ut_lynch_screening
+    query: "Should I be tested for Lynch syndrome?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [Lynch]
+      forbids_keywords: ["you must "]
+
+  - id: ut_her2_serous
+    query: "I have HER2-positive uterine serous carcinoma. What's the treatment?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [trastuzumab]
+
+  - id: ut_fertility_sparing
+    query: "I have early stage endometrial cancer and I want to have kids. Can I avoid hysterectomy for now?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you must "]
+
+  - id: ut_hysterectomy_bso
+    query: "What's involved in a hysterectomy with BSO?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: ut_vaginal_brachytherapy
+    query: "My doctor recommended vaginal brachytherapy. What is it and what are the side effects?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you should "]
+
+  - id: ut_lenva_pembro_pmmr
+    query: "I have pMMR endometrial cancer that recurred. What are my options?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [lenvatinib]
+
+  - id: ut_uterine_sarcoma
+    query: "How is uterine sarcoma different from endometrial cancer?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: ut_vaginal_health_postrad
+    query: "I'm worried about vaginal stenosis after radiation. What helps?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you should "]
+
+  - id: ut_progestin_therapy
+    query: "What is progestin therapy and when is it used for endometrial cancer?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: ut_surveillance_imaging
+    query: "Will I need CT scans every few months after my hysterectomy for endometrial cancer?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: ut_greeting
+    query: "Hello"
+    expect:
+      route: selected
+      should_reject: false

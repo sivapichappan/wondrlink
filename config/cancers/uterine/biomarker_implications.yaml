@@ -1,0 +1,84 @@
+# Biomarker → drug-class mappings for uterine (endometrial) cancer.
+# Sources: NCCN Uterine Neoplasms (current), SGO endometrial review
+# (Hamilton 2020 Parts I + II), NRG GY018 / KEYNOTE-868 (pembro + chemo),
+# RUBY (dostarlimab + chemo), KEYNOTE-158 / GARNET (dMMR IO mono),
+# KEYNOTE-775 (lenva + pembro pMMR), Fader 2018 (trastuzumab uterine serous),
+# DESTINY-PanTumor02 (T-DXd HER2-expressing), POLE-rich literature.
+
+implications:
+
+  MSI:
+    aligns:
+      - when_state: MSI-H
+        align_keywords: [pembrolizumab, dostarlimab, "checkpoint inhibitor",
+                         "PD-1 inhibitor", "immunotherapy", "tumor-agnostic"]
+        bonus_points: 28
+        reason: "MSI-H endometrial cancer is exquisitely IO-responsive (KEYNOTE-158, GARNET). Front-line pembrolizumab + chemo (NRG GY018) or dostarlimab + chemo (RUBY) for advanced / recurrent."
+
+  MMR:
+    aligns:
+      - when_state: deficient
+        align_keywords: [pembrolizumab, dostarlimab, "checkpoint inhibitor",
+                         "PD-1 inhibitor", "immunotherapy"]
+        bonus_points: 28
+        reason: "Mismatch-repair-deficient (dMMR) is the same IO-responsive bucket as MSI-H — front-line pembro+chemo or dostarlimab+chemo for advanced disease."
+
+  POLE:
+    aligns:
+      - when_state: pathogenic
+        align_keywords: ["POLE", "POLE-ultramutated", "POLE-mutant", "trial",
+                         "de-escalation"]
+        bonus_points: 18
+        reason: "POLE-ultramutated endometrial cancer has the best prognosis of any molecular class; consider de-escalation trials. Standard adjuvant intensification is often unnecessary."
+
+  p53:
+    warns:
+      - when_state: abnormal
+        warning: "p53-abnormal (copy-number-high / serous-like) endometrial cancer is biologically aggressive — typically managed with intensified adjuvant therapy and screened for HER2-positive serous variants."
+    aligns:
+      - when_state: abnormal
+        align_keywords: ["carboplatin", "paclitaxel", "chemotherapy", "trastuzumab",
+                         "HER2"]
+        bonus_points: 12
+        reason: "p53-abnormal disease typically receives chemotherapy-based adjuvant approaches; HER2 testing matters because serous histology overlaps substantially with p53-abnormal."
+
+  HER2:
+    aligns:
+      - when_state: positive
+        align_keywords: [trastuzumab, "T-DXd", "trastuzumab deruxtecan",
+                         "HER2 inhibitor", "HER2 ADC"]
+        bonus_points: 24
+        reason: "HER2-positive uterine serous carcinoma responds to trastuzumab + carbo/paclitaxel (Fader 2018) and T-DXd (DESTINY-PanTumor02 HER2-expressing tumor-agnostic)."
+      - when_state: low
+        align_keywords: ["T-DXd", "trastuzumab deruxtecan"]
+        bonus_points: 18
+        reason: "HER2-low endometrial cancer is now within the T-DXd tumor-agnostic approval (DESTINY-PanTumor02)."
+
+  ER:
+    aligns:
+      - when_state: positive
+        align_keywords: ["megestrol", "medroxyprogesterone", "tamoxifen",
+                         "aromatase inhibitor", letrozole, anastrozole,
+                         "hormone therapy", everolimus, "mTOR inhibitor",
+                         "levonorgestrel IUD"]
+        bonus_points: 18
+        reason: "ER-positive low-grade endometrial cancer (and ESS) responds to hormone therapy — progestins, tamoxifen, aromatase inhibitors, or AI + everolimus for advanced disease."
+
+  PR:
+    aligns:
+      - when_state: positive
+        align_keywords: ["megestrol", "medroxyprogesterone", "progestin",
+                         "hormone therapy", "levonorgestrel IUD",
+                         "fertility-sparing"]
+        bonus_points: 18
+        reason: "PR positivity supports progestin-based therapy — central to fertility-sparing management of early-stage low-grade endometrioid disease."
+
+  L1CAM:
+    warns:
+      - when_state: positive
+        warning: "L1CAM positivity in NSMP / copy-number-low endometrial cancer is an adverse prognostic marker — favors closer follow-up and consideration of adjuvant therapy."
+
+  CTNNB1:
+    warns:
+      - when_state: mutated_exon3
+        warning: "CTNNB1 exon 3 mutations in low-grade endometrioid disease are associated with higher recurrence risk — even in otherwise low-risk NSMP tumors."

@@ -1,12 +1,97 @@
 slug: pancreatic
 display_name: Pancreatic cancer
 short_name: Pancreatic
+aliases:
+  - pancreatic adenocarcinoma
+  - PDAC
+  - pancreatic ductal adenocarcinoma
+  - pancreatic neuroendocrine tumor
+  - PanNET
+  - islet cell tumor
 icd10_prefix: [C25]
 staging_system: AJCC-TNM-8
-biomarker_panel: [KRAS, BRCA1, BRCA2, MSI, MMR, PALB2]
+biomarker_panel:
+  - KRAS              # ~90% of PDAC; G12C / G12D / G12R increasingly actionable
+  - BRCA1             # PARP-i eligibility (POLO)
+  - BRCA2             # PARP-i eligibility (POLO)
+  - PALB2
+  - ATM
+  - MSI               # rare (~1%) but tumor-agnostic IO eligibility
+  - MMR
+  - NTRK              # tumor-agnostic
+  - RET
+  - BRAF              # rare in PDAC; V600E tumor-agnostic
+  - NRG1              # NRG1 fusions — emerging targeted therapy
+  - CDKN2A
+  - TP53
+  - SMAD4
+common_regimens:
+  # First-line metastatic
+  - FOLFIRINOX                                 # PRODIGE 4 / ACCORD 11
+  - mFOLFIRINOX                                # better-tolerated modification
+  - NALIRIFOX                                  # NAPOLI 3 — first-line option
+  - Gemcitabine + nab-paclitaxel              # MPACT
+  - Gemcitabine + cisplatin                    # BRCA1/2 germline
+  - Gemcitabine + S-1
+  - Gemcitabine monotherapy                    # frail / poor PS
+  # Second-line
+  - 5-FU + liposomal irinotecan (Nal-IRI + 5-FU)   # NAPOLI-1
+  - FOLFOX
+  - FOLFIRI
+  # Targeted (biomarker-driven)
+  - Olaparib                                   # POLO — BRCA1/2 germline maintenance post-platinum
+  - Larotrectinib                              # NTRK fusions
+  - Entrectinib                                # NTRK fusions
+  - Selpercatinib                              # RET fusions
+  - Pembrolizumab                              # MSI-H / dMMR (~1%)
+  - Dabrafenib + trametinib                    # BRAF V600E (rare)
+  - Zenocutuzumab                              # NRG1 fusions (emerging)
+  - Adagrasib                                  # KRAS G12C (limited in PDAC; trial setting)
+  # Perioperative
+  - Neoadjuvant FOLFIRINOX                     # borderline resectable / locally advanced
+  - Neoadjuvant gemcitabine + nab-paclitaxel
+  - Adjuvant FOLFIRINOX                        # PRODIGE 24 — survival benefit
+  - Adjuvant gemcitabine + capecitabine        # ESPAC-4
+  - Adjuvant gemcitabine                       # frail / unable to tolerate combinations
+  # Local therapy
+  - Whipple (pancreaticoduodenectomy)
+  - Distal pancreatectomy ± splenectomy
+  - Total pancreatectomy
+  - SBRT                                       # locally advanced
+  - Chemoradiation                             # selected locally advanced
+  # PanNET-specific (distinct disease)
+  - Lanreotide                                 # SSA — CLARINET
+  - Octreotide                                 # SSA
+  - Everolimus                                 # RADIANT-3
+  - Sunitinib                                  # PanNET
+  - Lu-177-DOTATATE                            # NETTER-1 — PRRT
+  - Streptozocin + 5-FU
+  - Capecitabine + temozolomide (CAPTEM)
+  # Supportive (commonly mentioned)
+  - Pancreatic enzyme replacement therapy (PERT)
+  - Biliary stent (ERCP)
+  - Celiac plexus block / neurolysis
+  - VTE prophylaxis / DOAC
+default_screening_test: "none recommended general population (high-risk individuals: EUS / MRI per CAPS consortium)"
 clinicaltrials_conditions:
   - Pancreatic Neoplasms
   - Pancreatic Cancer
-ready: false
-accent_color: "#7B3FA0"
+  - Pancreatic Adenocarcinoma
+  - Pancreatic Ductal Adenocarcinoma
+  - Metastatic Pancreatic Cancer
+  - Locally Advanced Pancreatic Cancer
+  - Borderline Resectable Pancreatic Cancer
+  - Pancreatic Neuroendocrine Tumor
+  - Islet Cell Tumor
+stage_specific_conditions:
+  IV: ["Metastatic Pancreatic Cancer", "Stage IV Pancreatic Cancer", "Advanced Pancreatic Cancer"]
+  III: ["Locally Advanced Pancreatic Cancer", "Unresectable Pancreatic Cancer", "Stage III Pancreatic Cancer"]
+  II:  ["Resectable Pancreatic Cancer", "Borderline Resectable Pancreatic Cancer", "Stage II Pancreatic Cancer"]
+  I:   ["Early Stage Pancreatic Cancer", "Resectable Pancreatic Cancer", "Stage I Pancreatic Cancer"]
+ready: true    # flipped 2026-05-19 — owner accepted shipping ahead of
+               # clinician sign-off on surveillance.yaml. Wave 4 eval
+               # baseline captured. Patient-facing corpus is thinner than
+               # other cancers — overlay tells the LLM to anchor on
+               # PanCAN + NCCN + ASCO and acknowledge gaps. See commit.
+accent_color: "#7B3FA0"   # purple — pancreatic cancer awareness ribbon
 icon: flame

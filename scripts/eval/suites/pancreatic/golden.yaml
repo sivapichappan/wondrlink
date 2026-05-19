@@ -1,0 +1,99 @@
+# Pancreatic golden eval — prompts the pipeline should answer well.
+
+prompts:
+  - id: pa_resectable_vs_metastatic
+    query: "What's the difference between resectable, borderline resectable, and metastatic pancreatic cancer?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [resectable]
+      forbids_keywords: ["you should ", "you must "]
+      expect_sources_gte: 1
+
+  - id: pa_folfirinox_vs_gem_nab
+    query: "What's the difference between FOLFIRINOX and gemcitabine + nab-paclitaxel?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [FOLFIRINOX]
+
+  - id: pa_napoli3_nalirifox
+    query: "What is NALIRIFOX and how is it different from FOLFIRINOX?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [irinotecan]
+
+  - id: pa_germline_testing
+    query: "Should I have germline genetic testing for my pancreatic cancer?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [BRCA]
+      forbids_keywords: ["you must "]
+
+  - id: pa_olaparib_brca
+    query: "I have a BRCA2 mutation and metastatic pancreatic cancer. What is olaparib maintenance?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [olaparib]
+
+  - id: pa_whipple_recovery
+    query: "What does recovery from the Whipple procedure look like?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you must "]
+
+  - id: pa_pert_enzymes
+    query: "What is PERT and do I need it after my Whipple?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [enzyme]
+
+  - id: pa_neoadjuvant_chemo
+    query: "Why does my doctor want to do chemo before surgery for my pancreatic cancer?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: pa_celiac_plexus_block
+    query: "Is there anything to help with the severe pain from pancreatic cancer?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you should "]
+
+  - id: pa_pannet_distinct
+    query: "I have a pancreatic neuroendocrine tumor. How is it different from regular pancreatic cancer?"
+    expect:
+      route: selected
+      should_reject: false
+      requires_keywords: [neuroendocrine]
+
+  - id: pa_vte_anticoagulation
+    query: "My doctor mentioned blood clots. Why do I need a blood thinner with pancreatic cancer?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: pa_palliative_care_early
+    query: "My oncologist mentioned palliative care. Does that mean I'm dying?"
+    expect:
+      route: selected
+      should_reject: false
+      forbids_keywords: ["you should "]
+
+  - id: pa_pancan_resources
+    query: "Are there organizations that can help me navigate my pancreatic cancer treatment?"
+    expect:
+      route: selected
+      should_reject: false
+
+  - id: pa_greeting
+    query: "Hello"
+    expect:
+      route: selected
+      should_reject: false

@@ -1,0 +1,106 @@
+# Biomarker → drug-class mappings for pancreatic cancer.
+# Sources: NCCN Pancreatic Adenocarcinoma (current), ESMO Pancreatic CPG
+# (Conroy 2023), ASCO Metastatic PDAC (Sohal 2020), ASCO Potentially
+# Curable PDAC (Khorana 2019), ASCO Susceptibility (Stoffel 2018).
+# Practice-changing trials: POLO (olaparib BRCA maintenance),
+# PRODIGE 4 (FOLFIRINOX), MPACT (gem + nab-pac), NAPOLI 3 (NALIRIFOX),
+# PRODIGE 24 (adjuvant FOLFIRINOX), ESPAC-4 (gem + cape adjuvant).
+
+implications:
+
+  BRCA1:
+    aligns:
+      - when_state: pathogenic
+        align_keywords: [olaparib, "PARP inhibitor", "platinum chemotherapy",
+                         cisplatin, oxaliplatin, FOLFIRINOX, "platinum-sensitive"]
+        bonus_points: 26
+        reason: "Germline BRCA1 pathogenic variant in metastatic PDAC qualifies for olaparib maintenance after platinum-based first-line (POLO) and supports platinum-rich regimens like FOLFIRINOX."
+
+  BRCA2:
+    aligns:
+      - when_state: pathogenic
+        align_keywords: [olaparib, "PARP inhibitor", "platinum chemotherapy",
+                         cisplatin, oxaliplatin, FOLFIRINOX, "platinum-sensitive"]
+        bonus_points: 26
+        reason: "Germline BRCA2 pathogenic variant in metastatic PDAC qualifies for olaparib maintenance after platinum-based first-line (POLO) and supports platinum-rich regimens."
+
+  PALB2:
+    aligns:
+      - when_state: pathogenic
+        align_keywords: [olaparib, "PARP inhibitor", "platinum chemotherapy",
+                         FOLFIRINOX]
+        bonus_points: 18
+        reason: "PALB2 pathogenic variants are increasingly recognized as PARP-inhibitor responsive and platinum-sensitive in PDAC."
+
+  ATM:
+    aligns:
+      - when_state: pathogenic
+        align_keywords: ["platinum chemotherapy", FOLFIRINOX, "PARP inhibitor",
+                         "clinical trial"]
+        bonus_points: 12
+        reason: "ATM pathogenic variants are part of the HRR pathway; emerging data support platinum sensitivity and PARP-i activity, often through clinical trials."
+
+  MSI:
+    aligns:
+      - when_state: MSI-H
+        align_keywords: [pembrolizumab, dostarlimab, "checkpoint inhibitor",
+                         "PD-1 inhibitor", "tumor-agnostic", "immunotherapy"]
+        bonus_points: 28
+        reason: "MSI-H pancreatic cancer is rare (~1%) but exquisitely IO-responsive — qualifies for tumor-agnostic pembrolizumab. Confirm MMR testing in all PDAC."
+
+  MMR:
+    aligns:
+      - when_state: deficient
+        align_keywords: [pembrolizumab, dostarlimab, "checkpoint inhibitor"]
+        bonus_points: 28
+        reason: "dMMR pancreatic cancer qualifies for tumor-agnostic checkpoint inhibitor therapy."
+
+  NTRK:
+    aligns:
+      - when_state: rearranged
+        align_keywords: [larotrectinib, entrectinib, repotrectinib,
+                         "TRK inhibitor", "tumor-agnostic"]
+        bonus_points: 24
+        reason: "NTRK gene fusions are rare in pancreatic cancer but actionable with tumor-agnostic TRK inhibitors."
+
+  RET:
+    aligns:
+      - when_state: rearranged
+        align_keywords: [selpercatinib, pralsetinib, "RET inhibitor",
+                         "tumor-agnostic"]
+        bonus_points: 22
+        reason: "RET fusions in pancreatic cancer align with tumor-agnostic selpercatinib (LIBRETTO-001)."
+
+  BRAF:
+    aligns:
+      - when_state: V600E
+        align_keywords: [dabrafenib, trametinib, encorafenib, binimetinib,
+                         "BRAF inhibitor", "MEK inhibitor"]
+        bonus_points: 20
+        reason: "BRAF V600E mutations are rare in PDAC but actionable with BRAF/MEK combinations (tumor-agnostic principle)."
+
+  NRG1:
+    aligns:
+      - when_state: fusion
+        align_keywords: [zenocutuzumab, "NRG1 inhibitor", "HER3 inhibitor",
+                         "clinical trial"]
+        bonus_points: 22
+        reason: "NRG1 fusions are an emerging actionable target in PDAC — zenocutuzumab has shown activity (eNRGy trial)."
+
+  KRAS:
+    aligns:
+      - when_state: G12C
+        align_keywords: [sotorasib, adagrasib, "KRAS G12C inhibitor",
+                         "clinical trial"]
+        bonus_points: 18
+        reason: "KRAS G12C is less common in PDAC than G12D/G12R, but actionable with sotorasib or adagrasib in trial / off-label settings; KRAS G12D inhibitors in development."
+
+  SMAD4:
+    warns:
+      - when_state: altered
+        warning: "SMAD4 loss in PDAC is associated with more aggressive biology and higher metastatic potential — pair with intensified systemic therapy when feasible."
+
+  CDKN2A:
+    warns:
+      - when_state: altered
+        warning: "CDKN2A inactivation is the most common somatic event in PDAC and is part of the canonical genomic landscape; not separately actionable today."

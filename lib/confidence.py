@@ -43,6 +43,11 @@ ONCOLOGY_KEYWORDS = {
     'biopsy', 'screening', 'staging', 'biomarker', 'mutation', 'gene panel',
     'pathology', 'tumor marker', 'pet scan', 'ct scan', 'mri',
     'blood test', 'blood work', 'lab', 'labs', 'scan',
+    # Cancer-specific surgical / treatment terms unambiguous to oncology
+    'whipple', 'mastectomy', 'lumpectomy', 'lobectomy', 'cystectomy',
+    'hysterectomy', 'nephrectomy', 'pancreatectomy', 'colectomy',
+    'colonoscopy', 'colostomy', 'mammogram', 'mammography',
+    'pert', 'enzyme replacement', 'tumor board',
     # Symptoms / experience (universal — applies to most cancers)
     'nausea', 'fatigue', 'neuropathy', 'mucositis', 'recurrence', 'remission',
     'palliative', 'hospice', 'survivorship', 'side effect', 'side effects',
@@ -400,6 +405,9 @@ _CRISIS_PATTERNS: List[Tuple[str, CrisisCategory]] = [
     ("havent been able to keep", "urgent_oncology"),
     ("uncontrolled vomiting", "urgent_oncology"),
     ("severe vomiting", "urgent_oncology"),
+    ("keep vomiting", "urgent_oncology"),
+    ("vomiting everything", "urgent_oncology"),
+    ("belly feels stretched", "urgent_oncology"),
     ("uncontrolled diarrhea", "urgent_oncology"),
     ("severe diarrhea", "urgent_oncology"),
     ("can't urinate", "urgent_oncology"),

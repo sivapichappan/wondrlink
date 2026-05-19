@@ -1,14 +1,76 @@
 slug: uterine
 display_name: Uterine (endometrial) cancer
 short_name: Uterine
-aliases: [endometrial cancer]
+aliases:
+  - endometrial cancer
+  - endometrial carcinoma
+  - uterine cancer
+  - uterine corpus cancer
+  - uterine sarcoma
+  - carcinosarcoma
 icd10_prefix: [C54, C55]
 staging_system: FIGO
-biomarker_panel: [MSI, MMR, p53, ER, PR, HER2, POLE]
+biomarker_panel:
+  - MSI                # MSI-H — pembrolizumab + dostarlimab eligibility
+  - MMR                # mismatch-repair status; dMMR is the IO-responsive bucket
+  - p53                # copy-number-high / serous-like
+  - POLE               # ultramutated — best prognosis
+  - ER
+  - PR
+  - HER2               # uterine serous especially
+  - L1CAM              # adverse prognostic in NSMP
+  - CTNNB1             # exon 3 mutations — adverse in low-grade endometrioid
+common_regimens:
+  # Surgery
+  - Total hysterectomy + bilateral salpingo-oophorectomy (TH/BSO)
+  - Sentinel lymph node mapping
+  - Lymphadenectomy (selective)
+  - Omentectomy                # serous, carcinosarcoma
+  # Radiation
+  - Vaginal brachytherapy (VBT)
+  - External beam radiation (EBRT)
+  - Concurrent chemoradiation
+  # Adjuvant chemotherapy
+  - Carboplatin + paclitaxel
+  - Carboplatin + paclitaxel + pembrolizumab     # NRG GY018 / KEYNOTE-868
+  - Carboplatin + paclitaxel + dostarlimab       # RUBY (stage III–IV / recurrent)
+  # Targeted / immunotherapy (advanced / recurrent)
+  - Pembrolizumab                                # KEYNOTE-158 dMMR/MSI-H
+  - Dostarlimab                                  # GARNET dMMR
+  - Lenvatinib + pembrolizumab                   # KEYNOTE-775 / Study 309 — pMMR
+  - Trastuzumab + carboplatin + paclitaxel       # HER2-positive uterine serous (NCT01367002 Fader)
+  - Trastuzumab deruxtecan (T-DXd)               # DESTINY-PanTumor02 — HER2-expressing
+  # Hormone therapy
+  - Megestrol acetate
+  - Medroxyprogesterone
+  - Tamoxifen alternating with progestin
+  - Aromatase inhibitors                         # AI ± mTOR inhibitor (everolimus)
+  - Levonorgestrel IUD                           # fertility-sparing low-grade
+  # Uterine sarcoma — distinct regimens
+  - Doxorubicin                                  # leiomyosarcoma
+  - Doxorubicin + ifosfamide                     # uterine LMS
+  - Gemcitabine + docetaxel                      # uterine LMS (Hensley)
+  - Trabectedin                                  # LMS second-line
+  - Pazopanib                                    # LMS
+  - Letrozole / anastrozole                      # ER+ uterine ESS
+default_screening_test: none recommended (post-menopausal bleeding evaluation)
 clinicaltrials_conditions:
   - Endometrial Neoplasms
   - Uterine Cancer
   - Endometrial Cancer
-ready: false
-accent_color: "#FFB78F"
+  - Endometrial Carcinoma
+  - Uterine Sarcoma
+  - Carcinosarcoma
+  - Endometrial Stromal Sarcoma
+  - Leiomyosarcoma
+stage_specific_conditions:
+  IV: ["Metastatic Endometrial Cancer", "Stage IV Endometrial Cancer", "Advanced Endometrial Cancer", "Recurrent Endometrial Cancer"]
+  III: ["Stage III Endometrial Cancer", "Locally Advanced Endometrial Cancer"]
+  II:  ["Stage II Endometrial Cancer"]
+  I:   ["Early Stage Endometrial Cancer", "Stage I Endometrial Cancer", "Localized Endometrial Cancer"]
+ready: true    # flipped 2026-05-19 — owner accepted shipping ahead of
+               # clinician sign-off on surveillance.yaml. Wave 4 eval
+               # baseline captured. Lynch syndrome / GINA compliance
+               # review pending. See commit message.
+accent_color: "#E8A0BF"   # peach-pink — gynecologic / endometrial cancer awareness
 icon: flower

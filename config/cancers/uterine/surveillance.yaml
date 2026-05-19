@@ -1,0 +1,73 @@
+# DRAFT — clinician sign-off required before flipping cancer.yaml ready: true.
+# Sources: NCCN Uterine Neoplasms (current), SGO endometrial review
+# (Hamilton 2020 Parts I + II), ASCO endometrial survivorship guidance.
+#
+# Uterine surveillance is dominated by clinic visits + history/physical
+# (most recurrences present with symptoms). Routine imaging or CA-125
+# in asymptomatic patients in remission is NOT recommended (per NCCN +
+# Choosing Wisely) — surface this. Stage-stratified intensity matters.
+
+milestones:
+  - id: office_visit_low_risk
+    test: "Office visit with gynecologic oncology — history, physical, pelvic exam"
+    cadence: "Every 6 months × 2 years, then annually"
+    applies_when:
+      stage_in: [I]
+      grade_in: [G1, G2]
+    rationale: "NCCN: low-risk stage I G1/G2 disease has favorable prognosis; lower-intensity follow-up is appropriate."
+
+  - id: office_visit_high_risk
+    test: "Office visit with gynecologic oncology — history, physical, pelvic exam"
+    cadence: "Every 3 months × 2 years, every 6 months × 3 years, then annually"
+    applies_when:
+      stage_in: [II, III, IV]
+    rationale: "NCCN: higher-stage or high-grade disease has substantial early recurrence risk; tighter clinical cadence catches recurrence at a treatable point."
+
+  - id: no_routine_imaging
+    test: "Routine surveillance CT, PET, or CA-125 in asymptomatic patients in remission"
+    cadence: "NOT recommended"
+    applies_when:
+      stage_in: [I, II, III]
+    rationale: "NCCN + SGO Choosing Wisely: routine imaging or tumor markers in asymptomatic survivors has high false-positive burden without survival benefit. Image symptom-driven concerns only (post-coital / abnormal vaginal bleeding, pelvic pain, weight loss)."
+
+  - id: vaginal_cuff_exam
+    test: "Pelvic exam with attention to vaginal cuff"
+    cadence: "Every clinic visit; patient self-monitoring for vaginal bleeding"
+    applies_when:
+      stage_in: [I, II, III]
+    rationale: "Vaginal-cuff recurrence is the most common pattern; clinical exam catches palpable or visible recurrence at a treatable point. Symptom education matters."
+
+  - id: lynch_syndrome_screening
+    test: "Universal tumor MMR testing + family history for Lynch syndrome"
+    cadence: "At diagnosis; if Lynch confirmed, age-appropriate colon + other cancer surveillance"
+    applies_when:
+      stage_in: [I, II, III, IV]
+    rationale: "NCCN: universal MMR testing on all endometrial cancers — ~5% have germline Lynch syndrome with substantial implications for colon, ovarian, and family-member cancer screening."
+
+  - id: bone_health
+    test: "Bone density scan (DEXA) for surgically post-menopausal patients on AI therapy"
+    cadence: "Baseline + every 1–2 years on AI therapy"
+    applies_when:
+      on_endocrine_therapy: "aromatase_inhibitor"
+    rationale: "AI therapy accelerates bone loss; pre-menopausal patients made surgically post-menopausal by TH/BSO are at elevated risk."
+
+  - id: cardiovascular_metabolic
+    test: "Cardiovascular risk-factor optimization (weight, glucose, lipids, blood pressure)"
+    cadence: "Per primary-care cadence; emphasize at survivorship visits"
+    applies_when:
+      stage_in: [I, II, III]
+    rationale: "Endometrial cancer overlaps substantially with metabolic syndrome; survivors face elevated cardiovascular and second-malignancy mortality. Survivorship visits should reinforce primary-care risk reduction."
+
+  - id: fertility_sparing_followup
+    test: "Endometrial biopsy + imaging during progestin therapy"
+    cadence: "Every 3–6 months on progestin; durable response → maintenance + planned pregnancy or definitive surgery"
+    applies_when:
+      on_fertility_sparing: true
+    rationale: "Fertility-sparing progestin therapy for early-stage G1 endometrioid disease requires serial endometrial sampling to confirm response and detect persistent disease; counseling on definitive surgery after childbearing."
+
+  - id: stage_iv_active_management
+    test: "Imaging cadence per active treatment plan"
+    cadence: "Per oncology team; typically every 2–3 cycles for response assessment"
+    applies_when:
+      stage_in: [IV]
+    rationale: "Stage IV / recurrent endometrial cancer is active disease management — imaging cadence is dictated by regimen and response."

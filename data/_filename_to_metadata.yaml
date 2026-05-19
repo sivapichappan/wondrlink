@@ -687,3 +687,171 @@ the_american_society_of_colon_and_rectal_surgeons.7.pdf:
   doc_type: patient_guideline
   audience: patient
   guideline_org: NCCN
+
+# ============================================================
+# Wave 4 — uterine (endometrial), pancreatic (added 2026-05-19)
+# ============================================================
+
+# --- Uterine / endometrial ---
+"1-s2.0-S0090825820342244-main.pdf":      # SGO endometrial review Part I (Hamilton 2020)
+  cancer_types: [uterine]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: SGO
+
+"1-s2.0-S009082582034227X-main.pdf":      # SGO endometrial review Part II (Hamilton 2020)
+  cancer_types: [uterine]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: SGO
+
+"8611.00.pdf":                              # ACS Endometrial Cancer — Early Detection, Diagnosis, Staging
+  cancer_types: [uterine]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: ACS
+
+"8612.00.pdf":                              # ACS Treating Endometrial Cancer
+  cancer_types: [uterine]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: ACS
+
+"Endometrial Cancer Prevention - NCI.pdf":
+  cancer_types: [uterine]
+  doc_type: screening
+  audience: patient
+  guideline_org: NCI
+
+"Endometrial Cancer Screening - NCI.pdf":
+  cancer_types: [uterine]
+  doc_type: screening
+  audience: patient
+  guideline_org: NCI
+
+"Endometrial Cancer Treatment (PDQ®) - NCI.pdf":
+  cancer_types: [uterine]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCI
+
+"Endometrial Cancer Treatment - NCI.pdf":
+  cancer_types: [uterine]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: NCI
+
+"PIIS1879850022002739.pdf":                # ASTRO Radiation Therapy for Endometrial Cancer CPG
+  cancer_types: [uterine]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: ASTRO
+
+"SGO communique_ Newly approved and investigational therapies for endometrial cancer _ Society of Gynecologic Oncology.pdf":
+  cancer_types: [uterine]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: SGO
+
+"Uterine Sarcoma Treatment (PDQ®) - NCI.pdf":
+  cancer_types: [uterine]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCI
+
+"after-an-endometrial-cancer-diagnosis.pdf":
+  cancer_types: [uterine]
+  doc_type: survivorship
+  audience: patient
+  guideline_org: ACS
+
+"jnccn-article-p284.pdf":                  # NCCN CE article on uterine cancer
+  cancer_types: [uterine]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: NCCN
+
+"uterine-patient.pdf":
+  cancer_types: [uterine]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCCN
+
+"uterine_facts.pdf":
+  cancer_types: [uterine]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: ACS
+
+# --- Pancreatic ---
+"PIIS0923753423008244.pdf":                # ESMO Pancreatic Cancer CPG (Conroy 2023)
+  cancer_types: [pancreatic]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: ESMO
+
+"PanCAN-Booklet-Overview.pdf":
+  cancer_types: [pancreatic]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: PanCAN
+
+"Pancreatic Cancer Treatment (PDQ®) - NCI.pdf":
+  cancer_types: [pancreatic]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCI
+
+"Pancreatic Cancer Treatment - NCI.pdf":
+  cancer_types: [pancreatic]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: NCI
+
+"Pancreatic Neuroendocrine Tumors (Islet Cell Tumors) Treatment (PDQ®) - NCI.pdf":
+  cancer_types: [pancreatic]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCI
+
+"after-a-pancreatic-cancer-diagnosis.pdf":
+  cancer_types: [pancreatic]
+  doc_type: survivorship
+  audience: patient
+  guideline_org: ACS
+
+"booklet_cancer-of-the-pancreas_2016.02.03.pdf":     # NCI Cancer of the Pancreas — What You Need to Know
+  cancer_types: [pancreatic]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCI
+
+"ccc_pancreatic.pdf":                                 # CancerCare Pancreatic Treatment Update
+  cancer_types: [pancreatic]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: CancerCare
+
+"khorana-et-al-2019-potentially-curable-pancreatic-adenocarcinoma-asco-clinical-practice-guideline-update.pdf":
+  cancer_types: [pancreatic]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: ASCO
+
+"pancreatic-patient.pdf":
+  cancer_types: [pancreatic]
+  doc_type: patient_guideline
+  audience: patient
+  guideline_org: NCCN
+
+"sohal-et-al-2020-metastatic-pancreatic-cancer-asco-guideline-update.pdf":
+  cancer_types: [pancreatic]
+  doc_type: clinician_guideline
+  audience: clinician
+  guideline_org: ASCO
+
+"stoffel-et-al-2018-evaluating-susceptibility-to-pancreatic-cancer-asco-provisional-clinical-opinion.pdf":
+  cancer_types: [pancreatic]
+  doc_type: reference
+  audience: clinician
+  guideline_org: ASCO

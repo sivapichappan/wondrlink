@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wondrlink.foundation/schemas/cancers/uterine/clinical.schema.json",
+  "title": "Uterine Clinical Profile",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "histology": {
+      "type": "string",
+      "description": "Endometrial carcinomas vs uterine sarcomas are biologically distinct.",
+      "enum": [
+        "endometrioid_g1",
+        "endometrioid_g2",
+        "endometrioid_g3",
+        "serous",
+        "clear_cell",
+        "mucinous",
+        "mixed_carcinoma",
+        "carcinosarcoma",
+        "undifferentiated_dedifferentiated",
+        "leiomyosarcoma",
+        "endometrial_stromal_sarcoma_low_grade",
+        "endometrial_stromal_sarcoma_high_grade",
+        "adenosarcoma",
+        "other",
+        "unknown"
+      ]
+    },
+    "molecular_class": {
+      "type": "string",
+      "description": "ProMisE / TCGA-derived molecular classification — drives modern treatment decisions.",
+      "enum": ["pole_ultramutated", "msi_high_dmmr", "copy_number_low_nsmp", "copy_number_high_p53abn", "multiple_classifiers", "not_tested", "unknown"]
+    },
+    "figo_stage": {
+      "type": "string",
+      "enum": ["IA", "IB", "II", "IIIA", "IIIB", "IIIC1", "IIIC2", "IVA", "IVB", "unknown"]
+    },
+    "grade": {
+      "type": "string",
+      "enum": ["G1", "G2", "G3", "high_grade", "unknown"]
+    },
+    "stage_detail": { "type": "string" },
+    "diagnosis_date": { "type": "string", "format": "date" },
+    "menopausal_status": {
+      "type": "string",
+      "enum": ["pre", "peri", "post", "unknown"]
+    },
+    "fertility_preservation_desired": { "type": ["boolean", "string"] },
+    "lvsi": {
+      "type": "string",
+      "description": "Lymphovascular space invasion — substantial LVSI is an adverse feature.",
+      "enum": ["absent", "focal", "substantial", "unknown"]
+    },
+    "biomarkers": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "MSI":   { "type": "string", "enum": ["MSI-H", "MSI-L", "MSS", "not-tested", "unknown"] },
+        "MMR":   { "type": "string", "enum": ["deficient", "proficient", "not-tested", "unknown"] },
+        "p53":   { "type": "string", "enum": ["abnormal", "wild-type", "not-tested", "unknown"] },
+        "POLE":  { "type": "string", "enum": ["pathogenic", "non-pathogenic", "wild-type", "not-tested", "unknown"] },
+        "ER":    { "type": "string", "enum": ["positive", "negative", "low", "unknown"] },
+        "PR":    { "type": "string", "enum": ["positive", "negative", "low", "unknown"] },
+        "HER2":  { "type": "string", "enum": ["positive", "negative", "low", "unknown"] },
+        "L1CAM": { "type": "string", "enum": ["positive", "negative", "unknown"] },
+        "CTNNB1":{ "type": "string", "enum": ["mutated_exon3", "wild-type", "unknown"] }
+      }
+    },
+    "treatments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "regimen": { "type": "string" },
+          "line": { "type": "string", "enum": ["first-line", "second-line", "third-line", "adjuvant", "neoadjuvant", "maintenance", "hormone_therapy", "fertility_sparing"] },
+          "status": { "type": "string", "enum": ["active", "completed", "discontinued"] },
+          "startDate": { "type": "string", "format": "date" },
+          "endDate": { "type": "string", "format": "date" },
+          "cycleNumber": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "surgical_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "procedure": {
+            "type": "string",
+            "enum": ["th_bso", "th_only", "sentinel_node", "lymphadenectomy", "omentectomy", "vaginal_cuff_brachytherapy", "robotic_th_bso", "laparoscopic_th_bso", "open_th_bso", "fertility_sparing_progestin", "other"]
+          },
+          "date": { "type": "string", "format": "date" }
+        }
+      }
+    },
+    "radiation_history": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "received": { "type": "boolean" },
+        "modality": { "type": "string", "enum": ["vaginal_brachytherapy", "ebrt", "imrt", "concurrent_chemoradiation", "other", "unknown"] },
+        "completion_date": { "type": "string", "format": "date" }
+      }
+    },
+    "lynch_syndrome": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "tested": { "type": "boolean" },
+        "germline_confirmed": { "type": "boolean" },
+        "variant_gene": { "type": "string", "enum": ["MLH1", "MSH2", "MSH6", "PMS2", "EPCAM", "none", "unknown"] }
+      }
+    },
+    "family_history_significant": { "type": "boolean" }
+  }
+}

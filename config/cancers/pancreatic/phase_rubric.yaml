@@ -1,0 +1,76 @@
+phases:
+  early_chemo:    { min_days: 0,    max_days: 28 }
+  mid_chemo:      { min_days: 28,   max_days: 180 }
+  late_chemo:     { min_days: 180,  max_days: null }
+  neoadjuvant_therapy: {}
+  post_whipple:   {}
+  adjuvant_therapy: {}
+  chemoradiation: {}
+  parp_maintenance: {}
+  surveillance:   {}
+  newly_diagnosed: {}
+  metastatic:     {}
+  general:        {}
+
+suggestions:
+  early_chemo:
+    - "What side effects from cycle 1 of {regimen} should I watch for?"
+    - "What helps with neuropathy from oxaliplatin or paclitaxel?"
+    - "Help me prepare for my next visit"
+  mid_chemo:
+    - "How will we know if my treatment is working?"
+    - "What can I do about chemo-related fatigue and weight loss?"
+    - "Help me prepare for my next visit"
+  late_chemo:
+    - "What does life look like after several cycles of chemo?"
+    - "When will we restage / decide next steps?"
+    - "Help me prepare for my next visit"
+  neoadjuvant_therapy:
+    - "Why are we doing chemo before surgery?"
+    - "What do we do if my cancer responds well — or if it doesn't?"
+    - "Help me prepare for my next visit"
+  post_whipple:
+    - "What does recovery from the Whipple procedure look like?"
+    - "What about pancreatic enzymes (PERT) and managing digestion?"
+    - "Help me prepare for my next visit"
+  adjuvant_therapy:
+    - "Why am I getting more chemo after surgery removed the cancer?"
+    - "How long does adjuvant chemotherapy typically last?"
+    - "Help me prepare for my next visit"
+  chemoradiation:
+    - "What can I expect during concurrent chemoradiation?"
+    - "What side effects should I watch for?"
+    - "Help me prepare for my next visit"
+  parp_maintenance:
+    - "What is olaparib maintenance and how long will I be on it?"
+    - "What side effects should I watch for on a PARP inhibitor?"
+    - "Help me prepare for my next visit"
+  surveillance:
+    - "When is my next surveillance scan / CA 19-9 due?"
+    - "What signs of recurrence should I watch for?"
+    - "Help me prepare for my next visit"
+  newly_diagnosed:
+    - "Is my pancreatic cancer resectable, borderline resectable, locally advanced, or metastatic?"
+    - "Should I have germline genetic testing?"
+    - "Should I get a second opinion at a high-volume pancreatic cancer center?"
+  metastatic:
+    - "What does my current regimen aim to do — control disease, shrink it, or both?"
+    - "How will we know when it might be time to change treatment?"
+    - "What palliative care options support me alongside active treatment?"
+  general:
+    - "What questions should I ask my oncology team?"
+    - "How can I prepare for my next appointment?"
+    - "Help me prepare for my next visit"
+
+descriptors:
+  active_treatment: "You're {days_clause}{regimen}{cycle_clause}."
+  neoadjuvant_therapy: "On neoadjuvant therapy before planned surgery."
+  post_whipple:    "{days} days post-Whipple — recovery phase."
+  adjuvant_therapy: "On adjuvant therapy after curative-intent surgery."
+  chemoradiation:  "On concurrent chemoradiation."
+  parp_maintenance: "On PARP-inhibitor maintenance after platinum response."
+  surveillance:    "{days} days post-resection — surveillance phase."
+  surveillance_no_date: "You're in the surveillance phase."
+  metastatic:      "Metastatic pancreatic cancer — focus is on disease control and quality of life."
+  newly_diagnosed: "Newly diagnosed — {stage_clause}{cancer_name}."
+  fallback:        "Welcome back."

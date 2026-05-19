@@ -1,0 +1,88 @@
+# DRAFT — clinician sign-off required before flipping cancer.yaml ready: true.
+# Sources: NCCN Pancreatic Adenocarcinoma (current), ASCO Potentially
+# Curable PDAC (Khorana 2019) survivorship language, ESMO Pancreatic
+# Cancer CPG (Conroy 2023).
+#
+# Most pancreatic cancer patients present with advanced disease, so the
+# surveillance cadence below applies mainly to the minority who undergo
+# curative-intent resection. For metastatic / locally advanced patients,
+# imaging is regimen-driven (response assessment), not surveillance.
+
+milestones:
+  - id: office_visit_post_resection
+    test: "Office visit with medical oncology + surgical oncology / gastroenterology"
+    cadence: "Every 3–4 months × 2 years, every 6 months × 3 years, then annually"
+    applies_when:
+      had_curative_resection: true
+    rationale: "NCCN: post-resection PDAC has substantial early recurrence risk (median ~12 months even after curative-intent surgery). Structured clinical surveillance with attention to symptoms, weight, nutrition, and pain is essential."
+
+  - id: ca19_9_post_resection
+    test: "CA 19-9 serum tumor marker"
+    cadence: "Every 3–4 months × 2 years, every 6 months × 3 years"
+    applies_when:
+      had_curative_resection: true
+      ca19_9_was_secretor: true
+    rationale: "CA 19-9 is the most useful tumor marker in PDAC for patients who were CA 19-9 secretors at baseline. A rising trend often precedes radiographic recurrence by months."
+
+  - id: imaging_post_resection
+    test: "Cross-sectional imaging (CT chest/abdomen/pelvis with pancreas protocol; MRI as alternative)"
+    cadence: "Every 3–6 months × 2 years, every 6 months × 3 years, then annually"
+    applies_when:
+      had_curative_resection: true
+    rationale: "NCCN: scheduled cross-sectional imaging is appropriate after curative-intent resection given high recurrence rate. Pancreas-protocol CT is the standard."
+
+  - id: nutrition_pert
+    test: "Nutrition + PERT (pancreatic enzyme replacement) adequacy"
+    cadence: "Every visit; dose-adjust based on weight, stool quality, fat absorption symptoms"
+    applies_when:
+      had_pancreatic_resection: true
+    rationale: "Exocrine pancreatic insufficiency is nearly universal after Whipple / total pancreatectomy and common with unresectable PDAC. Inadequate PERT manifests as weight loss, steatorrhea, malabsorption, and fat-soluble vitamin deficiencies."
+
+  - id: diabetes_screening
+    test: "Hemoglobin A1c + fasting glucose"
+    cadence: "Every 6–12 months post-resection; immediately if symptomatic"
+    applies_when:
+      had_pancreatic_resection: true
+    rationale: "Type 3c (pancreatogenic) diabetes is common after partial or total pancreatectomy. Glycemic patterns differ from type 1 / type 2; specialist endocrinology input often helps."
+
+  - id: vte_prophylaxis_advanced
+    test: "Venous thromboembolism risk assessment + prophylaxis discussion"
+    cadence: "Every visit during active disease; ongoing for metastatic patients"
+    applies_when:
+      stage_in: [III, IV]
+    rationale: "Pancreatic cancer is one of the most VTE-prone cancers; prophylactic anticoagulation (often DOAC) is reasonable for ambulatory patients with metastatic disease per ASCO VTE guideline."
+
+  - id: pain_management
+    test: "Comprehensive pain assessment; consider celiac plexus block / neurolysis early"
+    cadence: "Every visit; refer early for refractory pain"
+    applies_when:
+      stage_in: [II, III, IV]
+    rationale: "Pancreatic-cancer pain is often severe and under-treated. Celiac plexus block / neurolysis is an under-utilized intervention with substantial benefit when offered early."
+
+  - id: palliative_care_integration
+    test: "Palliative care referral alongside oncology"
+    cadence: "Recommended at diagnosis of advanced disease; ongoing"
+    applies_when:
+      stage_in: [III, IV]
+    rationale: "Early palliative-care integration in pancreatic cancer is associated with improved symptom control, mood, and possibly survival. Frame as 'alongside active treatment', not end-of-life."
+
+  - id: germline_genetic_testing
+    test: "Germline genetic testing (BRCA1/2, PALB2, ATM, Lynch panel)"
+    cadence: "At diagnosis (per NCCN)"
+    applies_when:
+      stage_in: [I, II, III, IV]
+    rationale: "NCCN recommends germline genetic testing for ALL pancreatic cancer patients regardless of family history — ~5–10% have a germline pathogenic variant with implications for treatment (PARP-i, platinum) and family-member screening."
+
+  - id: stage_iv_active_management
+    test: "Imaging cadence per active treatment plan"
+    cadence: "Per oncology team; typically every 2–3 cycles for response assessment"
+    applies_when:
+      stage_in: [III, IV]
+    rationale: "Locally advanced or metastatic pancreatic cancer is active disease management — imaging cadence is dictated by regimen and response, not scheduled surveillance."
+
+  - id: high_risk_screening
+    test: "EUS + MRI of pancreas (high-risk individuals only)"
+    cadence: "Annually for known germline pathogenic variant carriers + significant family history"
+    applies_when:
+      hereditary_high_risk: true
+    rationale: "CAPS consortium recommends pancreatic screening with EUS or MRI for high-risk individuals (BRCA1/2, PALB2, ATM carriers with family history; Lynch syndrome; Peutz-Jeghers; hereditary pancreatitis; FAMMM). NOT recommended for the general population."
