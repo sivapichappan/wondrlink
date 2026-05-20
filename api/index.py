@@ -104,6 +104,39 @@ def require_auth(f):
     return decorated_function
 
 # -------------------------
+# CSP Report Endpoint
+# -------------------------
+# Browsers POST CSP violation reports here when the report-only header detects
+# a blocked resource. We log counts + the violated directive + the blocked URI
+# (no PII — the URI is either a CDN or a third-party origin). Used during the
+# CSP rollout window to discover legitimate violations before flipping the
+# header from Report-Only to enforced.
+@app.route("/api/csp-report", methods=["POST"])
+def api_csp_report():
+    try:
+        # Browsers send application/csp-report or application/json. Try both.
+        raw = request.get_data(as_text=True) or ""
+        try:
+            data = json.loads(raw)
+        except Exception:
+            data = {}
+        report = data.get("csp-report") or data or {}
+        # Only log a small, non-PII surface
+        directive = report.get("violated-directive") or report.get("effective-directive") or "unknown"
+        blocked_uri = (report.get("blocked-uri") or "")[:200]
+        document_uri = (report.get("document-uri") or "")[:200]
+        logger.info(
+            "CSP-VIOLATION directive=%s blocked=%s on=%s",
+            directive, blocked_uri, document_uri
+        )
+        # Always 204 — browsers ignore the response body
+        return ("", 204)
+    except Exception:
+        logger.exception("CSP report handler error")
+        return ("", 204)
+
+
+# -------------------------
 # Auth Routes
 # -------------------------
 @app.route("/api/auth/register", methods=["POST"])
