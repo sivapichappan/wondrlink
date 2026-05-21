@@ -44,7 +44,13 @@ The service cannot function without the user-submitted health profile (which dri
 ### Proportionality
 - We de-identify before transmitting to sub-processors.
 - We do not collect biometric data, location at higher precision than ZIP, or financial data.
-- Retention is limited to the active account; deletion is honored immediately.
+- Retention periods (Task 5 — concrete schedule):
+  - Active account data: retained while the account is active.
+  - On account deletion: hard delete from active database within **7 days**; Supabase backups (PITR) complete purge within **90 days**.
+  - Rate-limit records: **24 hours**.
+  - Consent withdrawal logs: **6 years** (auditable record of consent history; the only data surviving an account deletion, kept for MHMDA / CCPA audit defense only).
+  - Anonymous aggregated usage statistics: indefinite.
+  - Sub-processor retention follows each vendor's policy — see `docs/compliance/subprocessor_chain.md`.
 
 ## 4. Risk Assessment
 
@@ -66,7 +72,7 @@ The service cannot function without the user-submitted health profile (which dri
 - **Purpose limitation:** processing strictly limited to documented purposes.
 - **Data minimization:** profile fields are optional except age and state; chat history is configurable to delete.
 - **Accuracy:** users can edit profile at any time.
-- **Storage limitation:** retained while account active; deletion within 30 days of request.
+- **Storage limitation:** retained while account active; on deletion, hard-deleted within 7 days, backups purge within 90 days. Rate-limit rows: 24 hours. Consent withdrawal log: 6 years (audit defense). See Section 3 Proportionality for the full schedule.
 - **Integrity and confidentiality:** TLS in transit, AES-256 at rest, RLS on tables, rate limiting.
 - **Accountability:** this DPIA, incident response plan, sub-processor chain, and quarterly review cadence.
 

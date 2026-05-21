@@ -6437,7 +6437,15 @@
                 <p>If we deny your access, deletion, or consent withdrawal request, you may appeal by emailing <a href="mailto:appeals@wondrlinkfoundation.org" style="color:var(--primary);">appeals@wondrlinkfoundation.org</a>. We will respond to appeals within 45 days. If you are dissatisfied with the appeal outcome, you may contact the Washington Attorney General's Office.</p>
 
                 <h3>Retention</h3>
-                <p>We retain your consumer health data while your account is active. When you delete your account, your data is removed from our primary database within 30 days. Some sub-processor logs may persist beyond this window per their own retention policies; those policies are linked above.</p>
+                <p>Our retention periods are:</p>
+                <ul>
+                    <li><strong>Active account data</strong> (profile, chat history, screening responses, acknowledgement record): retained for as long as your account is active.</li>
+                    <li><strong>On account deletion:</strong> hard delete from our active database within <strong>7 days</strong> of your deletion request. Supabase backups (point-in-time recovery) complete purge within <strong>90 days</strong>.</li>
+                    <li><strong>Rate-limiting records</strong> (IP / user-id timestamps for abuse prevention): automatically purged after <strong>24 hours</strong>.</li>
+                    <li><strong>Consent withdrawal logs:</strong> retained for <strong>6 years</strong> as the auditable record of your consent history. This is the only data that survives an account deletion, retained for MHMDA / CCPA audit defense; we cannot use it for any other purpose.</li>
+                    <li><strong>Anonymous aggregated usage statistics</strong> (counts, error rates — never tied to a user): retained indefinitely.</li>
+                    <li><strong>Sub-processor retention</strong> follows each vendor's policy — see the <a href="#" onclick="showPolicyModal('subprocessorOverlay'); return false;">sub-processor chain document</a> linked from our public docs. Together AI / Groq typically retain de-identified inference logs ~30 days; Supabase backups follow the 7-day PITR window; Vercel function logs follow Vercel's short retention.</li>
+                </ul>
 
                 <h3>Changes to this Notice</h3>
                 <p>We will notify you of material changes by requiring re-acknowledgement on next login.</p>
@@ -6527,7 +6535,15 @@
                 <p>We do <strong>not</strong> sell your personal health information to third parties.</p>
 
                 <h3>Data Retention</h3>
-                <p>We retain your data for as long as your account is active. Upon account deletion, all data is permanently removed within 30 days. Rate limiting records are automatically deleted after 24 hours.</p>
+                <p>Our retention periods are:</p>
+                <ul>
+                    <li><strong>Active account data</strong> (profile, chat history, screening responses, acknowledgement record): retained for as long as your account is active.</li>
+                    <li><strong>On account deletion:</strong> hard delete from our active database within <strong>7 days</strong>; Supabase backup (point-in-time recovery) purge completes within <strong>90 days</strong>.</li>
+                    <li><strong>Rate-limiting records:</strong> automatically purged after <strong>24 hours</strong>.</li>
+                    <li><strong>Consent withdrawal logs:</strong> retained <strong>6 years</strong> as the auditable record of consent history (the only data that survives account deletion, kept for MHMDA / CCPA audit defense only).</li>
+                    <li><strong>Anonymous aggregated usage statistics:</strong> retained indefinitely.</li>
+                    <li><strong>Sub-processor retention</strong> follows each vendor's policy — see the linked sub-processor list. Together AI / Groq retain de-identified inference logs ~30 days; Vercel function logs follow Vercel's short retention; Supabase backups follow a 7-day PITR window.</li>
+                </ul>
 
                 <h3>Your Rights</h3>
                 <p>You have the following rights regarding your data:</p>
