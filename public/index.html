@@ -6726,6 +6726,88 @@
         </div>
     </div>
 
+    <!-- LIMIT USE OF SENSITIVE PERSONAL INFORMATION (CCPA / CPRA Task 7) -->
+    <div class="policy-overlay" id="limitSpiOverlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="limitSpiTitle">
+        <div class="policy-modal">
+            <div class="policy-modal-header">
+                <h2 id="limitSpiTitle">Limit Use of Sensitive Personal Information</h2>
+                <button class="policy-modal-close" onclick="closeLimitSpiModal()" aria-label="Close">&times;</button>
+            </div>
+            <div class="policy-modal-body">
+                <p class="policy-draft-banner">
+                    <strong>DRAFT — ATTORNEY REVIEW REQUIRED.</strong> Operational summary of how we handle sensitive personal information.
+                </p>
+                <p>Under the California Consumer Privacy Act (CCPA / CPRA), residents have the right to limit how their sensitive personal information is used. This page describes how WondrLink already limits use, and confirms your preference for our records.</p>
+
+                <h3>What we treat as Sensitive Personal Information (SPI)</h3>
+                <ul>
+                    <li>Your cancer diagnosis, stage, and treatments</li>
+                    <li>Biomarkers, genetic test results, and family history fields</li>
+                    <li>Mental-health screening results (PHQ-9, GAD-7, PSS-10, ISI)</li>
+                    <li>Symptom logs and PRO-CTCAE entries</li>
+                    <li>Any other clinical detail you share in chat or in your profile</li>
+                </ul>
+
+                <h3>How we use your SPI today</h3>
+                <ul>
+                    <li><strong>To provide the WondrLink service.</strong> Personalize education, surface relevant clinical-trial matches, render survivorship rubrics, and ground LLM responses in the guidelines that apply to your situation.</li>
+                    <li><strong>To process safely.</strong> Direct identifiers (name, DOB, address, phone, email, MRN, insurance ID, account numbers, ZIP code) are stripped before any query is sent to our LLM providers — see the de-identification description in our <a href="#" onclick="closeLimitSpiModal(); showPolicyModal('consumerHealthOverlay'); return false;" style="color:var(--primary);">Consumer Health Data Privacy Notice</a>.</li>
+                </ul>
+
+                <h3>How we DO NOT use your SPI</h3>
+                <ul>
+                    <li><strong>We do not sell</strong> your sensitive personal information.</li>
+                    <li><strong>We do not share</strong> it for cross-context behavioral advertising or any third-party advertising purpose.</li>
+                    <li><strong>We do not use</strong> it for inferences unrelated to providing the WondrLink service.</li>
+                    <li><strong>We do not use</strong> it for profiling that produces legal or similarly significant effects.</li>
+                </ul>
+
+                <p>Because we already limit use as described above, clicking "Confirm my preference" below produces no behavioral change in how we process your data — but it records your preference so we can demonstrate it on request. If you would like additional restrictions, contact us at <a href="mailto:privacy@wondrlinkfoundation.org" style="color:var(--primary);">privacy@wondrlinkfoundation.org</a>.</p>
+
+                <div id="limitSpiStatus" style="margin:14px 0;padding:10px 12px;background:var(--surface-raised, #F7FAF8);border-radius:8px;font-size:13px;color:var(--text-secondary);">Loading current preference...</div>
+
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button id="limitSpiConfirmBtn" class="feature-primary-btn" onclick="confirmLimitSpi()">Confirm my preference</button>
+                    <button class="feature-secondary-btn" onclick="closeLimitSpiModal()">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ACCESSIBILITY STATEMENT (Task 9 — bridges from the footer link;
+         full content authored in Task 9). -->
+    <div class="policy-overlay" id="accessibilityOverlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="accessibilityTitle">
+        <div class="policy-modal">
+            <div class="policy-modal-header">
+                <h2 id="accessibilityTitle">Accessibility Statement</h2>
+                <button class="policy-modal-close" onclick="closePolicyModal('accessibilityOverlay')" aria-label="Close">&times;</button>
+            </div>
+            <div class="policy-modal-body">
+                <p class="policy-draft-banner">
+                    <strong>DRAFT — ATTORNEY REVIEW REQUIRED.</strong> Initial statement; substantive issues are tracked in our audit log.
+                </p>
+                <p><strong>Effective:</strong> May 2026 &nbsp;|&nbsp; <strong>Target conformance:</strong> WCAG 2.1 AA</p>
+
+                <h3>Our commitment</h3>
+                <p>WondrLink Foundation works to make this service usable by everyone, including people with disabilities. We target conformance with the Web Content Accessibility Guidelines (WCAG) 2.1 at level AA. We recognize that cancer patients are disproportionately likely to encounter vision, motor, and cognitive challenges that affect web use, and that good accessibility is not optional.</p>
+
+                <h3>What we do</h3>
+                <ul>
+                    <li>Use semantic HTML (<code>role</code>, <code>aria-label</code>, <code>aria-labelledby</code>, <code>aria-live</code>) for modals, alerts, and live regions.</li>
+                    <li>Provide focus management on every modal (open/close/escape).</li>
+                    <li>Meet a 44×44 px minimum touch target on interactive controls.</li>
+                    <li>Run automated accessibility tests (axe-core via Playwright) in CI on critical flows: signup, profile, chat, screenings, deletion, the Consumer Health Data Notice modal, and the Privacy Policy modal. Pull requests are blocked on <em>serious</em> or <em>critical</em> axe violations.</li>
+                </ul>
+
+                <h3>Known issues</h3>
+                <p>We track known accessibility issues here and prioritize fixes against the next release. As of this version's audit there are no <em>serious</em> or <em>critical</em> issues outstanding; minor and moderate findings are tracked in our internal triage.</p>
+
+                <h3>Feedback</h3>
+                <p>If you encounter an accessibility barrier, please contact us at <a href="mailto:accessibility@wondrlinkfoundation.org" style="color:var(--primary);">accessibility@wondrlinkfoundation.org</a>. We respond within 7 business days and prioritize accessibility-blocking issues at the next release.</p>
+            </div>
+        </div>
+    </div>
+
     <!-- CRISIS MODAL (PHQ-9 Q9 >= 1) -->
     <div id="crisisOverlay" class="crisis-overlay" style="display:none;" role="alertdialog" aria-modal="true" aria-label="Crisis Support Resources">
         <div class="crisis-container">
@@ -7440,6 +7522,10 @@
                     <a href="#" onclick="showPolicyModal('privacyOverlay'); return false;">Privacy Policy</a>
                     <span>&middot;</span>
                     <a href="#" onclick="showPolicyModal('termsOverlay'); return false;">Terms of Use</a>
+                    <span>&middot;</span>
+                    <a href="#" onclick="openLimitSpiModal(); return false;">Do Not Sell or Share My Personal Information</a>
+                    <span>&middot;</span>
+                    <a href="#" onclick="showPolicyModal('accessibilityOverlay'); return false;">Accessibility</a>
                 </div>
                 <span class="char-counter" id="charCounter">0 / 2,000</span>
             </div>
@@ -13087,6 +13173,59 @@
         // =============================================
         // ACCOUNT DELETION
         // =============================================
+        // ===== Limit Use of Sensitive Personal Information (CCPA/CPRA Task 7) =====
+        async function openLimitSpiModal() {
+            const overlay = document.getElementById('limitSpiOverlay');
+            if (!overlay) return;
+            overlay.style.display = 'flex';
+            const statusEl = document.getElementById('limitSpiStatus');
+            const btn = document.getElementById('limitSpiConfirmBtn');
+            statusEl.textContent = 'Loading current preference...';
+            try {
+                const resp = await authFetch('/api/limit_sensitive_pi');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.limited) {
+                        statusEl.innerHTML = `<strong>Preference confirmed.</strong> Recorded on ${new Date(data.confirmed_at).toLocaleString()}. Your data is already limited as described above; click confirm again to refresh the timestamp.`;
+                        btn.textContent = 'Re-confirm my preference';
+                    } else {
+                        statusEl.textContent = 'You have not confirmed a preference yet.';
+                        btn.textContent = 'Confirm my preference';
+                    }
+                } else {
+                    statusEl.textContent = 'Unable to load current preference. Please try again.';
+                }
+            } catch (_) {
+                statusEl.textContent = 'Network error. Please try again.';
+            }
+        }
+        function closeLimitSpiModal() {
+            const overlay = document.getElementById('limitSpiOverlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+        async function confirmLimitSpi() {
+            const btn = document.getElementById('limitSpiConfirmBtn');
+            const statusEl = document.getElementById('limitSpiStatus');
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+            try {
+                const resp = await authFetch('/api/limit_sensitive_pi', { method: 'POST' });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok) {
+                    statusEl.innerHTML = `<strong>Preference confirmed.</strong> Recorded on ${new Date(data.confirmed_at).toLocaleString()}.`;
+                    btn.textContent = 'Re-confirm my preference';
+                } else {
+                    statusEl.textContent = data.error || 'Failed to save. Please try again.';
+                    btn.textContent = 'Confirm my preference';
+                }
+            } catch (_) {
+                statusEl.textContent = 'Network error. Please try again.';
+                btn.textContent = 'Confirm my preference';
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
         // ===== Consent Management (MHMDA Task 4) =====
         // Toggle off any of the three signup consents without deleting the
         // account. Toggling off `consent_collection` or `consent_sharing`

@@ -571,6 +571,69 @@ def api_withdraw_consent():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/limit_sensitive_pi", methods=["GET", "POST"])
+@require_auth
+def api_limit_sensitive_pi():
+    """
+    CCPA / CPRA: surface the "Limit Use of Sensitive Personal Information"
+    affordance. We don't use SPI for advertising or sale, so this is
+    operationally a no-op; the endpoint records the user's preference
+    timestamp so we can produce it on request.
+
+    GET  → returns {limited: bool, confirmed_at: iso8601|None}
+    POST → records the preference; idempotent (subsequent posts just refresh
+           the timestamp).
+
+    Persistence: a row in the `consent_withdrawals` table with
+    consent_key='consent_collection' would conflate flows, so we re-use the
+    same table with consent_key='limit_spi' kept loose at runtime — the
+    DB CHECK constraint accepts the three signup keys, so for now we
+    persist on the user_acknowledgements row instead (consent_metadata
+    JSONB has room).
+    """
+    try:
+        from supabase_storage import get_admin_client
+        user_id = request.user["user_id"]
+        client = get_admin_client()
+
+        if request.method == "GET":
+            # Read the current ack row and return limit_spi info.
+            resp = (client.table('user_acknowledgements')
+                    .select('consent_metadata')
+                    .eq('user_id', user_id)
+                    .limit(1)
+                    .execute())
+            cm = (resp.data[0]['consent_metadata'] if resp.data else None) or {}
+            return jsonify({
+                "limited": bool(cm.get('limit_spi_confirmed')),
+                "confirmed_at": cm.get('limit_spi_confirmed_at'),
+            })
+
+        # POST — set the preference + timestamp.
+        from datetime import datetime
+        ts = datetime.utcnow().isoformat() + "Z"
+        resp = (client.table('user_acknowledgements')
+                .select('consent_metadata')
+                .eq('user_id', user_id)
+                .limit(1)
+                .execute())
+        cm = (resp.data[0]['consent_metadata'] if resp.data else None) or {}
+        cm['limit_spi_confirmed'] = True
+        cm['limit_spi_confirmed_at'] = ts
+        try:
+            client.table('user_acknowledgements').update(
+                {'consent_metadata': cm}
+            ).eq('user_id', user_id).execute()
+        except Exception as e:
+            logger.warning("limit_spi update failed: %s", e)
+            return jsonify({"error": "Failed to record preference"}), 500
+
+        return jsonify({"status": "ok", "limited": True, "confirmed_at": ts})
+    except Exception as e:
+        logger.exception("limit_sensitive_pi error")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/update_cancer_slug", methods=["POST"])
 @require_auth
 def api_update_cancer_slug():
