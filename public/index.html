@@ -7204,6 +7204,18 @@
                             </div>
                         </div>
 
+                        <!-- Consent Management (MHMDA Task 4) -->
+                        <div class="section-card compact">
+                            <div class="section-header">
+                                <div class="section-title">Consent Management</div>
+                            </div>
+                            <div style="padding:0 12px 12px;font-size:11px;color:var(--text-secondary);line-height:1.45;">
+                                <p style="margin:0 0 10px;">Toggle any consent off to stop the related processing. Toggling off does <strong>not</strong> delete your data — use "Delete Account" below for that.</p>
+                                <div id="consentToggleList" style="display:flex;flex-direction:column;gap:8px;"></div>
+                                <p style="margin:10px 0 0;font-size:10.5px;color:var(--text-muted);">Terms of Use + Privacy Policy: <a href="#" onclick="showPolicyModal('termsOverlay'); return false;">Terms</a> · <a href="#" onclick="showPolicyModal('privacyOverlay'); return false;">Privacy</a> · <a href="#" onclick="showPolicyModal('consumerHealthOverlay'); return false;">Consumer Health Data</a></p>
+                            </div>
+                        </div>
+
                         <!-- Account management -->
                         <div class="section-card compact">
                             <div class="section-header">
@@ -7575,6 +7587,7 @@
             }
             updateWatchlistPanel();
             loadCareSnapshot();   // non-blocking — populates the sidebar card
+            loadConsentToggles(); // non-blocking — populates Consent Management
             await loadChatHistory();
         }
 
@@ -13031,6 +13044,124 @@
         // =============================================
         // ACCOUNT DELETION
         // =============================================
+        // ===== Consent Management (MHMDA Task 4) =====
+        // Toggle off any of the three signup consents without deleting the
+        // account. Toggling off `consent_collection` or `consent_sharing`
+        // disables chat; the chat composer surfaces a banner.
+        const CONSENT_TOGGLE_DEFS = [
+            {
+                key: 'consent_collection',
+                title: '1. Health data collection',
+                help: 'Off = WondrLink stops processing new health data. Existing data is retained for your records.',
+            },
+            {
+                key: 'consent_sharing',
+                title: '2. AI provider processing',
+                help: 'Off = chat is disabled. WondrLink cannot generate responses without sharing de-identified queries with its AI providers.',
+            },
+        ];
+
+        async function loadConsentToggles() {
+            const host = document.getElementById('consentToggleList');
+            if (!host) return;
+            try {
+                const resp = await authFetch('/api/consent_status');
+                if (!resp.ok) {
+                    host.innerHTML = '<div style="color:var(--text-muted);">Unable to load consent state.</div>';
+                    return;
+                }
+                const state = await resp.json();
+                renderConsentToggles(host, state);
+                updateChatDisabledBanner(state);
+            } catch (_) { /* silent — sidebar load is best-effort */ }
+        }
+
+        function renderConsentToggles(host, state) {
+            host.innerHTML = CONSENT_TOGGLE_DEFS.map(def => {
+                const granted = (state[def.key] || {}).granted !== false;
+                const changedAt = (state[def.key] || {}).changed_at;
+                const statusTxt = granted
+                    ? '<span style="color:var(--primary);font-weight:600;">On</span>'
+                    : '<span style="color:var(--danger);font-weight:600;">Off (withdrawn)</span>';
+                const ts = changedAt ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">Last changed ${new Date(changedAt).toLocaleString()}</div>` : '';
+                return `
+                    <div class="consent-toggle-row" style="border:1px solid var(--border-light);border-radius:8px;padding:8px 10px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                            <div style="font-weight:600;color:var(--text-primary);">${def.title}</div>
+                            <button type="button" class="small ${granted ? 'secondary' : ''}"
+                                onclick="toggleConsent('${def.key}', ${granted})"
+                                style="font-size:10.5px;padding:4px 10px;">
+                                ${granted ? 'Withdraw' : 'Re-enable'}
+                            </button>
+                        </div>
+                        <div style="font-size:10.5px;color:var(--text-secondary);margin-top:4px;line-height:1.4;">${def.help}</div>
+                        <div style="font-size:10.5px;color:var(--text-secondary);margin-top:4px;">Status: ${statusTxt}</div>
+                        ${ts}
+                    </div>`;
+            }).join('');
+        }
+
+        async function toggleConsent(consentKey, currentlyGranted) {
+            const action = currentlyGranted ? 'withdraw' : 'restore';
+            if (action === 'withdraw') {
+                const ok = confirm(
+                    consentKey === 'consent_sharing'
+                        ? 'Withdrawing this consent will disable chat completely. You can re-enable it any time. Continue?'
+                        : 'This will stop WondrLink from processing new data. Existing data is retained. Continue?'
+                );
+                if (!ok) return;
+            }
+            try {
+                const resp = await authFetch('/api/withdraw_consent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ consent_key: consentKey, action }),
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    alert(data.error || 'Failed to update consent.');
+                    return;
+                }
+                const host = document.getElementById('consentToggleList');
+                if (host) renderConsentToggles(host, data.consent_status || {});
+                updateChatDisabledBanner(data.consent_status || {});
+            } catch (e) {
+                alert('Network error. Please try again.');
+            }
+        }
+
+        // Show / hide the chat-disabled banner above the input area.
+        function updateChatDisabledBanner(state) {
+            const wrap = document.querySelector('.chat-wrap');
+            if (!wrap) return;
+            let banner = document.getElementById('chatDisabledBanner');
+            const disabled = !!(state && state.chat_disabled);
+            const msgInput = document.getElementById('msgInput');
+            const sendBtn = document.getElementById('sendBtn');
+            if (disabled) {
+                if (!banner) {
+                    banner = document.createElement('div');
+                    banner.id = 'chatDisabledBanner';
+                    banner.setAttribute('role', 'alert');
+                    banner.style.cssText = 'margin:0 0 10px;padding:12px 14px;background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;font-size:13px;color:#92400E;';
+                    const messagesEl = document.getElementById('messages');
+                    if (messagesEl && messagesEl.parentElement) {
+                        messagesEl.parentElement.insertBefore(banner, messagesEl);
+                    }
+                }
+                const withdrawn = (state.consent_collection && !state.consent_collection.granted)
+                    ? 'data collection'
+                    : 'AI provider sharing';
+                banner.innerHTML = `<strong>Chat disabled.</strong> You've withdrawn consent for ${withdrawn}. Re-enable it under <em>Settings → Consent Management</em> in the sidebar.`;
+                if (msgInput) { msgInput.disabled = true; msgInput.placeholder = 'Chat disabled — re-enable consent to continue.'; }
+                if (sendBtn) sendBtn.disabled = true;
+            } else {
+                if (banner) banner.remove();
+                if (msgInput) { msgInput.disabled = false; msgInput.placeholder = 'Ask anything about your colon cancer journey...'; }
+                if (sendBtn) sendBtn.disabled = false;
+            }
+        }
+
         async function confirmDeleteAccount() {
             const confirmation = prompt(
                 'This will PERMANENTLY delete your account and ALL data (profile, chat history, screening scores, everything).\n\nType DELETE to confirm:'

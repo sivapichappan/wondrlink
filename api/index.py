@@ -21,7 +21,8 @@ from supabase_storage import (
     load_all_chunks, get_conversation_history, add_conversation,
     get_document_metadata, update_profile_with_sources,
     check_acknowledgement, save_acknowledgement,
-    save_chat_message, load_chat_history, clear_chat_history
+    save_chat_message, load_chat_history, clear_chat_history,
+    record_consent_action, get_consent_status, VALID_CONSENT_KEYS,
 )
 from profile_utils import (
     extract_patient_context_complex, format_patient_summary_complex,
@@ -504,6 +505,72 @@ def api_save_acknowledgement():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/consent_status", methods=["GET"])
+@require_auth
+def api_consent_status():
+    """
+    Return the user's current consent toggle state — used by the
+    Consent Management UI and by chat endpoints to decide whether
+    to disable chat.
+    """
+    try:
+        user_id = request.user["user_id"]
+        return jsonify(get_consent_status(user_id))
+    except Exception as e:
+        logger.exception("consent_status error")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/withdraw_consent", methods=["POST"])
+@require_auth
+def api_withdraw_consent():
+    """
+    Toggle one of the three signup consents off or back on.
+
+    Body:
+      - consent_key: 'consent_collection' | 'consent_sharing' | 'consent_terms'
+      - action: 'withdraw' | 'restore'
+      - reason: optional free-text (<=500 chars)
+
+    MHMDA requires a withdraw-consent affordance separate from
+    account deletion. Each toggle is logged immutably; the current
+    state per key is the most recent row.
+    """
+    try:
+        user_id = request.user["user_id"]
+        payload = request.get_json(silent=True) or {}
+        consent_key = (payload.get("consent_key") or "").strip()
+        action = (payload.get("action") or "").strip()
+        reason = payload.get("reason") or ""
+
+        if consent_key not in VALID_CONSENT_KEYS:
+            return jsonify({"error": "Unknown consent_key", "field": "consent_key"}), 400
+        if action not in ("withdraw", "restore"):
+            return jsonify({"error": "action must be 'withdraw' or 'restore'", "field": "action"}), 400
+
+        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
+        try:
+            from compliance import _hash_ip, CURRENT_CONSENT_VERSION
+        except Exception:
+            _hash_ip = lambda x: ""
+            CURRENT_CONSENT_VERSION = ""
+        ok = record_consent_action(
+            user_id=user_id,
+            consent_key=consent_key,
+            action=action,
+            reason=reason,
+            consent_version=CURRENT_CONSENT_VERSION,
+            ip_hash=_hash_ip(client_ip) if client_ip else "",
+        )
+        if not ok:
+            return jsonify({"error": "Failed to record consent action"}), 500
+
+        return jsonify({"status": "ok", "consent_status": get_consent_status(user_id)})
+    except Exception as e:
+        logger.exception("withdraw_consent error")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/update_cancer_slug", methods=["POST"])
 @require_auth
 def api_update_cancer_slug():
@@ -691,6 +758,23 @@ def api_chat():
         allowed, remaining = check_rate_limit(user_id, 'chat', 30, 60)
         if not allowed:
             return jsonify({"error": "You've reached the message limit. Please wait a bit before sending more."}), 429
+
+        # Consent gate (MHMDA Task 4). If the user has withdrawn collection or
+        # sharing consent we cannot lawfully process this query — return 403
+        # with a structured payload the frontend uses to surface the consent
+        # banner instead of an opaque error.
+        try:
+            consent_state = get_consent_status(user_id)
+        except Exception:
+            consent_state = {'chat_disabled': False}
+        if consent_state.get('chat_disabled'):
+            withdrawn = [k for k in VALID_CONSENT_KEYS
+                         if not consent_state.get(k, {}).get('granted', True)]
+            return jsonify({
+                "error": "Chat is disabled because you've withdrawn one or more required consents. Re-enable them in Settings → Consent Management.",
+                "code": "CONSENT_WITHDRAWN",
+                "withdrawn": withdrawn,
+            }), 403
         # Try to get JSON data from request body
         data = {}
         try:

@@ -1059,3 +1059,88 @@ def delete_all_user_data(user_id: str) -> dict:
     except Exception as e:
         logger.error(f"Failed to delete user data: {e}")
         return {'error': str(e)}
+
+
+# ============================================================
+# Consent withdrawal — MHMDA separate-affordance compliance
+# ============================================================
+# A user can toggle off any of the three signup consents from the
+# Consent Management UI without deleting their account. Each toggle is
+# an immutable row in consent_withdrawals (the table tracks both
+# 'withdraw' and 'restore' actions, so the current state is the most
+# recent row per (user_id, consent_key)).
+
+VALID_CONSENT_KEYS = ('consent_collection', 'consent_sharing', 'consent_terms')
+
+
+def record_consent_action(
+    user_id: str,
+    consent_key: str,
+    action: str,
+    reason: str = '',
+    consent_version: str = '',
+    ip_hash: str = '',
+) -> bool:
+    """Insert a withdraw / restore row into consent_withdrawals."""
+    if consent_key not in VALID_CONSENT_KEYS:
+        return False
+    if action not in ('withdraw', 'restore'):
+        return False
+    try:
+        client = get_admin_client()
+        client.table('consent_withdrawals').insert({
+            'user_id': user_id,
+            'consent_key': consent_key,
+            'action': action,
+            'reason': (reason or '')[:500] or None,
+            'consent_version': consent_version or None,
+            'ip_hash': ip_hash or None,
+        }).execute()
+        return True
+    except Exception as e:
+        logger.error("record_consent_action failed: %s", e)
+        return False
+
+
+def get_consent_status(user_id: str) -> Dict[str, Any]:
+    """
+    Return the current consent state for a user.
+
+    Each consent_key resolves to its most recent action:
+      'withdraw' → not granted
+      'restore'  → granted (the user re-opted-in)
+      (no rows)  → granted (signup baseline — user agreed during ack)
+
+    Returns:
+        {
+          'consent_collection': {'granted': bool, 'changed_at': iso8601|None},
+          'consent_sharing':    {'granted': bool, 'changed_at': iso8601|None},
+          'consent_terms':      {'granted': bool, 'changed_at': iso8601|None},
+          'chat_disabled': bool,  # True iff collection OR sharing is withdrawn
+        }
+    """
+    state = {k: {'granted': True, 'changed_at': None} for k in VALID_CONSENT_KEYS}
+    try:
+        client = get_admin_client()
+        # Pull the user's rows ordered most-recent-first per key; one query.
+        resp = (client.table('consent_withdrawals')
+                .select('consent_key,action,created_at')
+                .eq('user_id', user_id)
+                .order('created_at', desc=True)
+                .execute())
+        seen = set()
+        for row in (resp.data or []):
+            key = row.get('consent_key')
+            if key in seen or key not in VALID_CONSENT_KEYS:
+                continue
+            seen.add(key)
+            state[key] = {
+                'granted': row.get('action') == 'restore',
+                'changed_at': row.get('created_at'),
+            }
+    except Exception as e:
+        logger.warning("get_consent_status query failed: %s", e)
+    state['chat_disabled'] = not (
+        state['consent_collection']['granted'] and state['consent_sharing']['granted']
+    )
+    return state
