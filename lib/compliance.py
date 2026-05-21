@@ -104,10 +104,69 @@ def validate_consents(payload: Dict[str, Any]) -> Tuple[bool, str]:
 
 
 def validate_age_confirmation(payload: Dict[str, Any]) -> Tuple[bool, str]:
-    """The 18+ self-declaration must be explicit and truthy."""
-    if payload.get("age_confirmed") is not True:
-        return False, "You must confirm you are 18 years of age or older to create an account."
-    return True, ""
+    """
+    Validate the user's age via DOB.
+
+    Authoritative server-side check — the client UI also blocks DOB picks
+    that compute to < 18, but we re-validate here so a hand-crafted POST
+    can't bypass the gate.
+
+    Accepts either:
+      - `date_of_birth`: "YYYY-MM-DD" — preferred; we compute age and reject < 18
+      - `age_confirmed`: true (legacy clients during the DOB rollout window)
+
+    On a valid DOB we return ok; the API layer is responsible for stripping
+    the raw `date_of_birth` from any persisted record (we keep only the
+    derived `age_band` + `is_adult` flag).
+    """
+    dob_str = payload.get("date_of_birth") or ""
+    if dob_str:
+        from datetime import date
+        try:
+            year, month, day = (int(x) for x in dob_str.split("-"))
+            dob = date(year, month, day)
+        except (ValueError, AttributeError):
+            return False, "Please provide a valid date of birth."
+        today = date.today()
+        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+        if age < 0 or age > 130:
+            return False, "Please provide a valid date of birth."
+        if age < 18:
+            return False, "You must be at least 18 years old to create an account."
+        return True, ""
+
+    # Legacy path during DOB rollout
+    if payload.get("age_confirmed") is True:
+        return True, ""
+
+    return False, "You must confirm you are 18 years of age or older to create an account."
+
+
+def compute_age_band(dob_str: str) -> str:
+    """Return a coarse age band ('18-24', '25-34', ..., '75+') or '' on bad input.
+
+    Used so we can persist a useful demographic bucket without storing the
+    raw DOB (which would be a HIPAA identifier).
+    """
+    if not dob_str:
+        return ""
+    from datetime import date
+    try:
+        year, month, day = (int(x) for x in dob_str.split("-"))
+        dob = date(year, month, day)
+    except (ValueError, AttributeError):
+        return ""
+    today = date.today()
+    age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+    if age < 18:
+        return ""
+    if age < 25: return "18-24"
+    if age < 35: return "25-34"
+    if age < 45: return "35-44"
+    if age < 55: return "45-54"
+    if age < 65: return "55-64"
+    if age < 75: return "65-74"
+    return "75+"
 
 
 def validate_state(state: str) -> Tuple[bool, str, int]:
@@ -145,13 +204,22 @@ def build_consent_metadata(
     user_acknowledgements.consent_metadata.
 
     Stores everything we need for an audit trail without storing PII beyond
-    what's already required (state self-declaration is not PII, IP is logged
-    for fraud detection only).
+    what's already required:
+      - state self-declaration is not PII
+      - age_band ('18-24', '25-34', ...) is demographically useful and not a
+        HIPAA identifier
+      - we deliberately do NOT store the raw date_of_birth — only the derived
+        is_adult flag and the band
+      - IP is hashed for fraud detection only
     """
     from datetime import datetime
+    dob_str = payload.get("date_of_birth") or ""
+    age_band = compute_age_band(dob_str) if dob_str else (payload.get("age_band") or "")
     return {
         "consent_version": CURRENT_CONSENT_VERSION,
         "age_confirmed": bool(payload.get("age_confirmed")),
+        "age_band": age_band or None,
+        "is_adult": bool(age_band) or bool(payload.get("age_confirmed")),
         "state": (payload.get("state") or "").upper() if payload.get("state") != "non_US" else "non_US",
         "consent_collection": bool(payload.get("consent_collection")),
         "consent_sharing": bool(payload.get("consent_sharing")),

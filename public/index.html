@@ -6274,10 +6274,13 @@
             </div>
 
             <div id="ackForm">
-                <label class="ack-field">
-                    <input type="checkbox" id="ackAge18">
-                    <span>I confirm I am 18 years of age or older.</span>
-                </label>
+                <div class="ack-field-block">
+                    <label for="ackDob">Date of birth</label>
+                    <input type="date" id="ackDob" class="ack-input" required
+                           autocomplete="bday"
+                           aria-describedby="ackDobNote">
+                    <div id="ackDobNote" class="ack-state-note">WondrLink is for adults (18+). We use your date of birth only to verify age; the raw date is not stored.</div>
+                </div>
 
                 <div class="ack-field-block">
                     <label for="ackState">State of residence</label>
@@ -6541,7 +6544,7 @@
                 <p><strong>Effective Date:</strong> May 2026 &nbsp;|&nbsp; <strong>Version:</strong> v2-mhmda-2026-05</p>
 
                 <h3>Eligibility</h3>
-                <p>To use WondrLink you must be at least <strong>18 years of age</strong>. WondrLink is not currently available to residents of <strong>Illinois</strong> or <strong>Nevada</strong> due to state regulations governing AI in mental and behavioral health. By creating an account you confirm that you meet these eligibility requirements.</p>
+                <p>To use WondrLink you must be at least <strong>18 years of age</strong>. We verify your age by asking for your date of birth at signup; we use it only to confirm the age threshold and we do not store the raw date — only a derived age band (e.g. 35–44). WondrLink is not currently available to residents of <strong>Illinois</strong> or <strong>Nevada</strong> due to state regulations governing AI in mental and behavioral health, nor to residents of the <strong>EU/EEA, UK, or Switzerland</strong> while we complete the compliance work required to serve those regions. By creating an account you confirm that you meet these eligibility requirements.</p>
 
                 <h3>Purpose</h3>
                 <p>WondrLink is a <strong>health education tool</strong> designed to help colon cancer patients and caregivers understand diagnosis, treatment options, and care journeys using evidence-based medical guidelines.</p>
@@ -7767,15 +7770,40 @@
             }
         }
 
+        // Compute age in completed years from a YYYY-MM-DD string.
+        // Returns null when the input isn't a complete date.
+        function computeAgeFromDob(dobStr) {
+            if (!dobStr || !/^\d{4}-\d{2}-\d{2}$/.test(dobStr)) return null;
+            const today = new Date();
+            const [y, m, d] = dobStr.split('-').map(Number);
+            let age = today.getFullYear() - y;
+            if (today.getMonth() + 1 < m || (today.getMonth() + 1 === m && today.getDate() < d)) {
+                age -= 1;
+            }
+            return age;
+        }
+
+        // Bucket an age into a coarse band so we never persist the raw DOB.
+        function ageBandFromAge(age) {
+            if (age == null || age < 18) return null;
+            if (age < 25) return '18-24';
+            if (age < 35) return '25-34';
+            if (age < 45) return '35-44';
+            if (age < 55) return '45-54';
+            if (age < 65) return '55-64';
+            if (age < 75) return '65-74';
+            return '75+';
+        }
+
         function updateAckContinueButton() {
             const btn = document.getElementById('ackContinueBtn');
-            const age = document.getElementById('ackAge18').checked;
+            const age = computeAgeFromDob(document.getElementById('ackDob').value);
             const stateVal = document.getElementById('ackState').value;
             const cancerVal = document.getElementById('ackCancerSlug').value;
             const c1 = document.getElementById('ackConsentCollection').checked;
             const c2 = document.getElementById('ackConsentSharing').checked;
             const c3 = document.getElementById('ackConsentTerms').checked;
-            btn.disabled = !(age && stateVal && cancerVal && c1 && c2 && c3);
+            btn.disabled = !((age != null && age >= 18) && stateVal && cancerVal && c1 && c2 && c3);
         }
 
         function showAcknowledgementModal() {
@@ -7783,13 +7811,20 @@
             populateAckStateDropdown();
             populateAckCancerDropdown();
 
-            ['ackAge18','ackConsentCollection','ackConsentSharing','ackConsentTerms'].forEach(id => {
-                const el = document.getElementById(id);
-                el.checked = false;
+            // Set the DOB picker's max attribute to today-18yr so the browser
+            // surfaces the constraint up-front; server-side validation is
+            // still authoritative.
+            const dobEl = document.getElementById('ackDob');
+            const max = new Date();
+            max.setFullYear(max.getFullYear() - 18);
+            dobEl.max = max.toISOString().slice(0, 10);
+            dobEl.value = '';
+
+            ['ackConsentCollection','ackConsentSharing','ackConsentTerms'].forEach(id => {
+                document.getElementById(id).checked = false;
             });
             document.getElementById('ackState').value = '';
             document.getElementById('ackCancerSlug').value = '';
-            // Default role to patient
             const patientRadio = document.querySelector('input[name="ackRole"][value="patient"]');
             if (patientRadio) patientRadio.checked = true;
             document.getElementById('ackError').style.display = 'none';
@@ -7800,9 +7835,11 @@
 
             // Wire change listeners once
             if (!overlay.dataset.wired) {
-                ['ackAge18','ackConsentCollection','ackConsentSharing','ackConsentTerms'].forEach(id => {
+                ['ackConsentCollection','ackConsentSharing','ackConsentTerms'].forEach(id => {
                     document.getElementById(id).addEventListener('change', updateAckContinueButton);
                 });
+                document.getElementById('ackDob').addEventListener('change', updateAckContinueButton);
+                document.getElementById('ackDob').addEventListener('input', updateAckContinueButton);
                 document.getElementById('ackState').addEventListener('change', updateAckContinueButton);
                 document.getElementById('ackCancerSlug').addEventListener('change', updateAckContinueButton);
                 document.querySelectorAll('input[name="ackRole"]').forEach(r => {
@@ -7822,8 +7859,13 @@
             btn.textContent = 'Saving...';
 
             const selectedRoleEl = document.querySelector('input[name="ackRole"]:checked');
+            const dobStr = document.getElementById('ackDob').value;
+            const age = computeAgeFromDob(dobStr);
             const payload = {
-                age_confirmed: document.getElementById('ackAge18').checked,
+                // Server is authoritative — it re-validates the DOB.
+                date_of_birth: dobStr,
+                age_band: ageBandFromAge(age),
+                age_confirmed: age != null && age >= 18,
                 state: document.getElementById('ackState').value,
                 cancer_slug: document.getElementById('ackCancerSlug').value || null,
                 role: selectedRoleEl ? selectedRoleEl.value : 'patient',
