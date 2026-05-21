@@ -40,6 +40,77 @@ BLOCKED_STATES = {"IL", "NV"}
 MHMDA_STATES = {"WA"}
 
 
+# =============================================================================
+# REGIONAL GEOFENCE (Task 8)
+# =============================================================================
+# WondrLink v1 does not serve EU/EEA/UK/Swiss users. Servicing these
+# regions requires a GDPR Article 30 RoPA, an EU Representative, SCCs
+# in every sub-processor contract, and an EU AI Act risk-class
+# determination — too much to build for v1.
+#
+# Detection: we read the CDN-supplied two-letter country code in
+# x-vercel-ip-country (Vercel) — never trust client-side detection.
+# Decision rationale: docs/compliance/eu_geofence_decision.md
+BLOCKED_COUNTRIES = frozenset({
+    # EU 27
+    "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR",
+    "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL",
+    "PL", "PT", "RO", "SK", "SI", "ES", "SE",
+    # EEA additions
+    "IS", "LI", "NO",
+    # UK + Switzerland
+    "GB", "CH",
+})
+
+
+def detect_country_code(headers) -> str:
+    """Return the two-letter country code from CDN headers, or ''.
+
+    Trust order:
+      - x-vercel-ip-country (Vercel — set on every request from prod)
+      - cf-ipcountry (Cloudflare — never used in prod, but kept for parity
+        in case the deployment moves)
+    """
+    if not headers:
+        return ""
+    for key in ("x-vercel-ip-country", "X-Vercel-IP-Country",
+                "cf-ipcountry", "CF-IPCountry"):
+        value = headers.get(key) if hasattr(headers, "get") else None
+        if value:
+            return value.strip().upper()
+    return ""
+
+
+def is_blocked_country(country_code: str) -> bool:
+    """Return True if the country code is in the geofence block list."""
+    if not country_code:
+        return False
+    return country_code.strip().upper() in BLOCKED_COUNTRIES
+
+
+def validate_country(headers) -> Tuple[bool, str, int]:
+    """
+    Reject signups originating from the EU/EEA/UK/Switzerland.
+
+    Returns:
+        (ok, error_message, http_status_code)
+        - (True, "", 200)        : not in geofence
+        - (False, msg, 451)      : in geofence (HTTP 451 — "Unavailable
+                                   For Legal Reasons" matches the spec)
+    """
+    cc = detect_country_code(headers)
+    if is_blocked_country(cc):
+        return (
+            False,
+            "WondrLink is not currently available to residents of the EU, EEA, "
+            "UK, or Switzerland. We're working on compliance with the applicable "
+            "regulations (GDPR, EU AI Act) and hope to offer service in the "
+            "future. Contact us at info@wondrlinkfoundation.org for updates.",
+            451,
+        )
+    return True, "", 200
+
+
 # US states + territories the dropdown accepts. "non_US" routes through a
 # different consent message but still requires the three consents.
 US_STATES = {

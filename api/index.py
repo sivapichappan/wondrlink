@@ -144,6 +144,19 @@ def api_csp_report():
 def api_register():
     """Register a new user with Supabase Auth."""
     try:
+        # EU/EEA/UK/Swiss geofence (Task 8). v1 does not serve these regions
+        # — we lack the GDPR / EU AI Act compliance build.
+        try:
+            from compliance import validate_country
+            ok, msg, code = validate_country(request.headers)
+            if not ok:
+                return jsonify({"error": msg, "code": "REGION_BLOCKED"}), code
+        except Exception:
+            # If validation crashes, fail open — the state + consent gates
+            # are still authoritative downstream and we'd rather not block
+            # all signups on an upstream regression.
+            pass
+
         # Rate limit registration by IP
         from rate_limit import check_rate_limit
         client_ip = request.headers.get('X-Forwarded-For', request.remote_addr or 'unknown').split(',')[0].strip()
@@ -434,10 +447,17 @@ def api_save_acknowledgement():
     try:
         from compliance import (
             validate_consents, validate_age_confirmation, validate_state,
+            validate_country,
             build_consent_metadata, CURRENT_CONSENT_VERSION,
         )
         user_id = request.user["user_id"]
         payload = request.get_json(silent=True) or {}
+
+        # EU/EEA/UK/Swiss geofence (Task 8). Catches any signup that
+        # made it past auth from a blocked region.
+        ok, msg, code = validate_country(request.headers)
+        if not ok:
+            return jsonify({"error": msg, "code": "REGION_BLOCKED"}), code
 
         # Age check
         ok, msg = validate_age_confirmation(payload)

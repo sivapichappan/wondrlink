@@ -8061,6 +8061,13 @@
                     showStateRestrictedModal(j.error);
                     return;
                 }
+                if (resp.status === 451) {
+                    // EU/EEA/UK/Swiss geofence (Task 8). Surface the same
+                    // restricted-region modal as the state block.
+                    document.getElementById('acknowledgementOverlay').style.display = 'none';
+                    showStateRestrictedModal(j.error || 'WondrLink is not currently available in your region.');
+                    return;
+                }
                 if (!resp.ok) {
                     errEl.textContent = j.error || 'Could not save. Please review the form and try again.';
                     errEl.style.display = 'block';
