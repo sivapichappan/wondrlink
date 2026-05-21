@@ -1,0 +1,13 @@
+{
+  "name": "wondrlink-chat",
+  "private": true,
+  "description": "Accessibility test harness — runs axe-core against critical flows.",
+  "scripts": {
+    "test:a11y": "playwright test tests/accessibility.spec.ts",
+    "test:a11y:install": "playwright install --with-deps chromium"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.0",
+    "@playwright/test": "^1.49.0"
+  }
+}

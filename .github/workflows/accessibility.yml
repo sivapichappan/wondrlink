@@ -1,0 +1,67 @@
+name: Accessibility (axe-core)
+
+# Runs axe-core via Playwright against critical flows on every PR.
+# PRs are blocked on 'serious' or 'critical' WCAG 2.1 AA violations.
+# 'moderate' and 'minor' violations are logged but don't block.
+
+on:
+  pull_request:
+    paths:
+      - 'public/index.html'
+      - 'tests/accessibility.spec.ts'
+      - 'playwright.config.ts'
+      - 'package.json'
+      - '.github/workflows/accessibility.yml'
+  push:
+    branches: [main]
+
+jobs:
+  a11y:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Serve public/
+        # Lightweight static server is enough for the modals + unauthenticated flows.
+        # Authenticated flows skip unless TEST_USER_EMAIL/PASSWORD are provided.
+        run: npx serve public -l 3000 &
+        env:
+          NODE_ENV: test
+
+      - name: Wait for server
+        run: |
+          for i in {1..20}; do
+            if curl -s http://localhost:3000/ > /dev/null; then echo "up"; exit 0; fi
+            sleep 1
+          done
+          echo "static server failed to start"; exit 1
+
+      - name: Run a11y tests
+        run: npm run test:a11y
+        env:
+          TEST_BASE_URL: http://localhost:3000
+          # Optionally provide TEST_USER_EMAIL + TEST_USER_PASSWORD as repo
+          # secrets to enable authenticated flow tests. Without them, those
+          # tests skip; only modal + landing tests run.
+          TEST_USER_EMAIL: ${{ secrets.A11Y_TEST_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.A11Y_TEST_PASSWORD }}
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
