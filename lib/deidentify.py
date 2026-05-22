@@ -81,24 +81,25 @@ def deidentify_raw_profile(patient: dict) -> dict:
     import copy
     safe = copy.deepcopy(patient)
 
-    # Strip patient-level identifiers
-    patient_info = safe.get('patient', {})
-    if isinstance(patient_info, dict):
-        patient_info.pop('name', None)
-        patient_info.pop('firstName', None)
-        patient_info.pop('lastName', None)
-        patient_info.pop('dob', None)
-        patient_info.pop('dateOfBirth', None)
-        patient_info.pop('zipCode', None)
-        patient_info.pop('zip_code', None)
-        patient_info.pop('address', None)
-        patient_info.pop('phone', None)
-        patient_info.pop('email', None)
-        patient_info.pop('ssn', None)
-        patient_info.pop('mrn', None)
-        patient_info.pop('medicalRecordNumber', None)
-        patient_info.pop('insuranceId', None)
-        patient_info.pop('accountNumber', None)
+    # Strip patient-level identifiers. The profile shape uses either
+    # `patient` or `patientInfo` depending on the source (web signup vs.
+    # legacy import); scrub both.
+    for key in ('patient', 'patientInfo'):
+        patient_info = safe.get(key, {})
+        if isinstance(patient_info, dict):
+            for field in (
+                'name', 'firstName', 'lastName', 'fullName',
+                'dob', 'dateOfBirth',
+                'zipCode', 'zip_code', 'zip',
+                'address', 'street', 'streetAddress',
+                'phone', 'phoneNumber',
+                'email', 'emailAddress',
+                'ssn', 'socialSecurityNumber',
+                'mrn', 'medicalRecordNumber',
+                'insuranceId', 'memberId', 'policyNumber',
+                'accountNumber',
+            ):
+                patient_info.pop(field, None)
 
     # Strip dates from surgical history (convert to relative timeframes)
     surgeries = safe.get('surgicalHistory', [])
@@ -151,6 +152,88 @@ def deidentify_conversation_context(conversation: str) -> str:
                        '[ADDRESS]', sanitized, flags=re.IGNORECASE)
 
     return sanitized
+
+
+# =============================================================================
+# PII LEAK DETECTOR (Task 10 — runtime assertion)
+# =============================================================================
+# Runs over any payload about to leave the de-identification boundary
+# (i.e. about to be sent to Together AI / Groq). Returns a list of
+# matched patterns + offsets. Callers raise on any non-empty result.
+#
+# This is belt-and-suspenders: deidentify_conversation_context() already
+# scrubs the conversation, but this catches anything that got injected
+# into the system prompt, tool messages, profile fields the scrubber
+# missed, etc.
+
+_PII_PATTERNS = [
+    # SSN: 123-45-6789
+    ("ssn", re.compile(r'\b\d{3}-\d{2}-\d{4}\b')),
+    # Phone: 555-555-5555, (555) 555-5555, +1 555 555 5555
+    ("phone", re.compile(r'\b(?:\+1[-.]?\s?)?\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}\b')),
+    # Email
+    ("email", re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b')),
+    # MRN: typically labeled
+    ("mrn_label", re.compile(r'\b(?:MRN|medical[\s-]?record[\s-]?(?:number|#))\s*[:=]?\s*\d{4,}\b', re.IGNORECASE)),
+    # Insurance ID labeled
+    ("insurance_id_label", re.compile(r'\b(?:insurance[\s-]?id|policy[\s-]?#|member[\s-]?id)\s*[:=]?\s*[A-Z0-9-]{5,}\b', re.IGNORECASE)),
+    # ZIP+4 or 5-digit ZIP in an address context
+    ("zip_with_state", re.compile(r'\b[A-Z]{2}\s+\d{5}(?:-\d{4})?\b')),
+    # Full date YYYY-MM-DD
+    ("full_date_iso", re.compile(r'\b(19|20)\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b')),
+    # Full date MM/DD/YYYY
+    ("full_date_us", re.compile(r'\b(0?[1-9]|1[0-2])/(0?[1-9]|[12]\d|3[01])/(19|20)\d{2}\b')),
+    # Address: "123 Main St", "456 Oak Avenue", "789 Elm Blvd"
+    ("street_address", re.compile(
+        r'\b\d{1,5}\s+(?:[A-Z][a-z]+\s*){1,3}'
+        r'(?:St(?:reet)?|Ave(?:nue)?|Blvd|Boulevard|Dr(?:ive)?|Rd|Road|Ln|Lane|Ct|Court|Way|Pl(?:ace)?|Pkwy|Parkway)\b\.?',
+        re.IGNORECASE
+    )),
+    # "My name is X" / "I'm X" — proper noun follows; loose, optional to enforce
+    # We deliberately do NOT include name patterns in the runtime assertion
+    # because the false-positive rate is high (every "Dr. Smith" reference
+    # in clinical content would fire); name handling is structural.
+]
+
+
+def detect_pii_leaks(payload):
+    """
+    Scan a payload (str | list | dict) recursively for residual PII patterns.
+
+    Returns:
+        List of (pattern_name, snippet) tuples. Empty list = clean.
+
+    Use as a final guard before sending to Together AI / Groq:
+        leaks = detect_pii_leaks(prompt)
+        if leaks:
+            raise ValueError("PII leak detected", leaks)
+    """
+    leaks = []
+
+    def _scan_text(text):
+        if not isinstance(text, str):
+            return
+        for name, regex in _PII_PATTERNS:
+            for m in regex.finditer(text):
+                snippet = m.group(0)
+                # Truncate snippet so the log entry never contains the full PII
+                if len(snippet) > 40:
+                    snippet = snippet[:18] + "…" + snippet[-12:]
+                leaks.append((name, snippet))
+
+    def _walk(value):
+        if isinstance(value, str):
+            _scan_text(value)
+        elif isinstance(value, dict):
+            for v in value.values():
+                _walk(v)
+        elif isinstance(value, (list, tuple)):
+            for v in value:
+                _walk(v)
+        # numbers / bools / None — nothing to do
+
+    _walk(payload)
+    return leaks
 
 
 def _relativize_date(date_str: str) -> str:

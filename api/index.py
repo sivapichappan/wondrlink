@@ -1091,6 +1091,28 @@ def api_chat():
                 "debug_info": llm_status
             }), 500
 
+        # PII leak guard (Task 10). Last-chance check before the de-identified
+        # payload leaves our perimeter. Belt-and-suspenders: the upstream
+        # de-identification already runs, but a regression in any of the
+        # composition steps could leak. We log + raise so the failure is
+        # visible AND blocked, then return a 500 to the caller rather than
+        # ship leaky data.
+        try:
+            from deidentify import detect_pii_leaks
+            leaks = detect_pii_leaks(prompt)
+            if leaks:
+                # Truncate detail so the log entry doesn't itself contain the PII
+                summary = [name for name, _snip in leaks][:8]
+                logger.error("PII-LEAK-BLOCKED categories=%s count=%d", summary, len(leaks))
+                return jsonify({
+                    "error": "Request blocked by privacy guard. Please rephrase your question without including names, dates of birth, addresses, phone numbers, or other identifying details.",
+                    "code": "PII_LEAK_BLOCKED",
+                }), 500
+        except Exception as _e:
+            # If the guard itself crashes we don't want to take chat down — log
+            # and proceed. The upstream de-identification is still active.
+            logger.warning("PII guard crashed: %s", _e)
+
         # Call LLM with smart routing (query_type already classified above)
         try:
             answer, api_used = call_llm(prompt, response_length, query=message, query_type=query_type)
