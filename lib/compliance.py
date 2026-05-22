@@ -22,22 +22,88 @@ CURRENT_CONSENT_VERSION = "v2-mhmda-2026-05"
 
 
 # =============================================================================
-# STATE-LEVEL POLICY
+# STATE-LEVEL POLICY (Task 11 — structured config)
 # =============================================================================
-# States blocked at signup due to AI mental-health / behavioral-health
-# legislation we do not currently comply with.
-#   IL: WOPR Act (effective Aug 4, 2025) — forbids AI-delivered "therapy or
-#       psychotherapy" without a licensed professional. WondrChat's screeners
-#       (PHQ-9, GAD-7) + response generation could be argued in scope.
-#   NV: AB 406 (effective Jul 1, 2025) — forbids AI mental/behavioral health
-#       services that would constitute the practice of professional care.
-BLOCKED_STATES = {"IL", "NV"}
+# Per-state obligation map. New laws land here as one config edit + a doc
+# update in docs/compliance/state_ai_law_tracker.md — not a code grep.
+#
+# Schema:
+#   STATE_REQUIREMENTS["CC"] = {
+#     "block_signup":          bool   — refuse signup from this state
+#     "block_reason":          str    — user-facing reason (paired with 422)
+#     "require_ai_disclosure": bool   — persistent banner + per-session reminder
+#     "mhmda_consent":         bool   — three-checkbox MHMDA-style consent
+#                                       (already universal across users)
+#     "safe_harbor":           str    — claimed safe-harbor framework
+#                                       (e.g. "NIST AI RMF" for TX HB 149)
+#     "law":                   str    — short citation
+#     "effective":             str    — ISO date for monitoring cadence
+#   }
+STATE_REQUIREMENTS = {
+    # Block list — AI mental/behavioral-health legislation we do not currently comply with
+    "IL": {
+        "block_signup": True,
+        "block_reason": "IL WOPR Act prohibits AI-delivered therapy/psychotherapy without a licensed professional. WondrChat's screening tools (PHQ-9, GAD-7) + response generation could be argued in scope.",
+        "law": "WOPR Act",
+        "effective": "2025-08-04",
+    },
+    "NV": {
+        "block_signup": True,
+        "block_reason": "NV AB 406 prohibits AI mental/behavioral-health services that would constitute professional practice.",
+        "law": "AB 406",
+        "effective": "2025-07-01",
+    },
+    # Persistent AI-disclosure obligations
+    "CA": {
+        "require_ai_disclosure": True,
+        "law": "AB 3030 / SB 1120 / 2026 chatbot disclosure law",
+        "effective": "2026-01-01",
+    },
+    "UT": {
+        "require_ai_disclosure": True,
+        "law": "HB 452 (Mental Health Chatbot Act)",
+        "effective": "2025-05-07",
+    },
+    "TN": {
+        "require_ai_disclosure": True,
+        "law": "TN AI chatbot disclosure law",
+        "effective": "2026-07-01",
+    },
+    # NIST AI RMF safe harbor framework
+    "TX": {
+        "safe_harbor": "NIST AI RMF",
+        "law": "HB 149 (Responsible AI Governance Act)",
+        "effective": "2026-01-01",
+    },
+    # MHMDA-specific privacy regime
+    "WA": {
+        "mhmda_consent": True,
+        "law": "My Health My Data Act (MHMDA)",
+        "effective": "2024-03-31",
+    },
+}
 
-# States with specific privacy regimes we comply with via the full opt-in flow.
-# WA: My Health My Data Act (MHMDA) — private right of action, treble damages
-#     up to $25k. Compliance handled via separate Consumer Health Data Privacy
-#     Notice + three distinct opt-in consents.
-MHMDA_STATES = {"WA"}
+# Derived sets for hot paths. Computed once at import. New entries land
+# via the map above; these sets stay in sync automatically.
+BLOCKED_STATES = frozenset(
+    code for code, cfg in STATE_REQUIREMENTS.items()
+    if cfg.get("block_signup")
+)
+MHMDA_STATES = frozenset(
+    code for code, cfg in STATE_REQUIREMENTS.items()
+    if cfg.get("mhmda_consent")
+)
+AI_DISCLOSURE_STATES = frozenset(
+    code for code, cfg in STATE_REQUIREMENTS.items()
+    if cfg.get("require_ai_disclosure")
+)
+
+
+def state_requirements(state: str) -> Dict[str, Any]:
+    """Return the obligation dict for a state code (or empty dict)."""
+    if not state:
+        return {}
+    return STATE_REQUIREMENTS.get(state.strip().upper(), {})
 
 
 # =============================================================================
@@ -256,9 +322,21 @@ def validate_state(state: str) -> Tuple[bool, str, int]:
     if not is_valid_state(state):
         return False, "Please select a valid US state, territory, or 'Outside the US'.", 400
     if is_blocked_state(state):
+        # Build the user-facing message from the STATE_REQUIREMENTS map so
+        # adding (or removing) a blocked state is a single-line config change.
+        blocked_names = {
+            "IL": "Illinois",
+            "NV": "Nevada",
+            "CA": "California", "TX": "Texas", "NY": "New York",
+            "FL": "Florida", "WA": "Washington",
+        }
+        labels = []
+        for code in sorted(BLOCKED_STATES):
+            labels.append(blocked_names.get(code, code))
+        block_list = " or ".join(labels) if labels else "your state"
         return (
             False,
-            "WondrChat is not currently available to residents of Illinois or Nevada "
+            f"WondrChat is not currently available to residents of {block_list} "
             "due to state regulations governing AI in mental and behavioral health. "
             "We're working to expand access — thank you for your patience.",
             422,
