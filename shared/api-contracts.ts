@@ -21,6 +21,9 @@ export const ENDPOINTS = {
   checkAcknowledgement: '/api/check_acknowledgement',
   saveAcknowledgement: '/api/save_acknowledgement',
   privacyAppeal: '/api/privacy_appeal',
+  consentStatus: '/api/consent_status',
+  withdrawConsent: '/api/withdraw_consent',
+  limitSensitivePi: '/api/limit_sensitive_pi',
 
   // --- Chat ---
   chat: '/api/chat',

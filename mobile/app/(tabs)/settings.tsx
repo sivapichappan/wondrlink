@@ -7,9 +7,11 @@ import {
   FileLock,
   FileText,
   Info,
+  Lock,
   LogOut,
   MessageSquareWarning,
   ShieldCheck,
+  ShieldOff,
   Trash2,
   UserCog,
 } from 'lucide-react-native';
@@ -78,6 +80,24 @@ export default function SettingsScreen() {
           href: '/settings/health-notice',
           Icon: FileLock,
           title: 'Consumer Health Data Privacy Notice',
+        },
+        {
+          href: '/settings/consent-management',
+          Icon: ShieldOff,
+          title: 'Consent Management',
+          blurb: 'Withdraw any signup consent without deleting your account',
+        },
+        {
+          href: '/settings/limit-spi',
+          Icon: Lock,
+          title: 'Limit Use of Sensitive Personal Information',
+          blurb: 'CCPA / CPRA preference (we already limit use)',
+        },
+        {
+          href: '/settings/limit-spi',
+          Icon: ShieldCheck,
+          title: 'Do Not Sell or Share My Personal Information',
+          blurb: 'Required CCPA / CPRA affordance',
         },
         {
           href: '/settings/privacy-appeal',

@@ -1,4 +1,4 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Bot, Trash2 } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
@@ -20,6 +20,7 @@ import { SessionMeta } from '@/components/chat/SessionMeta';
 import { CrisisModal } from '@/components/common/CrisisModal';
 import { Colors, Fonts } from '@/constants/theme';
 import { useChat } from '@/hooks/useChat';
+import { fetchConsentStatus } from '@/lib/api/consent';
 import { scanForCrisis, type GuardrailHit } from '@/lib/safety/crisis-keywords';
 import { Sentry } from '@/lib/sentry';
 import { AI_DISCLOSURE_BANNER, WELCOME_INTRO } from '@shared/disclaimers';
@@ -32,6 +33,23 @@ export default function ChatScreen() {
   const params = useLocalSearchParams<{ q?: string }>();
   const lastHandledQ = useRef<string | undefined>(undefined);
   const [crisis, setCrisis] = useState<{ hit: GuardrailHit; pending: string } | null>(null);
+
+  // Consent gate. If the user withdrew collection or sharing consent we
+  // can't process /api/chat — surface a banner and disable the composer.
+  // The server also returns HTTP 403 + code:CONSENT_WITHDRAWN, so this
+  // is belt-and-suspenders against a stale fetch.
+  const consentStatus = useQuery({
+    queryKey: ['consent-status'],
+    queryFn: fetchConsentStatus,
+  });
+  const chatDisabled = consentStatus.data?.chat_disabled ?? false;
+  const withdrawnKey = consentStatus.data
+    ? !consentStatus.data.consent_collection.granted
+      ? 'data collection'
+      : !consentStatus.data.consent_sharing.granted
+        ? 'AI provider sharing'
+        : null
+    : null;
 
   const guardedSend = (text: string) => {
     const hit = scanForCrisis(text);
@@ -150,6 +168,34 @@ export default function ChatScreen() {
         </Text>
       </View>
 
+      {chatDisabled && (
+        <View
+          accessibilityRole={Platform.OS === 'android' ? 'alert' : undefined}
+          style={{
+            margin: 12,
+            padding: 12,
+            borderRadius: 10,
+            backgroundColor: Colors.warningBg,
+            borderWidth: 1,
+            borderColor: Colors.warning,
+          }}>
+          <Text style={{ color: Colors.textPrimary, fontSize: 13, lineHeight: 18 }}>
+            <Text style={{ fontFamily: Fonts.serifBold }}>Chat is disabled.</Text>{' '}
+            You've withdrawn consent for {withdrawnKey ?? 'one or more processing categories'}.{' '}
+            Re-enable it in <Text style={{ fontFamily: Fonts.sansSemiBold }}>Settings → Consent Management</Text>.
+          </Text>
+          <Pressable
+            onPress={() => router.push('/settings/consent-management')}
+            accessibilityRole="button"
+            accessibilityLabel="Open Consent Management"
+            style={{ marginTop: 8 }}>
+            <Text style={{ color: Colors.primary, fontFamily: Fonts.sansMedium, fontSize: 13 }}>
+              Open Consent Management →
+            </Text>
+          </Pressable>
+        </View>
+      )}
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
@@ -189,7 +235,7 @@ export default function ChatScreen() {
           </View>
         )}
 
-        <ChatInput onSend={guardedSend} disabled={isSending} />
+        <ChatInput onSend={guardedSend} disabled={isSending || chatDisabled} />
       </KeyboardAvoidingView>
 
       <CrisisModal

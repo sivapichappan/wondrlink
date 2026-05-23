@@ -14,8 +14,11 @@
 import { ENDPOINTS } from '@shared/api-contracts';
 import type {
   CheckAcknowledgementResponse,
+  ConsentStatusResponse,
   SaveAcknowledgementRequest,
   SaveAcknowledgementResponse,
+  WithdrawConsentRequest,
+  WithdrawConsentResponse,
 } from '@shared/types';
 
 import { apiFetch } from './client';
@@ -28,6 +31,20 @@ export function checkAcknowledgement() {
 
 export function saveAcknowledgement(payload: SaveAcknowledgementRequest) {
   return apiFetch<SaveAcknowledgementResponse>(ENDPOINTS.saveAcknowledgement, {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+// MHMDA Task 4: per-consent grant state + chat_disabled flag.
+export function fetchConsentStatus() {
+  return apiFetch<ConsentStatusResponse>(ENDPOINTS.consentStatus, { method: 'GET' });
+}
+
+// Toggle one of the three signup consents off (withdraw) or back on (restore).
+// Withdrawing collection or sharing disables /api/chat with HTTP 403.
+export function withdrawConsent(payload: WithdrawConsentRequest) {
+  return apiFetch<WithdrawConsentResponse>(ENDPOINTS.withdrawConsent, {
     method: 'POST',
     body: payload,
   });
