@@ -9,6 +9,9 @@
       "distribution": "internal",
       "ios": {
         "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE": "https://wondrlink-chat.vercel.app"
       }
     },
     "preview": {
@@ -16,15 +19,47 @@
       "ios": {
         "simulator": false
       },
-      "channel": "preview"
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_BASE": "https://wondrlink-chat.vercel.app"
+      }
+    },
+    "staging": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": false
+      },
+      "channel": "staging",
+      "env": {
+        "EXPO_PUBLIC_API_BASE": "https://wondrchat-staging.vercel.app"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_BASE": "https://wondrchat.vercel.app"
+      }
     }
   },
   "submit": {
     "production": {
+      "ios": {
+        "//": "Filled in by Siva once added to the WondrLink Foundation Apple Developer team.",
+        "//appleId": "Apple ID email of the account submitting (your individual Apple ID, not a shared mailbox)",
+        "//ascAppId": "Numeric App Store Connect App ID — populated after the WondrChat app record is created in ASC",
+        "//appleTeamId": "10-character Apple Team ID for the WondrLink Foundation team — visible at developer.apple.com/account",
+        "appleId": "",
+        "ascAppId": "",
+        "appleTeamId": ""
+      },
+      "android": {
+        "//": "Filled in by Siva once added to the WondrLink Foundation Play Console (Service Account JSON downloaded from Google Cloud).",
+        "serviceAccountKeyPath": "./play-store-key.json",
+        "track": "internal"
+      }
+    },
+    "staging": {
       "ios": {
         "appleId": "",
         "ascAppId": "",
