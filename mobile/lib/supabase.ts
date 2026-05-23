@@ -10,14 +10,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { env } from './env';
 
-if (!env.supabaseUrl || !env.supabaseAnonKey) {
+const hasCreds = !!env.supabaseUrl && !!env.supabaseAnonKey;
+if (!hasCreds) {
   console.warn(
     '[supabase] Missing SUPABASE_URL or SUPABASE_ANON_KEY. ' +
-      'Set them in app.json `expo.extra` or as EXPO_PUBLIC_* env vars.',
+      'Auth + API calls will fail until you set them in app.json `expo.extra` ' +
+      'or as EXPO_PUBLIC_* env vars. Booting with placeholders so the UI can render.',
   );
 }
 
-export const supabase = createClient(env.supabaseUrl, env.supabaseAnonKey, {
+// Placeholders let the app boot for UI preview; real network ops will fail
+// (which the UI handles via ApiError + offline-style fallbacks).
+const url = hasCreds ? env.supabaseUrl : 'https://placeholder.supabase.co';
+const key = hasCreds ? env.supabaseAnonKey : 'placeholder-anon-key';
+
+export const supabase = createClient(url, key, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
