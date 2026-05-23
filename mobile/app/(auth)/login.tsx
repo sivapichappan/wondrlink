@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { Colors, Fonts } from '@/constants/theme';
 import { login } from '@/lib/api/auth';
-import { ApiError } from '@/lib/api/client';
+import { ApiError, extractErrorMessage } from '@/lib/api/client';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -30,10 +30,9 @@ export default function Login() {
       await qc.invalidateQueries({ queryKey: ['acknowledgement'] });
       // Root layout will detect the new session and route.
     } catch (e) {
-      const msg =
-        e instanceof ApiError
-          ? e.body?.error ?? `Login failed (${e.status})`
-          : 'Login failed. Please try again.';
+      const fallback =
+        e instanceof ApiError ? `Login failed (${e.status})` : 'Login failed. Please try again.';
+      const msg = e instanceof ApiError ? extractErrorMessage(e.body, fallback) : extractErrorMessage(e, fallback);
       setError(msg);
     } finally {
       setSubmitting(false);

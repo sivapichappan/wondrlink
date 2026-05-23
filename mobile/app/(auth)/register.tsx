@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { Colors, Fonts } from '@/constants/theme';
 import { register } from '@/lib/api/auth';
-import { ApiError } from '@/lib/api/client';
+import { ApiError, extractErrorMessage } from '@/lib/api/client';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -38,10 +38,14 @@ export default function Register() {
       await qc.invalidateQueries({ queryKey: ['acknowledgement'] });
       // Root layout will route to onboarding.
     } catch (e) {
-      const msg =
+      const fallback =
         e instanceof ApiError
-          ? e.body?.error ?? `Registration failed (${e.status})`
+          ? `Registration failed (${e.status})`
           : 'Registration failed. Please try again.';
+      // extractErrorMessage handles object-shaped errors (e.g. Supabase
+      // AuthError leaking through as { code, message }) so setError never
+      // gets an object, which would crash <Text>{error}</Text>.
+      const msg = e instanceof ApiError ? extractErrorMessage(e.body, fallback) : extractErrorMessage(e, fallback);
       setError(msg);
     } finally {
       setSubmitting(false);

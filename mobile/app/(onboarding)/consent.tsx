@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Select } from '@/components/ui/Select';
 import { Colors, Fonts } from '@/constants/theme';
-import { ApiError } from '@/lib/api/client';
+import { ApiError, extractErrorMessage } from '@/lib/api/client';
 import { saveAcknowledgement } from '@/lib/api/consent';
 import { logout } from '@/lib/api/auth';
 import {
@@ -140,10 +140,11 @@ export default function Consent() {
         router.replace('/(onboarding)/region-blocked');
         return;
       }
-      const msg =
+      const fallback =
         e instanceof ApiError
-          ? e.body?.error ?? `Could not save your acknowledgement (${e.status})`
+          ? `Could not save your acknowledgement (${e.status})`
           : 'Could not save your acknowledgement. Please try again.';
+      const msg = e instanceof ApiError ? extractErrorMessage(e.body, fallback) : extractErrorMessage(e, fallback);
       setError(msg);
     } finally {
       setSubmitting(false);
