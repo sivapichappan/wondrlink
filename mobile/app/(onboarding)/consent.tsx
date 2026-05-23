@@ -1,7 +1,10 @@
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from '@react-native-community/datetimepicker';
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
@@ -16,16 +19,67 @@ import {
   CONSENT_LABELS,
 } from '@shared/disclaimers';
 import { US_STATES, type StateChoice } from '@shared/consent-version';
+import type { AgeBand } from '@shared/types';
 
 const stateOptions = [
   ...US_STATES.map((code) => ({ value: code, label: code })),
   { value: 'non_US', label: 'Outside the US' },
 ];
 
+// Compute age in completed years from a Date. Mirrors the web JS in
+// public/index.html so the client-side gating matches; the server
+// re-validates from date_of_birth.
+function computeAge(dob: Date): number {
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age -= 1;
+  return age;
+}
+
+function ageBandFromAge(age: number): AgeBand | null {
+  if (age < 18) return null;
+  if (age < 25) return '18-24';
+  if (age < 35) return '25-34';
+  if (age < 45) return '35-44';
+  if (age < 55) return '45-54';
+  if (age < 65) return '55-64';
+  if (age < 75) return '65-74';
+  return '75+';
+}
+
+function formatDateInput(d: Date | null): string {
+  if (!d) return '';
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+function toIsoDate(d: Date): string {
+  // YYYY-MM-DD local-date — no timezone bleed.
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export default function Consent() {
   const qc = useQueryClient();
 
-  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  // Maximum date the picker will accept = today - 18yr. Default the picker
+  // to 30yr ago so the wheels land somewhere sensible.
+  const maxDate = useMemo(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 18);
+    return d;
+  }, []);
+  const initialPickerDate = useMemo(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 30);
+    return d;
+  }, []);
+
+  const [dob, setDob] = useState<Date | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
+
   const [state, setState] = useState<StateChoice | ''>('');
   const [collection, setCollection] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -34,18 +88,42 @@ export default function Consent() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const allReady = ageConfirmed && state && collection && sharing && terms;
+  const age = dob ? computeAge(dob) : null;
+  const isAdult = age != null && age >= 18;
+  const allReady = isAdult && state && collection && sharing && terms;
+
+  const onPickerChange = (event: DateTimePickerEvent, selected?: Date) => {
+    // iOS keeps the picker open until the user taps Done; Android closes
+    // automatically on selection / dismissal.
+    if (Platform.OS === 'android') {
+      setShowPicker(false);
+      if (event.type === 'dismissed') return;
+    }
+    if (selected) {
+      setDob(selected);
+      if (computeAge(selected) >= 18) setError(null);
+    }
+  };
 
   const onSubmit = async () => {
     if (!allReady) {
-      setError('Please confirm your age, select your state, and accept all three consents.');
+      const reasons: string[] = [];
+      if (!isAdult) reasons.push('confirm a date of birth (18+)');
+      if (!state) reasons.push('select your state');
+      if (!collection || !sharing || !terms) reasons.push('accept all three consents');
+      setError(`Please ${reasons.join(', ')}.`);
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
+      const dobIso = dob ? toIsoDate(dob) : undefined;
+      const band = age != null ? ageBandFromAge(age) : null;
       await saveAcknowledgement({
-        age_confirmed: ageConfirmed,
+        date_of_birth: dobIso,
+        age_band: band ?? undefined,
+        // Keep age_confirmed=true for back-compat with the legacy validator path.
+        age_confirmed: true,
         state: state as StateChoice,
         consent_collection: collection,
         consent_sharing: sharing,
@@ -56,6 +134,10 @@ export default function Consent() {
     } catch (e) {
       if (e instanceof ApiError && e.status === 422) {
         router.replace('/(onboarding)/state-restricted');
+        return;
+      }
+      if (e instanceof ApiError && e.status === 451) {
+        router.replace('/(onboarding)/region-blocked');
         return;
       }
       const msg =
@@ -78,11 +160,51 @@ export default function Consent() {
 
         <View style={{ height: 1, backgroundColor: Colors.border }} />
 
-        <Checkbox
-          label="I am 18 years of age or older"
-          checked={ageConfirmed}
-          onChange={setAgeConfirmed}
-        />
+        <View>
+          <Text style={{ fontFamily: Fonts.sansSemiBold, fontSize: 14, color: Colors.textPrimary, marginBottom: 6 }}>
+            Date of birth
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open date-of-birth picker"
+            onPress={() => setShowPicker(true)}
+            style={{
+              padding: 14,
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: Colors.border,
+              backgroundColor: Colors.surface,
+            }}>
+            <Text
+              style={{
+                color: dob ? Colors.textPrimary : Colors.textSecondary,
+                fontSize: 15,
+              }}>
+              {dob ? formatDateInput(dob) : 'Tap to select date of birth'}
+            </Text>
+          </Pressable>
+          <Text style={{ fontSize: 12, color: Colors.textSecondary, marginTop: 6, lineHeight: 17 }}>
+            WondrLink is for adults (18+). We use your date of birth only to verify age; the raw date is not stored.
+          </Text>
+          {dob && !isAdult && (
+            <Text style={{ color: Colors.danger, fontSize: 13, marginTop: 6 }}>
+              You must be at least 18 years old to create an account.
+            </Text>
+          )}
+        </View>
+
+        {showPicker && (
+          <DateTimePicker
+            value={dob ?? initialPickerDate}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            maximumDate={maxDate}
+            onChange={onPickerChange}
+          />
+        )}
+        {Platform.OS === 'ios' && showPicker && (
+          <Button label="Done" variant="ghost" onPress={() => setShowPicker(false)} />
+        )}
 
         <Select
           label="State of residence"

@@ -46,14 +46,54 @@ export interface CheckAcknowledgementResponse {
 
 export type ConsentPayload = Record<ConsentField, boolean>;
 
+export type AgeBand = '18-24' | '25-34' | '35-44' | '45-54' | '55-64' | '65-74' | '75+';
+
 export interface SaveAcknowledgementRequest extends ConsentPayload {
-  age_confirmed: boolean;
+  // Server prefers `date_of_birth` (re-validated server-side; raw DOB is
+  // never persisted — we keep only the derived `age_band` + `is_adult`
+  // in consent_metadata). `age_confirmed` is kept for back-compat with
+  // the legacy single-checkbox path.
+  date_of_birth?: string; // "YYYY-MM-DD"
+  age_band?: AgeBand;
+  age_confirmed?: boolean;
   state: StateChoice;
+  cancer_slug?: string;
+  role?: 'patient' | 'caregiver';
 }
 
 export interface SaveAcknowledgementResponse {
   saved: boolean;
   consent_version: string;
+}
+
+// Returned by /api/consent_status (GET) — per-key grant state + a
+// composite chat_disabled flag (true iff collection OR sharing is
+// withdrawn). Used by the Consent Management screen and the chat
+// gating banner.
+export interface ConsentStatusResponse {
+  consent_collection: { granted: boolean; changed_at: string | null };
+  consent_sharing:    { granted: boolean; changed_at: string | null };
+  consent_terms:      { granted: boolean; changed_at: string | null };
+  chat_disabled: boolean;
+}
+
+export interface WithdrawConsentRequest {
+  consent_key: ConsentField;
+  action: 'withdraw' | 'restore';
+  reason?: string;
+}
+
+export interface WithdrawConsentResponse {
+  status: 'ok';
+  consent_status: ConsentStatusResponse;
+}
+
+// CCPA/CPRA "Limit Use of Sensitive Personal Information" affordance.
+// Operationally a no-op (we don't use SPI for advertising or sale) —
+// the endpoint persists the preference timestamp for auditability.
+export interface LimitSpiResponse {
+  limited: boolean;
+  confirmed_at: string | null;
 }
 
 export type PrivacyAppealType = 'access' | 'deletion' | 'consent_withdrawal' | 'other';
