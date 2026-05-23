@@ -41,7 +41,12 @@ export default function Terms() {
         </Section>
 
         <Section title="Eligible users">
-          18 or older. Not available to residents of Illinois or Nevada.
+          To use WondrChat you must be at least 18 years of age. We verify your age via date of
+          birth at signup; we do not store the raw date, only the derived age band (e.g. 35–44).
+          WondrChat is not currently available to residents of Illinois or Nevada due to state
+          regulations governing AI in mental and behavioral health, nor to residents of the EU,
+          EEA, UK, or Switzerland while we complete the compliance work required to serve those
+          regions. By creating an account you confirm you meet these eligibility requirements.
         </Section>
 
         <Section title="Acceptable use">

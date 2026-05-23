@@ -87,16 +87,24 @@ export default function Disclaimer() {
         <Section title="Your Rights">
           <P>
             You may confirm, access, correct, delete, or withdraw consent for your data at any
-            time. Email {CONTACT.privacy} or use the "Delete Account" option in Settings.
-            We will respond within 45 days. Appeals: {CONTACT.appeals}.
+            time. Use Settings → Consent Management to toggle any signup consent off without
+            deleting your account; use Settings → Delete Account to remove everything. Email
+            {' '}{CONTACT.privacy} for an access or correction request. We respond within 45
+            days, with one 45-day extension permitted. Appeals: {CONTACT.appeals}.
           </P>
         </Section>
 
         <Section title="Retention">
           <P>
-            We retain your consumer health data while your account is active. On deletion, your
-            data is removed from our primary database within 30 days. Sub-processor logs may
-            persist beyond this window per their own retention policies.
+            • Active account data: retained while your account is active.{'\n'}
+            • On account deletion: hard delete from our active database within 7 days; Supabase
+            backups (point-in-time recovery) complete purge within 90 days.{'\n'}
+            • Rate-limit records: purged after 24 hours.{'\n'}
+            • Consent withdrawal logs: retained 6 years as the auditable record of your consent
+            history (the only data that survives an account deletion, kept for MHMDA / CCPA
+            audit defense; we cannot use it for any other purpose).{'\n'}
+            • Anonymous aggregated usage statistics: retained indefinitely.{'\n'}
+            • Sub-processor retention follows each vendor's own policy.
           </P>
         </Section>
 

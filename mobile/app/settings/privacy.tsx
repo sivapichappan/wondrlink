@@ -31,12 +31,15 @@ export default function PrivacyPolicy() {
         <Section title="Service availability">
           WondrChat is available to adults (18+) in the United States. It is not currently
           available to residents of Illinois or Nevada due to state regulations that govern
-          AI-delivered mental and behavioral health services.
+          AI-delivered mental and behavioral health services, nor to residents of the EU, EEA,
+          UK, or Switzerland while we complete the compliance work required to serve those regions.
         </Section>
 
         <Section title="What we collect">
           Cancer-related profile data you provide, your symptom and screening responses, your chat
-          messages, your ZIP code (for trial search), and your account email + state.
+          messages, your ZIP code (for trial search), and your account email + state. We verify
+          your age at signup via date of birth; the raw date is not stored — only the derived age
+          band (e.g. 35–44).
         </Section>
 
         <Section title="What we don't do">
@@ -46,13 +49,41 @@ export default function PrivacyPolicy() {
 
         <Section title="AI processing">
           Your queries are sent to Together AI and Groq for inference. We apply a de-identification
-          step before transmission to remove names, dates of birth, addresses, and other directly
-          identifying information.
+          step before transmission to remove names, dates of birth, addresses, phone numbers,
+          emails, SSNs, MRNs, insurance IDs, ZIP codes, and other directly identifying information.
+        </Section>
+
+        <Section title="Data retention">
+          Our retention periods are:
+          {'\n'}• Active account data — retained while your account is active.
+          {'\n'}• On account deletion — hard delete from our active database within 7 days;
+          Supabase backups (point-in-time recovery) complete purge within 90 days.
+          {'\n'}• Rate-limit records — purged after 24 hours.
+          {'\n'}• Consent withdrawal logs — retained 6 years as the auditable record of your
+          consent history (the only data that survives an account deletion, kept for MHMDA / CCPA
+          audit defense only; we cannot use it for any other purpose).
+          {'\n'}• Anonymous aggregated usage statistics — retained indefinitely.
+          {'\n'}• Sub-processor retention follows each vendor's policy.
         </Section>
 
         <Section title="Your rights">
           You can access, correct, delete, or withdraw consent for your data at any time. Email
-          {' '}{CONTACT.privacy} or use Delete Account in Settings. We respond within 45 days.
+          {' '}{CONTACT.privacy} or use Settings → Consent Management (per-consent toggles) or
+          Settings → Delete Account (nuke everything). We respond within 45 days, with one
+          45-day extension permitted.
+        </Section>
+
+        <Section title="Your state privacy rights">
+          Residents of the following states have rights of access, deletion, correction, and
+          (where applicable) opt-out of targeted advertising under their state's comprehensive
+          privacy law: California (CCPA / CPRA — plus the Limit Use of Sensitive PI affordance
+          in Settings), Virginia (VCDPA), Colorado (CPA), Connecticut (CTDPA), Utah (UCPA),
+          Iowa (ICDPA), Indiana, Tennessee (TIPA), Texas (TDPSA), Oregon (OCPA), Montana (MCDPA),
+          Delaware (DPDPA), New Hampshire (NHDPA), New Jersey (NJDPA), Kentucky (KCDPA),
+          Rhode Island (RIDTPPA), Minnesota (MCDPA), Maryland (MODPA), Nebraska (NDPA).
+          {'\n\n'}Washington residents: separate rights under the My Health My Data Act
+          are described in the Consumer Health Data Privacy Notice (Settings → Consumer
+          Health Data Privacy Notice).
         </Section>
 
         <Section title="Global Privacy Control (GPC)">
