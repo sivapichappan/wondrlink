@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BotResponseCard } from '@/components/chat/BotResponseCard';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { MessageBubble } from '@/components/chat/MessageBubble';
+import { SessionMeta } from '@/components/chat/SessionMeta';
 import { CrisisModal } from '@/components/common/CrisisModal';
 import { Colors, Fonts } from '@/constants/theme';
 import { useChat } from '@/hooks/useChat';
@@ -160,6 +161,7 @@ export default function ChatScreen() {
           keyExtractor={(m, i) => `${m.created_at}-${i}`}
           contentContainerStyle={{ paddingVertical: 10 }}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+          ListHeaderComponent={<SessionMeta />}
           ListEmptyComponent={
             !isLoading ? (
               <View style={{ padding: 24, gap: 10 }}>
