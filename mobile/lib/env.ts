@@ -22,7 +22,7 @@ function toCamel(snake: string): string {
 }
 
 export const env = {
-  apiBase: envOrExtra('API_BASE', 'https://wondrlink-chat.vercel.app'),
+  apiBase: envOrExtra('API_BASE', 'https://wondrchat.vercel.app'),
   supabaseUrl: envOrExtra('SUPABASE_URL'),
   supabaseAnonKey: envOrExtra('SUPABASE_ANON_KEY'),
   sentryDsn: envOrExtra('SENTRY_DSN'),

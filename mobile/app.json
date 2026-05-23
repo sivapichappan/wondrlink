@@ -52,7 +52,7 @@
       "reactCompiler": true
     },
     "extra": {
-      "apiBase": "https://wondrlink-chat.vercel.app",
+      "apiBase": "https://wondrchat.vercel.app",
       "supabaseUrl": "",
       "supabaseAnonKey": "",
       "sentryDsn": ""
