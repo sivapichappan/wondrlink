@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
@@ -49,11 +49,15 @@ export default function Register() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.surface }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.surface }} edges={['top']}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ padding: 24, gap: 16 }}>
+        {/* Scrollable form fields */}
+        <ScrollView
+          contentContainerStyle={{ padding: 24, gap: 16, flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive">
           <Text style={{ fontFamily: Fonts.serifBold, fontSize: 24, color: Colors.textPrimary }}>
             Create your account
           </Text>
@@ -85,16 +89,35 @@ export default function Register() {
             value={confirm}
             onChangeText={setConfirm}
             error={error ?? undefined}
+            onSubmitEditing={onSubmit}
+            returnKeyType="go"
           />
+        </ScrollView>
 
-          <Button label="Create account" fullWidth size="lg" loading={submitting} onPress={onSubmit} />
+        {/* Pinned action area — always visible above the keyboard */}
+        <View
+          style={{
+            padding: 16,
+            paddingBottom: Platform.OS === 'ios' ? 24 : 16,
+            borderTopWidth: 1,
+            borderTopColor: Colors.border,
+            backgroundColor: Colors.surface,
+            gap: 8,
+          }}>
+          <Button
+            label="Create account"
+            fullWidth
+            size="lg"
+            loading={submitting}
+            onPress={onSubmit}
+          />
           <Button
             label="Already have an account? Log in"
             variant="ghost"
             fullWidth
             onPress={() => router.replace('/(auth)/login')}
           />
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
@@ -41,11 +41,15 @@ export default function Login() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.surface }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.surface }} edges={['top']}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ padding: 24, gap: 16 }}>
+        {/* Scrollable form fields */}
+        <ScrollView
+          contentContainerStyle={{ padding: 24, gap: 16, flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive">
           <Text style={{ fontFamily: Fonts.serifBold, fontSize: 24, color: Colors.textPrimary }}>
             Welcome back
           </Text>
@@ -68,8 +72,21 @@ export default function Login() {
             value={password}
             onChangeText={setPassword}
             error={error ?? undefined}
+            onSubmitEditing={onSubmit}
+            returnKeyType="go"
           />
+        </ScrollView>
 
+        {/* Pinned action area — always visible above the keyboard */}
+        <View
+          style={{
+            padding: 16,
+            paddingBottom: Platform.OS === 'ios' ? 24 : 16,
+            borderTopWidth: 1,
+            borderTopColor: Colors.border,
+            backgroundColor: Colors.surface,
+            gap: 8,
+          }}>
           <Button label="Log in" fullWidth size="lg" loading={submitting} onPress={onSubmit} />
           <Button
             label="Don't have an account? Create one"
@@ -77,7 +94,7 @@ export default function Login() {
             fullWidth
             onPress={() => router.replace('/(auth)/register')}
           />
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
