@@ -41,6 +41,16 @@ def register_user(email: str, password: str) -> Tuple[Optional[Dict[str, Any]], 
         })
 
         if response.user:
+            # Supabase v2 anti-enumeration: when an email is already registered,
+            # sign_up() returns a user object with an EMPTY identities array
+            # (instead of raising "already registered"). We detect this here and
+            # return a clear error so the mobile / web client can route the user
+            # to "Log in" instead of showing a misleading "check your email" UI.
+            identities = getattr(response.user, "identities", None)
+            if identities is not None and len(identities) == 0:
+                logger.info(f"Repeated signup attempt for existing email: {email}")
+                return None, "Email already registered. Please log in instead."
+
             logger.info(f"User registered: {email}")
             return {
                 "user_id": response.user.id,
