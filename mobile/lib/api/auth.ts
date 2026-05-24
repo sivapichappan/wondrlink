@@ -67,6 +67,20 @@ export async function login(email: string, password: string) {
   return plugIntoSupabase(body);
 }
 
+/**
+ * Resend the signup confirmation email. Called from the "check your
+ * email" success screen so users who didn't receive the original email
+ * can request another. Supabase rate-limits aggressively — surface the
+ * generic "we tried again" message either way.
+ */
+export async function resendSignupConfirmation(email: string) {
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email: email.trim(),
+  });
+  if (error) throw error;
+}
+
 export async function logout() {
   try {
     await apiFetch(ENDPOINTS.authLogout, { method: 'POST' });
