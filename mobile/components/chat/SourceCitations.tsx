@@ -20,21 +20,21 @@ export function SourceCitations({ sources }: Props) {
       <Pressable
         onPress={() => setExpanded((v) => !v)}
         accessibilityRole="button"
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 }}>
-        <FileText size={14} color={Colors.textMuted} />
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 2 }}>
+        <FileText size={12} color={Colors.textMuted} />
         <Text
           style={{
             color: Colors.textSecondary,
             fontFamily: Fonts.sansMedium,
-            fontSize: 12,
+            fontSize: 11,
             letterSpacing: 0.4,
           }}>
           {sources.length} {sources.length === 1 ? 'source' : 'sources'}
         </Text>
         {expanded ? (
-          <ChevronUp size={14} color={Colors.textMuted} />
+          <ChevronUp size={12} color={Colors.textMuted} />
         ) : (
-          <ChevronDown size={14} color={Colors.textMuted} />
+          <ChevronDown size={12} color={Colors.textMuted} />
         )}
       </Pressable>
 

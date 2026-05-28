@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, Text, View, type PressableProps } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, type PressableProps } from 'react-native';
 
 import { Colors, Fonts, Radius } from '@/constants/theme';
 
@@ -23,6 +23,47 @@ const sizes: Record<Size, { paddingV: number; paddingH: number; font: number; mi
   lg: { paddingV: 14, paddingH: 20, font: 16, minHeight: 50 },
 };
 
+interface Theme {
+  bg: string;
+  fg: string;
+  border: string;
+  borderWidth: number;
+}
+
+function themeFor(variant: Variant, isDisabled: boolean): Theme {
+  if (variant === 'primary') {
+    return {
+      bg: isDisabled ? Colors.surfaceMuted : Colors.primary,
+      fg: isDisabled ? Colors.textMuted : Colors.surface,
+      border: isDisabled ? Colors.border : Colors.primary,
+      borderWidth: 1,
+    };
+  }
+  if (variant === 'secondary') {
+    return {
+      bg: Colors.surface,
+      fg: isDisabled ? Colors.textMuted : Colors.primary,
+      border: isDisabled ? Colors.border : Colors.primary,
+      borderWidth: 1,
+    };
+  }
+  if (variant === 'danger') {
+    return {
+      bg: isDisabled ? Colors.surfaceMuted : Colors.danger,
+      fg: isDisabled ? Colors.textMuted : Colors.surface,
+      border: isDisabled ? Colors.border : Colors.danger,
+      borderWidth: 1,
+    };
+  }
+  // Ghost — visible tinted chip.
+  return {
+    bg: Colors.sidebarBg,
+    fg: isDisabled ? Colors.textMuted : Colors.primary,
+    border: Colors.border,
+    borderWidth: 1,
+  };
+}
+
 export function Button({
   label,
   onPress,
@@ -37,69 +78,76 @@ export function Button({
 }: Props) {
   const isDisabled = disabled || loading;
   const s = sizes[size];
+  const t = themeFor(variant, !!isDisabled);
 
-  const colorsFor = (pressed: boolean) => {
-    if (variant === 'primary') {
-      return {
-        bg: isDisabled ? Colors.border : pressed ? Colors.primaryLight : Colors.primary,
-        fg: Colors.surface,
-        border: 'transparent',
-      };
-    }
-    if (variant === 'secondary') {
-      return {
-        bg: pressed ? Colors.sidebarBg : Colors.surface,
-        fg: Colors.primary,
-        border: Colors.primary,
-      };
-    }
-    if (variant === 'danger') {
-      return {
-        bg: isDisabled ? Colors.border : pressed ? '#8B1E18' : Colors.danger,
-        fg: Colors.surface,
-        border: 'transparent',
-      };
-    }
-    return { bg: 'transparent', fg: Colors.primary, border: 'transparent' };
-  };
+  const filled = variant === 'primary' || variant === 'danger';
+  const shadow =
+    filled && !isDisabled
+      ? {
+          shadowColor: variant === 'danger' ? Colors.danger : Colors.primary,
+          shadowOpacity: 0.2,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 2,
+        }
+      : null;
 
+  // All visual styling lives on the outer View (NativeWind doesn't touch
+  // static View styles). The Pressable inside only handles tap + an opacity
+  // dim for press feedback — its style function can stay simple.
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={isDisabled}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
-      style={({ pressed }) => {
-        const c = colorsFor(pressed);
-        return {
-          backgroundColor: c.bg,
-          borderColor: c.border,
-          borderWidth: variant === 'secondary' ? 1 : 0,
-          paddingVertical: s.paddingV,
-          paddingHorizontal: s.paddingH,
-          minHeight: s.minHeight,
-          borderRadius: Radius.md,
+    <View
+      style={[
+        {
           alignSelf: fullWidth ? 'stretch' : 'flex-start',
-          opacity: isDisabled ? 0.6 : 1,
-        };
-      }}
-      {...rest}>
-      {({ pressed }) => {
-        const c = colorsFor(pressed);
-        return (
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-            {loading ? (
-              <ActivityIndicator size="small" color={c.fg} />
-            ) : (
-              <>
-                {leadingIcon}
-                <Text style={{ color: c.fg, fontFamily: Fonts.sansSemiBold, fontSize: s.font }}>{label}</Text>
-                {trailingIcon}
-              </>
-            )}
-          </View>
-        );
-      }}
-    </Pressable>
+          backgroundColor: t.bg,
+          borderColor: t.border,
+          borderWidth: t.borderWidth,
+          borderRadius: Radius.md,
+          overflow: 'hidden',
+        },
+        shadow,
+      ]}>
+      <Pressable
+        onPress={onPress}
+        disabled={isDisabled}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
+        style={({ pressed }) => ({
+          opacity: pressed && !isDisabled ? 0.85 : 1,
+        })}
+        {...rest}>
+        <View
+          style={[
+            styles.row,
+            {
+              paddingVertical: s.paddingV,
+              paddingHorizontal: s.paddingH,
+              minHeight: s.minHeight,
+            },
+          ]}>
+          {loading ? (
+            <ActivityIndicator size="small" color={t.fg} />
+          ) : (
+            <>
+              {leadingIcon}
+              <Text style={{ color: t.fg, fontFamily: Fonts.sansSemiBold, fontSize: s.font }}>
+                {label}
+              </Text>
+              {trailingIcon}
+            </>
+          )}
+        </View>
+      </Pressable>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+});

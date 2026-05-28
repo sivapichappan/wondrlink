@@ -25,11 +25,14 @@ export const Colors = {
   // System
   border: '#E1E4E1',
   danger: '#B3261E',
+  dangerPressed: '#8B1E18',
   warning: '#92400E',
   success: '#1F5D4F',
 
   // Status backgrounds
   warningBg: '#FEF3C7',
+  emergencyBg: '#FFEDEC',
+  dangerLight: '#FEE2E2',
 } as const;
 
 export const Fonts = {

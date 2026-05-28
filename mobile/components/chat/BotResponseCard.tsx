@@ -6,6 +6,7 @@ import type { ChatHistoryMessage } from '@shared/types';
 
 import { FollowupChips } from './FollowupChips';
 import { MarkdownText } from './MarkdownText';
+import { MessageActions } from './MessageActions';
 import { ResourcesRow } from './ResourcesRow';
 import { SourceCitations } from './SourceCitations';
 import { TrialsCards } from './TrialsCards';
@@ -17,7 +18,7 @@ interface Props {
 }
 
 const Divider = () => (
-  <View style={{ height: 1, backgroundColor: Colors.border, marginVertical: 10 }} />
+  <View style={{ height: 1, backgroundColor: Colors.border, marginVertical: 4 }} />
 );
 
 export function BotResponseCard({ message, onPickFollowup }: Props) {
@@ -34,9 +35,10 @@ export function BotResponseCard({ message, onPickFollowup }: Props) {
         borderWidth: 1,
         borderColor: Colors.border,
         borderRadius: Radius.lg,
-        padding: 14,
-        gap: 10,
-        shadowColor: '#0F201C',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        gap: 6,
+        shadowColor: Colors.textPrimary,
         shadowOpacity: 0.04,
         shadowRadius: 6,
         shadowOffset: { width: 0, height: 2 },
@@ -45,6 +47,8 @@ export function BotResponseCard({ message, onPickFollowup }: Props) {
       <UrgencyBanner urgency={meta.urgency} />
 
       <MarkdownText>{message.content}</MarkdownText>
+
+      <MessageActions messageText={message.content} />
 
       {hasResources && (
         <>
@@ -74,13 +78,13 @@ export function BotResponseCard({ message, onPickFollowup }: Props) {
         </>
       )}
 
-      <Divider />
       <Text
         style={{
           color: Colors.textMuted,
-          fontSize: 11,
+          fontSize: 10,
           fontStyle: 'italic',
           fontFamily: Fonts.sans,
+          marginTop: 2,
         }}>
         {PER_MESSAGE_FOOTER}
       </Text>

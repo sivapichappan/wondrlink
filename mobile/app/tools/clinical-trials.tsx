@@ -102,15 +102,25 @@ function ErrorBlock({ err, onBack }: { err: unknown; onBack: () => void }) {
   }
   return (
     <View style={{ gap: 10 }}>
-      <Text style={{ color: Colors.textPrimary, fontFamily: Fonts.sansSemiBold, fontSize: 14 }}>
-        Need a bit more information
-      </Text>
-      <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 19 }}>{message}</Text>
-      {missing.length > 0 && (
-        <Text style={{ color: Colors.textSecondary, fontSize: 12 }}>
-          Missing: {missing.join(', ')}
+      <View
+        style={{
+          padding: 14,
+          borderRadius: 12,
+          backgroundColor: Colors.warningBg,
+          borderWidth: 1,
+          borderColor: Colors.warning,
+          gap: 8,
+        }}>
+        <Text style={{ color: Colors.textPrimary, fontFamily: Fonts.sansSemiBold, fontSize: 14 }}>
+          Need a bit more information
         </Text>
-      )}
+        <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 19 }}>{message}</Text>
+        {missing.length > 0 && (
+          <Text style={{ color: Colors.textSecondary, fontSize: 12 }}>
+            Missing: {missing.join(', ')}
+          </Text>
+        )}
+      </View>
       <Button label="Back to tools" variant="secondary" fullWidth onPress={onBack} />
     </View>
   );

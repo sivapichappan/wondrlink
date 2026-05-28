@@ -1,6 +1,6 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, router } from 'expo-router';
-import { Bot, Trash2 } from 'lucide-react-native';
+import { Trash2 } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -16,23 +16,41 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BotResponseCard } from '@/components/chat/BotResponseCard';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { MessageBubble } from '@/components/chat/MessageBubble';
+import { ProfileNudgeBanner } from '@/components/chat/ProfileNudgeBanner';
+import { QuickPrompts } from '@/components/chat/QuickPrompts';
 import { SessionMeta } from '@/components/chat/SessionMeta';
+import { WelcomeProfileModal } from '@/components/chat/WelcomeProfileModal';
 import { CrisisModal } from '@/components/common/CrisisModal';
 import { Colors, Fonts } from '@/constants/theme';
+import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { useChat } from '@/hooks/useChat';
+import { useProfile } from '@/hooks/useCare';
+import { useWelcomePromptSeen } from '@/hooks/useWelcomePromptSeen';
 import { fetchConsentStatus } from '@/lib/api/consent';
 import { scanForCrisis, type GuardrailHit } from '@/lib/safety/crisis-keywords';
 import { Sentry } from '@/lib/sentry';
-import { AI_DISCLOSURE_BANNER, WELCOME_INTRO } from '@shared/disclaimers';
+import { welcomeIntroFor } from '@shared/disclaimers';
 import type { ChatHistoryMessage } from '@shared/types';
 
 export default function ChatScreen() {
   const { messages, isLoading, isSending, sendMessage, clearAll } = useChat();
+  const ack = useAcknowledgement();
+  const profile = useProfile();
   const listRef = useRef<FlatList<ChatHistoryMessage>>(null);
-  const qc = useQueryClient();
   const params = useLocalSearchParams<{ q?: string }>();
   const lastHandledQ = useRef<string | undefined>(undefined);
   const [crisis, setCrisis] = useState<{ hit: GuardrailHit; pending: string } | null>(null);
+
+  // Persistent nudge — banner stays on the chat screen until the user
+  // actually has a patient profile saved.
+  const hasProfile = !!profile.data?.profile;
+  const showProfileNudge = !profile.isLoading && !hasProfile;
+
+  // First-launch welcome modal — fires the FIRST time a profile-less user
+  // lands here. Once they action it (build profile or dismiss), it never
+  // shows again on this device; the persistent banner above keeps nudging.
+  const welcomePrompt = useWelcomePromptSeen();
+  const welcomeOpen = welcomePrompt.seen === false && showProfileNudge;
 
   // Consent gate. If the user withdrew collection or sharing consent we
   // can't process /api/chat — surface a banner and disable the composer.
@@ -105,7 +123,7 @@ export default function ChatScreen() {
   const renderItem = ({ item }: { item: ChatHistoryMessage }) => {
     if (item.role === 'user') {
       return (
-        <View style={{ paddingHorizontal: 12, paddingVertical: 6 }}>
+        <View style={{ paddingHorizontal: 12, paddingVertical: 4 }}>
           <MessageBubble role="user" content={item.content} />
         </View>
       );
@@ -123,50 +141,46 @@ export default function ChatScreen() {
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'space-between',
           paddingHorizontal: 16,
-          paddingVertical: 10,
+          paddingTop: 10,
+          paddingBottom: 12,
           borderBottomWidth: 1,
           borderBottomColor: Colors.border,
         }}>
-        <View>
-          <Text style={{ fontFamily: Fonts.serifBold, fontSize: 18, color: Colors.textPrimary }}>
-            WondrChat
-          </Text>
-          <Text style={{ color: Colors.textMuted, fontSize: 11 }}>Your colon cancer guide</Text>
-        </View>
+        <Text
+          style={{
+            fontFamily: Fonts.serifBold,
+            fontSize: 22,
+            color: Colors.textPrimary,
+          }}>
+          WondrChat
+        </Text>
+
+        <View style={{ flex: 1 }} />
+
         {messages.length > 0 && (
           <Pressable
             onPress={handleClear}
             accessibilityRole="button"
             accessibilityLabel="Clear conversation"
-            hitSlop={8}>
-            <Trash2 size={18} color={Colors.textMuted} />
+            hitSlop={8}
+            style={({ pressed }) => ({
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: pressed ? Colors.sidebarBg : 'transparent',
+              marginLeft: 6,
+            })}>
+            <Trash2 size={20} color={Colors.textMuted} />
           </Pressable>
         )}
       </View>
 
-      <View
-        style={{
-          flexDirection: 'row',
-          gap: 8,
-          alignItems: 'flex-start',
-          paddingHorizontal: 16,
-          paddingVertical: 10,
-          backgroundColor: Colors.sidebarBg,
-        }}>
-        <Bot size={16} color={Colors.primary} />
-        <Text
-          style={{
-            flex: 1,
-            color: Colors.textSecondary,
-            fontSize: 12,
-            lineHeight: 18,
-            fontFamily: Fonts.sans,
-          }}>
-          {AI_DISCLOSURE_BANNER}
-        </Text>
-      </View>
+      {showProfileNudge && (
+        <ProfileNudgeBanner onPress={() => router.push('/profile/build')} />
+      )}
 
       {chatDisabled && (
         <View
@@ -210,13 +224,41 @@ export default function ChatScreen() {
           ListHeaderComponent={<SessionMeta />}
           ListEmptyComponent={
             !isLoading ? (
-              <View style={{ padding: 24, gap: 10 }}>
+              <View
+                style={{
+                  paddingHorizontal: 24,
+                  paddingTop: 24,
+                  paddingBottom: 8,
+                  gap: 8,
+                  alignItems: 'center',
+                }}>
                 <Text
-                  style={{ fontFamily: Fonts.serifBold, fontSize: 20, color: Colors.textPrimary }}>
+                  style={{
+                    fontFamily: Fonts.serifBold,
+                    fontSize: 26,
+                    color: Colors.textPrimary,
+                    lineHeight: 32,
+                    textAlign: 'center',
+                  }}>
                   Welcome
                 </Text>
-                <Text style={{ color: Colors.textSecondary, fontSize: 14, lineHeight: 21 }}>
-                  {WELCOME_INTRO}
+                <Text
+                  style={{
+                    color: Colors.textSecondary,
+                    fontSize: 15,
+                    lineHeight: 22,
+                    textAlign: 'center',
+                  }}>
+                  {welcomeIntroFor(ack.data?.cancer_display)}
+                </Text>
+                <Text
+                  style={{
+                    color: Colors.textMuted,
+                    fontSize: 13,
+                    textAlign: 'center',
+                    marginTop: 4,
+                  }}>
+                  Pick a starter below or type your own question.
                 </Text>
               </View>
             ) : null
@@ -224,24 +266,41 @@ export default function ChatScreen() {
         />
 
         {isSending && (
-          <View
-            style={{
-              paddingHorizontal: 22,
-              paddingBottom: 4,
-            }}>
-            <Text style={{ color: Colors.textMuted, fontSize: 12, fontStyle: 'italic' }}>
+          <View style={{ paddingHorizontal: 22, paddingBottom: 2, paddingTop: 0 }}>
+            <Text style={{ color: Colors.textMuted, fontSize: 11, fontStyle: 'italic' }}>
               WondrChat is typing…
             </Text>
           </View>
         )}
 
-        <ChatInput onSend={guardedSend} disabled={isSending || chatDisabled} />
+        {messages.length === 0 && !isSending && !chatDisabled && (
+          <QuickPrompts onPick={guardedSend} />
+        )}
+
+        <ChatInput
+          onSend={guardedSend}
+          disabled={isSending || chatDisabled}
+          placeholder={
+            ack.data?.cancer_display
+              ? `Ask about ${ack.data.cancer_display.toLowerCase()}…`
+              : 'Ask a question…'
+          }
+        />
       </KeyboardAvoidingView>
 
       <CrisisModal
         category={crisis?.hit.category ?? null}
         onContinue={onCrisisContinue}
         onClose={() => setCrisis(null)}
+      />
+
+      <WelcomeProfileModal
+        visible={welcomeOpen}
+        onBuildProfile={() => {
+          welcomePrompt.markSeen();
+          router.push('/profile/build');
+        }}
+        onSkip={() => welcomePrompt.markSeen()}
       />
     </SafeAreaView>
   );

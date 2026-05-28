@@ -12,11 +12,14 @@ export default function Welcome() {
       <View style={{ flex: 1, padding: 24, justifyContent: 'space-between' }}>
         <View style={{ flex: 1, justifyContent: 'center', gap: 16 }}>
           <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.85}
             style={{
               fontFamily: Fonts.serifBold,
-              fontSize: 32,
+              fontSize: 30,
               color: Colors.textPrimary,
-              lineHeight: 38,
+              lineHeight: 36,
             }}>
             WondrChat
           </Text>

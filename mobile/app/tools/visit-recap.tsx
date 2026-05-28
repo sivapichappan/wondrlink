@@ -74,7 +74,7 @@ export default function VisitRecapScreen() {
                   style={{
                     padding: 12,
                     borderRadius: Radius.md,
-                    backgroundColor: '#FFEDEC',
+                    backgroundColor: Colors.emergencyBg,
                     borderWidth: 1,
                     borderColor: Colors.danger,
                   }}>

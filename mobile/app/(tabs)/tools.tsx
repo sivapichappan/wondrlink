@@ -1,9 +1,12 @@
 import { router } from 'expo-router';
 import {
   Activity,
+  Bookmark,
   CalendarClock,
+  ChevronRight,
   ClipboardList,
   FileText,
+  LineChart,
   Microscope,
   NotebookPen,
   Search,
@@ -24,14 +27,26 @@ const TOOLS: Tool[] = [
   {
     href: '/tools/screening',
     title: 'Wellness check-in',
-    blurb: 'Take a PHQ-9 mood check-in. Tracks alongside your Care snapshot.',
+    blurb: 'Symptom, PHQ-9, GAD-7, PSS-10, ISI, PREMM5 — saved to your Care snapshot.',
     Icon: Activity,
+  },
+  {
+    href: '/tools/trends',
+    title: 'View trends',
+    blurb: 'See how your check-ins are tracking over time.',
+    Icon: LineChart,
   },
   {
     href: '/tools/clinical-trials',
     title: 'Clinical trials',
     blurb: 'Find trials matching your stage, biomarkers, and ZIP code.',
     Icon: Microscope,
+  },
+  {
+    href: '/tools/watchlist',
+    title: 'Saved trials',
+    blurb: 'Trials you bookmarked from chat.',
+    Icon: Bookmark,
   },
   {
     href: '/tools/previsit',
@@ -86,9 +101,6 @@ export default function ToolsScreen() {
             accessibilityRole="button"
             accessibilityLabel={t.title}
             style={({ pressed }) => ({
-              flexDirection: 'row',
-              gap: 12,
-              padding: 14,
               borderRadius: Radius.lg,
               backgroundColor: pressed ? Colors.sidebarBg : Colors.surface,
               borderWidth: 1,
@@ -96,27 +108,46 @@ export default function ToolsScreen() {
             })}>
             <View
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: Colors.sidebarBg,
+                flexDirection: 'row',
                 alignItems: 'center',
-                justifyContent: 'center',
+                padding: 14,
               }}>
-              <t.Icon size={20} color={Colors.primary} />
-            </View>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text
+              <View
                 style={{
-                  color: Colors.textPrimary,
-                  fontFamily: Fonts.sansSemiBold,
-                  fontSize: 14,
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: Colors.sidebarBg,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 12,
                 }}>
-                {t.title}
-              </Text>
-              <Text style={{ color: Colors.textSecondary, fontSize: 12, lineHeight: 18 }}>
-                {t.blurb}
-              </Text>
+                <t.Icon size={20} color={Colors.primary} />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  style={{
+                    color: Colors.textPrimary,
+                    fontFamily: Fonts.sansSemiBold,
+                    fontSize: 15,
+                  }}>
+                  {t.title}
+                </Text>
+                <Text
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                  style={{
+                    color: Colors.textSecondary,
+                    fontSize: 12,
+                    lineHeight: 18,
+                    marginTop: 2,
+                  }}>
+                  {t.blurb}
+                </Text>
+              </View>
+              <ChevronRight size={18} color={Colors.primary} style={{ marginLeft: 8 }} />
             </View>
           </Pressable>
         ))}

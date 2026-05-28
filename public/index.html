@@ -7000,7 +7000,7 @@
             <button class="close-sidebar-btn" onclick="closeMobileMenu()" aria-label="Close menu">&times;</button>
             <div class="brand-section">
                 <div class="brand-box">
-                    <img src="/Logo.png" alt="" class="brand-logo">
+                    <img src="/Logo.png" alt="WondrLink" class="brand-logo">
                     <div class="brand-text">
                         <div class="brand-main">WondrLink</div>
                         <div class="brand-sub">Your Colon Cancer Care Guide</div>
@@ -7381,7 +7381,7 @@
             </button>
             <div class="chat-header">
                 <div class="chat-header-brand" aria-label="WondrLink">
-                    <img src="/Logo.png" alt="" class="chat-header-logo">
+                    <img src="/Logo.png" alt="WondrLink" class="chat-header-logo">
                     <div class="chat-header-brand-text">
                         <span class="chat-header-brand-main">WondrLink</span>
                         <span class="chat-header-brand-context">Your Cancer Guide</span>
@@ -7646,8 +7646,8 @@
                     showMainApp();
                     return true;
                 }
-            } catch (e) {
-                console.log("Not authenticated:", e);
+            } catch {
+                // Not authenticated — fall through to auth modal.
             }
             showAuthModal();
             return false;
@@ -8491,8 +8491,8 @@
                         showBuildProfileButton(true); // Show edit button
                     }
                 }
-            } catch (e) {
-                console.log("No existing profile");
+            } catch {
+                // No existing profile — first-run state is the default.
             }
         }
 
@@ -10940,7 +10940,6 @@
                     console.error('Failed to save message:', data.error);
                     return false;
                 }
-                console.log(`Saved ${role} message to history`);
                 return true;
             } catch (e) {
                 console.error('Failed to save message:', e);
@@ -11038,7 +11037,6 @@
                         const metadata = msg.metadata || null;
                         addMessage(msg.content, who, metadata);
                     });
-                    console.log(`Loaded ${data.messages.length} messages from history`);
                 }
             } catch (e) {
                 console.error('Failed to load chat history:', e);
@@ -11051,7 +11049,6 @@
                 const resp = await authFetch('/api/clear_chat', { method: 'DELETE' });
                 if (resp.ok) {
                     await resetMessagesToWelcome();
-                    console.log('Chat history cleared');
                 }
             } catch (e) {
                 console.error('Failed to clear chat history:', e);
@@ -11337,7 +11334,6 @@
                 msgInput.focus();
                 // Refresh profile in case it was updated
                 if (j && j.has_profile_updates) {
-                    console.log('Profile updates detected, refreshing sidebar...', j.profile_update_fields);
                     await loadExistingProfile();
                     showProfileUpdateNotification(j.profile_update_fields);
                 }
@@ -11469,7 +11465,6 @@
 
             // Listen for auth state changes
             supabaseClient.auth.onAuthStateChange((event, session) => {
-                console.log("Auth state changed:", event, session ? "has session" : "no session");
                 if (session) {
                     accessToken = session.access_token;
                     currentUser = session.user;
@@ -12919,8 +12914,7 @@
                 // Render with inline citations using the existing renderCitations helper
                 const html = renderCitations(escapeHtml(sec.body || ''), citations).replace(/\n/g, '<br>');
                 // Note: escapeHtml escapes the body first; renderCitations operates on the escaped text,
-                // converting [N] markers to safe HTML <sup> tags. Markdown headings ### get rendered as
-                // plain text in v1.
+                // converting [N] markers to safe HTML <sup> tags. Markdown headings render as plain text.
                 body.innerHTML = html;
                 wrap.appendChild(body);
 

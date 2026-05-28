@@ -68,8 +68,12 @@ function RootGate() {
       return;
     }
 
-    // All clear → main app
-    if (top !== '(tabs)') router.replace('/(tabs)');
+    // All clear → main app. Only redirect when the user is still parked in
+    // auth/onboarding; otherwise leave them on whatever root-stack screen
+    // they pushed (profile, tools, settings) so the back-stack behaves.
+    if (top === '(auth)' || top === '(onboarding)' || top == null) {
+      router.replace('/(tabs)');
+    }
   }, [
     ack.sessionLoading,
     ack.hasSession,
@@ -98,7 +102,7 @@ function RootGate() {
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="profile" options={{ title: 'Profile' }} />
+      <Stack.Screen name="profile" options={{ headerShown: false }} />
       <Stack.Screen name="tools" options={{ headerShown: false }} />
       <Stack.Screen name="settings" options={{ headerShown: false }} />
     </Stack>

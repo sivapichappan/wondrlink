@@ -49,6 +49,18 @@ logger = logging.getLogger("wondr-api")
 
 ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5000").split(",")
 
+# -------------------------
+# Rate limits — (max_requests, window_seconds) per identity key
+# -------------------------
+RATE_LIMIT_AUTH_REGISTER = (3, 60)
+RATE_LIMIT_AUTH_LOGIN    = (5, 15)
+RATE_LIMIT_CHAT          = (30, 60)
+RATE_LIMIT_PREVISIT      = (10, 60)
+RATE_LIMIT_VISIT_RECAP   = (10, 60)
+RATE_LIMIT_APPEAL        = (5, 60)      # insurance appeal
+RATE_LIMIT_DEEP_RESEARCH = (3, 300)
+RATE_LIMIT_PRIVACY_APPEAL = (3, 86400)  # 3 per day
+
 
 def feature_enabled(flag_name: str) -> bool:
     """Per-feature kill switch via env var FEATURE_<NAME>. Defaults to True."""
@@ -144,8 +156,8 @@ def api_csp_report():
 def api_register():
     """Register a new user with Supabase Auth."""
     try:
-        # EU/EEA/UK/Swiss geofence (Task 8). v1 does not serve these regions
-        # — we lack the GDPR / EU AI Act compliance build.
+        # EU/EEA/UK/Swiss geofence — we don't currently serve these regions
+        # because we lack the GDPR / EU AI Act compliance build.
         try:
             from compliance import validate_country
             ok, msg, code = validate_country(request.headers)
@@ -160,7 +172,7 @@ def api_register():
         # Rate limit registration by IP
         from rate_limit import check_rate_limit
         client_ip = request.headers.get('X-Forwarded-For', request.remote_addr or 'unknown').split(',')[0].strip()
-        allowed, remaining = check_rate_limit(client_ip, 'auth/register', 3, 60)
+        allowed, remaining = check_rate_limit(client_ip, 'auth/register', *RATE_LIMIT_AUTH_REGISTER)
         if not allowed:
             return jsonify({"error": "Too many registration attempts. Please try again later."}), 429
 
@@ -183,7 +195,7 @@ def api_register():
         if error:
             return jsonify({"error": error}), 400
 
-        logger.info(f"New user registered: {email}")
+        logger.info(f"New user registered: user_id={user_data.get('user_id')}")
         return jsonify({
             "status": "ok",
             "message": "Account created successfully",
@@ -206,7 +218,7 @@ def api_login():
         # Rate limit login by IP
         from rate_limit import check_rate_limit
         client_ip = request.headers.get('X-Forwarded-For', request.remote_addr or 'unknown').split(',')[0].strip()
-        allowed, remaining = check_rate_limit(client_ip, 'auth/login', 5, 15)
+        allowed, remaining = check_rate_limit(client_ip, 'auth/login', *RATE_LIMIT_AUTH_LOGIN)
         if not allowed:
             return jsonify({"error": "Too many login attempts. Please try again in 15 minutes."}), 429
 
@@ -229,7 +241,7 @@ def api_login():
         if error:
             return jsonify({"error": error}), 401
 
-        logger.info(f"User logged in: {email}")
+        logger.info(f"User logged in: user_id={user_data.get('user_id')}")
         return jsonify({
             "status": "ok",
             "message": "Logged in successfully",
@@ -453,8 +465,8 @@ def api_save_acknowledgement():
         user_id = request.user["user_id"]
         payload = request.get_json(silent=True) or {}
 
-        # EU/EEA/UK/Swiss geofence (Task 8). Catches any signup that
-        # made it past auth from a blocked region.
+        # EU/EEA/UK/Swiss geofence — catches any signup that made it past
+        # auth from a blocked region.
         ok, msg, code = validate_country(request.headers)
         if not ok:
             return jsonify({"error": msg, "code": "REGION_BLOCKED"}), code
@@ -838,7 +850,7 @@ def api_chat():
 
         # Rate limit chat requests
         from rate_limit import check_rate_limit
-        allowed, remaining = check_rate_limit(user_id, 'chat', 30, 60)
+        allowed, remaining = check_rate_limit(user_id, 'chat', *RATE_LIMIT_CHAT)
         if not allowed:
             return jsonify({"error": "You've reached the message limit. Please wait a bit before sending more."}), 429
 
@@ -1040,7 +1052,6 @@ def api_chat():
                         mismatch_detected = True
                         break
 
-        # (query_type already classified above)
         effective_top_k = 8 if query_type in ('treatment', 'clinical_trial') else 5
 
         # Search relevant chunks (hybrid: TF + vector with RRF)
@@ -1452,7 +1463,7 @@ def api_save_screening():
         user_id = request.user["user_id"]
         data = request.get_json(silent=True) or {}
 
-        instrument = data.get('instrument')  # PHQ9, GAD7, PSS10, ISI
+        instrument = data.get('instrument')  # PHQ9, GAD7, PSS10, ISI, PREMM5, SYMPTOM
         scores = data.get('scores', {})
         total_score = data.get('total_score')
         severity_label = data.get('severity_label', '')
@@ -1460,7 +1471,7 @@ def api_save_screening():
         if not instrument or total_score is None:
             return jsonify({"error": "instrument and total_score required"}), 400
 
-        valid_instruments = ['PHQ9', 'GAD7', 'PSS10', 'ISI']
+        valid_instruments = ['PHQ9', 'GAD7', 'PSS10', 'ISI', 'PREMM5', 'SYMPTOM']
         if instrument not in valid_instruments:
             return jsonify({"error": f"instrument must be one of {valid_instruments}"}), 400
 
@@ -1658,7 +1669,7 @@ def api_previsit_questions():
 
         # Rate limit: 10 generations per 60s per user
         from rate_limit import check_rate_limit
-        allowed, _ = check_rate_limit(user_id, 'previsit_questions', 10, 60)
+        allowed, _ = check_rate_limit(user_id, 'previsit_questions', *RATE_LIMIT_PREVISIT)
         if not allowed:
             return jsonify({"error": "Too many requests. Please wait a moment and try again."}), 429
 
@@ -1739,7 +1750,7 @@ def api_visit_recap():
         user_id = request.user["user_id"]
 
         from rate_limit import check_rate_limit
-        allowed, _ = check_rate_limit(user_id, 'visit_recap', 10, 60)
+        allowed, _ = check_rate_limit(user_id, 'visit_recap', *RATE_LIMIT_VISIT_RECAP)
         if not allowed:
             return jsonify({"error": "Too many requests. Please wait a moment and try again."}), 429
 
@@ -1825,7 +1836,7 @@ def api_insurance_appeal():
         user_id = request.user["user_id"]
 
         from rate_limit import check_rate_limit
-        allowed, _ = check_rate_limit(user_id, 'insurance_appeal', 5, 60)
+        allowed, _ = check_rate_limit(user_id, 'insurance_appeal', *RATE_LIMIT_APPEAL)
         if not allowed:
             return jsonify({"error": "Too many requests. Please wait a moment and try again."}), 429
 
@@ -1986,7 +1997,7 @@ def api_deep_research():
 
         from rate_limit import check_rate_limit
         # Heavy endpoint: 3 requests per 5 minutes per user
-        allowed, _ = check_rate_limit(user_id, 'deep_research', 3, 300)
+        allowed, _ = check_rate_limit(user_id, 'deep_research', *RATE_LIMIT_DEEP_RESEARCH)
         if not allowed:
             return jsonify({"error": "Deep research is rate-limited to 3 requests per 5 minutes. Please try again shortly."}), 429
 
@@ -2148,7 +2159,7 @@ def api_privacy_appeal():
         user_id = request.user["user_id"]
 
         from rate_limit import check_rate_limit
-        allowed, _ = check_rate_limit(user_id, 'privacy_appeal', 3, 86400)
+        allowed, _ = check_rate_limit(user_id, 'privacy_appeal', *RATE_LIMIT_PRIVACY_APPEAL)
         if not allowed:
             return jsonify({"error": "You've submitted the maximum number of appeals in 24 hours. Please email appeals@wondrlinkfoundation.org for urgent matters."}), 429
 

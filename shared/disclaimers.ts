@@ -4,15 +4,10 @@
  * These strings must appear VERBATIM wherever they're shown. Attorney-reviewed
  * copy is non-negotiable; do not paraphrase in the UI.
  *
- * Web counterparts:
- *   - AI_DISCLOSURE_BANNER → public/index.html line 6395
- *   - WELCOME_INTRO        → public/index.html line 6401
- *   - PER_MESSAGE_FOOTER   → matches the inline disclaimer added at the bottom
- *                            of every bot response card on web
- *   - STATE_BLOCKED_*      → lib/compliance.py validate_state() + state restricted
- *                            modal at public/index.html line 5626
- *   - CRISIS_HELPLINES     → lib/llm_utils.py line 695 (cancer helplines) +
- *                            api/index.py line 1014 (crisis helplines)
+ * Web counterparts live in public/index.html (banner + welcome + per-message
+ * footer). State-restricted copy mirrors lib/compliance.py validate_state().
+ * Crisis helplines mirror api/index.py crisis short-circuit + lib/llm_utils.py
+ * cancer-helpline list. Search by constant name in those files to find them.
  */
 
 // =============================================================================
@@ -23,7 +18,15 @@ export const AI_DISCLOSURE_BANNER =
   "You're chatting with an AI assistant — not a person, not medical advice. AI can make mistakes; please verify important information with your care team.";
 
 export const WELCOME_INTRO =
-  "I'm here to help you understand your colon cancer diagnosis and treatment options in simple, everyday language. This is a support tool, not medical advice.";
+  "I'm here to help you understand your diagnosis and treatment options in simple, everyday language. This is a support tool, not medical advice.";
+
+/** Cancer-aware variant used inside the chat empty state. Pass the lower-cased
+ *  display name (e.g. "lung cancer") or omit for a generic welcome. */
+export function welcomeIntroFor(cancerDisplay?: string | null): string {
+  if (!cancerDisplay) return WELCOME_INTRO;
+  const lc = cancerDisplay.toLowerCase();
+  return `I'm here to help you understand your ${lc} diagnosis and treatment options in simple, everyday language. This is a support tool, not medical advice.`;
+}
 
 export const PER_MESSAGE_FOOTER =
   'Informational only. Verify with your oncologist.';

@@ -41,6 +41,10 @@ export const ENDPOINTS = {
   hero: '/api/hero',
   careSnapshot: '/api/care_snapshot',
 
+  // --- Cancer registry (multi-cancer switcher) ---
+  cancerOptions: '/api/cancer_options',
+  updateCancerSlug: '/api/update_cancer_slug',
+
   // --- Screening (PHQ-9 etc.) ---
   screeningSave: '/api/screening/save',
   screeningLoad: '/api/screening/load',

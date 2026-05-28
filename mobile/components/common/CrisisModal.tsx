@@ -55,7 +55,7 @@ export function CrisisModal({ category, onContinue, onClose }: Props) {
                 width: 56,
                 height: 56,
                 borderRadius: 28,
-                backgroundColor: '#FFEDEC',
+                backgroundColor: Colors.emergencyBg,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}>
@@ -96,7 +96,7 @@ export function CrisisModal({ category, onContinue, onClose }: Props) {
                   gap: 12,
                   padding: 14,
                   borderRadius: Radius.md,
-                  backgroundColor: pressed ? '#8B1E18' : Colors.danger,
+                  backgroundColor: pressed ? Colors.dangerPressed : Colors.danger,
                 })}>
                 <Phone size={18} color={Colors.surface} />
                 <View style={{ flex: 1 }}>

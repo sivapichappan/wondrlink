@@ -1,7 +1,8 @@
-import { ExternalLink, Microscope } from 'lucide-react-native';
+import { Bookmark, BookmarkCheck, ExternalLink, Microscope } from 'lucide-react-native';
 import { Linking, Pressable, Text, View } from 'react-native';
 
 import { Colors, Fonts, Radius } from '@/constants/theme';
+import { useWatchlist } from '@/hooks/useWatchlist';
 import type { ChatClinicalTrialsBlock } from '@shared/types';
 
 interface Props {
@@ -15,6 +16,7 @@ const BAND_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export function TrialsCards({ trials }: Props) {
+  const { isSaved, save, remove } = useWatchlist();
   if (!trials || !trials.trials || trials.trials.length === 0) return null;
 
   return (
@@ -68,15 +70,50 @@ export function TrialsCards({ trials }: Props) {
               {t.status && (
                 <Text style={{ color: Colors.textSecondary, fontSize: 12 }}>{t.status}</Text>
               )}
-              <Pressable
-                onPress={() => Linking.openURL(url).catch(() => {})}
-                accessibilityRole="link"
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                <ExternalLink size={12} color={Colors.primary} />
-                <Text style={{ color: Colors.primary, fontFamily: Fonts.sansMedium, fontSize: 12 }}>
-                  View on ClinicalTrials.gov
-                </Text>
-              </Pressable>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginTop: 4,
+                }}>
+                <Pressable
+                  onPress={() => Linking.openURL(url).catch(() => {})}
+                  accessibilityRole="link"
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <ExternalLink size={12} color={Colors.primary} />
+                  <Text
+                    style={{ color: Colors.primary, fontFamily: Fonts.sansMedium, fontSize: 12 }}>
+                    View on ClinicalTrials.gov
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() =>
+                    isSaved(t.nct_id)
+                      ? remove(t.nct_id)
+                      : save({ nct_id: t.nct_id, title: t.title, phase: t.phase, url })
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    isSaved(t.nct_id) ? 'Unsave trial' : 'Save trial to watchlist'
+                  }
+                  hitSlop={8}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  {isSaved(t.nct_id) ? (
+                    <BookmarkCheck size={14} color={Colors.primary} />
+                  ) : (
+                    <Bookmark size={14} color={Colors.textMuted} />
+                  )}
+                  <Text
+                    style={{
+                      color: isSaved(t.nct_id) ? Colors.primary : Colors.textMuted,
+                      fontFamily: Fonts.sansMedium,
+                      fontSize: 12,
+                    }}>
+                    {isSaved(t.nct_id) ? 'Saved' : 'Save'}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           );
         })}

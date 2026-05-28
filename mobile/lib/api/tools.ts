@@ -26,6 +26,21 @@ export function saveScreening(body: ScreeningSaveRequest) {
   });
 }
 
+export interface ScreeningHistoryPoint {
+  total_score: number;
+  severity_label?: string;
+  created_at: string;
+}
+
+export interface ScreeningHistoryResponse {
+  status: 'ok';
+  history: Record<string, ScreeningHistoryPoint[]>;
+}
+
+export function fetchScreeningHistory() {
+  return apiFetch<ScreeningHistoryResponse>(ENDPOINTS.screeningHistory, { method: 'GET' });
+}
+
 export function fetchSurveillance() {
   return apiFetch<SurveillanceResponse>(ENDPOINTS.surveillance, { method: 'GET' });
 }

@@ -23,11 +23,11 @@ export default function Disclaimer() {
       <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
         <View
           style={{
-            backgroundColor: '#FEF3C7',
+            backgroundColor: Colors.warningBg,
             borderRadius: 10,
             padding: 12,
           }}>
-          <Text style={{ color: '#92400E', fontSize: 12, lineHeight: 18 }}>
+          <Text style={{ color: Colors.warning, fontSize: 12, lineHeight: 18 }}>
             DRAFT — ATTORNEY REVIEW REQUIRED. Prepared in good faith using the Washington
             My Health My Data Act (MHMDA) as a template.
           </Text>

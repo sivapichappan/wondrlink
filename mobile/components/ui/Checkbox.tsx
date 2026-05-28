@@ -22,7 +22,7 @@ export function Checkbox({ checked, onChange, label, description, disabled }: Pr
         flexDirection: 'row',
         gap: 12,
         paddingVertical: 10,
-        opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
+        opacity: pressed && !disabled ? 0.85 : 1,
       })}>
       <View
         style={{
@@ -30,8 +30,16 @@ export function Checkbox({ checked, onChange, label, description, disabled }: Pr
           height: 22,
           borderRadius: Radius.sm,
           borderWidth: 1.5,
-          borderColor: checked ? Colors.primary : Colors.border,
-          backgroundColor: checked ? Colors.primary : Colors.surface,
+          borderColor: disabled
+            ? Colors.border
+            : checked
+              ? Colors.primary
+              : Colors.border,
+          backgroundColor: disabled
+            ? Colors.surfaceMuted
+            : checked
+              ? Colors.primary
+              : Colors.surface,
           alignItems: 'center',
           justifyContent: 'center',
           marginTop: 2,
@@ -39,11 +47,24 @@ export function Checkbox({ checked, onChange, label, description, disabled }: Pr
         {checked && <Check size={16} color={Colors.surface} strokeWidth={3} />}
       </View>
       <View style={{ flex: 1, gap: 4 }}>
-        <Text style={{ color: Colors.textPrimary, fontFamily: Fonts.sansMedium, fontSize: 14, lineHeight: 20 }}>
+        <Text
+          style={{
+            color: disabled ? Colors.textMuted : Colors.textPrimary,
+            fontFamily: Fonts.sansMedium,
+            fontSize: 14,
+            lineHeight: 20,
+          }}>
           {label}
         </Text>
         {description && (
-          <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 19 }}>{description}</Text>
+          <Text
+            style={{
+              color: disabled ? Colors.textMuted : Colors.textSecondary,
+              fontSize: 13,
+              lineHeight: 19,
+            }}>
+            {description}
+          </Text>
         )}
       </View>
     </Pressable>

@@ -73,16 +73,22 @@ export function HeroCard({ hero, onAskSuggestion }: Props) {
                 key={i}
                 onPress={() => onAskSuggestion?.(q)}
                 accessibilityRole="button"
+                accessibilityLabel={q}
                 accessibilityHint="Send this question to chat"
                 style={({ pressed }) => ({
                   paddingHorizontal: 12,
                   paddingVertical: 10,
                   borderRadius: Radius.md,
-                  backgroundColor: pressed ? Colors.sidebarBg : Colors.surface,
+                  backgroundColor: pressed ? Colors.surfaceMuted : Colors.sidebarBg,
                   borderWidth: 1,
                   borderColor: Colors.border,
                 })}>
-                <Text style={{ color: Colors.textPrimary, fontSize: 13, lineHeight: 18 }}>{q}</Text>
+                <Text
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                  style={{ color: Colors.textPrimary, fontSize: 13, lineHeight: 18 }}>
+                  {q}
+                </Text>
               </Pressable>
             ))}
           </View>

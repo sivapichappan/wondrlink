@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 
+import { HeaderBack } from '@/components/common/HeaderBack';
 import { Colors } from '@/constants/theme';
 
 export default function ToolsLayout() {
@@ -10,7 +11,7 @@ export default function ToolsLayout() {
         headerTintColor: Colors.textPrimary,
         headerShadowVisible: false,
         contentStyle: { backgroundColor: Colors.surface },
-        headerBackTitle: 'Back',
+        headerLeft: () => <HeaderBack label="Tools" />,
       }}
     />
   );

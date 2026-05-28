@@ -1,4 +1,4 @@
-import { Phone, ExternalLink, Sparkles } from 'lucide-react-native';
+import { AlertOctagon, ChevronRight, ExternalLink, Phone, Sparkles } from 'lucide-react-native';
 import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,9 +8,9 @@ import { CANCER_HELPLINES, CRISIS_HELPLINES, CONTACT, type Helpline } from '@sha
 export default function HelpScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.surface }} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 18, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 20, paddingBottom: 40 }}>
         <View>
-          <Text style={{ fontFamily: Fonts.serifBold, fontSize: 22, color: Colors.textPrimary }}>
+          <Text style={{ fontFamily: Fonts.serifBold, fontSize: 24, color: Colors.textPrimary }}>
             Get help
           </Text>
           <Text style={{ color: Colors.textMuted, fontSize: 13, marginTop: 4 }}>
@@ -18,140 +18,193 @@ export default function HelpScreen() {
           </Text>
         </View>
 
-        <View style={{ gap: 8 }}>
-          <SectionLabel>EMERGENCY · 24/7</SectionLabel>
-          {CRISIS_HELPLINES.map((h) => (
-            <HelplineCard key={h.name} h={h} variant="urgent" />
-          ))}
-        </View>
+        <EmergencyBanner />
 
-        <View style={{ gap: 8 }}>
-          <SectionLabel>CANCER SUPPORT</SectionLabel>
-          {CANCER_HELPLINES.map((h) => (
-            <HelplineCard key={h.name} h={h} />
+        <Section title="Crisis support · 24/7" tone="urgent">
+          {CRISIS_HELPLINES.map((h, i, arr) => (
+            <HelplineRow key={h.name} h={h} urgent showDivider={i < arr.length - 1} />
           ))}
-        </View>
+        </Section>
 
-        <View style={{ gap: 8 }}>
-          <SectionLabel>WONDRLINK</SectionLabel>
+        <Section title="Cancer support">
+          {CANCER_HELPLINES.map((h, i, arr) => (
+            <HelplineRow key={h.name} h={h} showDivider={i < arr.length - 1} />
+          ))}
+        </Section>
+
+        <Section title="WondrLink">
           <Pressable
             onPress={() => Linking.openURL(CONTACT.website).catch(() => {})}
             accessibilityRole="link"
+            accessibilityLabel="Talk to a Personal Navigator"
             style={({ pressed }) => ({
-              flexDirection: 'row',
-              gap: 12,
-              padding: 14,
-              borderRadius: Radius.lg,
-              borderWidth: 1,
-              borderColor: Colors.border,
               backgroundColor: pressed ? Colors.sidebarBg : Colors.surface,
-              alignItems: 'center',
             })}>
             <View
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: Colors.sidebarBg,
+                flexDirection: 'row',
                 alignItems: 'center',
-                justifyContent: 'center',
+                padding: 14,
               }}>
-              <Sparkles size={18} color={Colors.primary} />
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: Colors.sidebarBg,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 12,
+                }}>
+                <Sparkles size={18} color={Colors.primary} />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text
+                  style={{
+                    color: Colors.textPrimary,
+                    fontFamily: Fonts.sansSemiBold,
+                    fontSize: 15,
+                  }}>
+                  Talk to a Personal Navigator
+                </Text>
+                <Text style={{ color: Colors.textMuted, fontSize: 12, marginTop: 2 }}>
+                  wondrlinkfoundation.org
+                </Text>
+              </View>
+              <ExternalLink size={16} color={Colors.primary} style={{ marginLeft: 8 }} />
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: Colors.textPrimary, fontFamily: Fonts.sansSemiBold, fontSize: 14 }}>
-                Talk to a Personal Navigator
-              </Text>
-              <Text style={{ color: Colors.textSecondary, fontSize: 12, marginTop: 2 }}>
-                WondrLink Foundation
-              </Text>
-            </View>
-            <ExternalLink size={14} color={Colors.textMuted} />
           </Pressable>
-        </View>
-
-        <View
-          style={{
-            padding: 12,
-            backgroundColor: Colors.sidebarBg,
-            borderRadius: Radius.md,
-          }}>
-          <Text style={{ color: Colors.textSecondary, fontSize: 12, lineHeight: 18 }}>
-            If you are experiencing a medical emergency, call 911 immediately. WondrChat is not
-            equipped to handle emergencies.
-          </Text>
-        </View>
+        </Section>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function EmergencyBanner() {
   return (
-    <Text
+    <View
       style={{
-        color: Colors.textMuted,
-        fontSize: 11,
-        fontFamily: Fonts.sansMedium,
-        letterSpacing: 0.5,
+        flexDirection: 'row',
+        gap: 10,
+        padding: 14,
+        borderRadius: Radius.md,
+        backgroundColor: Colors.dangerLight,
+        borderWidth: 1,
+        borderColor: Colors.danger,
       }}>
-      {children}
-    </Text>
+      <AlertOctagon size={18} color={Colors.danger} style={{ marginTop: 1 }} />
+      <Text
+        style={{
+          flex: 1,
+          color: Colors.textPrimary,
+          fontSize: 13,
+          lineHeight: 19,
+        }}>
+        <Text style={{ fontFamily: Fonts.sansSemiBold }}>Medical emergency?</Text>{' '}
+        Call 911 immediately. WondrChat is not built to handle emergencies.
+      </Text>
+    </View>
   );
 }
 
-function HelplineCard({ h, variant }: { h: Helpline; variant?: 'urgent' }) {
-  const urgent = variant === 'urgent';
+function Section({
+  title,
+  tone,
+  children,
+}: {
+  title: string;
+  tone?: 'urgent';
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={{ gap: 8 }}>
+      <Text
+        style={{
+          color: tone === 'urgent' ? Colors.danger : Colors.textMuted,
+          fontSize: 11,
+          fontFamily: Fonts.sansMedium,
+          letterSpacing: 0.5,
+        }}>
+        {title.toUpperCase()}
+      </Text>
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: tone === 'urgent' ? Colors.danger : Colors.border,
+          borderRadius: Radius.lg,
+          backgroundColor: Colors.surface,
+          overflow: 'hidden',
+        }}>
+        {children}
+      </View>
+    </View>
+  );
+}
+
+function HelplineRow({
+  h,
+  urgent,
+  showDivider,
+}: {
+  h: Helpline;
+  urgent?: boolean;
+  showDivider: boolean;
+}) {
   return (
     <Pressable
       onPress={() => Linking.openURL(h.tel).catch(() => {})}
       accessibilityRole="button"
-      accessibilityLabel={`${h.name} — ${h.number}`}
+      accessibilityLabel={`Call ${h.name} at ${h.number}`}
       style={({ pressed }) => ({
-        flexDirection: 'row',
-        gap: 12,
-        padding: 14,
-        borderRadius: Radius.lg,
-        borderWidth: 1,
-        borderColor: urgent ? Colors.danger : Colors.border,
-        backgroundColor: urgent
-          ? pressed
-            ? '#8B1E18'
-            : Colors.danger
-          : pressed
-            ? Colors.sidebarBg
-            : Colors.surface,
-        alignItems: 'center',
+        backgroundColor: pressed
+          ? urgent
+            ? Colors.dangerLight
+            : Colors.sidebarBg
+          : Colors.surface,
+        borderBottomWidth: showDivider ? 1 : 0,
+        borderBottomColor: urgent ? '#FCA5A5' : Colors.border,
       })}>
       <View
         style={{
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          backgroundColor: urgent ? 'rgba(255,255,255,0.18)' : Colors.sidebarBg,
+          flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'center',
+          padding: 14,
         }}>
-        <Phone size={18} color={urgent ? Colors.surface : Colors.primary} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text
+        <View
           style={{
-            color: urgent ? Colors.surface : Colors.textPrimary,
-            fontFamily: Fonts.sansSemiBold,
-            fontSize: 14,
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: urgent ? Colors.dangerLight : Colors.sidebarBg,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 12,
           }}>
-          {h.name}
-        </Text>
-        <Text
-          style={{
-            color: urgent ? Colors.surface : Colors.textSecondary,
-            fontSize: 12,
-            marginTop: 2,
-            opacity: urgent ? 0.9 : 1,
-          }}>
-          {h.number} · {h.desc}
-        </Text>
+          <Phone size={18} color={urgent ? Colors.danger : Colors.primary} />
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={{
+              color: Colors.textPrimary,
+              fontFamily: Fonts.sansSemiBold,
+              fontSize: 15,
+            }}>
+            {h.name}
+          </Text>
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={{ color: Colors.textMuted, fontSize: 12, marginTop: 2 }}>
+            {h.number} · {h.desc}
+          </Text>
+        </View>
+        <ChevronRight
+          size={18}
+          color={urgent ? Colors.danger : Colors.primary}
+          style={{ marginLeft: 8 }}
+        />
       </View>
     </Pressable>
   );

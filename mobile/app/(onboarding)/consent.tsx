@@ -3,6 +3,7 @@ import DateTimePicker, {
 } from '@react-native-community/datetimepicker';
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
+import { Calendar, ChevronDown } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -78,7 +79,8 @@ export default function Consent() {
   }, []);
 
   const [dob, setDob] = useState<Date | null>(null);
-  const [showPicker, setShowPicker] = useState(false);
+  // Open the picker by default — the field is required and easy to miss.
+  const [showPicker, setShowPicker] = useState(true);
 
   const [state, setState] = useState<StateChoice | ''>('');
   const [collection, setCollection] = useState(false);
@@ -153,86 +155,164 @@ export default function Consent() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.surface }} edges={['bottom']}>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 18 }} keyboardShouldPersistTaps="handled">
-        <Text
-          style={{ color: Colors.textSecondary, fontSize: 14, lineHeight: 20 }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 20, gap: 20 }}
+        keyboardShouldPersistTaps="handled">
+        <Text style={{ color: Colors.textSecondary, fontSize: 14, lineHeight: 20 }}>
           {CONSENT_INTRO}
         </Text>
 
-        <View style={{ height: 1, backgroundColor: Colors.border }} />
-
-        <View>
-          <Text style={{ fontFamily: Fonts.sansSemiBold, fontSize: 14, color: Colors.textPrimary, marginBottom: 6 }}>
+        {/* Date of birth card */}
+        <View
+          style={{
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: Colors.border,
+            padding: 14,
+            gap: 8,
+            backgroundColor: Colors.surface,
+          }}>
+          <Text
+            style={{
+              fontFamily: Fonts.sansSemiBold,
+              fontSize: 14,
+              color: Colors.textPrimary,
+            }}>
             Date of birth
           </Text>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Open date-of-birth picker"
             onPress={() => setShowPicker(true)}
-            style={{
-              padding: 14,
+            style={({ pressed }) => ({
               borderRadius: 10,
-              borderWidth: 1,
-              borderColor: Colors.border,
-              backgroundColor: Colors.surface,
-            }}>
-            <Text
+              borderWidth: dob ? 1 : 2,
+              borderColor: dob ? Colors.border : Colors.primary,
+              backgroundColor: pressed
+                ? Colors.surfaceMuted
+                : dob
+                  ? Colors.sidebarBg
+                  : Colors.surface,
+            })}>
+            {/* Inner row View — NativeWind drops flexDirection on Pressable's style function */}
+            <View
               style={{
-                color: dob ? Colors.textPrimary : Colors.textSecondary,
-                fontSize: 15,
+                flexDirection: 'row',
+                alignItems: 'center',
+                padding: 14,
               }}>
-              {dob ? formatDateInput(dob) : 'Tap to select date of birth'}
-            </Text>
+              <Calendar
+                size={18}
+                color={dob ? Colors.textSecondary : Colors.primary}
+                style={{ marginRight: 10 }}
+              />
+              <Text
+                style={{
+                  flex: 1,
+                  color: dob ? Colors.textPrimary : Colors.primary,
+                  fontFamily: dob ? Fonts.sans : Fonts.sansSemiBold,
+                  fontSize: 15,
+                }}>
+                {dob ? formatDateInput(dob) : 'Tap to select date of birth'}
+              </Text>
+              <ChevronDown size={16} color={dob ? Colors.textMuted : Colors.primary} />
+            </View>
           </Pressable>
-          <Text style={{ fontSize: 12, color: Colors.textSecondary, marginTop: 6, lineHeight: 17 }}>
-            WondrLink is for adults (18+). We use your date of birth only to verify age; the raw date is not stored.
+
+          {showPicker && (
+            <View style={{ alignItems: 'center', marginTop: 4 }}>
+              <DateTimePicker
+                value={dob ?? initialPickerDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                maximumDate={maxDate}
+                onChange={onPickerChange}
+              />
+              {Platform.OS === 'ios' && (
+                <View style={{ alignSelf: 'flex-end' }}>
+                  <Button
+                    label="Done"
+                    variant="secondary"
+                    size="sm"
+                    onPress={() => setShowPicker(false)}
+                  />
+                </View>
+              )}
+            </View>
+          )}
+
+          <Text
+            style={{
+              fontSize: 12,
+              color: Colors.textMuted,
+              lineHeight: 17,
+            }}>
+            WondrLink is for adults (18+). We use your date of birth only to verify age — the raw
+            date is not stored.
           </Text>
           {dob && !isAdult && (
-            <Text style={{ color: Colors.danger, fontSize: 13, marginTop: 6 }}>
+            <Text style={{ color: Colors.danger, fontSize: 13 }}>
               You must be at least 18 years old to create an account.
             </Text>
           )}
         </View>
 
-        {showPicker && (
-          <DateTimePicker
-            value={dob ?? initialPickerDate}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            maximumDate={maxDate}
-            onChange={onPickerChange}
+        {/* State card */}
+        <View
+          style={{
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: Colors.border,
+            padding: 14,
+            gap: 8,
+            backgroundColor: Colors.surface,
+          }}>
+          <Select
+            label="State of residence"
+            value={state}
+            onChange={(v) => setState(v as StateChoice)}
+            options={stateOptions}
+            placeholder="Select your state…"
           />
-        )}
-        {Platform.OS === 'ios' && showPicker && (
-          <Button label="Done" variant="ghost" onPress={() => setShowPicker(false)} />
-        )}
+        </View>
 
-        <Select
-          label="State of residence"
-          value={state}
-          onChange={(v) => setState(v as StateChoice)}
-          options={stateOptions}
-          placeholder="Select your state…"
-        />
+        {/* Consents card */}
+        <View
+          style={{
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: Colors.border,
+            padding: 14,
+            gap: 6,
+            backgroundColor: Colors.surface,
+          }}>
+          <Text
+            style={{
+              fontFamily: Fonts.sansSemiBold,
+              fontSize: 14,
+              color: Colors.textPrimary,
+              marginBottom: 2,
+            }}>
+            Please confirm each consent independently
+          </Text>
 
-        <View style={{ height: 1, backgroundColor: Colors.border, marginVertical: 6 }} />
-
-        <Text style={{ fontFamily: Fonts.sansSemiBold, fontSize: 14, color: Colors.textPrimary }}>
-          Please confirm each consent independently
-        </Text>
-
-        <Checkbox
-          label={CONSENT_LABELS.consent_collection}
-          checked={collection}
-          onChange={setCollection}
-        />
-        <Checkbox label={CONSENT_LABELS.consent_sharing} checked={sharing} onChange={setSharing} />
-        <Checkbox
-          label={CONSENT_LABELS.consent_terms}
-          checked={terms}
-          onChange={setTerms}
-          description="Includes the Consumer Health Data Privacy Notice."
-        />
+          <Checkbox
+            label={CONSENT_LABELS.consent_collection}
+            checked={collection}
+            onChange={setCollection}
+          />
+          <Checkbox
+            label={CONSENT_LABELS.consent_sharing}
+            checked={sharing}
+            onChange={setSharing}
+          />
+          <Checkbox
+            label={CONSENT_LABELS.consent_terms}
+            checked={terms}
+            onChange={setTerms}
+            description="Includes the Consumer Health Data Privacy Notice."
+          />
+        </View>
 
         <Pressable onPress={() => router.push('/(onboarding)/disclaimer')}>
           <Text style={{ color: Colors.primary, fontFamily: Fonts.sansMedium, fontSize: 13 }}>

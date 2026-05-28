@@ -13,18 +13,19 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
-import type { ChatHistoryMessage, ChatResponse, ResponseLength } from '@shared/types';
+import type { ChatHistoryMessage, ChatResponse } from '@shared/types';
 
 import { clearChatHistory, fetchChatHistory, saveMessage, sendChatMessage } from '@/lib/api/chat';
+import { useResponseLength } from './useResponseLength';
 
 const HISTORY_KEY = ['chatHistory', 'default'] as const;
 const SESSION_ID = 'default';
 
 export function useChat() {
   const qc = useQueryClient();
-  const [responseLength, setResponseLength] = useState<ResponseLength>('normal');
+  const { responseLength, setResponseLength } = useResponseLength();
 
   const history = useQuery({
     queryKey: HISTORY_KEY,

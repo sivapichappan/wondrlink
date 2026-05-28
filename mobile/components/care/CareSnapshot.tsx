@@ -55,8 +55,8 @@ export function CareSnapshot({ snapshot }: Props) {
           </Text>
         </View>
       ) : (
-        <Text style={{ color: Colors.textMuted, fontSize: 12, fontStyle: 'italic' }}>
-          No PHQ-9 check-ins yet. Take one in the Care Tools tab to start a trend.
+        <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
+          No PHQ-9 check-ins yet. Take one from the wellness card above to start a trend.
         </Text>
       )}
 
@@ -90,7 +90,7 @@ function Stat({ label, value }: { label: string; value: string }) {
       <Text
         style={{
           color: Colors.textMuted,
-          fontSize: 10,
+          fontSize: 11,
           fontFamily: Fonts.sansMedium,
           letterSpacing: 0.5,
         }}>

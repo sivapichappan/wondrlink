@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "org.wondrlink.wondrchat",
-      "buildNumber": "1",
+      "buildNumber": "6",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -55,7 +55,17 @@
       "apiBase": "https://wondrchat.vercel.app",
       "supabaseUrl": "",
       "supabaseAnonKey": "",
-      "sentryDsn": ""
+      "sentryDsn": "",
+      "router": {},
+      "eas": {
+        "projectId": "2635ff08-2298-49d8-af77-f10bc4fe6ea5"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/2635ff08-2298-49d8-af77-f10bc4fe6ea5"
     }
   }
 }

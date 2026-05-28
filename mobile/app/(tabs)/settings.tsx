@@ -12,6 +12,8 @@ import {
   MessageSquareWarning,
   ShieldCheck,
   ShieldOff,
+  SlidersHorizontal,
+  Tag,
   Trash2,
   UserCog,
 } from 'lucide-react-native';
@@ -59,6 +61,18 @@ export default function SettingsScreen() {
           title: 'Profile',
           blurb: 'View and reset the personalization data WondrChat uses',
         },
+        {
+          href: '/profile/cancer-switcher',
+          Icon: Tag,
+          title: 'Cancer focus',
+          blurb: 'Switch which cancer WondrChat is tailored to',
+        },
+        {
+          href: '/settings/detail-level',
+          Icon: SlidersHorizontal,
+          title: 'Detail level',
+          blurb: 'Brief, normal, or detailed answers',
+        },
         { onPress: signOut, Icon: LogOut, title: 'Sign out' },
       ],
     },
@@ -79,7 +93,8 @@ export default function SettingsScreen() {
         {
           href: '/settings/health-notice',
           Icon: FileLock,
-          title: 'Consumer Health Data Privacy Notice',
+          title: 'Consumer Health Notice',
+          blurb: 'MHMDA-compliant disclosure',
         },
         {
           href: '/settings/consent-management',
@@ -90,14 +105,8 @@ export default function SettingsScreen() {
         {
           href: '/settings/limit-spi',
           Icon: Lock,
-          title: 'Limit Use of Sensitive Personal Information',
-          blurb: 'CCPA / CPRA preference (we already limit use)',
-        },
-        {
-          href: '/settings/limit-spi',
-          Icon: ShieldCheck,
-          title: 'Do Not Sell or Share My Personal Information',
-          blurb: 'Required CCPA / CPRA affordance',
+          title: 'Do Not Sell · Limit Sensitive PI',
+          blurb: 'CCPA / CPRA opt-out preferences',
         },
         {
           href: '/settings/privacy-appeal',
@@ -144,20 +153,25 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.surface }} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 18, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 40 }}>
         <View>
-          <Text style={{ fontFamily: Fonts.serifBold, fontSize: 22, color: Colors.textPrimary }}>
+          <Text style={{ fontFamily: Fonts.serifBold, fontSize: 24, color: Colors.textPrimary }}>
             Settings
           </Text>
           {session?.user.email && (
-            <Text style={{ color: Colors.textMuted, fontSize: 13, marginTop: 4 }}>
-              Signed in as {session.user.email}
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="middle"
+              style={{ color: Colors.textMuted, fontSize: 13, marginTop: 4 }}>
+              {session.user.email}
             </Text>
           )}
         </View>
 
         {sections.map((sec) => (
-          <View key={sec.title} style={{ gap: 8 }}>
+          <View
+            key={sec.title}
+            style={{ gap: 8, marginTop: sec.title === 'Danger zone' ? 8 : 0 }}>
             <Text
               style={{
                 color: Colors.textMuted,
@@ -199,22 +213,42 @@ function SettingsRow({ row, showDivider }: { row: Row; showDivider: boolean }) {
       disabled={!onPress}
       accessibilityRole="button"
       style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        padding: 14,
         backgroundColor: pressed ? Colors.sidebarBg : Colors.surface,
         borderBottomWidth: showDivider ? 1 : 0,
         borderBottomColor: Colors.border,
       })}>
-      <row.Icon size={18} color={row.destructive ? Colors.danger : Colors.primary} />
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: fg, fontFamily: Fonts.sansMedium, fontSize: 14 }}>{row.title}</Text>
-        {row.blurb && (
-          <Text style={{ color: Colors.textMuted, fontSize: 12, marginTop: 2 }}>{row.blurb}</Text>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingVertical: 12,
+          paddingHorizontal: 14,
+        }}>
+        <row.Icon
+          size={20}
+          color={row.destructive ? Colors.danger : Colors.primary}
+          style={{ marginRight: 12 }}
+        />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={{ color: fg, fontFamily: Fonts.sansMedium, fontSize: 15 }}>
+            {row.title}
+          </Text>
+          {row.blurb && (
+            <Text
+              numberOfLines={2}
+              ellipsizeMode="tail"
+              style={{ color: Colors.textMuted, fontSize: 12, marginTop: 2, lineHeight: 16 }}>
+              {row.blurb}
+            </Text>
+          )}
+        </View>
+        {row.href && (
+          <ChevronRight size={18} color={Colors.textMuted} style={{ marginLeft: 8 }} />
         )}
       </View>
-      {row.href && <ChevronRight size={16} color={Colors.textMuted} />}
     </Pressable>
   );
 }

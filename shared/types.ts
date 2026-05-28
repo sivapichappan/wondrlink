@@ -1,10 +1,10 @@
 /**
  * API request / response types.
  *
- * Source of truth: api/index.py response_data construction (~line 864).
- * When backend changes the envelope, this file must be updated in the same
- * commit. Mobile clients should never speculatively add fields; only what
- * the server actually returns.
+ * Source of truth: api/index.py — specifically the chat response_data
+ * construction inside api_chat(). When the backend changes the envelope,
+ * this file must be updated in the same commit. Mobile clients should never
+ * speculatively add fields; only what the server actually returns.
  */
 
 import type { ConsentField, StateChoice } from './consent-version';
@@ -42,6 +42,9 @@ export interface CheckAcknowledgementResponse {
   current_version: string;
   needs_consent: boolean;
   state_restricted: boolean;
+  cancer_slug?: string | null;
+  cancer_display?: string | null;
+  needs_cancer_pick?: boolean;
 }
 
 export type ConsentPayload = Record<ConsentField, boolean>;
@@ -256,7 +259,42 @@ export interface HeroResponse {
   cycle?: number | null;
   last_visit?: HeroVisitSummary | null;
   suggestions?: string[];
+  cancer_slug?: string | null;
+  cancer_display?: string | null;
   error?: string;
+}
+
+// =============================================================================
+// CANCER REGISTRY  (matches api/index.py /api/cancer_options + /api/update_cancer_slug)
+// =============================================================================
+
+export interface CancerOption {
+  slug: string;
+  display_name: string;
+  short_name: string;
+  ready: boolean;
+  accent_color: string;
+  icon: string;
+  doc_count: number;
+  chunk_count: number;
+}
+
+export interface CancerOptionsResponse {
+  options: CancerOption[];
+}
+
+export type PatientRole = 'patient' | 'caregiver';
+
+export interface UpdateCancerSlugRequest {
+  cancer_slug: string;
+  role?: PatientRole;
+}
+
+export interface UpdateCancerSlugResponse {
+  status: 'ok';
+  cancer_slug: string;
+  cancer_display: string;
+  role: PatientRole;
 }
 
 // =============================================================================
@@ -310,7 +348,7 @@ export interface UploadProfileResponse {
 // SCREENING  (matches api/index.py:984 /api/screening/save)
 // =============================================================================
 
-export type ScreeningInstrument = 'PHQ9' | 'GAD7' | 'PSS10' | 'ISI';
+export type ScreeningInstrument = 'PHQ9' | 'GAD7' | 'PSS10' | 'ISI' | 'PREMM5' | 'SYMPTOM';
 
 export interface ScreeningSaveRequest {
   instrument: ScreeningInstrument;

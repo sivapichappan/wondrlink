@@ -4,10 +4,13 @@
 
 import { ENDPOINTS } from '@shared/api-contracts';
 import type {
+  CancerOptionsResponse,
   CareSnapshotResponse,
   GetPatientResponse,
   HeroResponse,
   PatientProfile,
+  PatientRole,
+  UpdateCancerSlugResponse,
   UploadProfileResponse,
 } from '@shared/types';
 
@@ -34,4 +37,16 @@ export function uploadProfile(profile: PatientProfile) {
 
 export function clearProfile() {
   return apiFetch<{ status: 'ok' }>(ENDPOINTS.clearProfile, { method: 'POST' });
+}
+
+export function fetchCancerOptions(includePreview = false) {
+  const qs = includePreview ? '?include_preview=1' : '';
+  return apiFetch<CancerOptionsResponse>(`${ENDPOINTS.cancerOptions}${qs}`, { method: 'GET' });
+}
+
+export function updateCancerSlug(cancer_slug: string, role: PatientRole = 'patient') {
+  return apiFetch<UpdateCancerSlugResponse>(ENDPOINTS.updateCancerSlug, {
+    method: 'POST',
+    body: { cancer_slug, role },
+  });
 }

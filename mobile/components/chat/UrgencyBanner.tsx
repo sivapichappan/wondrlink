@@ -12,7 +12,7 @@ export function UrgencyBanner({ urgency }: Props) {
   if (!urgency || !urgency.detected) return null;
 
   const isEmergency = (urgency.level || '').toLowerCase().includes('emergency');
-  const bg = isEmergency ? '#FFEDEC' : Colors.warningBg;
+  const bg = isEmergency ? Colors.emergencyBg : Colors.warningBg;
   const fg = isEmergency ? Colors.danger : Colors.warning;
 
   return (
@@ -46,7 +46,7 @@ export function UrgencyBanner({ urgency }: Props) {
               paddingHorizontal: 12,
               paddingVertical: 6,
               borderRadius: 999,
-              backgroundColor: pressed ? '#8B1E18' : Colors.danger,
+              backgroundColor: pressed ? Colors.dangerPressed : Colors.danger,
             })}>
             <Phone size={14} color={Colors.surface} />
             <Text style={{ color: Colors.surface, fontFamily: Fonts.sansSemiBold, fontSize: 12 }}>

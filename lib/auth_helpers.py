@@ -48,10 +48,10 @@ def register_user(email: str, password: str) -> Tuple[Optional[Dict[str, Any]], 
             # to "Log in" instead of showing a misleading "check your email" UI.
             identities = getattr(response.user, "identities", None)
             if identities is not None and len(identities) == 0:
-                logger.info(f"Repeated signup attempt for existing email: {email}")
+                logger.info("Repeated signup attempt for an already-registered email")
                 return None, "Email already registered. Please log in instead."
 
-            logger.info(f"User registered: {email}")
+            logger.info(f"User registered: user_id={response.user.id}")
             return {
                 "user_id": response.user.id,
                 "email": response.user.email,
@@ -98,7 +98,7 @@ def login_user(email: str, password: str) -> Tuple[Optional[Dict[str, Any]], Opt
         })
 
         if response.user and response.session:
-            logger.info(f"User logged in: {email}")
+            logger.info(f"User logged in: user_id={response.user.id}")
             return {
                 "user_id": response.user.id,
                 "email": response.user.email,
@@ -110,7 +110,7 @@ def login_user(email: str, password: str) -> Tuple[Optional[Dict[str, Any]], Opt
 
     except Exception as e:
         error_msg = str(e)
-        logger.warning(f"Login failed for {email}: {error_msg}")
+        logger.warning(f"Login failed: {error_msg}")
 
         if "invalid" in error_msg.lower() or "credentials" in error_msg.lower():
             return None, "Invalid email or password"
