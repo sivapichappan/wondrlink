@@ -427,6 +427,20 @@ export interface VisitRecapRequest {
   transcript: string;
 }
 
+/** A persisted visit recap stored in profile.visit_recaps (api/index.py api_visit_recap). */
+export interface VisitRecapEntry {
+  timestamp: string;
+  transcript_preview: string;
+  recap: {
+    discussed: string[];
+    treatment_changes: string[];
+    action_items: string[];
+    follow_up_questions: string[];
+    flags: string[];
+  };
+  used_fallback?: boolean;
+}
+
 export interface VisitRecapResponse {
   status: 'ok' | 'feature_disabled';
   recap: VisitRecapStructured;

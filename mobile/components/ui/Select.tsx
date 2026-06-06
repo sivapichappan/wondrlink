@@ -1,4 +1,4 @@
-import { ChevronDown } from 'lucide-react-native';
+import { Check, ChevronDown } from 'lucide-react-native';
 import { useState } from 'react';
 import { FlatList, Modal, Pressable, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -75,24 +75,36 @@ export function Select({ label, value, onChange, options, placeholder = 'Selectâ
               <FlatList
                 data={options}
                 keyExtractor={(item) => item.value}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    onPress={() => {
-                      onChange(item.value);
-                      setOpen(false);
-                    }}
-                    style={{
-                      paddingVertical: 14,
-                      paddingHorizontal: 16,
-                      borderBottomWidth: 1,
-                      borderBottomColor: Colors.border,
-                      backgroundColor: item.value === value ? Colors.sidebarBg : Colors.surface,
-                    }}>
-                    <Text style={{ color: Colors.textPrimary, fontSize: 15, fontFamily: Fonts.sans }}>
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                renderItem={({ item }) => {
+                  const isSelected = item.value === value;
+                  return (
+                    <TouchableOpacity
+                      onPress={() => {
+                        onChange(item.value);
+                        setOpen(false);
+                      }}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingVertical: 14,
+                        paddingHorizontal: 16,
+                        borderBottomWidth: 1,
+                        borderBottomColor: Colors.border,
+                        backgroundColor: isSelected ? Colors.sidebarBg : Colors.surface,
+                      }}>
+                      <Text
+                        style={{
+                          flex: 1,
+                          color: isSelected ? Colors.primary : Colors.textPrimary,
+                          fontSize: 15,
+                          fontFamily: isSelected ? Fonts.sansSemiBold : Fonts.sans,
+                        }}>
+                        {item.label}
+                      </Text>
+                      {isSelected && <Check size={18} color={Colors.primary} />}
+                    </TouchableOpacity>
+                  );
+                }}
               />
             </SafeAreaView>
           </Pressable>

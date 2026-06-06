@@ -132,18 +132,18 @@ function RatingChip({
         justifyContent: 'center',
         padding: 14,
         borderRadius: Radius.md,
-        borderWidth: 1,
+        borderWidth: selected ? 2 : 1,
         borderColor: selected ? Colors.primary : Colors.border,
         backgroundColor: selected
-          ? Colors.sidebarBg
+          ? Colors.primary
           : pressed
             ? Colors.surfaceMuted
             : Colors.surface,
       })}>
-      <Icon size={18} color={selected ? Colors.primary : Colors.textMuted} />
+      <Icon size={18} color={selected ? Colors.surface : Colors.textMuted} />
       <Text
         style={{
-          color: selected ? Colors.primary : Colors.textPrimary,
+          color: selected ? Colors.surface : Colors.textPrimary,
           fontFamily: Fonts.sansSemiBold,
           fontSize: 13,
         }}>

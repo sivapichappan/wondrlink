@@ -1,4 +1,5 @@
 import { Stack, router } from 'expo-router';
+import { Check } from 'lucide-react-native';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -96,7 +97,7 @@ export default function PrivacyAppeal() {
                   style={({ pressed }) => ({
                     padding: 12,
                     borderRadius: Radius.md,
-                    borderWidth: 1,
+                    borderWidth: selected ? 2 : 1,
                     borderColor: selected ? Colors.primary : Colors.border,
                     backgroundColor: selected
                       ? Colors.sidebarBg
@@ -104,17 +105,24 @@ export default function PrivacyAppeal() {
                         ? Colors.surfaceMuted
                         : Colors.surface,
                   })}>
-                  <Text
-                    style={{
-                      color: selected ? Colors.primary : Colors.textPrimary,
-                      fontFamily: Fonts.sansSemiBold,
-                      fontSize: 14,
-                    }}>
-                    {t.label}
-                  </Text>
-                  <Text style={{ color: Colors.textSecondary, fontSize: 12, marginTop: 2 }}>
-                    {t.blurb}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text
+                        style={{
+                          color: selected ? Colors.primary : Colors.textPrimary,
+                          fontFamily: Fonts.sansSemiBold,
+                          fontSize: 14,
+                        }}>
+                        {t.label}
+                      </Text>
+                      <Text style={{ color: Colors.textSecondary, fontSize: 12, marginTop: 2 }}>
+                        {t.blurb}
+                      </Text>
+                    </View>
+                    {selected && (
+                      <Check size={18} color={Colors.primary} style={{ marginLeft: 10 }} />
+                    )}
+                  </View>
                 </Pressable>
               );
             })}

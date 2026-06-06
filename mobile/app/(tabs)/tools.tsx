@@ -57,7 +57,7 @@ const TOOLS: Tool[] = [
   {
     href: '/tools/visit-recap',
     title: 'Visit recap',
-    blurb: 'Turn freeform visit notes into a structured recap.',
+    blurb: 'Record or type an appointment for a structured recap — kept in your history.',
     Icon: NotebookPen,
   },
   {

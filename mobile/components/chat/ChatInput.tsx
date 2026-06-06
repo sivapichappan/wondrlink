@@ -1,5 +1,9 @@
-import { Mic, Send } from 'lucide-react-native';
-import { useState } from 'react';
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from 'expo-speech-recognition';
+import { Mic, Send, Square } from 'lucide-react-native';
+import { useRef, useState } from 'react';
 import {
   Alert,
   Platform,
@@ -20,28 +24,106 @@ interface Props {
   placeholder?: string;
 }
 
+function joinParts(...parts: string[]): string {
+  return parts.map((p) => p.trim()).filter(Boolean).join(' ');
+}
+
 export function ChatInput({ onSend, disabled, placeholder = 'Ask about colon cancer…' }: Props) {
   const [text, setText] = useState('');
+  const [recording, setRecording] = useState(false);
   const overflow = text.length > MAX_CHARS;
   const canSend = !disabled && text.trim().length > 0 && !overflow;
 
+  // Snapshot of typed text when dictation starts, plus accumulated final
+  // segments. Live (interim) text is rendered on top without committing.
+  const baseRef = useRef('');
+  const finalRef = useRef('');
+
+  useSpeechRecognitionEvent('result', (e) => {
+    const latest = e.results[0]?.transcript ?? '';
+    if (e.isFinal) {
+      finalRef.current = joinParts(finalRef.current, latest);
+      setText(joinParts(baseRef.current, finalRef.current));
+    } else {
+      setText(joinParts(baseRef.current, finalRef.current, latest));
+    }
+  });
+
+  useSpeechRecognitionEvent('end', () => setRecording(false));
+
+  useSpeechRecognitionEvent('error', (e) => {
+    setRecording(false);
+    // "no-speech" / "aborted" are benign (user paused or tapped stop).
+    if (e.error === 'no-speech' || e.error === 'aborted') return;
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      Alert.alert(
+        'Microphone access needed',
+        'Enable Microphone and Speech Recognition for WondrChat in Settings to use voice input.',
+      );
+      return;
+    }
+    Alert.alert('Voice input unavailable', e.message || 'Could not transcribe. Please type instead.');
+  });
+
+  const startListening = async () => {
+    try {
+      const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(
+          'Microphone access needed',
+          'Enable Microphone and Speech Recognition for WondrChat in Settings to use voice input.',
+        );
+        return;
+      }
+      baseRef.current = text;
+      finalRef.current = '';
+      setRecording(true);
+      ExpoSpeechRecognitionModule.start({
+        lang: 'en-US',
+        interimResults: true,
+        continuous: true,
+        // Keep the patient's audio on the device — never sent to Apple's servers.
+        requiresOnDeviceRecognition: true,
+      });
+    } catch (err) {
+      setRecording(false);
+      Alert.alert(
+        'Voice input unavailable',
+        err instanceof Error ? err.message : 'Could not start voice input.',
+      );
+    }
+  };
+
+  const stopListening = () => {
+    ExpoSpeechRecognitionModule.stop();
+    setRecording(false);
+  };
+
+  const toggleMic = () => {
+    if (recording) stopListening();
+    else startListening();
+  };
+
   const submit = () => {
     if (!canSend) return;
+    if (recording) stopListening();
     onSend(text.trim());
     setText('');
+    finalRef.current = '';
+    baseRef.current = '';
   };
 
   return (
     <View style={styles.bar}>
       <View style={styles.row}>
-        <MicButton />
+        <MicButton recording={recording} disabled={disabled} onPress={toggleMic} />
 
         <View style={styles.inputCol}>
           <TextInput
             value={text}
             onChangeText={setText}
-            placeholder={placeholder}
-            placeholderTextColor={Colors.textMuted}
+            placeholder={recording ? 'Listening…' : placeholder}
+            placeholderTextColor={recording ? Colors.accent : Colors.textMuted}
             multiline
             editable={!disabled}
             blurOnSubmit={false}
@@ -64,16 +146,34 @@ export function ChatInput({ onSend, disabled, placeholder = 'Ask about colon can
   );
 }
 
-function MicButton() {
+function MicButton({
+  recording,
+  disabled,
+  onPress,
+}: {
+  recording: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
   return (
-    <View style={styles.micCircle}>
+    <View
+      style={[
+        styles.micCircle,
+        recording && { backgroundColor: Colors.accent, borderColor: Colors.accent },
+      ]}>
       <View style={styles.iconCenter} pointerEvents="none">
-        <Mic size={20} color={Colors.primary} strokeWidth={2} />
+        {recording ? (
+          <Square size={16} color={Colors.surface} fill={Colors.surface} strokeWidth={2} />
+        ) : (
+          <Mic size={20} color={Colors.primary} strokeWidth={2} />
+        )}
       </View>
       <Pressable
-        onPress={openMicHint}
+        onPress={onPress}
+        disabled={disabled}
         accessibilityRole="button"
-        accessibilityLabel="Voice input"
+        accessibilityLabel={recording ? 'Stop voice input' : 'Start voice input'}
+        accessibilityState={{ disabled: !!disabled }}
         hitSlop={8}
         style={styles.pressOverlay}
         android_ripple={{ color: Colors.sidebarBg, borderless: true }}
@@ -113,14 +213,6 @@ function SendButton({ canSend, onPress }: { canSend: boolean; onPress: () => voi
         android_ripple={{ color: 'rgba(255,255,255,0.25)', borderless: true }}
       />
     </View>
-  );
-}
-
-function openMicHint() {
-  Alert.alert(
-    'Voice input',
-    'Live voice transcription is coming soon. For now, tap the microphone on your iPhone keyboard to dictate.',
-    [{ text: 'Got it' }],
   );
 }
 

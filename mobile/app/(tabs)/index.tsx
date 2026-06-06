@@ -26,6 +26,7 @@ import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { useChat } from '@/hooks/useChat';
 import { useProfile } from '@/hooks/useCare';
 import { useWelcomePromptSeen } from '@/hooks/useWelcomePromptSeen';
+import { ApiError, extractErrorMessage } from '@/lib/api/client';
 import { fetchConsentStatus } from '@/lib/api/consent';
 import { scanForCrisis, type GuardrailHit } from '@/lib/safety/crisis-keywords';
 import { Sentry } from '@/lib/sentry';
@@ -33,7 +34,7 @@ import { welcomeIntroFor } from '@shared/disclaimers';
 import type { ChatHistoryMessage } from '@shared/types';
 
 export default function ChatScreen() {
-  const { messages, isLoading, isSending, sendMessage, clearAll } = useChat();
+  const { messages, isLoading, isSending, sendError, sendMessage, clearAll } = useChat();
   const ack = useAcknowledgement();
   const profile = useProfile();
   const listRef = useRef<FlatList<ChatHistoryMessage>>(null);
@@ -269,6 +270,29 @@ export default function ChatScreen() {
           <View style={{ paddingHorizontal: 22, paddingBottom: 2, paddingTop: 0 }}>
             <Text style={{ color: Colors.textMuted, fontSize: 11, fontStyle: 'italic' }}>
               WondrChat is typing…
+            </Text>
+          </View>
+        )}
+
+        {!isSending && sendError && (
+          <View
+            accessibilityRole={Platform.OS === 'android' ? 'alert' : undefined}
+            style={{
+              marginHorizontal: 12,
+              marginBottom: 6,
+              padding: 12,
+              borderRadius: 10,
+              backgroundColor: Colors.emergencyBg,
+              borderWidth: 1,
+              borderColor: Colors.danger,
+            }}>
+            <Text style={{ color: Colors.textPrimary, fontSize: 13, lineHeight: 18 }}>
+              <Text style={{ fontFamily: Fonts.serifBold, color: Colors.danger }}>
+                Couldn't get a response.
+              </Text>{' '}
+              {sendError instanceof ApiError
+                ? extractErrorMessage(sendError.body, `${sendError.message} (${sendError.status})`)
+                : sendError.message || 'Please try again in a moment.'}
             </Text>
           </View>
         )}

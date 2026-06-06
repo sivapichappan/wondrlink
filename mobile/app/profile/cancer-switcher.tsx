@@ -189,18 +189,23 @@ export default function CancerSwitcherScreen() {
                         ? Colors.surfaceMuted
                         : Colors.surface,
                   })}>
-                  <View style={{ padding: 12 }}>
-                    <Text
-                      style={{
-                        color: selected ? Colors.primary : Colors.textPrimary,
-                        fontFamily: Fonts.sansSemiBold,
-                        fontSize: 14,
-                      }}>
-                      {r.label}
-                    </Text>
-                    <Text style={{ color: Colors.textMuted, fontSize: 12, marginTop: 2 }}>
-                      {r.desc}
-                    </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12 }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text
+                        style={{
+                          color: selected ? Colors.primary : Colors.textPrimary,
+                          fontFamily: Fonts.sansSemiBold,
+                          fontSize: 14,
+                        }}>
+                        {r.label}
+                      </Text>
+                      <Text style={{ color: Colors.textMuted, fontSize: 12, marginTop: 2 }}>
+                        {r.desc}
+                      </Text>
+                    </View>
+                    {selected && (
+                      <Check size={18} color={Colors.primary} style={{ marginLeft: 8 }} />
+                    )}
                   </View>
                 </Pressable>
               );

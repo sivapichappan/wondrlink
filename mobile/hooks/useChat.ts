@@ -50,6 +50,13 @@ export function useChat() {
         session_id: SESSION_ID,
       });
 
+      // Guard against a 200 with no answer field — would otherwise render as
+      // an empty assistant bubble and look indistinguishable from a silent
+      // failure.
+      if (!resp || typeof resp.answer !== 'string' || resp.answer.trim() === '') {
+        throw new Error('The server responded but no answer was returned. Please try again.');
+      }
+
       const assistantMsg: ChatHistoryMessage = {
         role: 'assistant',
         content: resp.answer,

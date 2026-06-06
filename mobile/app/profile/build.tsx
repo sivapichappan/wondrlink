@@ -776,17 +776,22 @@ function ChoiceCard({
             ? Colors.surfaceMuted
             : Colors.surface,
       })}>
-      <Text
-        style={{
-          color: selected ? Colors.primary : Colors.textPrimary,
-          fontFamily: Fonts.sansSemiBold,
-          fontSize: 14,
-        }}>
-        {title}
-      </Text>
-      {desc ? (
-        <Text style={{ color: Colors.textMuted, fontSize: 12, marginTop: 2 }}>{desc}</Text>
-      ) : null}
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text
+            style={{
+              color: selected ? Colors.primary : Colors.textPrimary,
+              fontFamily: Fonts.sansSemiBold,
+              fontSize: 14,
+            }}>
+            {title}
+          </Text>
+          {desc ? (
+            <Text style={{ color: Colors.textMuted, fontSize: 12, marginTop: 2 }}>{desc}</Text>
+          ) : null}
+        </View>
+        {selected && <Check size={18} color={Colors.primary} style={{ marginLeft: 10 }} />}
+      </View>
     </Pressable>
   );
 }
@@ -819,19 +824,22 @@ function SegmentedChoice({
               borderWidth: selected ? 2 : 1,
               borderColor: selected ? Colors.primary : Colors.border,
               backgroundColor: selected
-                ? Colors.sidebarBg
+                ? Colors.primary
                 : pressed
                   ? Colors.surfaceMuted
                   : Colors.surface,
             })}>
-            <Text
-              style={{
-                color: selected ? Colors.primary : Colors.textPrimary,
-                fontFamily: selected ? Fonts.sansSemiBold : Fonts.sansMedium,
-                fontSize: 13,
-              }}>
-              {opt.label}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {selected && <Check size={14} color={Colors.surface} strokeWidth={3} />}
+              <Text
+                style={{
+                  color: selected ? Colors.surface : Colors.textPrimary,
+                  fontFamily: selected ? Fonts.sansSemiBold : Fonts.sansMedium,
+                  fontSize: 13,
+                }}>
+                {opt.label}
+              </Text>
+            </View>
           </Pressable>
         );
       })}

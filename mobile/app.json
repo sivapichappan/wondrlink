@@ -2,7 +2,7 @@
   "expo": {
     "name": "WondrChat",
     "slug": "wondrchat",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "wondrchat",
@@ -11,9 +11,10 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "org.wondrlink.wondrchat",
-      "buildNumber": "6",
+      "buildNumber": "9",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "WondrChat needs photo library access if you choose to attach a document or photo, such as an insurance denial letter."
       }
     },
     "android": {
@@ -45,7 +46,17 @@
         }
       ],
       "expo-secure-store",
-      "@sentry/react-native"
+      "@sentry/react-native",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "WondrChat uses the microphone so you can ask questions by voice.",
+          "speechRecognitionPermission": "WondrChat transcribes your speech on-device to fill the chat box. Your audio stays on your phone.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

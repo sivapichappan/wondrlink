@@ -1,5 +1,5 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, Phone } from 'lucide-react-native';
+import { Check, ChevronLeft, Phone } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Linking,
@@ -468,14 +468,18 @@ function QuestionPanel({
                     ? Colors.surfaceMuted
                     : Colors.surface,
               })}>
-              <Text
-                style={{
-                  color: isSel ? Colors.primary : Colors.textPrimary,
-                  fontFamily: isSel ? Fonts.sansSemiBold : Fonts.sansMedium,
-                  fontSize: 15,
-                }}>
-                {opt.label}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text
+                  style={{
+                    flex: 1,
+                    color: isSel ? Colors.primary : Colors.textPrimary,
+                    fontFamily: isSel ? Fonts.sansSemiBold : Fonts.sansMedium,
+                    fontSize: 15,
+                  }}>
+                  {opt.label}
+                </Text>
+                {isSel && <Check size={18} color={Colors.primary} style={{ marginLeft: 10 }} />}
+              </View>
             </Pressable>
           );
         })}
