@@ -1,5 +1,5 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import { Check, ChevronLeft, Phone } from 'lucide-react-native';
+import { Check, ChevronLeft, ChevronRight, Phone } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Linking,
@@ -283,15 +283,24 @@ function InstrumentPicker({ onPick }: { onPick: (i: ScreeningInstrument) => void
                 borderRadius: Radius.lg,
                 borderWidth: 1,
                 borderColor: pressed ? Colors.primary : Colors.border,
-                backgroundColor: pressed ? Colors.sidebarBg : Colors.surface,
+                backgroundColor: pressed ? Colors.primarySoft : Colors.surfaceMuted,
               })}>
-              <Text
-                style={{ fontFamily: Fonts.sansSemiBold, fontSize: 16, color: Colors.textPrimary }}>
-                {def.title}
-              </Text>
-              <Text style={{ color: Colors.textMuted, fontSize: 13, marginTop: 4 }}>
-                {it.blurb} · {def.questions.length} questions
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text
+                    style={{
+                      fontFamily: Fonts.sansSemiBold,
+                      fontSize: 16,
+                      color: Colors.textPrimary,
+                    }}>
+                    {def.title}
+                  </Text>
+                  <Text style={{ color: Colors.textMuted, fontSize: 13, marginTop: 4 }}>
+                    {it.blurb} · {def.questions.length} questions
+                  </Text>
+                </View>
+                <ChevronRight size={18} color={Colors.primary} />
+              </View>
             </Pressable>
           );
         })}

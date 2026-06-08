@@ -768,7 +768,7 @@ function ChoiceCard({
       style={({ pressed }) => ({
         paddingHorizontal: 14,
         paddingVertical: 12,
-        borderRadius: Radius.md,
+        borderRadius: Radius.lg,
         borderWidth: selected ? 2 : 1,
         borderColor: selected ? Colors.primary : Colors.border,
         backgroundColor: selected
@@ -777,7 +777,20 @@ function ChoiceCard({
             ? Colors.sidebarBg
             : Colors.surfaceMuted,
       })}>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: 11,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: selected ? Colors.primary : 'transparent',
+            borderWidth: selected ? 0 : 1.5,
+            borderColor: Colors.border,
+          }}>
+          {selected && <Check size={14} color={Colors.surface} strokeWidth={3} />}
+        </View>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text
             style={{
@@ -788,10 +801,16 @@ function ChoiceCard({
             {title}
           </Text>
           {desc ? (
-            <Text style={{ color: Colors.textMuted, fontSize: 12, marginTop: 2 }}>{desc}</Text>
+            <Text
+              style={{
+                color: selected ? Colors.primary : Colors.textMuted,
+                fontSize: 12,
+                marginTop: 2,
+              }}>
+              {desc}
+            </Text>
           ) : null}
         </View>
-        {selected && <Check size={18} color={Colors.primary} style={{ marginLeft: 10 }} />}
       </View>
     </Pressable>
   );
