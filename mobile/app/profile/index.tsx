@@ -141,7 +141,7 @@ export default function ProfileViewScreen() {
             borderRadius: Radius.lg,
             borderWidth: 1,
             borderColor: pressed ? Colors.primary : Colors.border,
-            backgroundColor: pressed ? Colors.sidebarBg : Colors.surface,
+            backgroundColor: pressed ? Colors.primarySoft : Colors.surfaceMuted,
           })}>
           <View
             style={{

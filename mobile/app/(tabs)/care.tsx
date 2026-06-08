@@ -68,7 +68,7 @@ export default function CareScreen() {
             borderColor: Colors.border,
             padding: 14,
             gap: 10,
-            backgroundColor: Colors.surface,
+            backgroundColor: Colors.surfaceMuted,
           }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Activity size={16} color={Colors.primary} />
@@ -116,7 +116,7 @@ export default function CareScreen() {
           accessibilityLabel={profile.data?.profile ? 'View your profile' : 'Set up your profile'}
           style={({ pressed }) => ({
             borderRadius: Radius.lg,
-            backgroundColor: pressed ? Colors.sidebarBg : Colors.surface,
+            backgroundColor: pressed ? Colors.primarySoft : Colors.surfaceMuted,
             borderWidth: 1,
             borderColor: Colors.border,
           })}>

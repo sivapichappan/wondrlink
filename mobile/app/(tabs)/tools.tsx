@@ -102,7 +102,7 @@ export default function ToolsScreen() {
             accessibilityLabel={t.title}
             style={({ pressed }) => ({
               borderRadius: Radius.lg,
-              backgroundColor: pressed ? Colors.sidebarBg : Colors.surface,
+              backgroundColor: pressed ? Colors.primarySoft : Colors.surfaceMuted,
               borderWidth: 1,
               borderColor: Colors.border,
             })}>
