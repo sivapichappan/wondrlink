@@ -59,8 +59,8 @@ export default function DetailLevelScreen() {
                 backgroundColor: selected
                   ? Colors.primarySoft
                   : pressed
-                    ? Colors.surfaceMuted
-                    : Colors.surface,
+                    ? Colors.sidebarBg
+                    : Colors.surfaceMuted,
               })}>
               <View
                 style={{

@@ -186,8 +186,8 @@ export default function CancerSwitcherScreen() {
                     backgroundColor: selected
                       ? Colors.primarySoft
                       : pressed
-                        ? Colors.surfaceMuted
-                        : Colors.surface,
+                        ? Colors.sidebarBg
+                        : Colors.surfaceMuted,
                   })}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12 }}>
                     <View style={{ flex: 1, minWidth: 0 }}>
@@ -277,8 +277,8 @@ function CancerCard({
         backgroundColor: selected
           ? Colors.primarySoft
           : pressed
-            ? Colors.surfaceMuted
-            : Colors.surface,
+            ? Colors.sidebarBg
+            : Colors.surfaceMuted,
       })}>
       <View style={{ flexDirection: 'row', alignItems: 'center', padding: 14 }}>
         <View

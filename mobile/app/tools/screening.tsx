@@ -465,8 +465,8 @@ function QuestionPanel({
                 backgroundColor: isSel
                   ? Colors.primarySoft
                   : pressed
-                    ? Colors.surfaceMuted
-                    : Colors.surface,
+                    ? Colors.sidebarBg
+                    : Colors.surfaceMuted,
               })}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text

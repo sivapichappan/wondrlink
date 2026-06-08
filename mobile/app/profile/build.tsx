@@ -774,8 +774,8 @@ function ChoiceCard({
         backgroundColor: selected
           ? Colors.primarySoft
           : pressed
-            ? Colors.surfaceMuted
-            : Colors.surface,
+            ? Colors.sidebarBg
+            : Colors.surfaceMuted,
       })}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <View style={{ flex: 1, minWidth: 0 }}>
