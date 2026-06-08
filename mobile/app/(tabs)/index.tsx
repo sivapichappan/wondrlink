@@ -21,7 +21,7 @@ import { QuickPrompts } from '@/components/chat/QuickPrompts';
 import { SessionMeta } from '@/components/chat/SessionMeta';
 import { WelcomeProfileModal } from '@/components/chat/WelcomeProfileModal';
 import { CrisisModal } from '@/components/common/CrisisModal';
-import { Colors, Fonts } from '@/constants/theme';
+import { Colors, Fonts, Radius } from '@/constants/theme';
 import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { useChat } from '@/hooks/useChat';
 import { useProfile } from '@/hooks/useCare';
@@ -203,8 +203,22 @@ export default function ChatScreen() {
             onPress={() => router.push('/settings/consent-management')}
             accessibilityRole="button"
             accessibilityLabel="Open Consent Management"
-            style={{ marginTop: 8 }}>
-            <Text style={{ color: Colors.primary, fontFamily: Fonts.sansMedium, fontSize: 13 }}>
+            style={({ pressed }) => ({
+              marginTop: 10,
+              alignSelf: 'flex-start',
+              paddingVertical: 8,
+              paddingHorizontal: 14,
+              borderRadius: Radius.pill,
+              borderWidth: 1.5,
+              borderColor: Colors.primary,
+              backgroundColor: pressed ? Colors.primarySoft : Colors.surface,
+            })}>
+            <Text
+              style={{
+                color: Colors.primary,
+                fontFamily: Fonts.sansSemiBold,
+                fontSize: 13,
+              }}>
               Open Consent Management →
             </Text>
           </Pressable>
