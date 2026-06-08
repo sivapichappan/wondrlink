@@ -19,6 +19,7 @@ import { MessageBubble } from '@/components/chat/MessageBubble';
 import { ProfileNudgeBanner } from '@/components/chat/ProfileNudgeBanner';
 import { QuickPrompts } from '@/components/chat/QuickPrompts';
 import { SessionMeta } from '@/components/chat/SessionMeta';
+import { TypingIndicator } from '@/components/chat/TypingIndicator';
 import { WelcomeProfileModal } from '@/components/chat/WelcomeProfileModal';
 import { CrisisModal } from '@/components/common/CrisisModal';
 import { Colors, Fonts, Radius } from '@/constants/theme';
@@ -282,9 +283,7 @@ export default function ChatScreen() {
 
         {isSending && (
           <View style={{ paddingHorizontal: 22, paddingBottom: 2, paddingTop: 0 }}>
-            <Text style={{ color: Colors.textMuted, fontSize: 11, fontStyle: 'italic' }}>
-              WondrChat is typing…
-            </Text>
+            <TypingIndicator />
           </View>
         )}
 
