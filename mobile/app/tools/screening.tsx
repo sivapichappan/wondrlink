@@ -503,11 +503,13 @@ function QuestionPanel({
             alignSelf: 'flex-start',
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 4,
+            gap: 6,
             paddingVertical: 10,
-            paddingHorizontal: 12,
-            borderRadius: Radius.md,
-            backgroundColor: pressed ? Colors.surfaceMuted : 'transparent',
+            paddingHorizontal: 16,
+            borderRadius: Radius.pill,
+            borderWidth: 1,
+            borderColor: Colors.border,
+            backgroundColor: pressed ? Colors.primarySoft : Colors.surfaceMuted,
           })}>
           <ChevronLeft size={16} color={Colors.primary} />
           <Text style={{ color: Colors.primary, fontFamily: Fonts.sansSemiBold, fontSize: 14 }}>
