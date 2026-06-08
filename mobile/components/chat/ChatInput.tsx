@@ -123,7 +123,7 @@ export function ChatInput({ onSend, disabled, placeholder = 'Ask about colon can
             value={text}
             onChangeText={setText}
             placeholder={recording ? 'Listening…' : placeholder}
-            placeholderTextColor={recording ? Colors.accent : Colors.textMuted}
+            placeholderTextColor={recording ? Colors.primary : Colors.textMuted}
             multiline
             editable={!disabled}
             blurOnSubmit={false}
@@ -159,7 +159,7 @@ function MicButton({
     <View
       style={[
         styles.micCircle,
-        recording && { backgroundColor: Colors.accent, borderColor: Colors.accent },
+        recording && { backgroundColor: Colors.primary, borderColor: Colors.primary },
       ]}>
       <View style={styles.iconCenter} pointerEvents="none">
         {recording ? (
@@ -188,8 +188,8 @@ function SendButton({ canSend, onPress }: { canSend: boolean; onPress: () => voi
       style={[
         styles.sendCircle,
         {
-          backgroundColor: canSend ? Colors.accent : Colors.sidebarBg,
-          borderColor: canSend ? Colors.accent : Colors.border,
+          backgroundColor: canSend ? Colors.primary : Colors.sidebarBg,
+          borderColor: canSend ? Colors.primary : Colors.border,
           shadowOpacity: canSend ? 0.3 : 0,
           elevation: canSend ? 4 : 0,
         },
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: 'hidden',
     position: 'relative',
-    shadowColor: Colors.accent,
+    shadowColor: Colors.primary,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
   },
