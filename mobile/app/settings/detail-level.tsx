@@ -57,7 +57,7 @@ export default function DetailLevelScreen() {
                 borderWidth: selected ? 2 : 1,
                 borderColor: selected ? Colors.primary : Colors.border,
                 backgroundColor: selected
-                  ? Colors.sidebarBg
+                  ? Colors.primarySoft
                   : pressed
                     ? Colors.surfaceMuted
                     : Colors.surface,

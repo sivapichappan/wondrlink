@@ -10,6 +10,10 @@ export const Colors = {
   // Brand
   primary: '#1F5D4F',
   primaryLight: '#2A7869',
+  // Soft brand tint used to highlight selected options (cards, pills, dropdown
+  // rows). Distinctly teal — clearly differentiates the chosen option from
+  // unselected ones while keeping `Colors.primary` text legible on top.
+  primarySoft: '#CFE0D9',
   accent: '#E89260',
 
   // Surfaces

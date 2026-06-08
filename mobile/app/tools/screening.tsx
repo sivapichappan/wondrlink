@@ -463,7 +463,7 @@ function QuestionPanel({
                 borderWidth: isSel ? 2 : 1,
                 borderColor: isSel ? Colors.primary : Colors.border,
                 backgroundColor: isSel
-                  ? Colors.sidebarBg
+                  ? Colors.primarySoft
                   : pressed
                     ? Colors.surfaceMuted
                     : Colors.surface,

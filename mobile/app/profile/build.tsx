@@ -7,6 +7,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View,
@@ -771,7 +772,7 @@ function ChoiceCard({
         borderWidth: selected ? 2 : 1,
         borderColor: selected ? Colors.primary : Colors.border,
         backgroundColor: selected
-          ? Colors.sidebarBg
+          ? Colors.primarySoft
           : pressed
             ? Colors.surfaceMuted
             : Colors.surface,
@@ -808,39 +809,30 @@ function SegmentedChoice({
   allowDeselect?: boolean;
 }) {
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+    <View style={pillStyles.row}>
       {options.map((opt) => {
         const selected = value === opt.value;
         return (
-          <Pressable
+          <View
             key={opt.value}
-            onPress={() => onChange(selected && allowDeselect ? '' : opt.value)}
-            accessibilityRole="radio"
-            accessibilityState={{ selected }}
-            style={({ pressed }) => ({
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-              borderRadius: 999,
-              borderWidth: selected ? 2 : 1,
-              borderColor: selected ? Colors.primary : Colors.border,
-              backgroundColor: selected
-                ? Colors.primary
-                : pressed
-                  ? Colors.surfaceMuted
-                  : Colors.surface,
-            })}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              {selected && <Check size={14} color={Colors.surface} strokeWidth={3} />}
+            style={[pillStyles.pill, selected && pillStyles.pillSelected]}>
+            <View style={pillStyles.inner} pointerEvents="none">
+              {selected && (
+                <Check size={14} color={Colors.primary} strokeWidth={3} />
+              )}
               <Text
-                style={{
-                  color: selected ? Colors.surface : Colors.textPrimary,
-                  fontFamily: selected ? Fonts.sansSemiBold : Fonts.sansMedium,
-                  fontSize: 13,
-                }}>
+                style={[pillStyles.label, selected && pillStyles.labelSelected]}>
                 {opt.label}
               </Text>
             </View>
-          </Pressable>
+            <Pressable
+              onPress={() => onChange(selected && allowDeselect ? '' : opt.value)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
+              android_ripple={{ color: Colors.sidebarBg, borderless: false }}
+              style={StyleSheet.absoluteFill}
+            />
+          </View>
         );
       })}
     </View>
@@ -861,39 +853,80 @@ function ChipMultiSelect({
     else onChange([...selected, opt]);
   };
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-      {options.map((opt) => {
-        const isSel = selected.includes(opt);
-        return (
-          <Pressable
-            key={opt}
-            onPress={() => toggle(opt)}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: isSel }}
-            style={({ pressed }) => ({
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-              borderRadius: 999,
-              borderWidth: isSel ? 2 : 1,
-              borderColor: isSel ? Colors.primary : Colors.border,
-              backgroundColor: isSel
-                ? Colors.sidebarBg
-                : pressed
-                  ? Colors.surfaceMuted
-                  : Colors.surface,
-            })}>
-            <Text
-              style={{
-                color: isSel ? Colors.primary : Colors.textPrimary,
-                fontFamily: isSel ? Fonts.sansSemiBold : Fonts.sansMedium,
-                fontSize: 13,
-              }}>
-              {opt}
-            </Text>
-          </Pressable>
-        );
-      })}
+    <View style={{ gap: 8 }}>
+      <Text style={pillStyles.helper}>Tap any that apply — you can pick several.</Text>
+      <View style={pillStyles.row}>
+        {options.map((opt) => {
+          const isSel = selected.includes(opt);
+          return (
+            <View
+              key={opt}
+              style={[pillStyles.pill, isSel && pillStyles.pillSelected]}>
+              <View style={pillStyles.inner} pointerEvents="none">
+                {isSel ? (
+                  <Check size={14} color={Colors.primary} strokeWidth={3} />
+                ) : (
+                  <Plus size={14} color={Colors.textMuted} strokeWidth={2.4} />
+                )}
+                <Text
+                  style={[pillStyles.label, isSel && pillStyles.labelSelected]}>
+                  {opt}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => toggle(opt)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: isSel }}
+                android_ripple={{ color: Colors.sidebarBg, borderless: false }}
+                style={StyleSheet.absoluteFill}
+              />
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 }
+
+const pillStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  pill: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surfaceMuted,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  pillSelected: {
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primarySoft,
+  },
+  inner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  label: {
+    fontFamily: Fonts.sansMedium,
+    fontSize: 13,
+    color: Colors.textPrimary,
+  },
+  labelSelected: {
+    fontFamily: Fonts.sansSemiBold,
+    color: Colors.primary,
+  },
+  helper: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontFamily: Fonts.sansMedium,
+  },
+});
 

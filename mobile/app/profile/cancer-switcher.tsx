@@ -184,7 +184,7 @@ export default function CancerSwitcherScreen() {
                     borderWidth: selected ? 2 : 1,
                     borderColor: selected ? Colors.primary : Colors.border,
                     backgroundColor: selected
-                      ? Colors.sidebarBg
+                      ? Colors.primarySoft
                       : pressed
                         ? Colors.surfaceMuted
                         : Colors.surface,
@@ -275,7 +275,7 @@ function CancerCard({
         borderWidth: selected ? 2 : 1,
         borderColor: selected ? accent : Colors.border,
         backgroundColor: selected
-          ? Colors.sidebarBg
+          ? Colors.primarySoft
           : pressed
             ? Colors.surfaceMuted
             : Colors.surface,

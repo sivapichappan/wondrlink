@@ -131,19 +131,19 @@ function RatingChip({
         alignItems: 'center',
         justifyContent: 'center',
         padding: 14,
-        borderRadius: Radius.md,
+        borderRadius: Radius.pill,
         borderWidth: selected ? 2 : 1,
         borderColor: selected ? Colors.primary : Colors.border,
         backgroundColor: selected
-          ? Colors.primary
+          ? Colors.primarySoft
           : pressed
-            ? Colors.surfaceMuted
-            : Colors.surface,
+            ? Colors.sidebarBg
+            : Colors.surfaceMuted,
       })}>
-      <Icon size={18} color={selected ? Colors.surface : Colors.textMuted} />
+      <Icon size={18} color={selected ? Colors.primary : Colors.textMuted} />
       <Text
         style={{
-          color: selected ? Colors.surface : Colors.textPrimary,
+          color: selected ? Colors.primary : Colors.textPrimary,
           fontFamily: Fonts.sansSemiBold,
           fontSize: 13,
         }}>

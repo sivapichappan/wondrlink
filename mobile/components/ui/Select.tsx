@@ -90,7 +90,7 @@ export function Select({ label, value, onChange, options, placeholder = 'Selectâ
                         paddingHorizontal: 16,
                         borderBottomWidth: 1,
                         borderBottomColor: Colors.border,
-                        backgroundColor: isSelected ? Colors.sidebarBg : Colors.surface,
+                        backgroundColor: isSelected ? Colors.primarySoft : Colors.surface,
                       }}>
                       <Text
                         style={{
