@@ -1108,9 +1108,16 @@ def api_chat():
         # composition steps could leak. We log + raise so the failure is
         # visible AND blocked, then return a 500 to the caller rather than
         # ship leaky data.
+        #
+        # Scope: scan only the PHI-bearing components (user message +
+        # de-identified patient context/profile/conversation), NOT the fully
+        # assembled prompt. Retrieved guideline chunks are public documents
+        # whose version dates ("05/12/2026") and site addresses trip the
+        # date/address patterns and block legitimate questions.
         try:
             from deidentify import detect_pii_leaks
-            leaks = detect_pii_leaks(prompt)
+            guard_payload = prompt_metadata.pop('pii_guard_payload', None)
+            leaks = detect_pii_leaks(guard_payload if guard_payload is not None else prompt)
             if leaks:
                 # Truncate detail so the log entry doesn't itself contain the PII
                 summary = [name for name, _snip in leaks][:8]

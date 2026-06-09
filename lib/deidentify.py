@@ -157,14 +157,23 @@ def deidentify_conversation_context(conversation: str) -> str:
 # =============================================================================
 # PII LEAK DETECTOR (Task 10 — runtime assertion)
 # =============================================================================
-# Runs over any payload about to leave the de-identification boundary
-# (i.e. about to be sent to Together AI / Groq). Returns a list of
-# matched patterns + offsets. Callers raise on any non-empty result.
+# Runs over the PHI-BEARING payload components about to leave the
+# de-identification boundary (i.e. about to be sent to Together AI /
+# Groq): the user message plus the de-identified patient context,
+# profile, and conversation history. Returns a list of matched
+# patterns + offsets. Callers raise on any non-empty result.
 #
 # This is belt-and-suspenders: deidentify_conversation_context() already
 # scrubs the conversation, but this catches anything that got injected
-# into the system prompt, tool messages, profile fields the scrubber
-# missed, etc.
+# through profile fields or composition steps the scrubbers missed.
+#
+# SCOPE WARNING: do NOT run this over the fully assembled prompt.
+# Retrieved guideline chunks are public documents whose publication
+# dates ("05/12/2026") and clinic addresses ("Hackensack, NJ 07601")
+# legitimately match the date/address patterns below — scanning them
+# false-positive-blocks real questions (the Jun 2026 "sleep schedule"
+# incident). Public corpus text cannot be PHI; only patient-sourced
+# text crosses the boundary.
 
 _PII_PATTERNS = [
     # SSN: 123-45-6789

@@ -2822,6 +2822,19 @@ After your comfort opening, gently provide helpful information."""
         'on_oxaliplatin': on_oxaliplatin,
         'include_resources': settings.get('include_resources', True),
         'retrieval_confidence': retrieval_conf,
+        # De-identified PHI-bearing components for the route's PII leak guard.
+        # The guard must scan ONLY patient-sourced text, never the full prompt:
+        # retrieved guideline chunks legitimately contain publication dates and
+        # clinic addresses that false-positive the date/address detectors.
+        # patient_context / patient / conversation_context here are the
+        # post-STEP-0 de-identified values. The route pops this key before the
+        # metadata is used anywhere else.
+        'pii_guard_payload': {
+            'message': message,
+            'patient_context': patient_context,
+            'patient_profile': patient,
+            'conversation_context': conversation_context,
+        },
     }
 
     return "\n".join(prompt_parts), metadata
