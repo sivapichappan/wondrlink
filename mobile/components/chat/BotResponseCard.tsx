@@ -1,4 +1,6 @@
-import { Text, View } from 'react-native';
+import { ChevronDown, ChevronUp } from 'lucide-react-native';
+import { useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 
 import { Colors, Fonts, Radius } from '@/constants/theme';
 import { PER_MESSAGE_FOOTER } from '@shared/disclaimers';
@@ -22,11 +24,22 @@ const Divider = () => (
 );
 
 export function BotResponseCard({ message, onPickFollowup }: Props) {
+  const [expanded, setExpanded] = useState(false);
   const meta = message.metadata ?? {};
   const hasResources = !!meta.resources && meta.resources.length > 0;
   const hasTrials = !!meta.clinical_trials && meta.clinical_trials.trials?.length > 0;
   const hasFollowups = !!meta.followups && meta.followups.length > 0;
   const hasSources = !!meta.sources && meta.sources.length > 0;
+
+  const counts = [
+    hasResources && `${meta.resources!.length} resource${meta.resources!.length > 1 ? 's' : ''}`,
+    hasTrials &&
+      `${meta.clinical_trials!.trials.length} trial${meta.clinical_trials!.trials.length > 1 ? 's' : ''}`,
+    hasFollowups && `${meta.followups!.length} follow-up${meta.followups!.length > 1 ? 's' : ''}`,
+    hasSources && `${meta.sources!.length} source${meta.sources!.length > 1 ? 's' : ''}`,
+  ].filter(Boolean) as string[];
+
+  const hasMore = counts.length > 0;
 
   return (
     <View
@@ -50,44 +63,77 @@ export function BotResponseCard({ message, onPickFollowup }: Props) {
 
       <MessageActions messageText={message.content} />
 
-      {hasResources && (
+      {hasMore && (
+        <Pressable
+          onPress={() => setExpanded((v) => !v)}
+          accessibilityRole="button"
+          accessibilityLabel={expanded ? 'Hide details' : 'Show details'}
+          accessibilityState={{ expanded }}
+          style={({ pressed }) => ({
+            alignSelf: 'flex-start',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            marginTop: 4,
+            paddingVertical: 6,
+            paddingHorizontal: 12,
+            borderRadius: Radius.pill,
+            borderWidth: 1,
+            borderColor: Colors.border,
+            backgroundColor: pressed ? Colors.primarySoft : Colors.surfaceMuted,
+          })}>
+          <Text
+            style={{ color: Colors.primary, fontFamily: Fonts.sansSemiBold, fontSize: 12 }}>
+            {expanded ? 'Hide details' : `Show details · ${counts.join(', ')}`}
+          </Text>
+          {expanded ? (
+            <ChevronUp size={14} color={Colors.primary} strokeWidth={2.4} />
+          ) : (
+            <ChevronDown size={14} color={Colors.primary} strokeWidth={2.4} />
+          )}
+        </Pressable>
+      )}
+
+      {expanded && hasResources && (
         <>
           <Divider />
           <ResourcesRow resources={meta.resources} />
         </>
       )}
 
-      {hasTrials && (
+      {expanded && hasTrials && (
         <>
           <Divider />
           <TrialsCards trials={meta.clinical_trials} />
         </>
       )}
 
-      {hasFollowups && (
+      {expanded && hasFollowups && (
         <>
           <Divider />
           <FollowupChips followups={meta.followups} onPick={onPickFollowup} />
         </>
       )}
 
-      {hasSources && (
+      {expanded && hasSources && (
         <>
           <Divider />
           <SourceCitations sources={meta.sources} />
         </>
       )}
 
-      <Text
-        style={{
-          color: Colors.textMuted,
-          fontSize: 10,
-          fontStyle: 'italic',
-          fontFamily: Fonts.sans,
-          marginTop: 2,
-        }}>
-        {PER_MESSAGE_FOOTER}
-      </Text>
+      {expanded && (
+        <Text
+          style={{
+            color: Colors.textMuted,
+            fontSize: 10,
+            fontStyle: 'italic',
+            fontFamily: Fonts.sans,
+            marginTop: 2,
+          }}>
+          {PER_MESSAGE_FOOTER}
+        </Text>
+      )}
     </View>
   );
 }
