@@ -20,7 +20,8 @@ logger = logging.getLogger("clinical_trials")
 CLINICAL_TRIALS_BASE_URL = "https://clinicaltrials.gov/api/v2/studies"
 DEFAULT_DISTANCE_MILES = 50
 DEFAULT_PAGE_SIZE = 10
-MAX_RESULTS = 5
+MAX_RESULTS = 5           # trials shown to the patient (display cap)
+FETCH_PAGE_SIZE = 30      # trials pulled from the API for ranking
 CACHE_TTL_MINUTES = 60
 REQUEST_TIMEOUT_SECONDS = 15
 
@@ -533,20 +534,31 @@ def zip_to_state(zip_code: str) -> Optional[str]:
 
 
 def build_search_query(patient_context: Dict[str, Any],
-                       max_results: int = MAX_RESULTS) -> Dict[str, str]:
+                       page_size: int = FETCH_PAGE_SIZE,
+                       include_location: bool = True) -> Dict[str, str]:
     """
     Build ClinicalTrials.gov API query parameters from patient profile.
 
+    Pull broad, rank narrow: the query filters on condition (+ stage) and,
+    when include_location is set, the patient's state. Biomarker and
+    treatment-line signals are deliberately NOT used as hard query filters
+    (each query.* param is AND-ed by the API, so stacking them collapsed a
+    ~29-trial result set to ~2); those signals are applied afterwards in
+    score_trial_relevance() to rank the broad result set instead.
+
     Args:
         patient_context: Extracted patient context from profile_utils
-        max_results: Maximum number of trials to return
+        page_size: Number of studies to fetch for ranking
+        include_location: Whether to constrain by the patient's state
+            (set False for the national-fallback retry)
 
     Returns:
         Dict of query parameters for the API
     """
     params = {
         "format": "json",
-        "pageSize": str(max_results),
+        "pageSize": str(page_size),
+        "countTotal": "true",
         "filter.overallStatus": "RECRUITING,ENROLLING_BY_INVITATION,ACTIVE_NOT_RECRUITING"
     }
 
@@ -588,9 +600,10 @@ def build_search_query(patient_context: Dict[str, Any],
 
     params["query.cond"] = " OR ".join(conditions)
 
-    # Location search - convert zip code to state name for better results
+    # Location search - convert zip code to state name for better results.
+    # Skipped on the national-fallback retry (include_location=False).
     zip_code = patient_context.get("zip_code")
-    if zip_code and zip_code != "unspecified" and zip_code.strip():
+    if include_location and zip_code and zip_code != "unspecified" and zip_code.strip():
         # ClinicalTrials.gov works better with state names than zip codes
         state = zip_to_state(zip_code.strip())
         if state and state not in ["APO/FPO"]:
@@ -599,30 +612,12 @@ def build_search_query(patient_context: Dict[str, Any],
         elif zip_code.strip():
             params["query.locn"] = zip_code.strip()
 
-    # Add biomarker-driven intervention terms (OR logic for breadth)
-    # These help surface relevant trials without being overly restrictive
-    intervention_terms = []
-    biomarkers = (patient_context.get("biomarkers") or "").upper()
-
-    if biomarkers and biomarkers not in ("UNSPECIFIED", "PENDING/UNSPECIFIED"):
-        if "MSI-H" in biomarkers or "MSI-HIGH" in biomarkers or "UNSTABLE" in biomarkers:
-            intervention_terms.append("immunotherapy")
-        if "BRAF" in biomarkers and ("V600E" in biomarkers or "MUTATION" in biomarkers.lower() or "MUTANT" in biomarkers.lower()):
-            intervention_terms.append("encorafenib")
-        if "HER2" in biomarkers and ("POSITIVE" in biomarkers or "AMPLIFIED" in biomarkers or "3+" in biomarkers):
-            intervention_terms.append("trastuzumab")
-
-    # Add treatment line context
-    treatment_line = patient_context.get("treatment_line") or ""
-    if treatment_line:
-        line_lower = treatment_line.lower()
-        if "second" in line_lower or "2nd" in line_lower:
-            intervention_terms.append("second-line")
-        elif "third" in line_lower or "3rd" in line_lower:
-            intervention_terms.append("third-line")
-
-    if intervention_terms:
-        params["query.intr"] = " OR ".join(intervention_terms)
+    # NOTE: biomarker- and treatment-line-driven `query.intr` terms were
+    # deliberately removed here. Because ClinicalTrials.gov AND-s every
+    # query.* param, stacking an intervention filter on top of condition +
+    # location collapsed a ~29-trial result set to ~2 (and "second-line" is
+    # not an intervention name, so it matched almost nothing). These signals
+    # now live in score_trial_relevance() as ranking boosts, not hard filters.
 
     return params
 
@@ -1038,8 +1033,8 @@ def search_trials_for_patient(patient_context: Dict[str, Any],
     # Get the state for location prioritization
     patient_state = zip_to_state(zip_code)
 
-    # Build query
-    params = build_search_query(patient_context, max_results)
+    # Build query (pull broad: condition + state, large page for ranking)
+    params = build_search_query(patient_context, include_location=True)
 
     # Fetch results
     response = fetch_clinical_trials(params)
@@ -1058,11 +1053,26 @@ def search_trials_for_patient(patient_context: Dict[str, Any],
             "error_message": error_messages.get(error_type, f"Error searching for trials: {error_type}")
         }
 
-    # Parse results, prioritizing locations in the patient's state and calculating distances
     studies = response.get("studies", [])
-    trials = [parse_trial_result(s, preferred_state=patient_state, patient_zip=zip_code) for s in studies[:max_results]]
 
-    # Score each trial for relevance to the patient profile
+    # National fallback: if constraining to the patient's state returned
+    # nothing, retry without the location filter so we still surface trials.
+    # Distance is still computed per-trial during ranking below.
+    relaxed_location = False
+    if not studies and params.get("query.locn"):
+        relaxed_location = True
+        params = build_search_query(patient_context, include_location=False)
+        response = fetch_clinical_trials(params)
+        if response.get("error"):
+            return {
+                "trials": [], "total_found": 0, "search_criteria": params,
+                "error": response["error"],
+                "error_message": f"Error searching for trials: {response['error']}",
+            }
+        studies = response.get("studies", [])
+
+    # Parse and score the FULL fetched set, then rank and keep the top N.
+    trials = [parse_trial_result(s, preferred_state=patient_state, patient_zip=zip_code) for s in studies]
     for trial in trials:
         relevance = score_trial_relevance(trial, patient_context)
         trial["relevance_score"] = relevance["score"]
@@ -1070,13 +1080,15 @@ def search_trials_for_patient(patient_context: Dict[str, Any],
         trial["relevance_warnings"] = relevance["warnings"]
         trial["likely_eligible"] = relevance["eligible"]
 
-    # Sort trials by relevance score (highest first)
+    # Sort trials by relevance score (highest first), then keep the display cap
     trials.sort(key=lambda t: t.get("relevance_score", 0), reverse=True)
+    trials = trials[:max_results]
 
     return {
         "trials": trials,
-        "total_found": response.get("totalCount", len(trials)),
+        "total_found": response.get("totalCount", len(studies)),
         "search_criteria": params,
+        "relaxed_location": relaxed_location,
         "error": None,
         "error_message": None
     }
