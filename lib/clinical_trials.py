@@ -674,6 +674,55 @@ def fetch_clinical_trials(params: Dict[str, str],
         return {"error": "invalid_response", "studies": []}
 
 
+_STATUS_LABELS = {
+    "RECRUITING": "Recruiting",
+    "ACTIVE_NOT_RECRUITING": "Active, not recruiting",
+    "ENROLLING_BY_INVITATION": "Enrolling by invitation",
+    "NOT_YET_RECRUITING": "Not yet recruiting",
+    "COMPLETED": "Completed",
+    "SUSPENDED": "Suspended",
+    "TERMINATED": "Terminated",
+    "WITHDRAWN": "Withdrawn",
+    "AVAILABLE": "Available",
+    "NO_LONGER_AVAILABLE": "No longer available",
+    "TEMPORARILY_NOT_AVAILABLE": "Temporarily not available",
+    "APPROVED_FOR_MARKETING": "Approved for marketing",
+    "WITHHELD": "Withheld",
+    "UNKNOWN": "Unknown status",
+}
+
+_PHASE_LABELS = {
+    "EARLY_PHASE1": "Early Phase 1",
+    "PHASE1": "Phase 1",
+    "PHASE2": "Phase 2",
+    "PHASE3": "Phase 3",
+    "PHASE4": "Phase 4",
+    "NA": "Not applicable",
+}
+
+
+def _humanize_status(raw: str) -> str:
+    """Turn a raw ClinicalTrials.gov overallStatus enum into a display label."""
+    if not raw:
+        return "Unknown status"
+    key = raw.strip().upper()
+    return _STATUS_LABELS.get(key, raw.replace("_", " ").capitalize())
+
+
+def _humanize_phase(phases: list) -> str:
+    """Turn the raw phases list into a display label, e.g. ['PHASE1','PHASE2'] -> 'Phase 1/2'."""
+    if not phases:
+        return "Not specified"
+    labels = [
+        _PHASE_LABELS.get(str(p).strip().upper(), str(p).replace("_", " ").title())
+        for p in phases
+    ]
+    # Collapse consecutive numbered phases: "Phase 1" + "Phase 2" -> "Phase 1/2"
+    if len(labels) > 1 and all(l.startswith("Phase ") for l in labels):
+        return "Phase " + "/".join(l.replace("Phase ", "") for l in labels)
+    return " / ".join(labels)
+
+
 def parse_trial_result(study: Dict[str, Any], preferred_state: Optional[str] = None,
                        patient_zip: Optional[str] = None) -> Dict[str, Any]:
     """
@@ -736,9 +785,8 @@ def parse_trial_result(study: Dict[str, Any], preferred_state: Optional[str] = N
     if locations and locations[0].get('distance_miles') is not None:
         nearest_distance = locations[0]['distance_miles']
 
-    # Get phases
-    phases = design_module.get("phases", [])
-    phase_str = ", ".join(phases) if phases else "Not Specified"
+    # Get phases (humanized: "PHASE2" -> "Phase 2", ["PHASE1","PHASE2"] -> "Phase 1/2", [] -> "Not specified")
+    phase_str = _humanize_phase(design_module.get("phases", []))
 
     # Get brief summary (truncate if too long)
     brief_summary = desc_module.get("briefSummary", "")
@@ -750,7 +798,7 @@ def parse_trial_result(study: Dict[str, Any], preferred_state: Optional[str] = N
         "title": id_module.get("briefTitle", "Untitled Study"),
         "official_title": id_module.get("officialTitle", ""),
         "phase": phase_str,
-        "status": status_module.get("overallStatus", "Unknown"),
+        "status": _humanize_status(status_module.get("overallStatus", "")),
         "brief_summary": brief_summary,
         "start_date": status_module.get("startDateStruct", {}).get("date", ""),
         "locations": locations,
