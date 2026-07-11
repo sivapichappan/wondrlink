@@ -1,0 +1,23 @@
+# Keep the Python serverless function (api/index.py + lib/ + config/) and the
+# static site (public/) small. Everything below is NOT needed at runtime, and
+# bundling it pushed the function past Vercel's 225 MB limit.
+#
+# RAG chunks are served from Supabase at request time, so the source PDFs in
+# data/ (~34 MB) are only used by offline ingestion scripts, never at runtime.
+
+data/
+mobile/
+docs/
+scripts/
+tests/
+main/
+supabase_migrations/
+.github/
+.claude/
+
+# Root-level dev/test/report files not used by the function or static site
+test_profile.json
+test_profile_stage4.json
+*.md
+Logo.png
+playwright.config.ts
