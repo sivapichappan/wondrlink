@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Stack, router } from 'expo-router';
-import { ExternalLink } from 'lucide-react-native';
+import { ChevronRight, ExternalLink } from 'lucide-react-native';
 import { ActivityIndicator, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -53,34 +53,49 @@ export default function ClinicalTrialsScreen() {
                   key={t.nct_id}
                   onPress={() => Linking.openURL(url).catch(() => {})}
                   accessibilityRole="link"
+                  accessibilityLabel={`${t.title}. ${t.status ?? ''}. Opens on ClinicalTrials.gov`}
                   style={({ pressed }) => ({
-                    padding: 14,
+                    padding: 16,
                     borderRadius: Radius.lg,
                     borderWidth: 1,
                     borderColor: Colors.border,
-                    backgroundColor: pressed ? Colors.sidebarBg : Colors.surface,
-                    gap: 6,
+                    backgroundColor: pressed ? Colors.surfaceMuted : Colors.surface,
+                    gap: 8,
+                    shadowColor: Colors.textPrimary,
+                    shadowOpacity: 0.06,
+                    shadowRadius: 8,
+                    shadowOffset: { width: 0, height: 2 },
+                    elevation: 2,
                   })}>
-                  <Text style={{ color: Colors.textMuted, fontSize: 11, fontFamily: Fonts.sansMedium }}>
-                    {t.nct_id} · {t.phase || 'Phase n/a'}
-                  </Text>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                    }}>
+                    <Text
+                      style={{ color: Colors.textMuted, fontSize: 11, fontFamily: Fonts.sansMedium }}>
+                      {t.nct_id}
+                      {t.phase ? ` · ${t.phase}` : ''}
+                    </Text>
+                    {t.status ? <StatusPill status={t.status} /> : null}
+                  </View>
                   <Text
                     style={{
                       color: Colors.textPrimary,
                       fontFamily: Fonts.sansSemiBold,
-                      fontSize: 14,
-                      lineHeight: 20,
+                      fontSize: 15,
+                      lineHeight: 21,
                     }}>
                     {t.title}
                   </Text>
-                  {t.status && (
-                    <Text style={{ color: Colors.textSecondary, fontSize: 12 }}>{t.status}</Text>
-                  )}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                    <ExternalLink size={12} color={Colors.primary} />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                    <ExternalLink size={13} color={Colors.primary} />
                     <Text style={{ color: Colors.primary, fontSize: 12, fontFamily: Fonts.sansMedium }}>
                       View on ClinicalTrials.gov
                     </Text>
+                    <ChevronRight size={16} color={Colors.primary} style={{ marginLeft: 'auto' }} />
                   </View>
                 </Pressable>
               );
@@ -89,6 +104,31 @@ export default function ClinicalTrialsScreen() {
         )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function StatusPill({ status }: { status: string }) {
+  // Recruiting / enrolling = actionable (teal); everything else = muted.
+  const recruiting = /^(recruiting|enrolling)/i.test(status);
+  return (
+    <View
+      style={{
+        flexShrink: 0,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: Radius.pill,
+        backgroundColor: recruiting ? Colors.primarySoft : Colors.sidebarBg,
+      }}>
+      <Text
+        numberOfLines={1}
+        style={{
+          color: recruiting ? Colors.primary : Colors.textMuted,
+          fontSize: 11,
+          fontFamily: Fonts.sansSemiBold,
+        }}>
+        {status}
+      </Text>
+    </View>
   );
 }
 
