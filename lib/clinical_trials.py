@@ -1123,10 +1123,19 @@ def search_trials_for_patient(patient_context: Dict[str, Any],
     trials = [parse_trial_result(s, preferred_state=patient_state, patient_zip=zip_code) for s in studies]
     for trial in trials:
         relevance = score_trial_relevance(trial, patient_context)
-        trial["relevance_score"] = relevance["score"]
+        score = relevance["score"]
+        trial["relevance_score"] = score
         trial["relevance_reasons"] = relevance["reasons"]
         trial["relevance_warnings"] = relevance["warnings"]
         trial["likely_eligible"] = relevance["eligible"]
+        # Nested object the frontend renders as a Strong/Moderate/General badge.
+        # (Thresholds match format_trials_for_chat: >=70 strong, >=55 moderate.)
+        trial["relevance"] = {
+            "score": score,
+            "band": "strong" if score >= 70 else "moderate" if score >= 55 else "general",
+            "reasons": relevance["reasons"],
+            "warnings": relevance["warnings"],
+        }
 
     # Sort trials by relevance score (highest first), then keep the display cap
     trials.sort(key=lambda t: t.get("relevance_score", 0), reverse=True)
