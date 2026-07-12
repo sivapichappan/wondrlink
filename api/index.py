@@ -38,7 +38,7 @@ from llm_utils import (
 )
 from clinical_trials import (
     search_trials_for_patient, format_trials_for_chat, is_clinical_trial_query,
-    validate_trial_search_readiness
+    validate_trial_search_readiness, count_trials_for_radii
 )
 
 # -------------------------
@@ -65,6 +65,28 @@ RATE_LIMIT_PRIVACY_APPEAL = (3, 86400)  # 3 per day
 def feature_enabled(flag_name: str) -> bool:
     """Per-feature kill switch via env var FEATURE_<NAME>. Defaults to True."""
     return os.getenv(f"FEATURE_{flag_name.upper()}", "true").lower() == "true"
+
+
+def _resolve_cancer_slug(user_id, profile):
+    """Best-effort cancer slug for trial/condition lookups.
+
+    Prefers the profile-derived value (derive_universal_core); falls back to the
+    user's persisted selection (get_cancer_slug). Returns None if neither is
+    available — callers then use the legacy 'colorectal' default.
+    """
+    slug = None
+    try:
+        from profile_validator import derive_universal_core
+        slug = (derive_universal_core(profile or {}) or {}).get('cancer_slug')
+    except Exception:
+        slug = None
+    if not slug and user_id:
+        try:
+            from supabase_storage import get_cancer_slug
+            slug = get_cancer_slug(user_id)
+        except Exception:
+            slug = None
+    return slug
 
 
 # Will be assigned after `app` is created (see below).
@@ -942,14 +964,11 @@ def api_chat():
         # We want to ensure extract_patient_context_complex is called even if profile is mostly empty.
         patient_context = extract_patient_context_complex(patient_profile) if (patient_profile is not None and len(patient_profile) > 0) else {}
 
-        # Derive cancer slug from the loaded profile (or None if no profile yet).
+        # Derive cancer slug from the loaded profile, falling back to the user's
+        # persisted selection (so the chat trial-search uses the right condition
+        # synonyms instead of the legacy 'colorectal' default).
         # Threaded through retrieval (chunk filter) + LLM generators (overlay).
-        try:
-            from profile_validator import derive_universal_core as _derive_core
-            _core = _derive_core(patient_profile or {})
-            cancer_slug = _core.get('cancer_slug')
-        except Exception:
-            cancer_slug = None
+        cancer_slug = _resolve_cancer_slug(user_id, patient_profile)
         cancer_types_filter = [cancer_slug, 'general'] if cancer_slug else None
         patient_context['cancer_slug'] = cancer_slug
 
@@ -1247,7 +1266,7 @@ def api_chat():
                             "missing_helpful": readiness["missing_helpful"]
                         }
                     else:
-                        trials_result = search_trials_for_patient(patient_context, max_results=5)
+                        trials_result = search_trials_for_patient(patient_context, max_results=5, radius_miles=100)
                         if not trials_result.get("error"):
                             # Return full trials data for frontend rendering
                             clinical_trials_data = {
@@ -1597,6 +1616,18 @@ def api_clinical_trials():
         user_id = request.user["user_id"]
         max_results = request.args.get("limit", 5, type=int)
 
+        # Travel radius (miles): 25 / 50 / 100, or nationwide. Defaults to 100.
+        radius_raw = (request.args.get("radius", "100") or "100").strip().lower()
+        if radius_raw in ("nationwide", "none", "national", ""):
+            radius_miles = None
+        else:
+            try:
+                radius_miles = int(radius_raw)
+            except (ValueError, TypeError):
+                radius_miles = 100
+            if radius_miles not in (25, 50, 100):
+                radius_miles = 100
+
         # Load patient profile from Supabase
         profile = load_profile(user_id)
         if not profile:
@@ -1610,11 +1641,7 @@ def api_clinical_trials():
         # Inject cancer_slug so build_search_query consults the right
         # ClinicalTrials.gov condition synonyms instead of the legacy
         # unconditional "colorectal cancer" default.
-        try:
-            from profile_validator import derive_universal_core as _derive_core
-            patient_context['cancer_slug'] = _derive_core(profile or {}).get('cancer_slug')
-        except Exception:
-            pass
+        patient_context['cancer_slug'] = _resolve_cancer_slug(user_id, profile)
 
         # Validate profile readiness for trial search
         readiness = validate_trial_search_readiness(patient_context)
@@ -1627,7 +1654,7 @@ def api_clinical_trials():
             }), 400
 
         # Search for clinical trials
-        results = search_trials_for_patient(patient_context, max_results=max_results)
+        results = search_trials_for_patient(patient_context, max_results=max_results, radius_miles=radius_miles)
 
         if results.get("error"):
             return jsonify({
@@ -1636,15 +1663,23 @@ def api_clinical_trials():
                 "trials": []
             }), 200  # Still 200 since it's a valid response
 
+        # Per-radius recruiting totals for the summary line (only when asked —
+        # it's 4 extra cheap count queries; the chat path never requests them).
+        radius_counts = count_trials_for_radii(patient_context) if request.args.get("counts") else None
+
         return jsonify({
             "status": "ok",
             "trials": results["trials"],
             "total_found": results["total_found"],
+            "radius_miles": results.get("radius_miles"),
+            "relaxed_location": results.get("relaxed_location", False),
+            "radius_counts": radius_counts,
             "search_criteria": {
                 "condition": results["search_criteria"].get("query.cond"),
                 "location": patient_context.get("zip_code"),
+                "radius_miles": results.get("radius_miles"),
+                "study_type": "INTERVENTIONAL",
                 "biomarkers": patient_context.get("biomarkers"),
-                "intervention": results["search_criteria"].get("query.intr")
             }
         })
 

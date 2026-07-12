@@ -533,24 +533,43 @@ def zip_to_state(zip_code: str) -> Optional[str]:
     return ZIP_TO_STATE.get(prefix)
 
 
+# Whole-module field projection requested from the API. Requesting whole
+# modules (not individual leaves) means a missing leaf never silently drops a
+# field, and guarantees `fields` is a superset of everything parse_trial_result
+# reads. Keeps payloads small vs. the full study record.
+TRIAL_FIELDS = ",".join([
+    "protocolSection.identificationModule",
+    "protocolSection.statusModule",
+    "protocolSection.descriptionModule",
+    "protocolSection.conditionsModule",
+    "protocolSection.armsInterventionsModule",
+    "protocolSection.designModule",
+    "protocolSection.eligibilityModule",
+    "protocolSection.contactsLocationsModule",
+])
+
+
 def build_search_query(patient_context: Dict[str, Any],
                        page_size: int = FETCH_PAGE_SIZE,
-                       include_location: bool = True) -> Dict[str, str]:
+                       radius_miles: Optional[int] = 100) -> Dict[str, str]:
     """
-    Build ClinicalTrials.gov API query parameters from patient profile.
+    Build ClinicalTrials.gov API v2 query parameters from a patient profile.
 
-    Pull broad, rank narrow: the query filters on condition (+ stage) and,
-    when include_location is set, the patient's state. Biomarker and
-    treatment-line signals are deliberately NOT used as hard query filters
-    (each query.* param is AND-ed by the API, so stacking them collapsed a
-    ~29-trial result set to ~2); those signals are applied afterwards in
-    score_trial_relevance() to rank the broad result set instead.
+    Hard filters (all AND-ed by the API):
+    - overallStatus: RECRUITING + NOT_YET_RECRUITING only (actionable trials
+      accepting, or about to accept, new patients).
+    - StudyType: INTERVENTIONAL only (treatment trials, not observational).
+    - geo: within `radius_miles` of the patient's ZIP (great-circle), unless
+      `radius_miles is None` (nationwide) or the ZIP can't be geocoded.
+    - condition: per-cancer synonyms (+ stage terms) from cancer config.
+
+    Biomarker / treatment-line signals are deliberately NOT hard filters — they
+    rank the broad result set in score_trial_relevance() instead.
 
     Args:
         patient_context: Extracted patient context from profile_utils
         page_size: Number of studies to fetch for ranking
-        include_location: Whether to constrain by the patient's state
-            (set False for the national-fallback retry)
+        radius_miles: Geo radius in miles (25/50/100), or None for nationwide
 
     Returns:
         Dict of query parameters for the API
@@ -559,7 +578,9 @@ def build_search_query(patient_context: Dict[str, Any],
         "format": "json",
         "pageSize": str(page_size),
         "countTotal": "true",
-        "filter.overallStatus": "RECRUITING,ENROLLING_BY_INVITATION,ACTIVE_NOT_RECRUITING"
+        "filter.overallStatus": "RECRUITING,NOT_YET_RECRUITING",
+        "filter.advanced": "AREA[StudyType]INTERVENTIONAL",
+        "fields": TRIAL_FIELDS,
     }
 
     # Build condition query — look up the per-cancer ClinicalTrials.gov
@@ -600,24 +621,16 @@ def build_search_query(patient_context: Dict[str, Any],
 
     params["query.cond"] = " OR ".join(conditions)
 
-    # Location search - convert zip code to state name for better results.
-    # Skipped on the national-fallback retry (include_location=False).
+    # Geo radius — filter to trials with a location within `radius_miles` of the
+    # patient's ZIP. Uses the API's server-side great-circle distance filter, so
+    # border-town patients see nearby out-of-state trials (unlike the old
+    # state-name match). Omitted for nationwide or an un-geocodable ZIP.
     zip_code = patient_context.get("zip_code")
-    if include_location and zip_code and zip_code != "unspecified" and zip_code.strip():
-        # ClinicalTrials.gov works better with state names than zip codes
-        state = zip_to_state(zip_code.strip())
-        if state and state not in ["APO/FPO"]:
-            params["query.locn"] = state
-        # If state lookup fails, try the zip code as-is (fallback)
-        elif zip_code.strip():
-            params["query.locn"] = zip_code.strip()
-
-    # NOTE: biomarker- and treatment-line-driven `query.intr` terms were
-    # deliberately removed here. Because ClinicalTrials.gov AND-s every
-    # query.* param, stacking an intervention filter on top of condition +
-    # location collapsed a ~29-trial result set to ~2 (and "second-line" is
-    # not an intervention name, so it matched almost nothing). These signals
-    # now live in score_trial_relevance() as ranking boosts, not hard filters.
+    if radius_miles is not None and zip_code and zip_code != "unspecified" and zip_code.strip():
+        coords = get_zip_coordinates(zip_code.strip())
+        if coords:
+            lat, lon = coords
+            params["filter.geo"] = f"distance({lat},{lon},{radius_miles}mi)"
 
     return params
 
@@ -723,6 +736,66 @@ def _humanize_phase(phases: list) -> str:
     return " / ".join(labels)
 
 
+def calculate_trial_distance_geo(patient_coords: Optional[Tuple[float, float]],
+                                 patient_zip: Optional[str],
+                                 loc: Dict[str, Any]) -> Optional[float]:
+    """Distance in miles (rounded) from the patient to a trial location.
+
+    Prefers the location's exact geoPoint (from the API) via haversine; falls
+    back to the ZIP/state-centroid estimate when geoPoint is absent.
+    """
+    if patient_coords and loc.get("lat") is not None and loc.get("lon") is not None:
+        return round(haversine_distance(patient_coords, (loc["lat"], loc["lon"])))
+    if patient_zip:
+        return calculate_trial_distance(patient_zip, loc)
+    return None
+
+
+def _prettify_condition(cond: str) -> str:
+    """Lightly de-jargon a condition label for patients (MeSH -> plain)."""
+    if not cond:
+        return ""
+    return cond.replace("Neoplasms", "Cancer").replace("Neoplasm", "Cancer")
+
+
+def _plain_summary(phase: str, study_purpose: str,
+                   interventions: List[Dict[str, Any]],
+                   conditions: List[str]) -> str:
+    """One-line, non-technical description built from structured fields.
+
+    e.g. "Phase 2 trial testing Botensilimab and Balstilimab as a treatment
+    for Colorectal Cancer." — avoids the dense scientific brief summary.
+    """
+    drugs = [i.get("name", "") for i in (interventions or []) if i.get("name")]
+    cond = _prettify_condition((conditions or [""])[0])
+    phase_l = phase if phase and phase.lower() not in ("not specified", "") else ""
+    purpose_l = (study_purpose or "").lower()
+
+    lead = (phase_l + " ") if phase_l else ""
+    if drugs:
+        if len(drugs) == 1:
+            drug_str = drugs[0]
+        elif len(drugs) == 2:
+            drug_str = f"{drugs[0]} and {drugs[1]}"
+        else:
+            drug_str = f"{drugs[0]}, {drugs[1]}, and others"
+        if purpose_l == "treatment":
+            body = f"trial testing {drug_str} as a treatment"
+        elif purpose_l:
+            body = f"{purpose_l} study of {drug_str}"
+        else:
+            body = f"trial of {drug_str}"
+    else:
+        body = "treatment trial" if purpose_l == "treatment" else (
+            f"{purpose_l} study" if purpose_l else "clinical trial")
+
+    text = (lead + body).strip()
+    text = (text[0].upper() + text[1:]) if text else "Clinical trial"
+    if cond:
+        text += f" for {cond}"
+    return text + "."
+
+
 def parse_trial_result(study: Dict[str, Any], preferred_state: Optional[str] = None,
                        patient_zip: Optional[str] = None) -> Dict[str, Any]:
     """
@@ -734,8 +807,9 @@ def parse_trial_result(study: Dict[str, Any], preferred_state: Optional[str] = N
         patient_zip: Patient's ZIP code for distance calculation
 
     Returns:
-        Dict with: nct_id, title, phase, status, brief_summary,
-                   locations (with distance_miles), url, nearest_distance_miles
+        Dict with the display fields (nct_id, title, phase, status, band-ready
+        relevance, locations w/ distance, and the enriched interventions,
+        conditions, study_purpose, enrollment, eligibility, central_contact).
     """
     protocol = study.get("protocolSection", {})
     id_module = protocol.get("identificationModule", {})
@@ -744,21 +818,27 @@ def parse_trial_result(study: Dict[str, Any], preferred_state: Optional[str] = N
     design_module = protocol.get("designModule", {})
     contacts_module = protocol.get("contactsLocationsModule", {})
     eligibility_module = protocol.get("eligibilityModule", {})
+    conditions_module = protocol.get("conditionsModule", {})
+    arms_module = protocol.get("armsInterventionsModule", {})
 
     nct_id = id_module.get("nctId", "")
 
-    # Get locations - prioritize the patient's state
+    # Get locations - prioritize the patient's state. Capture each location's
+    # geoPoint (lat/lon) when present for accurate distance.
     all_us_locations = []
     preferred_locations = []
 
     for loc in contacts_module.get("locations", []):
         if loc.get("country", "").lower() in ["united states", "usa", "us"]:
+            geo = loc.get("geoPoint") or {}
             loc_info = {
                 "facility": loc.get("facility", ""),
                 "city": loc.get("city", ""),
                 "state": loc.get("state", ""),
                 "zip": loc.get("zip", ""),
-                "status": loc.get("status", "")
+                "status": loc.get("status", ""),
+                "lat": geo.get("lat"),
+                "lon": geo.get("lon"),
             }
             # Check if this location is in the preferred state
             if preferred_state and loc.get("state", "").lower() == preferred_state.lower():
@@ -769,10 +849,11 @@ def parse_trial_result(study: Dict[str, Any], preferred_state: Optional[str] = N
     # Combine: preferred state locations first, then others (limit to 3 total)
     locations = (preferred_locations + all_us_locations)[:3]
 
-    # Calculate distance for each location if patient ZIP provided
+    # Distance per location — geoPoint-accurate, ZIP/centroid fallback.
+    patient_coords = get_zip_coordinates(patient_zip) if patient_zip else None
     if patient_zip:
         for loc in locations:
-            loc['distance_miles'] = calculate_trial_distance(patient_zip, loc)
+            loc['distance_miles'] = calculate_trial_distance_geo(patient_coords, patient_zip, loc)
 
         # Sort locations by distance (nearest first), putting None distances last
         locations_with_distance = [l for l in locations if l.get('distance_miles') is not None]
@@ -793,20 +874,71 @@ def parse_trial_result(study: Dict[str, Any], preferred_state: Optional[str] = N
     if len(brief_summary) > 400:
         brief_summary = brief_summary[:397] + "..."
 
+    # Interventions as {name, type} objects (DRUG / BIOLOGICAL / PROCEDURE ...)
+    interventions = [
+        {"name": i.get("name", ""), "type": i.get("type", "")}
+        for i in (arms_module.get("interventions") or [])
+        if i.get("name")
+    ]
+
+    # Primary purpose, humanized (TREATMENT -> "Treatment", SUPPORTIVE_CARE -> "Supportive Care")
+    raw_purpose = (design_module.get("designInfo", {}) or {}).get("primaryPurpose", "") or ""
+    study_purpose = raw_purpose.replace("_", " ").title()
+
+    # Central contact (first listed), if any
+    central_contacts = contacts_module.get("centralContacts") or []
+    central_contact = None
+    if central_contacts:
+        cc = central_contacts[0]
+        central_contact = {
+            "name": cc.get("name", ""),
+            "phone": cc.get("phone", ""),
+            "email": cc.get("email", ""),
+        }
+
+    min_age = eligibility_module.get("minimumAge", "")
+    max_age = eligibility_module.get("maximumAge", "")
+    sex = eligibility_module.get("sex", "All")
+    healthy_volunteers = eligibility_module.get("healthyVolunteers")
+
+    # Plain-language, patient-friendly one-liner (replaces the dense scientific
+    # brief summary on the card; brief_summary is still returned for reference).
+    plain_summary = _plain_summary(
+        phase_str, study_purpose, interventions, conditions_module.get("conditions", []) or []
+    )
+
     return {
         "nct_id": nct_id,
         "title": id_module.get("briefTitle", "Untitled Study"),
         "official_title": id_module.get("officialTitle", ""),
         "phase": phase_str,
         "status": _humanize_status(status_module.get("overallStatus", "")),
+        "raw_status": status_module.get("overallStatus", ""),
+        "plain_summary": plain_summary,
         "brief_summary": brief_summary,
         "start_date": status_module.get("startDateStruct", {}).get("date", ""),
+        "conditions": conditions_module.get("conditions", []) or [],
+        "interventions": interventions,
+        "study_type": design_module.get("studyType", ""),
+        "study_purpose": study_purpose,
+        "enrollment_count": (design_module.get("enrollmentInfo", {}) or {}).get("count"),
+        "eligibility_criteria": eligibility_module.get("eligibilityCriteria", ""),
+        "healthy_volunteers": healthy_volunteers,
+        "central_contact": central_contact,
         "locations": locations,
         "nearest_distance_miles": nearest_distance,
         "url": f"https://clinicaltrials.gov/study/{nct_id}",
-        "min_age": eligibility_module.get("minimumAge", ""),
-        "max_age": eligibility_module.get("maximumAge", ""),
-        "sex": eligibility_module.get("sex", "All")
+        # Flat eligibility (score_trial_relevance reads these) ...
+        "min_age": min_age,
+        "max_age": max_age,
+        "sex": sex,
+        # ... plus nested for the frontend.
+        "eligibility": {
+            "min_age": min_age,
+            "max_age": max_age,
+            "sex": sex,
+            "healthy_volunteers": healthy_volunteers,
+        },
     }
 
 
@@ -846,10 +978,16 @@ def score_trial_relevance(trial: Dict[str, Any],
     warnings = []
     eligible = True
 
+    intervention_names = " ".join(
+        i.get("name", "") for i in (trial.get("interventions") or [])
+    )
+    condition_names = " ".join(trial.get("conditions") or [])
     trial_text = (
         (trial.get("title") or "") + " " +
         (trial.get("official_title") or "") + " " +
-        (trial.get("brief_summary") or "")
+        (trial.get("brief_summary") or "") + " " +
+        intervention_names + " " +
+        condition_names
     ).lower()
 
     # --- 1. Age eligibility ---
@@ -872,7 +1010,8 @@ def score_trial_relevance(trial: Dict[str, Any],
             warnings.append(f"Maximum age is {max_age}, patient is {patient_age}")
         else:
             if min_age or max_age:
-                reasons.append("Age within eligibility range")
+                # Age eligibility is already shown on the card — don't echo it
+                # back as a match "reason" (keep the score nudge though).
                 score += 5
 
     # --- 2. Sex eligibility ---
@@ -887,7 +1026,7 @@ def score_trial_relevance(trial: Dict[str, Any],
             eligible = False
             warnings.append("Trial is for male patients only")
         else:
-            reasons.append("Sex matches trial requirement")
+            # Sex eligibility is shown on the card too — score nudge only.
             score += 5
 
     # --- 3. Biomarker alignment ---
@@ -940,7 +1079,7 @@ def score_trial_relevance(trial: Dict[str, Any],
                 reasons.append("Matches third-line/refractory setting")
                 score += 10
 
-    # --- 5. Distance bonus ---
+    # --- 5. Distance bonus (geoPoint-accurate when available) ---
     nearest_distance = trial.get("nearest_distance_miles")
     if nearest_distance is not None:
         if nearest_distance <= 25:
@@ -949,6 +1088,16 @@ def score_trial_relevance(trial: Dict[str, Any],
         elif nearest_distance <= 50:
             reasons.append(f"Within 50 miles (~{nearest_distance} mi)")
             score += 5
+        elif nearest_distance <= 100:
+            reasons.append(f"Within 100 miles (~{nearest_distance} mi)")
+            score += 2
+
+    # --- 6. Treatment-purpose boost ---
+    # The query is interventional-only; this separates treatment trials from
+    # prevention / diagnostic / supportive-care interventional studies.
+    if (trial.get("study_purpose") or "").lower() == "treatment":
+        reasons.append("Treatment-focused")
+        score += 5
 
     # Clamp score to 0-100
     score = max(0, min(100, score))
@@ -1056,13 +1205,15 @@ def validate_trial_search_readiness(patient_context: Dict[str, Any]) -> Dict[str
 
 
 def search_trials_for_patient(patient_context: Dict[str, Any],
-                               max_results: int = MAX_RESULTS) -> Dict[str, Any]:
+                               max_results: int = MAX_RESULTS,
+                               radius_miles: Optional[int] = 100) -> Dict[str, Any]:
     """
     Search for clinical trials matching patient profile.
 
     Args:
         patient_context: From extract_patient_context_complex()
         max_results: Maximum trials to return
+        radius_miles: Geo search radius in miles (25/50/100), or None nationwide
 
     Returns:
         Dict with: trials (list), total_found, search_criteria, error (if any)
@@ -1081,8 +1232,8 @@ def search_trials_for_patient(patient_context: Dict[str, Any],
     # Get the state for location prioritization
     patient_state = zip_to_state(zip_code)
 
-    # Build query (pull broad: condition + state, large page for ranking)
-    params = build_search_query(patient_context, include_location=True)
+    # Build query (recruiting + interventional, within radius; large page for ranking)
+    params = build_search_query(patient_context, radius_miles=radius_miles)
 
     # Fetch results
     response = fetch_clinical_trials(params)
@@ -1103,13 +1254,13 @@ def search_trials_for_patient(patient_context: Dict[str, Any],
 
     studies = response.get("studies", [])
 
-    # National fallback: if constraining to the patient's state returned
-    # nothing, retry without the location filter so we still surface trials.
-    # Distance is still computed per-trial during ranking below.
+    # National fallback: if the geo-radius search returned nothing, retry
+    # nationwide so we still surface trials. Distance is still computed
+    # per-trial during ranking below, so nearby ones still float to the top.
     relaxed_location = False
-    if not studies and params.get("query.locn"):
+    if not studies and radius_miles is not None:
         relaxed_location = True
-        params = build_search_query(patient_context, include_location=False)
+        params = build_search_query(patient_context, radius_miles=None)
         response = fetch_clinical_trials(params)
         if response.get("error"):
             return {
@@ -1145,10 +1296,31 @@ def search_trials_for_patient(patient_context: Dict[str, Any],
         "trials": trials,
         "total_found": response.get("totalCount", len(studies)),
         "search_criteria": params,
+        "radius_miles": None if relaxed_location else radius_miles,
         "relaxed_location": relaxed_location,
         "error": None,
         "error_message": None
     }
+
+
+def count_trials_for_radii(patient_context: Dict[str, Any],
+                           radii=(25, 50, 100, None)) -> Dict[str, Any]:
+    """Total recruiting + interventional trial counts at each radius.
+
+    Powers the reassuring "N recruiting trials within X miles" summary line.
+    Cheap: pageSize=1, reads only totalCount, and fetch_clinical_trials caches
+    each params combo — so repeat loads don't re-hit the API.
+    """
+    counts: Dict[str, Any] = {}
+    for r in radii:
+        key = "nationwide" if r is None else str(r)
+        try:
+            params = build_search_query(patient_context, page_size=1, radius_miles=r)
+            resp = fetch_clinical_trials(params)
+            counts[key] = resp.get("totalCount") if not resp.get("error") else None
+        except Exception:
+            counts[key] = None
+    return counts
 
 
 def format_trials_for_chat(trials_data: Dict[str, Any]) -> str:

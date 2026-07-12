@@ -153,26 +153,52 @@ export interface ChatUrgency {
   guidance: string;
 }
 
+export type TrialRadius = 25 | 50 | 100 | 'nationwide';
+
 export interface ChatClinicalTrial {
   nct_id: string;
   title: string;
+  official_title?: string;
   status?: string;
+  raw_status?: string;
   phase?: string;
   conditions?: string[];
-  interventions?: string[];
+  interventions?: Array<{ name: string; type?: string }>;
+  study_type?: string;
+  study_purpose?: string;
+  plain_summary?: string;
+  brief_summary?: string;
+  enrollment_count?: number;
+  eligibility?: {
+    min_age?: string;
+    max_age?: string;
+    sex?: string;
+    healthy_volunteers?: string;
+  };
+  central_contact?: { name?: string; phone?: string; email?: string };
   locations?: Array<{
     facility?: string;
     city?: string;
     state?: string;
+    zip?: string;
     country?: string;
+    status?: string;
     distance_miles?: number;
+    lat?: number;
+    lon?: number;
   }>;
+  nearest_distance_miles?: number;
   relevance?: {
     score: number;
     band: 'strong' | 'moderate' | 'general';
     reasons: string[];
     warnings: string[];
   };
+  // Flat mirrors the web SPA reads (kept alongside nested `relevance`).
+  relevance_score?: number;
+  relevance_reasons?: string[];
+  relevance_warnings?: string[];
+  likely_eligible?: boolean;
   url?: string;
 }
 
@@ -492,6 +518,10 @@ export interface ClinicalTrialsResponse {
   status?: 'ok' | 'error';
   trials: ChatClinicalTrial[];
   total_found?: number;
+  radius_miles?: number | null;
+  relaxed_location?: boolean;
+  // Per-radius total recruiting counts, e.g. { "25": 52, "100": 186, "nationwide": 438 }
+  radius_counts?: Record<string, number | null> | null;
   search_criteria?: Record<string, unknown>;
   error?: string;
   missing_critical?: string[];

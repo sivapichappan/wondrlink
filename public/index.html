@@ -10730,9 +10730,11 @@
         // Extracted from the old inline addMessage trial loop so the new
         // collapsed body can host it unchanged.
         function buildLegacyTrialCardHtml(trial) {
-            const statusClass = trial.status === 'RECRUITING' ? 'status' : 'status active';
-            const statusText = trial.status === 'RECRUITING' ? 'Recruiting' :
-                               trial.status === 'ACTIVE_NOT_RECRUITING' ? 'Active' : trial.status;
+            // `raw_status` is the un-humanized enum; `status` is already humanized
+            // ("Recruiting"). Prefer raw for the class check, fall back to text.
+            const rawStatus = trial.raw_status || trial.status || '';
+            const statusClass = rawStatus === 'RECRUITING' ? 'status' : 'status active';
+            const statusText = trial.status || rawStatus;
 
             const location = trial.locations && trial.locations.length > 0 ? trial.locations[0] : null;
             const locationCity = location ? `${location.city || ''}, ${location.state || ''}` : '';
