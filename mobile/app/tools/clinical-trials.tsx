@@ -9,6 +9,12 @@ import { Colors, Fonts, Radius } from '@/constants/theme';
 import { ApiError } from '@/lib/api/client';
 import { fetchClinicalTrials } from '@/lib/api/tools';
 
+const BAND_LABELS: Record<string, { label: string; color: string }> = {
+  strong: { label: 'Strong match', color: Colors.primary },
+  moderate: { label: 'Moderate match', color: Colors.accent },
+  general: { label: 'General match', color: Colors.textMuted },
+};
+
 export default function ClinicalTrialsScreen() {
   const trials = useQuery({
     queryKey: ['clinical_trials'],
@@ -90,6 +96,16 @@ export default function ClinicalTrialsScreen() {
                     }}>
                     {t.title}
                   </Text>
+                  {t.relevance?.band && BAND_LABELS[t.relevance.band] && (
+                    <Text
+                      style={{
+                        color: BAND_LABELS[t.relevance.band].color,
+                        fontFamily: Fonts.sansSemiBold,
+                        fontSize: 11,
+                      }}>
+                      {BAND_LABELS[t.relevance.band].label}
+                    </Text>
+                  )}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
                     <ExternalLink size={13} color={Colors.primary} />
                     <Text style={{ color: Colors.primary, fontSize: 12, fontFamily: Fonts.sansMedium }}>
