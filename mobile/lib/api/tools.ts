@@ -13,6 +13,7 @@ import type {
   ScreeningSaveRequest,
   ScreeningSaveResponse,
   SurveillanceResponse,
+  TrialRadius,
   VisitRecapRequest,
   VisitRecapResponse,
 } from '@shared/types';
@@ -45,9 +46,14 @@ export function fetchSurveillance() {
   return apiFetch<SurveillanceResponse>(ENDPOINTS.surveillance, { method: 'GET' });
 }
 
-export function fetchClinicalTrials(limit = 5) {
+export function fetchClinicalTrials(
+  limit = 5,
+  radius: TrialRadius = 100,
+  opts: { counts?: boolean } = {},
+) {
+  const countsParam = opts.counts ? '&counts=1' : '';
   return apiFetch<ClinicalTrialsResponse>(
-    `${ENDPOINTS.clinicalTrials}?limit=${limit}`,
+    `${ENDPOINTS.clinicalTrials}?limit=${limit}&radius=${radius}${countsParam}`,
     { method: 'GET' },
   );
 }

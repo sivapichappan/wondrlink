@@ -10,6 +10,7 @@ export const Colors = {
   // Brand
   primary: '#1F5D4F',
   primaryLight: '#2A7869',
+  primaryPressed: '#17463B', // darker teal for button pressed/hover states
   // Soft brand tint used to highlight selected options (cards, pills, dropdown
   // rows). Distinctly teal — clearly differentiates the chosen option from
   // unselected ones while keeping `Colors.primary` text legible on top.
