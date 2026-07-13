@@ -67,6 +67,27 @@ export const Spacing = {
   xxl: 24,
 } as const;
 
+/**
+ * Whole-number type scale. The app previously scattered ~25 fractional sizes
+ * (10.5/12.5/13.5…) and 17 ad-hoc whole sizes; snap everything to this.
+ *   xs 11  captions / eyebrows        lg 15  emphasized body / row titles
+ *   sm 12  secondary / meta           xl 17  card + screen titles
+ *   base 13 body-small                h3 20  section headings
+ *   md 14  body / list rows           h2 24  page titles
+ *                                     h1 28  Home greeting
+ */
+export const FontSize = {
+  xs: 11,
+  sm: 12,
+  base: 13,
+  md: 14,
+  lg: 15,
+  xl: 17,
+  h3: 20,
+  h2: 24,
+  h1: 28,
+} as const;
+
 export const Radius = {
   sm: 8,
   md: 12,
