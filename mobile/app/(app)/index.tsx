@@ -1,335 +1,176 @@
-import { useQuery } from '@tanstack/react-query';
-import { useLocalSearchParams, router } from 'expo-router';
-import { Trash2 } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
-import {
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  Text,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+/**
+ * Home (design screen 1) — the assistant home.
+ *
+ * Serif greeting + a care strip derived from REAL signals (a due-check-in card
+ * from days_since_symptom, a second card from last-visit follow-ups — hidden
+ * when there's no data, never a fabricated "Next visit" date), a task-chip grid,
+ * the verbatim AI disclosure, and a bottom composer that hands the first message
+ * off to a new thread (/chat/new?q=…). The crisis guardrail runs in the thread,
+ * the single send choke point.
+ */
 
-import { BotResponseCard } from '@/components/chat/BotResponseCard';
+import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import {
+  Activity,
+  Bot,
+  CalendarClock,
+  ChevronRight,
+  ClipboardList,
+  LineChart,
+  Microscope,
+  NotebookPen,
+} from 'lucide-react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+
 import { ChatInput } from '@/components/chat/ChatInput';
-import { MessageBubble } from '@/components/chat/MessageBubble';
 import { ProfileNudgeBanner } from '@/components/chat/ProfileNudgeBanner';
-import { QuickPrompts } from '@/components/chat/QuickPrompts';
-import { SessionMeta } from '@/components/chat/SessionMeta';
-import { TypingIndicator } from '@/components/chat/TypingIndicator';
 import { WelcomeProfileModal } from '@/components/chat/WelcomeProfileModal';
-import { CrisisModal } from '@/components/common/CrisisModal';
+import { TopBar } from '@/components/common/TopBar';
 import { Colors, Fonts, Radius } from '@/constants/theme';
 import { useAcknowledgement } from '@/hooks/useAcknowledgement';
-import { useChat } from '@/hooks/useChat';
-import { useProfile } from '@/hooks/useCare';
+import { useCareSnapshot, useHero, useProfile } from '@/hooks/useCare';
+import { NEW_CONVERSATION } from '@/hooks/useChat';
 import { useWelcomePromptSeen } from '@/hooks/useWelcomePromptSeen';
-import { ApiError, extractErrorMessage } from '@/lib/api/client';
 import { fetchConsentStatus } from '@/lib/api/consent';
-import { scanForCrisis, type GuardrailHit } from '@/lib/safety/crisis-keywords';
-import { Sentry } from '@/lib/sentry';
-import { welcomeIntroFor } from '@shared/disclaimers';
-import type { ChatHistoryMessage } from '@shared/types';
+import { AI_DISCLOSURE_BANNER } from '@shared/disclaimers';
 
-export default function ChatScreen() {
-  const { messages, isLoading, isSending, sendError, sendMessage, clearAll } = useChat();
-  const ack = useAcknowledgement();
+export default function HomeScreen() {
+  const hero = useHero();
+  const snap = useCareSnapshot();
   const profile = useProfile();
-  const listRef = useRef<FlatList<ChatHistoryMessage>>(null);
-  const params = useLocalSearchParams<{ q?: string }>();
-  const lastHandledQ = useRef<string | undefined>(undefined);
-  const [crisis, setCrisis] = useState<{ hit: GuardrailHit; pending: string } | null>(null);
+  const ack = useAcknowledgement();
 
-  // Persistent nudge — banner stays on the chat screen until the user
-  // actually has a patient profile saved.
   const hasProfile = !!profile.data?.profile;
   const showProfileNudge = !profile.isLoading && !hasProfile;
 
-  // First-launch welcome modal — fires the FIRST time a profile-less user
-  // lands here. Once they action it (build profile or dismiss), it never
-  // shows again on this device; the persistent banner above keeps nudging.
   const welcomePrompt = useWelcomePromptSeen();
   const welcomeOpen = welcomePrompt.seen === false && showProfileNudge;
 
-  // Consent gate. If the user withdrew collection or sharing consent we
-  // can't process /api/chat — surface a banner and disable the composer.
-  // The server also returns HTTP 403 + code:CONSENT_WITHDRAWN, so this
-  // is belt-and-suspenders against a stale fetch.
-  const consentStatus = useQuery({
-    queryKey: ['consent-status'],
-    queryFn: fetchConsentStatus,
-  });
+  const consentStatus = useQuery({ queryKey: ['consent-status'], queryFn: fetchConsentStatus });
   const chatDisabled = consentStatus.data?.chat_disabled ?? false;
-  const withdrawnKey = consentStatus.data
-    ? !consentStatus.data.consent_collection.granted
-      ? 'data collection'
-      : !consentStatus.data.consent_sharing.granted
-        ? 'AI provider sharing'
-        : null
-    : null;
 
-  const guardedSend = (text: string) => {
-    const hit = scanForCrisis(text);
-    if (hit) {
-      setCrisis({ hit, pending: text });
-      return;
-    }
-    sendMessage(text);
+  const firstName = hero.data?.first_name;
+  const days = snap.data?.days_since_symptom;
+  const checkinDue = days == null || days >= 7;
+  const pendingFollowups = hero.data?.last_visit?.pending_followups ?? 0;
+  const lastVisitPretty = hero.data?.last_visit?.when_pretty;
+
+  const startThread = (text: string) => {
+    router.push(`/chat/${NEW_CONVERSATION}?q=${encodeURIComponent(text)}` as never);
   };
 
-  const onCrisisContinue = () => {
-    if (!crisis) return;
-    Sentry.captureMessage('crisis-guardrail-overridden', {
-      level: 'warning',
-      tags: { category: crisis.hit.category, matched: crisis.hit.matched },
-    });
-    const pending = crisis.pending;
-    setCrisis(null);
-    sendMessage(pending);
-  };
-
-  useEffect(() => {
-    if (messages.length > 0) {
-      // small delay so layout settles
-      const id = setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
-      return () => clearTimeout(id);
-    }
-  }, [messages.length]);
-
-  // Auto-send a question passed via ?q= (e.g. from a Care hero suggestion)
-  useEffect(() => {
-    const q = params.q;
-    if (!q || isSending) return;
-    if (lastHandledQ.current === q) return;
-    lastHandledQ.current = q;
-    guardedSend(q);
-    // Clear the param so a back-nav doesn't re-trigger
-    router.setParams({ q: undefined });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.q, isSending]);
-
-  const handleClear = () => {
-    Alert.alert(
-      'Clear conversation?',
-      'This deletes all messages from this device and your account.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Clear', style: 'destructive', onPress: () => clearAll() },
-      ],
-    );
-  };
-
-  const renderItem = ({ item }: { item: ChatHistoryMessage }) => {
-    if (item.role === 'user') {
-      return (
-        <View style={{ paddingHorizontal: 12, paddingVertical: 4 }}>
-          <MessageBubble role="user" content={item.content} />
-        </View>
-      );
-    }
-    return (
-      <View style={{ paddingHorizontal: 12, paddingVertical: 6 }}>
-        <BotResponseCard message={item} onPickFollowup={(t) => guardedSend(t)} />
-      </View>
-    );
-  };
+  const hasStrip = checkinDue || pendingFollowups > 0 || !!lastVisitPretty;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.surface }} edges={['top']}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 16,
-          paddingTop: 10,
-          paddingBottom: 12,
-          borderBottomWidth: 1,
-          borderBottomColor: Colors.border,
-        }}>
-        <Text
-          style={{
-            fontFamily: Fonts.serifBold,
-            fontSize: 22,
-            color: Colors.textPrimary,
-          }}>
-          WondrChat
-        </Text>
+    <View style={{ flex: 1, backgroundColor: Colors.surface }}>
+      <TopBar leading="menu" showFocusChip />
 
-        <View style={{ flex: 1 }} />
+      {showProfileNudge && <ProfileNudgeBanner onPress={() => router.push('/profile/build')} />}
 
-        {messages.length > 0 && (
-          <Pressable
-            onPress={handleClear}
-            accessibilityRole="button"
-            accessibilityLabel="Clear conversation"
-            hitSlop={8}
-            style={({ pressed }) => ({
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: pressed ? Colors.sidebarBg : 'transparent',
-              marginLeft: 6,
-            })}>
-            <Trash2 size={20} color={Colors.textMuted} />
-          </Pressable>
-        )}
-      </View>
-
-      {showProfileNudge && (
-        <ProfileNudgeBanner onPress={() => router.push('/profile/build')} />
-      )}
-
-      {chatDisabled && (
-        <View
-          accessibilityRole={Platform.OS === 'android' ? 'alert' : undefined}
-          style={{
-            margin: 12,
-            padding: 12,
-            borderRadius: 10,
-            backgroundColor: Colors.warningBg,
-            borderWidth: 1,
-            borderColor: Colors.warning,
-          }}>
-          <Text style={{ color: Colors.textPrimary, fontSize: 13, lineHeight: 18 }}>
-            <Text style={{ fontFamily: Fonts.serifBold }}>Chat is disabled.</Text>{' '}
-            You've withdrawn consent for {withdrawnKey ?? 'one or more processing categories'}.{' '}
-            Re-enable it in <Text style={{ fontFamily: Fonts.sansSemiBold }}>Settings → Consent Management</Text>.
-          </Text>
-          <Pressable
-            onPress={() => router.push('/settings/consent-management')}
-            accessibilityRole="button"
-            accessibilityLabel="Open Consent Management"
-            style={({ pressed }) => ({
-              marginTop: 10,
-              alignSelf: 'flex-start',
-              paddingVertical: 8,
-              paddingHorizontal: 14,
-              borderRadius: Radius.pill,
-              borderWidth: 1.5,
-              borderColor: Colors.primary,
-              backgroundColor: pressed ? Colors.primarySoft : Colors.surface,
-            })}>
-            <Text
-              style={{
-                color: Colors.primary,
-                fontFamily: Fonts.sansSemiBold,
-                fontSize: 13,
-              }}>
-              Open Consent Management →
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }} keyboardShouldPersistTaps="handled">
+          {/* Greeting */}
+          <View style={{ paddingTop: 6 }}>
+            <Text style={{ fontFamily: Fonts.serifBold, fontSize: 28, lineHeight: 36, color: Colors.textPrimary }}>
+              {firstName ? `Hi ${firstName} —` : 'Hi —'}
             </Text>
-          </Pressable>
-        </View>
-      )}
+            <Text style={{ fontFamily: Fonts.serif, fontSize: 28, lineHeight: 36, color: Colors.textSecondary }}>
+              how are you feeling today?
+            </Text>
+          </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-        style={{ flex: 1 }}>
-        <FlatList
-          ref={listRef}
-          data={messages}
-          renderItem={renderItem}
-          keyExtractor={(m, i) => `${m.created_at}-${i}`}
-          contentContainerStyle={{ paddingVertical: 10 }}
-          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
-          ListHeaderComponent={<SessionMeta />}
-          ListEmptyComponent={
-            !isLoading ? (
-              <View
-                style={{
-                  paddingHorizontal: 24,
-                  paddingTop: 24,
-                  paddingBottom: 8,
-                  gap: 8,
-                  alignItems: 'center',
-                }}>
-                <Text
-                  style={{
-                    fontFamily: Fonts.serifBold,
-                    fontSize: 26,
-                    color: Colors.textPrimary,
-                    lineHeight: 32,
-                    textAlign: 'center',
-                  }}>
-                  Welcome
-                </Text>
-                <Text
-                  style={{
-                    color: Colors.textSecondary,
-                    fontSize: 15,
-                    lineHeight: 22,
-                    textAlign: 'center',
-                  }}>
-                  {welcomeIntroFor(ack.data?.cancer_display)}
-                </Text>
-                <Text
-                  style={{
-                    color: Colors.textMuted,
-                    fontSize: 13,
-                    textAlign: 'center',
-                    marginTop: 4,
-                  }}>
-                  Pick a starter below or type your own question.
-                </Text>
+          {/* Care strip (derived, hides when no data) */}
+          {hasStrip && (
+            <View style={{ flexDirection: 'row', gap: 9 }}>
+              {checkinDue ? (
+                <StripCard
+                  tone="accent"
+                  label="DUE TODAY"
+                  Icon={Activity}
+                  title="Wellness check-in"
+                  sub="Takes about 2 minutes"
+                  onPress={() => router.push('/tools/screening')}
+                />
+              ) : (
+                <StripCard
+                  label="LATEST CHECK-IN"
+                  Icon={Activity}
+                  title={days === 0 ? 'Today' : `${days}d ago`}
+                  sub="Tap to view My Care"
+                  onPress={() => router.push('/care')}
+                />
+              )}
+              {pendingFollowups > 0 ? (
+                <StripCard
+                  label="FROM LAST VISIT"
+                  Icon={CalendarClock}
+                  title={`${pendingFollowups} follow-up${pendingFollowups > 1 ? 's' : ''}`}
+                  sub="Prep pre-visit questions"
+                  onPress={() => router.push('/tools/previsit')}
+                />
+              ) : lastVisitPretty ? (
+                <StripCard
+                  label="LAST VISIT"
+                  Icon={CalendarClock}
+                  title={lastVisitPretty}
+                  sub="Tap to view My Care"
+                  onPress={() => router.push('/care')}
+                />
+              ) : (
+                <View style={{ flex: 1 }} />
+              )}
+            </View>
+          )}
+
+          {/* Task chips */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 2 }}>
+            <Text style={{ fontSize: 10.5, fontFamily: Fonts.sansSemiBold, letterSpacing: 0.6, color: Colors.textMuted }}>
+              GET SOMETHING DONE
+            </Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: Colors.border }} />
+            <Pressable onPress={() => router.push('/tools')} accessibilityRole="button" accessibilityLabel="All tools" hitSlop={6}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <Text style={{ fontSize: 11.5, fontFamily: Fonts.sansSemiBold, color: Colors.primary }}>All tools</Text>
+                <ChevronRight size={12} color={Colors.primary} />
               </View>
-            ) : null
-          }
-        />
-
-        {isSending && (
-          <View style={{ paddingHorizontal: 22, paddingBottom: 2, paddingTop: 0 }}>
-            <TypingIndicator />
+            </Pressable>
           </View>
-        )}
 
-        {!isSending && sendError && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 9 }}>
+            <Chip Icon={Microscope} label="Find trials" onPress={() => router.push('/tools/clinical-trials')} />
+            <Chip Icon={ClipboardList} label="Pre-visit questions" onPress={() => router.push('/tools/previsit')} />
+            <Chip Icon={NotebookPen} label="Visit recap" onPress={() => router.push('/tools/visit-recap')} />
+            <Chip Icon={LineChart} label="My trends" onPress={() => router.push('/tools/trends')} />
+          </View>
+
+          {/* Verbatim AI disclosure */}
           <View
-            accessibilityRole={Platform.OS === 'android' ? 'alert' : undefined}
             style={{
-              marginHorizontal: 12,
-              marginBottom: 6,
-              padding: 12,
-              borderRadius: 10,
-              backgroundColor: Colors.emergencyBg,
-              borderWidth: 1,
-              borderColor: Colors.danger,
+              flexDirection: 'row',
+              gap: 8,
+              alignItems: 'flex-start',
+              alignSelf: 'center',
+              maxWidth: 360,
+              backgroundColor: Colors.sidebarBg,
+              borderRadius: Radius.pill,
+              paddingVertical: 8,
+              paddingHorizontal: 13,
+              marginTop: 2,
             }}>
-            <Text style={{ color: Colors.textPrimary, fontSize: 13, lineHeight: 18 }}>
-              <Text style={{ fontFamily: Fonts.serifBold, color: Colors.danger }}>
-                Couldn't get a response.
-              </Text>{' '}
-              {sendError instanceof ApiError
-                ? extractErrorMessage(sendError.body, `${sendError.message} (${sendError.status})`)
-                : sendError.message || 'Please try again in a moment.'}
-            </Text>
+            <Bot size={13} color={Colors.primary} style={{ marginTop: 1 }} />
+            <Text style={{ flex: 1, fontSize: 11, lineHeight: 15, color: Colors.textSecondary }}>{AI_DISCLOSURE_BANNER}</Text>
           </View>
-        )}
-
-        {messages.length === 0 && !isSending && !chatDisabled && (
-          <QuickPrompts onPick={guardedSend} />
-        )}
+        </ScrollView>
 
         <ChatInput
-          onSend={guardedSend}
-          disabled={isSending || chatDisabled}
+          onSend={startThread}
+          disabled={chatDisabled}
           placeholder={
-            ack.data?.cancer_display
-              ? `Ask about ${ack.data.cancer_display.toLowerCase()}…`
-              : 'Ask a question…'
+            ack.data?.cancer_display ? `Ask about ${ack.data.cancer_display.toLowerCase()}, or say how you feel…` : 'Ask anything, or say how you feel…'
           }
         />
       </KeyboardAvoidingView>
-
-      <CrisisModal
-        category={crisis?.hit.category ?? null}
-        onContinue={onCrisisContinue}
-        onClose={() => setCrisis(null)}
-      />
 
       <WelcomeProfileModal
         visible={welcomeOpen}
@@ -339,6 +180,71 @@ export default function ChatScreen() {
         }}
         onSkip={() => welcomePrompt.markSeen()}
       />
-    </SafeAreaView>
+    </View>
+  );
+}
+
+function StripCard({
+  label,
+  title,
+  sub,
+  Icon,
+  tone,
+  onPress,
+}: {
+  label: string;
+  title: string;
+  sub: string;
+  Icon: typeof Activity;
+  tone?: 'accent';
+  onPress: () => void;
+}) {
+  const accent = tone === 'accent';
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${label}: ${title}`} style={{ flex: 1 }}>
+      <View
+        style={{
+          borderRadius: Radius.lg,
+          padding: 12,
+          gap: 7,
+          backgroundColor: accent ? Colors.sosBg : Colors.sidebarBg,
+          borderWidth: accent ? 1 : 0,
+          borderColor: accent ? Colors.sosBorder : 'transparent',
+        }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Icon size={15} color={accent ? Colors.warning : Colors.primary} />
+          <Text style={{ fontSize: 10.5, fontFamily: Fonts.sansSemiBold, letterSpacing: 0.4, color: accent ? Colors.warning : Colors.textMuted }}>
+            {label}
+          </Text>
+        </View>
+        <Text style={{ fontSize: 13.5, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary, lineHeight: 18 }}>{title}</Text>
+        <Text style={{ fontSize: 12, color: Colors.textSecondary }}>{sub}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function Chip({ Icon, label, onPress }: { Icon: typeof Activity; label: string; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={{ width: '48%' }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 9,
+          borderWidth: 1,
+          borderColor: Colors.border,
+          borderRadius: Radius.lg,
+          backgroundColor: Colors.surfaceMuted,
+          padding: 12,
+        }}>
+        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.sidebarBg, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon size={16} color={Colors.primary} />
+        </View>
+        <Text numberOfLines={1} style={{ flex: 1, fontSize: 12.5, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary }}>
+          {label}
+        </Text>
+      </View>
+    </Pressable>
   );
 }

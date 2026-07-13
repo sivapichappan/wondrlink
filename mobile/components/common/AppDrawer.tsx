@@ -27,8 +27,8 @@ import {
   SquarePen,
   User,
 } from 'lucide-react-native';
-import { useEffect } from 'react';
-import { BackHandler, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { BackHandler, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -45,6 +45,7 @@ export function AppDrawer() {
   const { drawerOpen, closeDrawer, openHelp } = useNavOverlay();
   const insets = useSafeAreaInsets();
   const progress = useSharedValue(0);
+  const [query, setQuery] = useState('');
 
   const conversations = useConversations();
   const watchlist = useWatchlist();
@@ -124,44 +125,55 @@ export function AppDrawer() {
             <Text style={{ fontFamily: Fonts.serifBold, fontSize: 19, color: Colors.textPrimary }}>WondrChat</Text>
           </View>
 
-          <DrawerRow icon={<SquarePen size={17} color={Colors.primary} />} label="New chat" tint onPress={() => go('/')} />
+          <DrawerRow icon={<SquarePen size={17} color={Colors.primary} />} label="New chat" tint onPress={() => go('/chat/new')} />
 
-          <Pressable onPress={() => go('/')} accessibilityRole="button" accessibilityLabel="Search chats">
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 9,
-                height: 38,
-                paddingHorizontal: 12,
-                borderRadius: Radius.pill,
-                backgroundColor: Colors.surface,
-                borderWidth: 1,
-                borderColor: Colors.border,
-                marginVertical: 4,
-              }}>
-              <Search size={15} color={Colors.textMuted} />
-              <Text style={{ fontSize: 13, color: Colors.textMuted }}>Search chats</Text>
-            </View>
-          </Pressable>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 9,
+              height: 38,
+              paddingHorizontal: 12,
+              borderRadius: Radius.pill,
+              backgroundColor: Colors.surface,
+              borderWidth: 1,
+              borderColor: Colors.border,
+              marginVertical: 4,
+            }}>
+            <Search size={15} color={Colors.textMuted} />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search chats"
+              placeholderTextColor={Colors.textMuted}
+              style={{ flex: 1, fontSize: 13, color: Colors.textPrimary, paddingVertical: 0 }}
+            />
+          </View>
 
           {/* Recents */}
           <SectionLabel>RECENTS</SectionLabel>
-          {conversations.conversations.length === 0 ? (
-            <Text style={{ fontSize: 12, color: Colors.textMuted, paddingHorizontal: 10, paddingVertical: 6 }}>
-              {conversations.isLoading ? 'Loading…' : 'No conversations yet.'}
-            </Text>
-          ) : (
-            conversations.conversations.slice(0, 8).map((c) => (
-              <Pressable key={c.id} onPress={() => go('/')} accessibilityRole="button" accessibilityLabel={c.title}>
+          {(() => {
+            const q = query.trim().toLowerCase();
+            const list = q
+              ? conversations.conversations.filter((c) => c.title.toLowerCase().includes(q))
+              : conversations.conversations;
+            if (list.length === 0) {
+              return (
+                <Text style={{ fontSize: 12, color: Colors.textMuted, paddingHorizontal: 10, paddingVertical: 6 }}>
+                  {conversations.isLoading ? 'Loading…' : q ? 'No matches.' : 'No conversations yet.'}
+                </Text>
+              );
+            }
+            return list.slice(0, 10).map((c) => (
+              <Pressable key={c.id} onPress={() => go(`/chat/${c.id}`)} accessibilityRole="button" accessibilityLabel={c.title}>
                 <View style={{ height: 36, justifyContent: 'center', paddingHorizontal: 10, borderRadius: 10 }}>
                   <Text numberOfLines={1} style={{ fontSize: 13.5, color: Colors.textPrimary }}>
                     {c.title}
                   </Text>
                 </View>
               </Pressable>
-            ))
-          )}
+            ));
+          })()}
 
           {/* My Care */}
           <SectionLabel>MY CARE</SectionLabel>

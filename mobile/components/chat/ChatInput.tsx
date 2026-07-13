@@ -1,11 +1,36 @@
+/**
+ * ChatInput — composer spec "2a".
+ *
+ * Row: [ + ] [ input with inline mic (one-tap dictation) ] [ send ].
+ * Tapping "+" dims the screen and raises a QUICK ACTIONS sheet; "+" becomes a
+ * filled teal "✕". Dictation stays one tap for older users — the mic lives
+ * inside the field and drives on-device (never-uploaded) speech recognition.
+ *
+ * NativeWind rule: Pressable visuals live on static inner Views.
+ */
+
 import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from 'expo-speech-recognition';
-import { Mic, Send, Square } from 'lucide-react-native';
+import { router } from 'expo-router';
+import {
+  Activity,
+  AudioLines,
+  ClipboardList,
+  Microscope,
+  Mic,
+  NotebookPen,
+  Paperclip,
+  Plus,
+  Send,
+  Square,
+  X,
+} from 'lucide-react-native';
 import { useRef, useState } from 'react';
 import {
   Alert,
+  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -13,8 +38,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors, Fonts, Radius } from '@/constants/theme';
+import { useCareSnapshot } from '@/hooks/useCare';
 
 const MAX_CHARS = 2000;
 
@@ -28,14 +55,13 @@ function joinParts(...parts: string[]): string {
   return parts.map((p) => p.trim()).filter(Boolean).join(' ');
 }
 
-export function ChatInput({ onSend, disabled, placeholder = 'Ask about colon cancer…' }: Props) {
+export function ChatInput({ onSend, disabled, placeholder = 'Ask anything…' }: Props) {
   const [text, setText] = useState('');
   const [recording, setRecording] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
   const overflow = text.length > MAX_CHARS;
   const canSend = !disabled && text.trim().length > 0 && !overflow;
 
-  // Snapshot of typed text when dictation starts, plus accumulated final
-  // segments. Live (interim) text is rendered on top without committing.
   const baseRef = useRef('');
   const finalRef = useRef('');
 
@@ -53,7 +79,6 @@ export function ChatInput({ onSend, disabled, placeholder = 'Ask about colon can
 
   useSpeechRecognitionEvent('error', (e) => {
     setRecording(false);
-    // "no-speech" / "aborted" are benign (user paused or tapped stop).
     if (e.error === 'no-speech' || e.error === 'aborted') return;
     if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
       Alert.alert(
@@ -87,10 +112,7 @@ export function ChatInput({ onSend, disabled, placeholder = 'Ask about colon can
       });
     } catch (err) {
       setRecording(false);
-      Alert.alert(
-        'Voice input unavailable',
-        err instanceof Error ? err.message : 'Could not start voice input.',
-      );
+      Alert.alert('Voice input unavailable', err instanceof Error ? err.message : 'Could not start voice input.');
     }
   };
 
@@ -116,21 +138,35 @@ export function ChatInput({ onSend, disabled, placeholder = 'Ask about colon can
   return (
     <View style={styles.bar}>
       <View style={styles.row}>
-        <MicButton recording={recording} disabled={disabled} onPress={toggleMic} />
+        {/* Plus / quick actions */}
+        <Pressable
+          onPress={() => setActionsOpen(true)}
+          disabled={disabled}
+          accessibilityRole="button"
+          accessibilityLabel="Quick actions"
+          hitSlop={8}>
+          <View style={styles.plusCircle}>
+            <Plus size={21} color={Colors.primary} strokeWidth={2} />
+          </View>
+        </Pressable>
 
+        {/* Input with inline mic */}
         <View style={styles.inputCol}>
-          <TextInput
-            value={text}
-            onChangeText={setText}
-            placeholder={recording ? 'Listening…' : placeholder}
-            placeholderTextColor={recording ? Colors.primary : Colors.textMuted}
-            multiline
-            editable={!disabled}
-            blurOnSubmit={false}
-            returnKeyType={Platform.OS === 'ios' ? 'default' : 'send'}
-            onSubmitEditing={Platform.OS === 'android' ? submit : undefined}
-            style={styles.input}
-          />
+          <View style={styles.inputPill}>
+            <TextInput
+              value={text}
+              onChangeText={setText}
+              placeholder={recording ? 'Listening…' : placeholder}
+              placeholderTextColor={recording ? Colors.primary : Colors.textMuted}
+              multiline
+              editable={!disabled}
+              blurOnSubmit={false}
+              returnKeyType={Platform.OS === 'ios' ? 'default' : 'send'}
+              onSubmitEditing={Platform.OS === 'android' ? submit : undefined}
+              style={styles.input}
+            />
+            <MicButton recording={recording} disabled={disabled} onPress={toggleMic} />
+          </View>
           {overflow && (
             <View style={styles.overflowChip}>
               <Text style={styles.overflowText}>
@@ -142,43 +178,35 @@ export function ChatInput({ onSend, disabled, placeholder = 'Ask about colon can
 
         <SendButton canSend={canSend} onPress={submit} />
       </View>
+
+      <QuickActionsSheet
+        open={actionsOpen}
+        onClose={() => setActionsOpen(false)}
+        onVoice={() => {
+          setActionsOpen(false);
+          startListening();
+        }}
+      />
     </View>
   );
 }
 
-function MicButton({
-  recording,
-  disabled,
-  onPress,
-}: {
-  recording: boolean;
-  disabled?: boolean;
-  onPress: () => void;
-}) {
+function MicButton({ recording, disabled, onPress }: { recording: boolean; disabled?: boolean; onPress: () => void }) {
   return (
-    <View
-      style={[
-        styles.micCircle,
-        recording && { backgroundColor: Colors.primary, borderColor: Colors.primary },
-      ]}>
-      <View style={styles.iconCenter} pointerEvents="none">
-        {recording ? (
-          <Square size={16} color={Colors.surface} fill={Colors.surface} strokeWidth={2} />
-        ) : (
-          <Mic size={20} color={Colors.primary} strokeWidth={2} />
-        )}
-      </View>
-      <Pressable
-        onPress={onPress}
-        disabled={disabled}
-        accessibilityRole="button"
-        accessibilityLabel={recording ? 'Stop voice input' : 'Start voice input'}
-        accessibilityState={{ disabled: !!disabled }}
-        hitSlop={8}
-        style={styles.pressOverlay}
-        android_ripple={{ color: Colors.sidebarBg, borderless: true }}
-      />
-    </View>
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={recording ? 'Stop voice input' : 'Start voice input'}
+      accessibilityState={{ disabled: !!disabled }}
+      hitSlop={8}
+      style={styles.micInline}>
+      {recording ? (
+        <Square size={15} color={Colors.primary} fill={Colors.primary} strokeWidth={2} />
+      ) : (
+        <Mic size={18} color={Colors.textMuted} strokeWidth={2} />
+      )}
+    </Pressable>
   );
 }
 
@@ -195,12 +223,7 @@ function SendButton({ canSend, onPress }: { canSend: boolean; onPress: () => voi
         },
       ]}>
       <View style={styles.iconCenter} pointerEvents="none">
-        <Send
-          size={20}
-          color={canSend ? Colors.surface : Colors.textMuted}
-          strokeWidth={2.4}
-          style={{ marginLeft: -2 }}
-        />
+        <Send size={19} color={canSend ? Colors.surface : Colors.textMuted} strokeWidth={2.4} style={{ marginLeft: -2 }} />
       </View>
       <Pressable
         onPress={onPress}
@@ -216,6 +239,151 @@ function SendButton({ canSend, onPress }: { canSend: boolean; onPress: () => voi
   );
 }
 
+function QuickActionsSheet({ open, onClose, onVoice }: { open: boolean; onClose: () => void; onVoice: () => void }) {
+  const insets = useSafeAreaInsets();
+  const snap = useCareSnapshot();
+  const days = snap.data?.days_since_symptom;
+  const checkinDue = days == null || days >= 7;
+
+  const go = (path: string) => {
+    onClose();
+    setTimeout(() => router.push(path as never), 60);
+  };
+
+  const items: {
+    key: string;
+    icon: React.ReactNode;
+    title: string;
+    sub: string;
+    subUrgent?: boolean;
+    onPress: () => void;
+    tintBg?: string;
+  }[] = [
+    {
+      key: 'attach',
+      icon: <Paperclip size={16} color={Colors.primary} />,
+      title: 'Attach photo or file',
+      sub: 'Lab result, scan, pill bottle',
+      onPress: () => {
+        onClose();
+        setTimeout(() => Alert.alert('Coming soon', 'Attaching photos and files will be available in a future update.'), 60);
+      },
+    },
+    {
+      key: 'checkin',
+      icon: <Activity size={16} color={Colors.warning} />,
+      tintBg: Colors.sosBg,
+      title: 'Wellness check-in',
+      sub: checkinDue ? 'Check-in due today' : 'Symptom, PHQ-9, GAD-7…',
+      subUrgent: checkinDue,
+      onPress: () => go('/tools/screening'),
+    },
+    {
+      key: 'trials',
+      icon: <Microscope size={16} color={Colors.primary} />,
+      title: 'Find clinical trials',
+      sub: 'Matched to your profile',
+      onPress: () => go('/tools/clinical-trials'),
+    },
+    {
+      key: 'previsit',
+      icon: <ClipboardList size={16} color={Colors.primary} />,
+      title: 'Pre-visit questions',
+      sub: 'For your next visit',
+      onPress: () => go('/tools/previsit'),
+    },
+    {
+      key: 'recap',
+      icon: <NotebookPen size={16} color={Colors.primary} />,
+      title: 'Visit recap',
+      sub: 'Record your appointment',
+      onPress: () => go('/tools/visit-recap'),
+    },
+    {
+      key: 'voice',
+      icon: <AudioLines size={16} color={Colors.primary} />,
+      title: 'Voice conversation',
+      sub: 'Talk it through aloud',
+      onPress: onVoice,
+    },
+  ];
+
+  return (
+    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={{ flex: 1, backgroundColor: Colors.scrim }} onPress={onClose} accessibilityLabel="Close quick actions" />
+      <View
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: Colors.surface,
+          borderTopLeftRadius: Radius.xl,
+          borderTopRightRadius: Radius.xl,
+          paddingHorizontal: 14,
+          paddingTop: 14,
+          paddingBottom: insets.bottom + 16,
+          gap: 12,
+        }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={{ flex: 1, fontFamily: Fonts.sansSemiBold, fontSize: 11, letterSpacing: 0.6, color: Colors.textMuted }}>
+            QUICK ACTIONS
+          </Text>
+          <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" hitSlop={8}>
+            <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+              <X size={17} color={Colors.surface} />
+            </View>
+          </Pressable>
+        </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 9 }}>
+          {items.map((it) => (
+            <Pressable key={it.key} onPress={it.onPress} accessibilityRole="button" accessibilityLabel={it.title} style={{ width: '48%' }}>
+              <View
+                style={{
+                  backgroundColor: Colors.surfaceMuted,
+                  borderWidth: 1,
+                  borderColor: Colors.border,
+                  borderRadius: Radius.lg,
+                  padding: 11,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                }}>
+                <View
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 17,
+                    backgroundColor: it.tintBg ?? Colors.sidebarBg,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                  {it.icon}
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text numberOfLines={1} style={{ fontSize: 13, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary }}>
+                    {it.title}
+                  </Text>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      fontSize: 10.5,
+                      marginTop: 1,
+                      color: it.subUrgent ? Colors.warning : Colors.textMuted,
+                      fontFamily: it.subUrgent ? Fonts.sansSemiBold : Fonts.sans,
+                    }}>
+                    {it.sub}
+                  </Text>
+                </View>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 const styles = StyleSheet.create({
   bar: {
     paddingHorizontal: 10,
@@ -228,23 +396,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  plusCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   inputCol: {
     flex: 1,
     minWidth: 0,
     marginHorizontal: 8,
   },
+  inputPill: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    backgroundColor: Colors.surfaceMuted,
+    borderRadius: Radius.md,
+    paddingRight: 6,
+  },
   input: {
+    flex: 1,
     minHeight: 44,
     maxHeight: 140,
     paddingHorizontal: 14,
     paddingTop: 12,
     paddingBottom: 12,
-    backgroundColor: Colors.surfaceMuted,
-    borderRadius: Radius.md,
     color: Colors.textPrimary,
     fontSize: 16,
     fontFamily: Fonts.sans,
     lineHeight: 22,
+  },
+  micInline: {
+    width: 36,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   overflowChip: {
     alignSelf: 'flex-end',
@@ -258,16 +448,6 @@ const styles = StyleSheet.create({
     color: Colors.surface,
     fontSize: 11,
     fontFamily: Fonts.sansSemiBold,
-  },
-  micCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: 'hidden',
-    position: 'relative',
   },
   sendCircle: {
     width: 44,
