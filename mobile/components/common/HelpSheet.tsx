@@ -20,7 +20,7 @@ import {
 import { Linking, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Colors, Fonts, Radius } from '@/constants/theme';
+import { Colors, FontSize, Fonts, Radius } from '@/constants/theme';
 import { CANCER_HELPLINES, CONTACT, CRISIS_HELPLINES, type Helpline } from '@shared/disclaimers';
 import { useNavOverlay } from './NavOverlay';
 
@@ -49,8 +49,8 @@ export function HelpSheet() {
 
         <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: Fonts.serifBold, fontSize: 24, color: Colors.textPrimary }}>Get help</Text>
-            <Text style={{ fontSize: 13, color: Colors.textMuted, marginTop: 3 }}>Tap any number to call directly.</Text>
+            <Text style={{ fontFamily: Fonts.serifBold, fontSize: FontSize.h2, color: Colors.textPrimary }}>Get help</Text>
+            <Text style={{ fontSize: FontSize.base, color: Colors.textMuted, marginTop: 3 }}>Tap any number to call directly.</Text>
           </View>
           <Pressable onPress={closeHelp} accessibilityRole="button" accessibilityLabel="Close" hitSlop={8}>
             <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' }}>
@@ -71,7 +71,7 @@ export function HelpSheet() {
               borderColor: Colors.danger,
             }}>
             <AlertOctagon size={18} color={Colors.danger} style={{ marginTop: 1 }} />
-            <Text style={{ flex: 1, color: Colors.textPrimary, fontSize: 13, lineHeight: 19 }}>
+            <Text style={{ flex: 1, color: Colors.textPrimary, fontSize: FontSize.base, lineHeight: 19 }}>
               <Text style={{ fontFamily: Fonts.sansSemiBold }}>Medical emergency?</Text> Call 911 immediately. WondrChat is
               not built to handle emergencies.
             </Text>
@@ -96,16 +96,16 @@ export function HelpSheet() {
                 <Headset size={18} color={Colors.primaryPressed} />
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={{ fontSize: 14.5, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary }}>
+                <Text style={{ fontSize: FontSize.md, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary }}>
                   Talk to a Personal Navigator
                 </Text>
-                <Text style={{ fontSize: 12, color: Colors.textSecondary, marginTop: 1 }}>A real person from WondrLink</Text>
+                <Text style={{ fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 1 }}>A real person from WondrLink</Text>
               </View>
             </View>
             <Pressable onPress={() => Linking.openURL(CONTACT.website).catch(() => {})} accessibilityRole="link" accessibilityLabel="Open WondrLink website">
               <View style={{ height: 42, borderRadius: Radius.md, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7 }}>
                 <MessageSquare size={15} color={Colors.surface} />
-                <Text style={{ color: Colors.surface, fontSize: 13.5, fontFamily: Fonts.sansSemiBold }}>Visit wondrlinkfoundation.org</Text>
+                <Text style={{ color: Colors.surface, fontSize: FontSize.md, fontFamily: Fonts.sansSemiBold }}>Visit wondrlinkfoundation.org</Text>
               </View>
             </Pressable>
           </View>
@@ -118,7 +118,7 @@ export function HelpSheet() {
 function Section({ title, urgent, children }: { title: string; urgent?: boolean; children: React.ReactNode }) {
   return (
     <View style={{ gap: 8 }}>
-      <Text style={{ color: urgent ? Colors.danger : Colors.textMuted, fontSize: 11, fontFamily: Fonts.sansMedium, letterSpacing: 0.5 }}>
+      <Text style={{ color: urgent ? Colors.danger : Colors.textMuted, fontSize: FontSize.xs, fontFamily: Fonts.sansMedium, letterSpacing: 0.5 }}>
         {title.toUpperCase()}
       </Text>
       <View style={{ borderWidth: 1, borderColor: urgent ? Colors.danger : Colors.border, borderRadius: Radius.lg, backgroundColor: Colors.surface, overflow: 'hidden' }}>
@@ -152,10 +152,10 @@ function HelplineRow({ h, urgent, showDivider }: { h: Helpline; urgent?: boolean
           <Phone size={18} color={urgent ? Colors.danger : Colors.primary} />
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} style={{ color: Colors.textPrimary, fontFamily: Fonts.sansSemiBold, fontSize: 15 }}>
+          <Text numberOfLines={1} style={{ color: Colors.textPrimary, fontFamily: Fonts.sansSemiBold, fontSize: FontSize.lg }}>
             {h.name}
           </Text>
-          <Text numberOfLines={1} style={{ color: Colors.textMuted, fontSize: 12, marginTop: 2 }}>
+          <Text numberOfLines={1} style={{ color: Colors.textMuted, fontSize: FontSize.sm, marginTop: 2 }}>
             {h.number} · {h.desc}
           </Text>
         </View>
