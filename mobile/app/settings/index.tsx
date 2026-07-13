@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import Constants from 'expo-constants';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import {
   AlertOctagon,
   ChevronRight,
@@ -18,8 +18,8 @@ import {
   UserCog,
 } from 'lucide-react-native';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HeaderBack } from '@/components/common/HeaderBack';
 import { Colors, Fonts, Radius } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 import { logout } from '@/lib/api/auth';
@@ -152,21 +152,17 @@ export default function SettingsScreen() {
   ];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.surface }} edges={['top']}>
+    <View style={{ flex: 1, backgroundColor: Colors.surface }}>
+      <Stack.Screen options={{ title: 'Settings', headerLeft: () => <HeaderBack label="Home" /> }} />
       <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 40 }}>
-        <View>
-          <Text style={{ fontFamily: Fonts.serifBold, fontSize: 24, color: Colors.textPrimary }}>
-            Settings
+        {session?.user.email && (
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="middle"
+            style={{ color: Colors.textMuted, fontSize: 13 }}>
+            {session.user.email}
           </Text>
-          {session?.user.email && (
-            <Text
-              numberOfLines={1}
-              ellipsizeMode="middle"
-              style={{ color: Colors.textMuted, fontSize: 13, marginTop: 4 }}>
-              {session.user.email}
-            </Text>
-          )}
-        </View>
+        )}
 
         {sections.map((sec) => (
           <View
@@ -200,7 +196,7 @@ export default function SettingsScreen() {
           </View>
         ))}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
