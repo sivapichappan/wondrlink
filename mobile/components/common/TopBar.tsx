@@ -17,7 +17,7 @@ import { ChevronLeft, ChevronsUpDown, LifeBuoy, Menu, Tag } from 'lucide-react-n
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Colors, Fonts, Radius } from '@/constants/theme';
+import { Colors, FontSize, Fonts, Radius } from '@/constants/theme';
 import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { useNavOverlay } from './NavOverlay';
 
@@ -78,7 +78,7 @@ export function TopBar({
           hitSlop={8}
           style={{ minWidth: 74, height: 38, flexDirection: 'row', alignItems: 'center' }}>
           <ChevronLeft size={22} color={Colors.primary} />
-          <Text style={{ color: Colors.primary, fontSize: 15 }} numberOfLines={1}>
+          <Text style={{ color: Colors.primary, fontSize: FontSize.lg }} numberOfLines={1}>
             {backLabel}
           </Text>
         </Pressable>
@@ -92,14 +92,14 @@ export function TopBar({
               numberOfLines={1}
               style={{
                 fontFamily: Fonts.serifBold,
-                fontSize: 17,
+                fontSize: FontSize.xl,
                 color: Colors.textPrimary,
                 maxWidth: 200,
               }}>
               {title}
             </Text>
             {subtitle ? (
-              <Text numberOfLines={1} style={{ fontSize: 10.5, color: Colors.textMuted, marginTop: 1 }}>
+              <Text numberOfLines={1} style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 1 }}>
                 {subtitle}
               </Text>
             ) : null}
@@ -139,7 +139,7 @@ function FocusChip() {
         <Tag size={12} color={Colors.primary} />
         <Text
           numberOfLines={1}
-          style={{ color: Colors.primary, fontSize: 12.5, fontFamily: Fonts.sansMedium, maxWidth: 160 }}>
+          style={{ color: Colors.primary, fontSize: FontSize.sm, fontFamily: Fonts.sansMedium, maxWidth: 160 }}>
           {label}
         </Text>
         <ChevronsUpDown size={12} color={Colors.textMuted} />
@@ -169,7 +169,7 @@ export function SosPill({ onPress }: { onPress: () => void }) {
           borderColor: Colors.sosBorder,
         }}>
         <LifeBuoy size={14} color={Colors.warning} />
-        <Text style={{ color: Colors.warning, fontSize: 12.5, fontFamily: Fonts.sansSemiBold }}>Help</Text>
+        <Text style={{ color: Colors.warning, fontSize: FontSize.sm, fontFamily: Fonts.sansSemiBold }}>Help</Text>
       </View>
     </Pressable>
   );

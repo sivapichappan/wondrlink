@@ -14,19 +14,7 @@ import {
   useSpeechRecognitionEvent,
 } from 'expo-speech-recognition';
 import { router } from 'expo-router';
-import {
-  Activity,
-  AudioLines,
-  ClipboardList,
-  Microscope,
-  Mic,
-  NotebookPen,
-  Paperclip,
-  Plus,
-  Send,
-  Square,
-  X,
-} from 'lucide-react-native';
+import { Activity, AudioLines, ClipboardList, Microscope, Mic, Plus, Send, Square, X } from 'lucide-react-native';
 import { useRef, useState } from 'react';
 import {
   Alert,
@@ -40,7 +28,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Colors, Fonts, Radius } from '@/constants/theme';
+import { IconCircle } from '@/components/ui/IconCircle';
+import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useCareSnapshot } from '@/hooks/useCare';
 
 const MAX_CHARS = 2000;
@@ -250,66 +239,15 @@ function QuickActionsSheet({ open, onClose, onVoice }: { open: boolean; onClose:
     setTimeout(() => router.push(path as never), 60);
   };
 
-  const items: {
-    key: string;
-    icon: React.ReactNode;
-    title: string;
-    sub: string;
-    subUrgent?: boolean;
-    onPress: () => void;
-    tintBg?: string;
-  }[] = [
-    {
-      key: 'attach',
-      icon: <Paperclip size={16} color={Colors.primary} />,
-      title: 'Attach photo or file',
-      sub: 'Lab result, scan, pill bottle',
-      onPress: () => {
-        onClose();
-        setTimeout(() => Alert.alert('Coming soon', 'Attaching photos and files will be available in a future update.'), 60);
-      },
-    },
-    {
-      key: 'checkin',
-      icon: <Activity size={16} color={Colors.warning} />,
-      tintBg: Colors.sosBg,
-      title: 'Wellness check-in',
-      sub: checkinDue ? 'Check-in due today' : 'Symptom, PHQ-9, GAD-7…',
-      subUrgent: checkinDue,
-      onPress: () => go('/tools/screening'),
-    },
-    {
-      key: 'trials',
-      icon: <Microscope size={16} color={Colors.primary} />,
-      title: 'Find clinical trials',
-      sub: 'Matched to your profile',
-      onPress: () => go('/tools/clinical-trials'),
-    },
-    {
-      key: 'previsit',
-      icon: <ClipboardList size={16} color={Colors.primary} />,
-      title: 'Pre-visit questions',
-      sub: 'For your next visit',
-      onPress: () => go('/tools/previsit'),
-    },
-    {
-      key: 'recap',
-      icon: <NotebookPen size={16} color={Colors.primary} />,
-      title: 'Visit recap',
-      sub: 'Record your appointment',
-      onPress: () => go('/tools/visit-recap'),
-    },
-    {
-      key: 'voice',
-      icon: <AudioLines size={16} color={Colors.primary} />,
-      title: 'Voice conversation',
-      sub: 'Talk it through aloud',
-      onPress: onVoice,
-    },
+  const items: { key: string; icon: React.ReactNode; title: string; accent?: boolean; onPress: () => void }[] = [
+    { key: 'checkin', icon: <Activity size={18} color={checkinDue ? Colors.warning : Colors.primary} />, accent: checkinDue, title: 'Wellness check-in', onPress: () => go('/tools/screening') },
+    { key: 'trials', icon: <Microscope size={18} color={Colors.primary} />, title: 'Find trials', onPress: () => go('/tools/clinical-trials') },
+    { key: 'previsit', icon: <ClipboardList size={18} color={Colors.primary} />, title: 'Pre-visit questions', onPress: () => go('/tools/previsit') },
+    { key: 'voice', icon: <AudioLines size={18} color={Colors.primary} />, title: 'Voice conversation', onPress: onVoice },
   ];
 
   return (
-    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: Colors.scrim }} onPress={onClose} accessibilityLabel="Close quick actions" />
       <View
         style={{
@@ -320,22 +258,22 @@ function QuickActionsSheet({ open, onClose, onVoice }: { open: boolean; onClose:
           backgroundColor: Colors.surface,
           borderTopLeftRadius: Radius.xl,
           borderTopRightRadius: Radius.xl,
-          paddingHorizontal: 14,
-          paddingTop: 14,
-          paddingBottom: insets.bottom + 16,
-          gap: 12,
+          paddingHorizontal: Spacing.md,
+          paddingTop: Spacing.md,
+          paddingBottom: insets.bottom + Spacing.lg,
+          gap: Spacing.md,
         }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={{ flex: 1, fontFamily: Fonts.sansSemiBold, fontSize: 11, letterSpacing: 0.6, color: Colors.textMuted }}>
+          <Text style={{ flex: 1, fontFamily: Fonts.sansSemiBold, fontSize: FontSize.xs, letterSpacing: 0.6, color: Colors.textMuted }}>
             QUICK ACTIONS
           </Text>
           <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" hitSlop={8}>
-            <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+            <IconCircle size={30} bg={Colors.primary}>
               <X size={17} color={Colors.surface} />
-            </View>
+            </IconCircle>
           </Pressable>
         </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 9 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }}>
           {items.map((it) => (
             <Pressable key={it.key} onPress={it.onPress} accessibilityRole="button" accessibilityLabel={it.title} style={{ width: '48%' }}>
               <View
@@ -344,37 +282,17 @@ function QuickActionsSheet({ open, onClose, onVoice }: { open: boolean; onClose:
                   borderWidth: 1,
                   borderColor: Colors.border,
                   borderRadius: Radius.lg,
-                  padding: 11,
+                  padding: Spacing.md,
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: 10,
+                  gap: Spacing.sm,
                 }}>
-                <View
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 17,
-                    backgroundColor: it.tintBg ?? Colors.sidebarBg,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
+                <IconCircle size={34} bg={it.accent ? Colors.sosBg : Colors.sidebarBg}>
                   {it.icon}
-                </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text numberOfLines={1} style={{ fontSize: 13, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary }}>
-                    {it.title}
-                  </Text>
-                  <Text
-                    numberOfLines={1}
-                    style={{
-                      fontSize: 10.5,
-                      marginTop: 1,
-                      color: it.subUrgent ? Colors.warning : Colors.textMuted,
-                      fontFamily: it.subUrgent ? Fonts.sansSemiBold : Fonts.sans,
-                    }}>
-                    {it.sub}
-                  </Text>
-                </View>
+                </IconCircle>
+                <Text numberOfLines={2} style={{ flex: 1, fontSize: FontSize.base, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary }}>
+                  {it.title}
+                </Text>
               </View>
             </Pressable>
           ))}

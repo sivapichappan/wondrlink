@@ -13,26 +13,13 @@
  */
 
 import { router } from 'expo-router';
-import {
-  Activity,
-  CalendarClock,
-  ClipboardList,
-  FileText,
-  HeartPulse,
-  LifeBuoy,
-  Microscope,
-  NotebookPen,
-  Search,
-  Settings,
-  SquarePen,
-  User,
-} from 'lucide-react-native';
+import { Activity, HeartPulse, LayoutGrid, LifeBuoy, Search, Settings, SquarePen, User } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { BackHandler, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Colors, Fonts, Radius } from '@/constants/theme';
+import { Colors, FontSize, Fonts, Radius } from '@/constants/theme';
 import { useCareSnapshot, useProfile } from '@/hooks/useCare';
 import { useConversations } from '@/hooks/useConversations';
 import { useWatchlist } from '@/hooks/useWatchlist';
@@ -66,7 +53,7 @@ export function AppDrawer() {
     .toUpperCase();
 
   useEffect(() => {
-    progress.value = withTiming(drawerOpen ? 1 : 0, { duration: 220 });
+    progress.value = withTiming(drawerOpen ? 1 : 0, { duration: 240, easing: Easing.out(Easing.cubic) });
   }, [drawerOpen, progress]);
 
   // Android hardware back closes the drawer before popping the stack.
@@ -122,7 +109,7 @@ export function AppDrawer() {
           {/* Brand */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 8, paddingVertical: 10 }}>
             <Image source={LOGO} style={{ width: 24, height: 24, borderRadius: 6 }} />
-            <Text style={{ fontFamily: Fonts.serifBold, fontSize: 19, color: Colors.textPrimary }}>WondrChat</Text>
+            <Text style={{ fontFamily: Fonts.serifBold, fontSize: FontSize.h3, color: Colors.textPrimary }}>WondrChat</Text>
           </View>
 
           <DrawerRow icon={<SquarePen size={17} color={Colors.primary} />} label="New chat" tint onPress={() => go('/chat/new')} />
@@ -164,10 +151,10 @@ export function AppDrawer() {
                 </Text>
               );
             }
-            return list.slice(0, 10).map((c) => (
+            return list.slice(0, 5).map((c) => (
               <Pressable key={c.id} onPress={() => go(`/chat/${c.id}`)} accessibilityRole="button" accessibilityLabel={c.title}>
                 <View style={{ height: 36, justifyContent: 'center', paddingHorizontal: 10, borderRadius: 10 }}>
-                  <Text numberOfLines={1} style={{ fontSize: 13.5, color: Colors.textPrimary }}>
+                  <Text numberOfLines={1} style={{ fontSize: FontSize.base, color: Colors.textPrimary }}>
                     {c.title}
                   </Text>
                 </View>
@@ -186,19 +173,14 @@ export function AppDrawer() {
             onPress={() => go('/tools/trends')}
           />
 
-          {/* Tools */}
+          {/* Tools — one entry into the full launcher (deduped) */}
           <SectionLabel>TOOLS</SectionLabel>
           <DrawerRow
-            icon={<Microscope size={17} color={Colors.textSecondary} />}
-            label="Clinical trials"
+            icon={<LayoutGrid size={17} color={Colors.textSecondary} />}
+            label="All tools"
             hint={savedCount > 0 ? `${savedCount} saved` : undefined}
-            onPress={() => go('/tools/clinical-trials')}
+            onPress={() => go('/tools')}
           />
-          <DrawerRow icon={<ClipboardList size={17} color={Colors.textSecondary} />} label="Pre-visit questions" onPress={() => go('/tools/previsit')} />
-          <DrawerRow icon={<NotebookPen size={17} color={Colors.textSecondary} />} label="Visit recap" onPress={() => go('/tools/visit-recap')} />
-          <DrawerRow icon={<CalendarClock size={17} color={Colors.textSecondary} />} label="Surveillance schedule" onPress={() => go('/tools/surveillance')} />
-          <DrawerRow icon={<Search size={17} color={Colors.textSecondary} />} label="Deep research" onPress={() => go('/tools/deep-research')} />
-          <DrawerRow icon={<FileText size={17} color={Colors.textSecondary} />} label="Insurance appeal" onPress={() => go('/tools/insurance-appeal')} />
 
           <DrawerRow
             icon={<LifeBuoy size={17} color={Colors.warning} />}
@@ -236,7 +218,7 @@ export function AppDrawer() {
                 <Text style={{ color: Colors.primaryPressed, fontSize: 12, fontFamily: Fonts.sansBold }}>{initials}</Text>
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text numberOfLines={1} style={{ fontSize: 13.5, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary }}>
+                <Text numberOfLines={1} style={{ fontSize: FontSize.base, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary }}>
                   {displayName}
                 </Text>
                 <Text style={{ fontSize: 11, color: Colors.textMuted }}>Profile & settings</Text>
@@ -254,7 +236,7 @@ function SectionLabel({ children }: { children: string }) {
   return (
     <Text
       style={{
-        fontSize: 10.5,
+        fontSize: FontSize.xs,
         fontFamily: Fonts.sansSemiBold,
         letterSpacing: 0.6,
         color: Colors.textMuted,
@@ -291,7 +273,7 @@ function DrawerRow({
         <Text
           style={{
             flex: 1,
-            fontSize: 13.5,
+            fontSize: FontSize.base,
             color: labelColor ?? (tint ? Colors.primary : Colors.textPrimary),
             fontFamily: tint ? Fonts.sansSemiBold : Fonts.sans,
           }}>
@@ -300,7 +282,7 @@ function DrawerRow({
         {hint ? <Text style={{ fontSize: 11, color: Colors.textMuted }}>{hint}</Text> : null}
         {badge ? (
           <View style={{ backgroundColor: Colors.sosBg, borderRadius: Radius.pill, paddingHorizontal: 7, paddingVertical: 2 }}>
-            <Text style={{ fontSize: 10, fontFamily: Fonts.sansBold, color: Colors.warning }}>{badge}</Text>
+            <Text style={{ fontSize: FontSize.xs, fontFamily: Fonts.sansBold, color: Colors.warning }}>{badge}</Text>
           </View>
         ) : null}
       </View>

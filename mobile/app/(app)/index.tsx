@@ -1,39 +1,32 @@
 /**
- * Home (design screen 1) — the assistant home.
+ * Home (design screen 1) — the assistant home, calmer pass.
  *
- * Serif greeting + a care strip derived from REAL signals (a due-check-in card
- * from days_since_symptom, a second card from last-visit follow-ups — hidden
- * when there's no data, never a fabricated "Next visit" date), a task-chip grid,
- * the verbatim AI disclosure, and a bottom composer that hands the first message
- * off to a new thread (/chat/new?q=…). The crisis guardrail runs in the thread,
- * the single send choke point.
+ * Serif greeting + a care strip derived from REAL signals (due-check-in from
+ * days_since_symptom; a second card from last-visit follow-ups — hidden when
+ * absent, no fabricated dates), two quick task chips, a short AI-disclosure line
+ * (the full verbatim disclosure shows in-thread via SessionMeta), and a bottom
+ * composer that hands the first message to a new thread. Crisis guardrail runs
+ * in the thread (single choke point).
  */
 
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import {
-  Activity,
-  Bot,
-  CalendarClock,
-  ChevronRight,
-  ClipboardList,
-  LineChart,
-  Microscope,
-  NotebookPen,
-} from 'lucide-react-native';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Activity, Bot, CalendarClock, ChevronRight, ClipboardList, Microscope } from 'lucide-react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { ChatInput } from '@/components/chat/ChatInput';
 import { ProfileNudgeBanner } from '@/components/chat/ProfileNudgeBanner';
 import { WelcomeProfileModal } from '@/components/chat/WelcomeProfileModal';
 import { TopBar } from '@/components/common/TopBar';
-import { Colors, Fonts, Radius } from '@/constants/theme';
+import { IconCircle } from '@/components/ui/IconCircle';
+import { Screen } from '@/components/ui/Screen';
+import { SectionLabel } from '@/components/ui/SectionLabel';
+import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { useCareSnapshot, useHero, useProfile } from '@/hooks/useCare';
 import { NEW_CONVERSATION } from '@/hooks/useChat';
 import { useWelcomePromptSeen } from '@/hooks/useWelcomePromptSeen';
 import { fetchConsentStatus } from '@/lib/api/consent';
-import { AI_DISCLOSURE_BANNER } from '@shared/disclaimers';
 
 export default function HomeScreen() {
   const hero = useHero();
@@ -63,114 +56,68 @@ export default function HomeScreen() {
   const hasStrip = checkinDue || pendingFollowups > 0 || !!lastVisitPretty;
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.surface }}>
-      <TopBar leading="menu" showFocusChip />
-
-      {showProfileNudge && <ProfileNudgeBanner onPress={() => router.push('/profile/build')} />}
-
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }} keyboardShouldPersistTaps="handled">
-          {/* Greeting */}
-          <View style={{ paddingTop: 6 }}>
-            <Text style={{ fontFamily: Fonts.serifBold, fontSize: 28, lineHeight: 36, color: Colors.textPrimary }}>
-              {firstName ? `Hi ${firstName} —` : 'Hi —'}
-            </Text>
-            <Text style={{ fontFamily: Fonts.serif, fontSize: 28, lineHeight: 36, color: Colors.textSecondary }}>
-              how are you feeling today?
-            </Text>
-          </View>
-
-          {/* Care strip (derived, hides when no data) */}
-          {hasStrip && (
-            <View style={{ flexDirection: 'row', gap: 9 }}>
-              {checkinDue ? (
-                <StripCard
-                  tone="accent"
-                  label="DUE TODAY"
-                  Icon={Activity}
-                  title="Wellness check-in"
-                  sub="Takes about 2 minutes"
-                  onPress={() => router.push('/tools/screening')}
-                />
-              ) : (
-                <StripCard
-                  label="LATEST CHECK-IN"
-                  Icon={Activity}
-                  title={days === 0 ? 'Today' : `${days}d ago`}
-                  sub="Tap to view My Care"
-                  onPress={() => router.push('/care')}
-                />
-              )}
-              {pendingFollowups > 0 ? (
-                <StripCard
-                  label="FROM LAST VISIT"
-                  Icon={CalendarClock}
-                  title={`${pendingFollowups} follow-up${pendingFollowups > 1 ? 's' : ''}`}
-                  sub="Prep pre-visit questions"
-                  onPress={() => router.push('/tools/previsit')}
-                />
-              ) : lastVisitPretty ? (
-                <StripCard
-                  label="LAST VISIT"
-                  Icon={CalendarClock}
-                  title={lastVisitPretty}
-                  sub="Tap to view My Care"
-                  onPress={() => router.push('/care')}
-                />
-              ) : (
-                <View style={{ flex: 1 }} />
-              )}
-            </View>
-          )}
-
-          {/* Task chips */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 2 }}>
-            <Text style={{ fontSize: 10.5, fontFamily: Fonts.sansSemiBold, letterSpacing: 0.6, color: Colors.textMuted }}>
-              GET SOMETHING DONE
-            </Text>
-            <View style={{ flex: 1, height: 1, backgroundColor: Colors.border }} />
-            <Pressable onPress={() => router.push('/tools')} accessibilityRole="button" accessibilityLabel="All tools" hitSlop={6}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                <Text style={{ fontSize: 11.5, fontFamily: Fonts.sansSemiBold, color: Colors.primary }}>All tools</Text>
-                <ChevronRight size={12} color={Colors.primary} />
-              </View>
-            </Pressable>
-          </View>
-
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 9 }}>
-            <Chip Icon={Microscope} label="Find trials" onPress={() => router.push('/tools/clinical-trials')} />
-            <Chip Icon={ClipboardList} label="Pre-visit questions" onPress={() => router.push('/tools/previsit')} />
-            <Chip Icon={NotebookPen} label="Visit recap" onPress={() => router.push('/tools/visit-recap')} />
-            <Chip Icon={LineChart} label="My trends" onPress={() => router.push('/tools/trends')} />
-          </View>
-
-          {/* Verbatim AI disclosure */}
-          <View
-            style={{
-              flexDirection: 'row',
-              gap: 8,
-              alignItems: 'flex-start',
-              alignSelf: 'center',
-              maxWidth: 360,
-              backgroundColor: Colors.sidebarBg,
-              borderRadius: Radius.pill,
-              paddingVertical: 8,
-              paddingHorizontal: 13,
-              marginTop: 2,
-            }}>
-            <Bot size={13} color={Colors.primary} style={{ marginTop: 1 }} />
-            <Text style={{ flex: 1, fontSize: 11, lineHeight: 15, color: Colors.textSecondary }}>{AI_DISCLOSURE_BANNER}</Text>
-          </View>
-        </ScrollView>
-
+    <Screen
+      header={<TopBar leading="menu" showFocusChip />}
+      footer={
         <ChatInput
           onSend={startThread}
           disabled={chatDisabled}
-          placeholder={
-            ack.data?.cancer_display ? `Ask about ${ack.data.cancer_display.toLowerCase()}, or say how you feel…` : 'Ask anything, or say how you feel…'
-          }
+          placeholder={ack.data?.cancer_display ? `Ask about ${ack.data.cancer_display.toLowerCase()}, or say how you feel…` : 'Ask anything, or say how you feel…'}
         />
-      </KeyboardAvoidingView>
+      }
+      keyboardAvoiding
+      gap={Spacing.lg}>
+      {showProfileNudge && <ProfileNudgeBanner onPress={() => router.push('/profile/build')} />}
+
+      {/* Greeting */}
+      <View style={{ paddingTop: Spacing.xs }}>
+        <Text style={{ fontFamily: Fonts.serifBold, fontSize: FontSize.h1, lineHeight: 36, color: Colors.textPrimary }}>
+          {firstName ? `Hi ${firstName} —` : 'Hi —'}
+        </Text>
+        <Text style={{ fontFamily: Fonts.serif, fontSize: FontSize.h1, lineHeight: 36, color: Colors.textSecondary }}>
+          how are you feeling today?
+        </Text>
+      </View>
+
+      {/* Care strip — derived, hides when no data */}
+      {hasStrip && (
+        <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+          {checkinDue ? (
+            <StripCard tone="accent" label="DUE TODAY" Icon={Activity} title="Wellness check-in" onPress={() => router.push('/tools/screening')} />
+          ) : (
+            <StripCard label="LATEST CHECK-IN" Icon={Activity} title={days === 0 ? 'Today' : `${days}d ago`} onPress={() => router.push('/care')} />
+          )}
+          {pendingFollowups > 0 ? (
+            <StripCard label="FROM LAST VISIT" Icon={CalendarClock} title={`${pendingFollowups} follow-up${pendingFollowups > 1 ? 's' : ''}`} onPress={() => router.push('/tools/previsit')} />
+          ) : lastVisitPretty ? (
+            <StripCard label="LAST VISIT" Icon={CalendarClock} title={lastVisitPretty} onPress={() => router.push('/care')} />
+          ) : (
+            <View style={{ flex: 1 }} />
+          )}
+        </View>
+      )}
+
+      {/* Two quick task chips */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+        <SectionLabel>Get something done</SectionLabel>
+        <View style={{ flex: 1, height: 1, backgroundColor: Colors.border }} />
+        <Pressable onPress={() => router.push('/tools')} accessibilityRole="button" accessibilityLabel="All tools" hitSlop={6}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+            <Text style={{ fontSize: FontSize.sm, fontFamily: Fonts.sansSemiBold, color: Colors.primary }}>All tools</Text>
+            <ChevronRight size={12} color={Colors.primary} />
+          </View>
+        </Pressable>
+      </View>
+      <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+        <Chip Icon={Microscope} label="Find trials" onPress={() => router.push('/tools/clinical-trials')} />
+        <Chip Icon={ClipboardList} label="Pre-visit questions" onPress={() => router.push('/tools/previsit')} />
+      </View>
+
+      {/* Short AI disclosure (full verbatim disclosure lands in-thread via SessionMeta) */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, alignSelf: 'center', backgroundColor: Colors.sidebarBg, borderRadius: Radius.pill, paddingVertical: 6, paddingHorizontal: Spacing.md }}>
+        <Bot size={13} color={Colors.primary} />
+        <Text style={{ fontSize: FontSize.xs, color: Colors.textSecondary }}>AI support tool · not medical advice</Text>
+      </View>
 
       <WelcomeProfileModal
         visible={welcomeOpen}
@@ -180,45 +127,30 @@ export default function HomeScreen() {
         }}
         onSkip={() => welcomePrompt.markSeen()}
       />
-    </View>
+    </Screen>
   );
 }
 
-function StripCard({
-  label,
-  title,
-  sub,
-  Icon,
-  tone,
-  onPress,
-}: {
-  label: string;
-  title: string;
-  sub: string;
-  Icon: typeof Activity;
-  tone?: 'accent';
-  onPress: () => void;
-}) {
+function StripCard({ label, title, Icon, tone, onPress }: { label: string; title: string; Icon: typeof Activity; tone?: 'accent'; onPress: () => void }) {
   const accent = tone === 'accent';
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${label}: ${title}`} style={{ flex: 1 }}>
       <View
         style={{
           borderRadius: Radius.lg,
-          padding: 12,
-          gap: 7,
+          padding: Spacing.md,
+          gap: Spacing.sm,
           backgroundColor: accent ? Colors.sosBg : Colors.sidebarBg,
           borderWidth: accent ? 1 : 0,
           borderColor: accent ? Colors.sosBorder : 'transparent',
         }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Icon size={15} color={accent ? Colors.warning : Colors.primary} />
-          <Text style={{ fontSize: 10.5, fontFamily: Fonts.sansSemiBold, letterSpacing: 0.4, color: accent ? Colors.warning : Colors.textMuted }}>
+          <Text style={{ fontSize: FontSize.xs, fontFamily: Fonts.sansSemiBold, letterSpacing: 0.4, color: accent ? Colors.warning : Colors.textMuted }}>
             {label}
           </Text>
         </View>
-        <Text style={{ fontSize: 13.5, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary, lineHeight: 18 }}>{title}</Text>
-        <Text style={{ fontSize: 12, color: Colors.textSecondary }}>{sub}</Text>
+        <Text style={{ fontSize: FontSize.md, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary }}>{title}</Text>
       </View>
     </Pressable>
   );
@@ -226,22 +158,12 @@ function StripCard({
 
 function Chip({ Icon, label, onPress }: { Icon: typeof Activity; label: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={{ width: '48%' }}>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 9,
-          borderWidth: 1,
-          borderColor: Colors.border,
-          borderRadius: Radius.lg,
-          backgroundColor: Colors.surfaceMuted,
-          padding: 12,
-        }}>
-        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.sidebarBg, alignItems: 'center', justifyContent: 'center' }}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={{ flex: 1 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.lg, backgroundColor: Colors.surfaceMuted, padding: Spacing.md }}>
+        <IconCircle size={32} bg={Colors.sidebarBg}>
           <Icon size={16} color={Colors.primary} />
-        </View>
-        <Text numberOfLines={1} style={{ flex: 1, fontSize: 12.5, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary }}>
+        </IconCircle>
+        <Text numberOfLines={1} style={{ flex: 1, fontSize: FontSize.base, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary }}>
           {label}
         </Text>
       </View>
