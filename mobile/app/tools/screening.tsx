@@ -602,7 +602,7 @@ function ResultPanel({
         label="Back to chat"
         variant="ghost"
         fullWidth
-        onPress={() => router.replace('/(tabs)')}
+        onPress={() => router.replace('/')}
       />
     </View>
   );

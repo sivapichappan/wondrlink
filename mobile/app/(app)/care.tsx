@@ -29,7 +29,9 @@ export default function CareScreen() {
   const qc = useQueryClient();
 
   const askSuggestion = (q: string) => {
-    router.push({ pathname: '/(tabs)', params: { q } });
+    // Interim (Phase 1b): Home ('/') consumes ?q= and auto-sends.
+    // Phase 2 repoints this to the /chat thread route.
+    router.push({ pathname: '/', params: { q } });
   };
 
   const cancerDisplay =

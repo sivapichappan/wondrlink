@@ -132,7 +132,7 @@ export default function Consent() {
         consent_terms: terms,
       });
       await qc.invalidateQueries({ queryKey: ['acknowledgement'] });
-      // Root layout will route to (tabs) on next render.
+      // Root layout will route to the app home ('/') on next render.
     } catch (e) {
       if (e instanceof ApiError && e.status === 422) {
         router.replace('/(onboarding)/state-restricted');

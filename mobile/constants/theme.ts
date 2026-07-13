@@ -38,6 +38,15 @@ export const Colors = {
   warningBg: '#FEF3C7',
   emergencyBg: '#FFEDEC',
   dangerLight: '#FEE2E2',
+
+  // SOS / Help pill (persistent top-bar affordance) — translucent accent so it
+  // reads as urgent-but-calm. fg reuses `warning` (#92400E).
+  sosBg: 'rgba(232,146,96,0.16)',
+  sosBorder: 'rgba(232,146,96,0.45)',
+  sosSolid: '#E89260',
+
+  // Overlay scrim behind the drawer + bottom sheets.
+  scrim: 'rgba(15,32,28,0.45)',
 } as const;
 
 export const Fonts = {

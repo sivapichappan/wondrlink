@@ -7,7 +7,9 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import '../global.css';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
@@ -72,7 +74,7 @@ function RootGate() {
     // auth/onboarding; otherwise leave them on whatever root-stack screen
     // they pushed (profile, tools, settings) so the back-stack behaves.
     if (top === '(auth)' || top === '(onboarding)' || top == null) {
-      router.replace('/(tabs)');
+      router.replace('/');
     }
   }, [
     ack.sessionLoading,
@@ -101,7 +103,7 @@ function RootGate() {
       }}>
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(app)" options={{ headerShown: false }} />
       <Stack.Screen name="profile" options={{ headerShown: false }} />
       <Stack.Screen name="tools" options={{ headerShown: false }} />
       <Stack.Screen name="settings" options={{ headerShown: false }} />
@@ -129,14 +131,18 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider value={navTheme}>
-          <OfflineBanner />
-          <RootGate />
-          <StatusBar style="dark" />
-        </ThemeProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ErrorBoundary>
+          <QueryClientProvider client={queryClient}>
+            <ThemeProvider value={navTheme}>
+              <OfflineBanner />
+              <RootGate />
+              <StatusBar style="dark" />
+            </ThemeProvider>
+          </QueryClientProvider>
+        </ErrorBoundary>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
