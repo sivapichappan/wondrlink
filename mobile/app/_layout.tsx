@@ -102,6 +102,8 @@ function RootGate() {
         headerTintColor: Colors.textPrimary,
         headerShadowVisible: false,
         contentStyle: { backgroundColor: Colors.surface },
+        animation: 'slide_from_right',
+        animationDuration: 250,
       }}>
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />

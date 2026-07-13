@@ -72,7 +72,7 @@ export function TopBar({
         </Pressable>
       ) : (
         <Pressable
-          onPress={onBack ?? (() => router.back())}
+          onPress={onBack ?? (() => (router.canGoBack() ? router.back() : router.replace('/')))}
           accessibilityRole="button"
           accessibilityLabel={`Back to ${backLabel}`}
           hitSlop={8}

@@ -22,6 +22,8 @@ export default function AppLayout() {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: Colors.surface },
+          animation: 'slide_from_right',
+          animationDuration: 250,
         }}
       />
       <AppDrawer />

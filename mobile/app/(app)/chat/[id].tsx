@@ -12,6 +12,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { SquarePen } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { BotResponseCard } from '@/components/chat/BotResponseCard';
 import { ChatInput } from '@/components/chat/ChatInput';
@@ -73,15 +74,15 @@ export default function ChatThreadScreen() {
   const renderItem = ({ item }: { item: ChatHistoryMessage }) => {
     if (item.role === 'user') {
       return (
-        <View style={{ paddingHorizontal: 12, paddingVertical: 4 }}>
+        <Animated.View entering={FadeIn.duration(180)} style={{ paddingHorizontal: 12, paddingVertical: 4 }}>
           <MessageBubble role="user" content={item.content} />
-        </View>
+        </Animated.View>
       );
     }
     return (
-      <View style={{ paddingHorizontal: 12, paddingVertical: 6 }}>
+      <Animated.View entering={FadeIn.duration(180)} style={{ paddingHorizontal: 12, paddingVertical: 6 }}>
         <BotResponseCard message={item} onPickFollowup={(t) => guardedSend(t)} />
-      </View>
+      </Animated.View>
     );
   };
 
@@ -90,7 +91,6 @@ export default function ChatThreadScreen() {
       <TopBar
         leading="back"
         backLabel="Home"
-        onBack={() => router.replace('/')}
         title={title ?? 'New chat'}
         subtitle={ack.data?.cancer_display ?? undefined}
         trailing={

@@ -12,6 +12,8 @@ export default function SettingsLayout() {
         headerTintColor: Colors.textPrimary,
         headerShadowVisible: false,
         contentStyle: { backgroundColor: Colors.surface },
+        animation: 'slide_from_right',
+        animationDuration: 250,
         headerLeft: () => <HeaderBack label="Settings" />,
         headerRight: () => <HeaderSos />,
       }}
