@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TrialCard } from '@/components/trials/TrialCard';
 import { Button } from '@/components/ui/Button';
-import { Colors, Fonts, Radius } from '@/constants/theme';
+import { Colors, FontSize, Fonts, Radius } from '@/constants/theme';
 import { useWatchlist, type SavedTrial } from '@/hooks/useWatchlist';
 import { ApiError } from '@/lib/api/client';
 import { fetchClinicalTrials } from '@/lib/api/tools';
@@ -138,18 +138,10 @@ export default function ClinicalTrialsScreen() {
             })}
           </View>
           {q.data && !q.isError && (
-            <View style={{ gap: 2 }}>
-              <Text style={{ fontSize: 13, color: Colors.textPrimary }}>
-                <Text style={{ fontFamily: Fonts.sansBold, color: Colors.primary }}>{count}</Text>{' '}
-                recruiting trials {radiusMeta.phrase}
-              </Text>
-              {shown.length > 0 && (
-                <Text style={{ fontSize: 12, color: Colors.textMuted }}>
-                  Showing your top {shown.length} {shown.length === 1 ? 'match' : 'matches'} · sorted
-                  by how well they fit you
-                </Text>
-              )}
-            </View>
+            <Text style={{ fontSize: FontSize.base, color: Colors.textPrimary }}>
+              <Text style={{ fontFamily: Fonts.sansBold, color: Colors.primary }}>{count}</Text> recruiting trials {radiusMeta.phrase}
+              {shown.length > 0 ? ` · showing your top ${shown.length}` : ''}
+            </Text>
           )}
         </View>
 
@@ -225,10 +217,10 @@ function TabPill({
           borderColor: active ? Colors.primarySoft : Colors.border,
         }}>
         {icon && <Bookmark size={13} color={active ? Colors.primaryPressed : Colors.textSecondary} />}
-        <Text style={{ fontSize: 12.5, fontFamily: Fonts.sansSemiBold, color: active ? Colors.primaryPressed : Colors.textSecondary }}>
+        <Text style={{ fontSize: FontSize.sm, fontFamily: Fonts.sansSemiBold, color: active ? Colors.primaryPressed : Colors.textSecondary }}>
           {label}
         </Text>
-        <Text style={{ fontSize: 12.5, color: active ? Colors.primaryPressed : Colors.textMuted, opacity: 0.75 }}>{count}</Text>
+        <Text style={{ fontSize: FontSize.sm, color: active ? Colors.primaryPressed : Colors.textMuted, opacity: 0.75 }}>{count}</Text>
       </View>
     </Pressable>
   );
@@ -240,7 +232,7 @@ function SavedList({ trials, onRemove }: { trials: SavedTrial[]; onRemove: (nctI
       <View style={{ padding: 24, alignItems: 'center', gap: 6 }}>
         <Bookmark size={28} color={Colors.textMuted} />
         <Text style={{ fontSize: 14, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary, marginTop: 4 }}>No saved trials yet</Text>
-        <Text style={{ fontSize: 12.5, color: Colors.textMuted, textAlign: 'center', lineHeight: 18 }}>
+        <Text style={{ fontSize: FontSize.sm, color: Colors.textMuted, textAlign: 'center', lineHeight: 18 }}>
           Tap Save on any match to keep it here for later.
         </Text>
       </View>
@@ -265,7 +257,7 @@ function SavedList({ trials, onRemove }: { trials: SavedTrial[]; onRemove: (nctI
               <Pressable style={{ flex: 1 }} onPress={() => Linking.openURL(url).catch(() => {})} accessibilityRole="button" accessibilityLabel="View on ClinicalTrials.gov">
                 <View style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderRadius: Radius.md, backgroundColor: Colors.primary }}>
                   <ExternalLink size={15} color={Colors.surface} />
-                  <Text style={{ color: Colors.surface, fontSize: 13.5, fontFamily: Fonts.sansSemiBold }}>View on ClinicalTrials.gov</Text>
+                  <Text style={{ color: Colors.surface, fontSize: FontSize.md, fontFamily: Fonts.sansSemiBold }}>View on ClinicalTrials.gov</Text>
                 </View>
               </Pressable>
               <Pressable onPress={() => onRemove(t.nct_id)} accessibilityRole="button" accessibilityLabel="Remove from saved">
