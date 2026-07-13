@@ -1,13 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { Stack, router } from 'expo-router';
+import { Bookmark, ExternalLink, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TrialCard } from '@/components/trials/TrialCard';
 import { Button } from '@/components/ui/Button';
 import { Colors, Fonts, Radius } from '@/constants/theme';
-import { useWatchlist } from '@/hooks/useWatchlist';
+import { useWatchlist, type SavedTrial } from '@/hooks/useWatchlist';
 import { ApiError } from '@/lib/api/client';
 import { fetchClinicalTrials } from '@/lib/api/tools';
 import type { ChatClinicalTrial, TrialRadius } from '@shared/types';
@@ -26,7 +27,8 @@ const within = (t: ChatClinicalTrial, radius: TrialRadius) =>
 
 export default function ClinicalTrialsScreen() {
   const [radius, setRadius] = useState<TrialRadius>(100);
-  const { isSaved, save, remove } = useWatchlist();
+  const [tab, setTab] = useState<'matches' | 'saved'>('matches');
+  const { trials: savedTrials, isSaved, save, remove } = useWatchlist();
 
   // One fetch: the patient's top matches nationwide (with distances) + the
   // per-radius recruiting totals. The radius control filters this pool
@@ -53,15 +55,26 @@ export default function ClinicalTrialsScreen() {
       <Stack.Screen options={{ title: 'Clinical trials', headerBackTitle: 'Tools' }} />
       <ScrollView>
         {/* Header */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 22, gap: 3 }}>
-          <Text style={{ fontFamily: Fonts.sansBold, fontSize: 18, color: Colors.textPrimary }}>
-            Studies that match you
-          </Text>
-          <Text style={{ fontSize: 12, color: Colors.textMuted }}>
-            Matched to your health profile · strongest first
-          </Text>
+        <View style={{ paddingHorizontal: 16, paddingTop: 22, gap: 10 }}>
+          <View style={{ gap: 3 }}>
+            <Text style={{ fontFamily: Fonts.sansBold, fontSize: 18, color: Colors.textPrimary }}>
+              Studies that match you
+            </Text>
+            <Text style={{ fontSize: 12, color: Colors.textMuted }}>
+              Matched to your health profile · strongest first
+            </Text>
+          </View>
+          {/* Matches / Saved toggle */}
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TabPill label="Matches" count={pool.length} active={tab === 'matches'} onPress={() => setTab('matches')} />
+            <TabPill label="Saved" count={savedTrials.length} active={tab === 'saved'} icon onPress={() => setTab('saved')} />
+          </View>
         </View>
 
+        {tab === 'saved' ? (
+          <SavedList trials={savedTrials} onRemove={remove} />
+        ) : (
+        <>
         {/* Filter block */}
         <View
           style={{
@@ -91,33 +104,35 @@ export default function ClinicalTrialsScreen() {
                   onPress={() => setRadius(r.value)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
-                  style={{
-                    flex: 1,
-                    minHeight: 44,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: Radius.sm,
-                    borderWidth: 1,
-                    borderColor: active ? Colors.border : 'transparent',
-                    backgroundColor: active ? Colors.surface : 'transparent',
-                    ...(active
-                      ? {
-                          shadowColor: Colors.textPrimary,
-                          shadowOpacity: 0.1,
-                          shadowRadius: 2,
-                          shadowOffset: { width: 0, height: 1 },
-                          elevation: 1,
-                        }
-                      : null),
-                  }}>
-                  <Text
+                  style={{ flex: 1 }}>
+                  <View
                     style={{
-                      fontSize: 12,
-                      color: active ? Colors.primary : Colors.textMuted,
-                      fontFamily: active ? Fonts.sansBold : Fonts.sansMedium,
+                      minHeight: 44,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: Radius.sm,
+                      borderWidth: 1,
+                      borderColor: active ? Colors.border : 'transparent',
+                      backgroundColor: active ? Colors.surface : 'transparent',
+                      ...(active
+                        ? {
+                            shadowColor: Colors.textPrimary,
+                            shadowOpacity: 0.1,
+                            shadowRadius: 2,
+                            shadowOffset: { width: 0, height: 1 },
+                            elevation: 1,
+                          }
+                        : null),
                     }}>
-                    {r.label}
-                  </Text>
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: active ? Colors.primary : Colors.textMuted,
+                        fontFamily: active ? Fonts.sansBold : Fonts.sansMedium,
+                      }}>
+                      {r.label}
+                    </Text>
+                  </View>
                 </Pressable>
               );
             })}
@@ -154,7 +169,7 @@ export default function ClinicalTrialsScreen() {
           {q.data && !q.isError && pool.length === 0 && (
             <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 19 }}>
               No matching trials right now. Try refining your profile (stage, biomarkers, ZIP code)
-              in the Care tab.
+              in My Care.
             </Text>
           )}
 
@@ -175,8 +190,94 @@ export default function ClinicalTrialsScreen() {
 
           {hidden.length > 0 && <WidenCallout hidden={hidden} onWiden={setRadius} />}
         </View>
+        </>
+        )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function TabPill({
+  label,
+  count,
+  active,
+  icon,
+  onPress,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  icon?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityState={{ selected: active }} accessibilityLabel={`${label}, ${count}`}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+          paddingHorizontal: 14,
+          paddingVertical: 7,
+          borderRadius: Radius.pill,
+          backgroundColor: active ? Colors.primarySoft : Colors.surface,
+          borderWidth: 1,
+          borderColor: active ? Colors.primarySoft : Colors.border,
+        }}>
+        {icon && <Bookmark size={13} color={active ? Colors.primaryPressed : Colors.textSecondary} />}
+        <Text style={{ fontSize: 12.5, fontFamily: Fonts.sansSemiBold, color: active ? Colors.primaryPressed : Colors.textSecondary }}>
+          {label}
+        </Text>
+        <Text style={{ fontSize: 12.5, color: active ? Colors.primaryPressed : Colors.textMuted, opacity: 0.75 }}>{count}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function SavedList({ trials, onRemove }: { trials: SavedTrial[]; onRemove: (nctId: string) => void }) {
+  if (trials.length === 0) {
+    return (
+      <View style={{ padding: 24, alignItems: 'center', gap: 6 }}>
+        <Bookmark size={28} color={Colors.textMuted} />
+        <Text style={{ fontSize: 14, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary, marginTop: 4 }}>No saved trials yet</Text>
+        <Text style={{ fontSize: 12.5, color: Colors.textMuted, textAlign: 'center', lineHeight: 18 }}>
+          Tap Save on any match to keep it here for later.
+        </Text>
+      </View>
+    );
+  }
+  return (
+    <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 26, gap: 12 }}>
+      {trials.map((t) => {
+        const url = t.url || `https://clinicaltrials.gov/study/${t.nct_id}`;
+        return (
+          <View key={t.nct_id} style={{ backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.lg, padding: 14, gap: 10 }}>
+            <Text style={{ fontSize: 14, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary, lineHeight: 19 }}>{t.title}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {t.phase ? (
+                <View style={{ backgroundColor: Colors.sidebarBg, borderRadius: Radius.pill, paddingHorizontal: 9, paddingVertical: 3 }}>
+                  <Text style={{ fontSize: 11, fontFamily: Fonts.sansSemiBold, color: Colors.primary }}>{t.phase}</Text>
+                </View>
+              ) : null}
+              <Text style={{ fontSize: 11, color: Colors.textMuted }}>{t.nct_id}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Pressable style={{ flex: 1 }} onPress={() => Linking.openURL(url).catch(() => {})} accessibilityRole="button" accessibilityLabel="View on ClinicalTrials.gov">
+                <View style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderRadius: Radius.md, backgroundColor: Colors.primary }}>
+                  <ExternalLink size={15} color={Colors.surface} />
+                  <Text style={{ color: Colors.surface, fontSize: 13.5, fontFamily: Fonts.sansSemiBold }}>View on ClinicalTrials.gov</Text>
+                </View>
+              </Pressable>
+              <Pressable onPress={() => onRemove(t.nct_id)} accessibilityRole="button" accessibilityLabel="Remove from saved">
+                <View style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.md, borderWidth: 1.5, borderColor: Colors.border }}>
+                  <Trash2 size={17} color={Colors.textMuted} />
+                </View>
+              </Pressable>
+            </View>
+          </View>
+        );
+      })}
+    </View>
   );
 }
 
@@ -221,19 +322,22 @@ function WidenCallout({
       <Pressable
         onPress={() => onWiden(target)}
         accessibilityRole="button"
-        style={({ pressed }) => ({
-          minHeight: 44,
-          paddingHorizontal: 16,
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: Radius.sm,
-          borderWidth: 1.5,
-          borderColor: Colors.primary,
-          backgroundColor: pressed ? Colors.sidebarBg : Colors.surface,
-        })}>
-        <Text style={{ color: Colors.primary, fontSize: 13, fontFamily: Fonts.sansSemiBold }}>
-          {targetLabel}
-        </Text>
+        android_ripple={{ color: Colors.sidebarBg }}>
+        <View
+          style={{
+            minHeight: 44,
+            paddingHorizontal: 16,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: Radius.sm,
+            borderWidth: 1.5,
+            borderColor: Colors.primary,
+            backgroundColor: Colors.surface,
+          }}>
+          <Text style={{ color: Colors.primary, fontSize: 13, fontFamily: Fonts.sansSemiBold }}>
+            {targetLabel}
+          </Text>
+        </View>
       </Pressable>
     </View>
   );

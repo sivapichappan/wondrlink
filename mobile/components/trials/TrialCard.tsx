@@ -198,24 +198,29 @@ export function TrialCard({ trial: t, saved, onToggleSave }: Props) {
           ))}
         </View>
 
-        {/* Actions */}
+        {/* Actions. NOTE: visual styling (bg/border) lives on a static inner
+            View — NativeWind strips styles returned from a Pressable style
+            function, which would render the buttons invisible-but-tappable. */}
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <Pressable
             onPress={() => Linking.openURL(url).catch(() => {})}
             accessibilityRole="button"
             accessibilityLabel="View on ClinicalTrials.gov"
-            style={({ pressed }) => ({
-              flex: 1,
-              minHeight: 48,
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingHorizontal: 10,
-              borderRadius: Radius.md,
-              backgroundColor: pressed ? Colors.primaryPressed : Colors.primary,
-            })}>
-            <Text style={{ color: Colors.surface, fontFamily: Fonts.sansSemiBold, fontSize: 14 }}>
-              View on ClinicalTrials.gov
-            </Text>
+            android_ripple={{ color: 'rgba(255,255,255,0.18)' }}
+            style={{ flex: 1 }}>
+            <View
+              style={{
+                minHeight: 48,
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingHorizontal: 10,
+                borderRadius: Radius.md,
+                backgroundColor: Colors.primary,
+              }}>
+              <Text style={{ color: Colors.surface, fontFamily: Fonts.sansSemiBold, fontSize: 14 }}>
+                View on ClinicalTrials.gov
+              </Text>
+            </View>
           </Pressable>
           {onToggleSave && (
             <Pressable
@@ -223,24 +228,24 @@ export function TrialCard({ trial: t, saved, onToggleSave }: Props) {
               accessibilityRole="button"
               accessibilityState={{ selected: !!saved }}
               accessibilityLabel={saved ? 'Saved' : 'Save trial'}
-              style={({ pressed }) => ({
-                minWidth: 86,
-                minHeight: 48,
-                alignItems: 'center',
-                justifyContent: 'center',
-                paddingHorizontal: 12,
-                borderRadius: Radius.md,
-                borderWidth: 1.5,
-                borderColor: saved ? Colors.primarySoft : Colors.primary,
-                backgroundColor: pressed
-                  ? Colors.sidebarBg
-                  : saved
-                    ? Colors.primarySoft
-                    : Colors.surface,
-              })}>
-              <Text style={{ color: Colors.primary, fontFamily: Fonts.sansSemiBold, fontSize: 14 }}>
-                {saved ? 'Saved ✓' : 'Save'}
-              </Text>
+              hitSlop={8}
+              android_ripple={{ color: Colors.sidebarBg }}>
+              <View
+                style={{
+                  minWidth: 86,
+                  minHeight: 48,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 12,
+                  borderRadius: Radius.md,
+                  borderWidth: 1.5,
+                  borderColor: saved ? Colors.primarySoft : Colors.primary,
+                  backgroundColor: saved ? Colors.primarySoft : Colors.surface,
+                }}>
+                <Text style={{ color: Colors.primary, fontFamily: Fonts.sansSemiBold, fontSize: 14 }}>
+                  {saved ? 'Saved ✓' : 'Save'}
+                </Text>
+              </View>
             </Pressable>
           )}
         </View>

@@ -11,24 +11,20 @@ import { Stack } from 'expo-router';
 import { View } from 'react-native';
 
 import { AppDrawer } from '@/components/common/AppDrawer';
-import { HelpSheet } from '@/components/common/HelpSheet';
-import { NavOverlayProvider } from '@/components/common/NavOverlay';
 import { Colors } from '@/constants/theme';
 
 export default function AppLayout() {
+  // NavOverlayProvider + HelpSheet live at the ROOT layout (reachable
+  // everywhere). The drawer is app-group-only, so it stays mounted here.
   return (
-    <NavOverlayProvider>
-      <View style={{ flex: 1, backgroundColor: Colors.surface }}>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: Colors.surface },
-          }}
-        />
-        {/* Overlays: mounted once, float above every screen in this group. */}
-        <AppDrawer />
-        <HelpSheet />
-      </View>
-    </NavOverlayProvider>
+    <View style={{ flex: 1, backgroundColor: Colors.surface }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: Colors.surface },
+        }}
+      />
+      <AppDrawer />
+    </View>
   );
 }

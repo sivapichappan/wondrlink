@@ -13,6 +13,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import '../global.css';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { HelpSheet } from '@/components/common/HelpSheet';
+import { NavOverlayProvider } from '@/components/common/NavOverlay';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { Colors } from '@/constants/theme';
 import { useAcknowledgement } from '@/hooks/useAcknowledgement';
@@ -136,9 +138,14 @@ export default function RootLayout() {
         <ErrorBoundary>
           <QueryClientProvider client={queryClient}>
             <ThemeProvider value={navTheme}>
-              <OfflineBanner />
-              <RootGate />
-              <StatusBar style="dark" />
+              {/* NavOverlay lives at the root so the SOS/Help sheet is reachable
+                  from EVERY stack (app, tools, profile, settings). */}
+              <NavOverlayProvider>
+                <OfflineBanner />
+                <RootGate />
+                <HelpSheet />
+                <StatusBar style="dark" />
+              </NavOverlayProvider>
             </ThemeProvider>
           </QueryClientProvider>
         </ErrorBoundary>
