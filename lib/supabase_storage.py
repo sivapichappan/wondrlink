@@ -1,5 +1,6 @@
 # supabase_storage.py
 import logging
+import uuid
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from supabase_client import get_supabase_client, get_admin_client
@@ -601,12 +602,17 @@ def add_conversation(session_id: str, user_id: str, question: str, answer: str,
         return False
 
 
-def get_conversation_history(session_id: str, limit: int = 10) -> List[Dict[str, str]]:
+def get_conversation_history(session_id: str, user_id: Optional[str] = None,
+                             limit: int = 10) -> List[Dict[str, str]]:
     """
     Get recent conversation history for a session.
 
     Args:
         session_id: The chat session ID
+        user_id: The user's UUID. STRONGLY recommended — without it the lookup
+            resolves by session_id alone, which for the shared legacy
+            'default' session can return another user's conversation. The
+            deployed chat path always passes it (or uses the by-id helpers).
         limit: Maximum number of message pairs to return
 
     Returns:
@@ -615,12 +621,13 @@ def get_conversation_history(session_id: str, limit: int = 10) -> List[Dict[str,
     try:
         client = get_supabase_client()
 
-        # Find conversation by session_id
-        conv_result = client.table('conversations') \
+        # Find conversation by session_id (scoped to the user when provided).
+        conv_query = client.table('conversations') \
             .select('id') \
-            .eq('session_id', session_id) \
-            .limit(1) \
-            .execute()
+            .eq('session_id', session_id)
+        if user_id:
+            conv_query = conv_query.eq('user_id', user_id)
+        conv_result = conv_query.limit(1).execute()
 
         if not conv_result.data:
             return []
@@ -704,6 +711,315 @@ def clear_conversation_history(session_id: str, user_id: str) -> bool:
     except Exception as e:
         logger.error(f"Failed to clear conversation history: {e}")
         return False
+
+
+# -------------------------
+# Named Conversations (multi-conversation display model)
+# Promotes the conversations/messages tables from invisible LLM memory to the
+# user-facing thread store: New chat, Recents, Search, per-conversation titles.
+# All functions are user-scoped. New code keys on the conversation `id` (UUID),
+# not the legacy `session_id`.
+# -------------------------
+
+def _derive_title(text: str, max_len: int = 60) -> str:
+    """Make a short, human title from the first user message."""
+    collapsed = ' '.join((text or '').strip().split())
+    if len(collapsed) > max_len:
+        collapsed = collapsed[:max_len].rstrip() + '…'
+    return collapsed or 'New chat'
+
+
+def _now_iso() -> str:
+    return datetime.now().isoformat()
+
+
+def conversation_belongs_to_user(user_id: str, conversation_id: str) -> bool:
+    """True iff the conversation exists and is owned by the user."""
+    try:
+        client = get_admin_client()
+        res = client.table('conversations') \
+            .select('id') \
+            .eq('id', conversation_id) \
+            .eq('user_id', user_id) \
+            .limit(1) \
+            .execute()
+        return bool(res.data)
+    except Exception as e:
+        logger.error(f"Failed ownership check for conversation {conversation_id}: {e}")
+        return False
+
+
+def create_conversation(user_id: str, title: Optional[str] = None) -> Optional[str]:
+    """
+    Create a new named conversation for a user. Each conversation gets a unique
+    session_id (UUID) so it never collides with the legacy 'default' session.
+
+    Returns the conversation UUID, or None on error.
+    """
+    try:
+        client = get_admin_client()
+        row = {
+            'session_id': str(uuid.uuid4()),
+            'user_id': user_id,
+            'title': (title or 'New chat')[:120],
+            'is_active': True,
+        }
+        res = client.table('conversations').insert(row).execute()
+        if res.data:
+            return res.data[0]['id']
+        return None
+    except Exception as e:
+        logger.error(f"Failed to create conversation for user {user_id}: {e}")
+        return None
+
+
+def list_conversations(user_id: str, limit: int = 100) -> List[Dict[str, Any]]:
+    """List a user's conversations, most-recently-updated first."""
+    client = get_admin_client()
+    try:
+        res = client.table('conversations') \
+            .select('id, title, created_at, updated_at') \
+            .eq('user_id', user_id) \
+            .order('updated_at', desc=True) \
+            .limit(limit) \
+            .execute()
+        return res.data or []
+    except Exception as e:
+        # updated_at may not exist yet (migration not applied) — fall back.
+        logger.warning(f"list_conversations updated_at sort failed ({e}); using created_at")
+        try:
+            res = client.table('conversations') \
+                .select('id, title, created_at') \
+                .eq('user_id', user_id) \
+                .order('created_at', desc=True) \
+                .limit(limit) \
+                .execute()
+            return res.data or []
+        except Exception as e2:
+            logger.error(f"Failed to list conversations for user {user_id}: {e2}")
+            return []
+
+
+def get_conversation_messages(user_id: str, conversation_id: str,
+                              limit: int = 200) -> List[Dict[str, Any]]:
+    """
+    Display history for one conversation (user-scoped): role, content,
+    created_at, metadata — oldest first. Returns [] if the conversation is not
+    owned by the user.
+    """
+    try:
+        client = get_admin_client()
+        if not conversation_belongs_to_user(user_id, conversation_id):
+            return []
+        try:
+            res = client.table('messages') \
+                .select('role, content, created_at, metadata') \
+                .eq('conversation_id', conversation_id) \
+                .order('sequence_number', desc=False) \
+                .limit(limit) \
+                .execute()
+        except Exception:
+            # metadata column may not exist yet — retry without it.
+            res = client.table('messages') \
+                .select('role, content, created_at') \
+                .eq('conversation_id', conversation_id) \
+                .order('sequence_number', desc=False) \
+                .limit(limit) \
+                .execute()
+        return res.data or []
+    except Exception as e:
+        logger.error(f"Failed to get messages for conversation {conversation_id}: {e}")
+        return []
+
+
+def get_conversation_history_by_id(conversation_id: str, user_id: str,
+                                   limit: int = 10) -> List[Dict[str, str]]:
+    """
+    LLM-context history for one conversation (user-scoped), as {question,
+    answer, created_at} pairs, oldest first. Mirrors get_conversation_history
+    but keyed on the conversation id.
+    """
+    try:
+        client = get_admin_client()
+        if not conversation_belongs_to_user(user_id, conversation_id):
+            return []
+        result = client.table('messages') \
+            .select('role, content, created_at') \
+            .eq('conversation_id', conversation_id) \
+            .order('sequence_number', desc=True) \
+            .limit(limit * 2) \
+            .execute()
+        if not result.data:
+            return []
+        messages = list(reversed(result.data))
+        pairs: List[Dict[str, str]] = []
+        i = 0
+        while i < len(messages) - 1:
+            if messages[i]['role'] == 'user' and messages[i + 1]['role'] == 'assistant':
+                pairs.append({
+                    'question': messages[i]['content'],
+                    'answer': messages[i + 1]['content'],
+                    'created_at': messages[i]['created_at'],
+                })
+                i += 2
+            else:
+                i += 1
+        return pairs
+    except Exception as e:
+        logger.error(f"Failed to get history for conversation {conversation_id}: {e}")
+        return []
+
+
+def append_qa_to_conversation(conversation_id: str, user_id: str, question: str,
+                              answer: str, metadata: dict = None) -> bool:
+    """
+    Append a user question + assistant answer (as two messages) to a specific
+    conversation. Stores assistant `metadata` (sources/trials/etc.), bumps
+    `updated_at`, and auto-titles the conversation from the first message.
+    User-scoped: no-ops if the conversation isn't owned by the user.
+    """
+    try:
+        client = get_admin_client()
+        if not conversation_belongs_to_user(user_id, conversation_id):
+            logger.warning(f"append_qa: conversation {conversation_id} not owned by user; skipping")
+            return False
+
+        count_result = client.table('messages') \
+            .select('id', count='exact') \
+            .eq('conversation_id', conversation_id) \
+            .execute()
+        next_seq = (count_result.count or 0) + 1
+
+        client.table('messages').insert({
+            'conversation_id': conversation_id,
+            'user_id': user_id,
+            'role': 'user',
+            'content': question,
+            'sequence_number': next_seq,
+        }).execute()
+
+        assistant_row = {
+            'conversation_id': conversation_id,
+            'user_id': user_id,
+            'role': 'assistant',
+            'content': answer,
+            'sequence_number': next_seq + 1,
+        }
+        if metadata:
+            assistant_row['metadata'] = metadata
+        try:
+            client.table('messages').insert(assistant_row).execute()
+        except Exception:
+            # metadata column may not exist yet — retry without it.
+            assistant_row.pop('metadata', None)
+            client.table('messages').insert(assistant_row).execute()
+
+        # Bump updated_at (Recents sort) and auto-title on the first pair.
+        updates: Dict[str, Any] = {'updated_at': _now_iso()}
+        if next_seq == 1:
+            updates['title'] = _derive_title(question)
+        try:
+            client.table('conversations').update(updates) \
+                .eq('id', conversation_id).eq('user_id', user_id).execute()
+        except Exception:
+            # updated_at column may not exist yet — retry with title only.
+            if 'title' in updates:
+                try:
+                    client.table('conversations').update({'title': updates['title']}) \
+                        .eq('id', conversation_id).eq('user_id', user_id).execute()
+                except Exception:
+                    pass
+        return True
+    except Exception as e:
+        logger.error(f"Failed to append QA to conversation {conversation_id}: {e}")
+        return False
+
+
+def rename_conversation(user_id: str, conversation_id: str, title: str) -> bool:
+    """Rename a user's conversation."""
+    try:
+        client = get_admin_client()
+        if not conversation_belongs_to_user(user_id, conversation_id):
+            return False
+        client.table('conversations') \
+            .update({'title': (title or 'New chat')[:120]}) \
+            .eq('id', conversation_id).eq('user_id', user_id).execute()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to rename conversation {conversation_id}: {e}")
+        return False
+
+
+def delete_conversation(user_id: str, conversation_id: str) -> bool:
+    """Delete a user's conversation and all its messages."""
+    try:
+        client = get_admin_client()
+        if not conversation_belongs_to_user(user_id, conversation_id):
+            return True  # nothing to delete / not theirs
+        client.table('messages').delete().eq('conversation_id', conversation_id).execute()
+        client.table('conversations').delete() \
+            .eq('id', conversation_id).eq('user_id', user_id).execute()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to delete conversation {conversation_id}: {e}")
+        return False
+
+
+def search_conversations(user_id: str, query: str, limit: int = 50) -> List[Dict[str, Any]]:
+    """
+    Search a user's conversations by title and by message content.
+    Returns conversation rows (id, title, created_at, updated_at).
+    """
+    q = (query or '').strip()
+    if not q:
+        return []
+    try:
+        client = get_admin_client()
+        results: Dict[str, Dict[str, Any]] = {}
+
+        # Title matches.
+        try:
+            title_res = client.table('conversations') \
+                .select('id, title, created_at, updated_at') \
+                .eq('user_id', user_id) \
+                .ilike('title', f'%{q}%') \
+                .limit(limit) \
+                .execute()
+        except Exception:
+            title_res = client.table('conversations') \
+                .select('id, title, created_at') \
+                .eq('user_id', user_id) \
+                .ilike('title', f'%{q}%') \
+                .limit(limit) \
+                .execute()
+        for c in (title_res.data or []):
+            results[c['id']] = c
+
+        # Message-content matches → resolve back to their conversations.
+        try:
+            msg_res = client.table('messages') \
+                .select('conversation_id') \
+                .eq('user_id', user_id) \
+                .ilike('content', f'%{q}%') \
+                .limit(limit) \
+                .execute()
+            conv_ids = list({m['conversation_id'] for m in (msg_res.data or [])
+                             if m.get('conversation_id') and m['conversation_id'] not in results})
+            if conv_ids:
+                conv_res = client.table('conversations') \
+                    .select('id, title, created_at, updated_at') \
+                    .eq('user_id', user_id) \
+                    .in_('id', conv_ids) \
+                    .execute()
+                for c in (conv_res.data or []):
+                    results[c['id']] = c
+        except Exception as e:
+            logger.warning(f"search_conversations content pass failed: {e}")
+
+        return list(results.values())
+    except Exception as e:
+        logger.error(f"Failed to search conversations for user {user_id}: {e}")
+        return []
 
 
 # -------------------------

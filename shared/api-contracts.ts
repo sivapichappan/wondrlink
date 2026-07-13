@@ -32,6 +32,14 @@ export const ENDPOINTS = {
   clearChat: '/api/clear_chat',
   feedback: '/api/feedback',
 
+  // --- Conversations (multi-conversation drawer: New chat / Recents / Search) ---
+  // list (GET) + create (POST) share the base path. `conversation(id)` builds
+  // the per-conversation paths: GET `${...}/messages`, PATCH rename, DELETE.
+  conversations: '/api/conversations',
+  conversationsSearch: '/api/conversations/search',
+  conversation: (id: string) => `/api/conversations/${id}`,
+  conversationMessages: (id: string) => `/api/conversations/${id}/messages`,
+
   // --- Profile (clearProfile is POST per api/index.py:307) ---
   uploadProfile: '/api/upload_profile',
   getPatient: '/api/get_patient',

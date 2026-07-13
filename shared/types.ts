@@ -128,6 +128,30 @@ export interface ChatRequest {
   message: string;
   response_length: ResponseLength;
   session_id: string;
+  /**
+   * Target conversation for the multi-conversation model. A real conversation
+   * UUID appends to that thread; "new" (or null) starts a fresh one; omitting
+   * the field entirely is the legacy single-thread behavior. See ChatResponse
+   * for the id/title the server assigns.
+   */
+  conversation_id?: string | 'new' | null;
+}
+
+/** A named chat conversation (drawer Recents / Search). */
+export interface Conversation {
+  id: string;
+  title: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ConversationsListResponse {
+  conversations: Conversation[];
+}
+
+export interface CreateConversationResponse {
+  id: string;
+  title: string;
 }
 
 export interface ChatSource {
@@ -260,6 +284,10 @@ export interface ChatResponse {
   has_guidelines: boolean;
   clinical_trials: ChatClinicalTrialsBlock | null;
   urgency: ChatUrgency | null;
+  /** Conversation this turn was persisted to (multi-conversation model). */
+  conversation_id?: string | null;
+  /** Server-assigned title, echoed on the first turn of a new conversation. */
+  title?: string | null;
   debug_info?: Record<string, unknown>;
   updated_profile_context?: Record<string, unknown>;
   profile_update_fields?: string[];

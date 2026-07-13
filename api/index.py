@@ -23,6 +23,10 @@ from supabase_storage import (
     check_acknowledgement, save_acknowledgement,
     save_chat_message, load_chat_history, clear_chat_history,
     record_consent_action, get_consent_status, VALID_CONSENT_KEYS,
+    create_conversation, list_conversations, get_conversation_messages,
+    get_conversation_history_by_id, append_qa_to_conversation,
+    rename_conversation, delete_conversation, search_conversations,
+    conversation_belongs_to_user, get_or_create_conversation,
 )
 from profile_utils import (
     extract_patient_context_complex, format_patient_summary_complex,
@@ -861,6 +865,107 @@ def api_clear_chat():
 
 
 # -------------------------
+# Named Conversations (multi-conversation display model)
+# Backs the drawer's New chat / Recents / Search. Additive: the legacy
+# /api/chat_history + /api/save_message + /api/clear_chat routes above are
+# untouched so older installed builds keep working.
+# -------------------------
+@app.route("/api/conversations", methods=["GET"])
+@require_auth
+def api_list_conversations():
+    """List the authenticated user's conversations (most recent first)."""
+    try:
+        user_id = request.user["user_id"]
+        limit = request.args.get("limit", 100, type=int)
+        conversations = list_conversations(user_id, limit)
+        return jsonify({"conversations": conversations})
+    except Exception as e:
+        logger.exception("list_conversations error")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/conversations", methods=["POST"])
+@require_auth
+def api_create_conversation():
+    """Create a new conversation for the authenticated user."""
+    try:
+        user_id = request.user["user_id"]
+        data = request.get_json(silent=True) or {}
+        title = data.get("title")
+        conversation_id = create_conversation(user_id, title)
+        if not conversation_id:
+            return jsonify({"error": "Failed to create conversation"}), 500
+        return jsonify({"id": conversation_id, "title": (title or "New chat")})
+    except Exception as e:
+        logger.exception("create_conversation error")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/conversations/search", methods=["GET"])
+@require_auth
+def api_search_conversations():
+    """Search the authenticated user's conversations by title + content."""
+    try:
+        user_id = request.user["user_id"]
+        query = request.args.get("q", "", type=str)
+        results = search_conversations(user_id, query)
+        return jsonify({"conversations": results})
+    except Exception as e:
+        logger.exception("search_conversations error")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/conversations/<conversation_id>/messages", methods=["GET"])
+@require_auth
+def api_conversation_messages(conversation_id):
+    """Load display history for one conversation (user-scoped)."""
+    try:
+        user_id = request.user["user_id"]
+        limit = request.args.get("limit", 200, type=int)
+        if not conversation_belongs_to_user(user_id, conversation_id):
+            return jsonify({"error": "Not found"}), 404
+        messages = get_conversation_messages(user_id, conversation_id, limit)
+        return jsonify({"messages": messages})
+    except Exception as e:
+        logger.exception("conversation_messages error")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/conversations/<conversation_id>", methods=["PATCH"])
+@require_auth
+def api_rename_conversation(conversation_id):
+    """Rename a conversation (user-scoped)."""
+    try:
+        user_id = request.user["user_id"]
+        data = request.get_json(silent=True) or {}
+        title = data.get("title")
+        if not title or not str(title).strip():
+            return jsonify({"error": "title is required"}), 400
+        success = rename_conversation(user_id, conversation_id, str(title).strip())
+        if not success:
+            return jsonify({"error": "Not found"}), 404
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        logger.exception("rename_conversation error")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/conversations/<conversation_id>", methods=["DELETE"])
+@require_auth
+def api_delete_conversation(conversation_id):
+    """Delete a conversation and its messages (user-scoped)."""
+    try:
+        user_id = request.user["user_id"]
+        success = delete_conversation(user_id, conversation_id)
+        if not success:
+            return jsonify({"error": "Failed to delete conversation"}), 500
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        logger.exception("delete_conversation error")
+        return jsonify({"error": str(e)}), 500
+
+
+# -------------------------
 # Chat Route
 # -------------------------
 @app.route("/api/chat", methods=["POST"])
@@ -910,6 +1015,31 @@ def api_chat():
         if not message:
             return jsonify({"error": "No message provided"}), 400
 
+        # --- Resolve the conversation for this turn (multi-conversation model) ---
+        # New-style clients send a `conversation_id` (a real UUID, or "new"/null
+        # to start a fresh thread). Legacy clients omit the field entirely and
+        # are mapped to their single 'default' conversation, preserving old
+        # behavior. `active_conversation_id` may be None here for a brand-new
+        # thread — it's created lazily at persist time so an empty greeting
+        # never leaves an orphan conversation.
+        has_conversation_field = "conversation_id" in data
+        raw_conversation_id = data.get("conversation_id")
+        is_new_conversation = False
+        if has_conversation_field and raw_conversation_id and raw_conversation_id != "new":
+            if conversation_belongs_to_user(user_id, raw_conversation_id):
+                active_conversation_id = raw_conversation_id
+            else:
+                # Unknown / not-owned id → start a fresh conversation instead of
+                # writing to someone else's or a non-existent thread.
+                active_conversation_id = None
+                is_new_conversation = True
+        elif has_conversation_field:
+            active_conversation_id = None
+            is_new_conversation = True
+        else:
+            # Legacy client: the shared 'default' session, scoped to this user.
+            active_conversation_id = get_or_create_conversation(session_id, user_id)
+
         # Enforce max message length (safety net for frontend maxlength)
         if len(message) > 2000:
             message = message[:2000]
@@ -954,8 +1084,10 @@ def api_chat():
         # Load chunks from Supabase
         indexed_chunks = load_all_chunks()
 
-        # Get conversation history from Supabase
-        history = get_conversation_history(session_id)
+        # Get conversation history from Supabase (user-scoped, by conversation
+        # id). A brand-new thread has no prior context.
+        history = (get_conversation_history_by_id(active_conversation_id, user_id)
+                   if active_conversation_id else [])
         conversation_context = format_conversation_context(history)
 
         # Load patient profile from Supabase
@@ -1303,8 +1435,11 @@ def api_chat():
                 resources_list = []
                 citation_map = {}
 
-            # Store conversation in Supabase (store original answer without resources for cleaner history)
-            add_conversation(session_id, user_id, message, answer)
+            # NOTE: this turn is persisted to the conversation store AFTER
+            # response_data is assembled below, so the stored assistant message
+            # matches exactly what the client renders (final answer + metadata:
+            # sources, citations, follow-ups, clinical trials). See the
+            # "Persist this turn" block just before the return.
 
             # --- Feature 1: Scan for profile updates ---
             profile_updates = {}
@@ -1410,6 +1545,38 @@ def api_chat():
                     updated_context = extract_patient_context_complex(updated_profile)
                     response_data["updated_profile_context"] = updated_context
                     response_data["profile_update_fields"] = list(profile_updates.keys())
+
+            # --- Persist this turn to the conversation store ---
+            # Single source of truth for the multi-conversation display model.
+            # Brand-new threads are created lazily here (only real exchanges get
+            # a conversation). The assistant message carries the same render
+            # metadata the client shows, so history survives a relaunch intact.
+            try:
+                if not active_conversation_id:
+                    active_conversation_id = create_conversation(user_id)
+                    is_new_conversation = True
+                if active_conversation_id:
+                    assistant_metadata = {
+                        "sources": response_data.get("sources", []),
+                        "citations": response_data.get("citations", {}),
+                        "followups": response_data.get("followups", []),
+                        "resources": response_data.get("resources", []),
+                        "urgency": response_data.get("urgency"),
+                        "clinical_trials": response_data.get("clinical_trials"),
+                        "api_used": response_data.get("api_used"),
+                    }
+                    append_qa_to_conversation(
+                        active_conversation_id, user_id, message,
+                        response_data["answer"], metadata=assistant_metadata,
+                    )
+                response_data["conversation_id"] = active_conversation_id
+                # On the first turn the server auto-titles from the message;
+                # echo that back so the client can label the thread immediately.
+                if is_new_conversation and active_conversation_id:
+                    fresh = list_conversations(user_id, limit=1)
+                    response_data["title"] = fresh[0]["title"] if fresh else None
+            except Exception:
+                logger.exception("Failed to persist conversation turn")
 
             return jsonify(response_data)
 
