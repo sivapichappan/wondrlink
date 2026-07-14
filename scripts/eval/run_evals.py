@@ -253,6 +253,29 @@ def run_extraction_case(case: Dict[str, Any], mode: str) -> Dict[str, Any]:
     }
 
 
+def run_question_policy_case(case: Dict[str, Any], cancer: str) -> Dict[str, Any]:
+    """One question-policy case: profile/model_state/signals fixture -> the
+    policy's selection. Pure python — runs identically in dry and llm mode."""
+    from question_policy import compute_coverage, select_next_question
+
+    profile = case.get("profile") or {}
+    model_state = case.get("model_state") or {}
+    signals = dict(case.get("signals") or {})
+    signals.setdefault("query_type", "general")
+    signals.setdefault("question_marks", 0)
+    signals.setdefault("response_length", "normal")
+    signals.setdefault("has_pending_confirmations", False)
+
+    coverage = compute_coverage(profile, case.get("cancer_slug", cancer))
+    selected = select_next_question(coverage, model_state, signals)
+    return {
+        "id": case.get("id", "case"),
+        "expect": case.get("expect") or {},
+        "selected": selected,
+        "coverage_score": coverage["score"],
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Per-cancer eval harness.")
     parser.add_argument("--cancer", required=True, help="Cancer slug (e.g. colorectal).")
@@ -283,12 +306,22 @@ def main() -> int:
 
     all_results = []
     extraction_results = []
+    policy_results = []
     for suite in suites:
         try:
             spec = load_suite(args.cancer, suite)
         except FileNotFoundError as e:
             logger.error("%s", e)
             return 2
+
+        if suite == "question_policy":
+            cases = spec.get("cases") or []
+            logger.info("Running suite=question_policy (%d cases)", len(cases))
+            for c in cases:
+                r = run_question_policy_case(c, args.cancer)
+                r["suite"] = suite
+                policy_results.append(r)
+            continue
 
         # Extraction suites have their own shape (message + profile fixture ->
         # reconcile decisions) and their own metric; keep them out of the
@@ -331,10 +364,14 @@ def main() -> int:
     failed = False
     chunks_loaded = bool(chunks)
 
-    if extraction_results:
-        m = metrics.extraction_accuracy(extraction_results)
+    for special_results, metric_fn, threshold in (
+        (extraction_results, metrics.extraction_accuracy, 0.80),
+        (policy_results, metrics.question_policy_accuracy, 0.90),
+    ):
+        if not special_results:
+            continue
+        m = metric_fn(special_results)
         summary["metrics"][m["metric"]] = {k: v for k, v in m.items() if k != "detail"}
-        threshold = 0.80
         passed_thresh = m["total"] == 0 or m["value"] >= threshold
         print(f"  {m['metric']:24s} {m['value']:.2%}  ({m['pass']}/{m['total']})  threshold={threshold:.0%}  {'PASS' if passed_thresh else 'FAIL'}")
         if not passed_thresh:
@@ -383,6 +420,8 @@ def main() -> int:
             ]
             f.write(json.dumps(payload) + "\n")
         for r in extraction_results:
+            f.write(json.dumps(r) + "\n")
+        for r in policy_results:
             f.write(json.dumps(r) + "\n")
     logger.info("Wrote report → %s", report_path)
 

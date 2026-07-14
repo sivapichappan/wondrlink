@@ -205,6 +205,7 @@ TOKEN_BUDGET = {
     'history': 400,     # Conversation history
     'question': 100,    # User question
     'instructions': 200,# Response instructions
+    'question_policy': 120,  # "Getting to know you" question directive block
     'response': 1200    # Buffer for response
 }
 
@@ -2372,7 +2373,8 @@ def format_conversation_context(history: List[Dict[str, str]], max_tokens: int =
 
 def assemble_prompt(message: str, retrieved: list, patient: dict,
                     response_length: str = "normal", conversation_context: str = "",
-                    patient_context: Dict[str, Any] = None) -> Tuple[str, dict]:
+                    patient_context: Dict[str, Any] = None,
+                    question_directive: Optional[Dict[str, str]] = None) -> Tuple[str, dict]:
     """
     Enhanced prompt assembly with:
     - Query-relevant context filtering
@@ -2799,6 +2801,26 @@ After your comfort opening, gently provide helpful information."""
         prompt_parts.append("• Reference the patient's specific biomarkers and MSI status when discussing trial relevance")
         prompt_parts.append("• If structured trial data is provided below, reference those specific trials. If not, discuss trials in general terms only.")
 
+    # STEP 6c — "Getting to know you" question directive (lifecycle policy).
+    # The route selects at most one missing-info topic per eligible turn;
+    # suppressed here whenever this prompt's own urgency detection fired —
+    # never ask a data question on an urgent turn. Directive text carries the
+    # TOPIC only (no patient values), so the PII-guard payload is unchanged.
+    question_topic_asked = None
+    if question_directive and not urgency_info['detected'] and response_length != "brief":
+        question_topic_asked = question_directive.get('topic')
+        directive_text = truncate_to_tokens(question_directive.get('directive', ''),
+                                            TOKEN_BUDGET['question_policy'])
+        prompt_parts.append(
+            "GETTING TO KNOW THE PATIENT (optional — one question maximum):\n"
+            "After you have fully answered the user's question, if it flows naturally, "
+            f"end with ONE brief, gentle question to learn: {directive_text}.\n"
+            "• Phrase it conversationally. It must not feel like a form or an intake interview.\n"
+            "• Make it the final sentence of your answer.\n"
+            "• If your answer is already long, or the moment feels emotionally wrong, skip the question entirely.\n"
+            "• Never ask about more than this one topic, and never re-ask something the patient already told you."
+        )
+
     # Add follow-up question suggestions for non-brief responses
     if response_length != "brief":
         prompt_parts.append(FOLLOW_UP_INSTRUCTION)
@@ -2823,6 +2845,7 @@ After your comfort opening, gently provide helpful information."""
         'on_oxaliplatin': on_oxaliplatin,
         'include_resources': settings.get('include_resources', True),
         'retrieval_confidence': retrieval_conf,
+        'question_topic_asked': question_topic_asked,
         # De-identified PHI-bearing components for the route's PII leak guard.
         # The guard must scan ONLY patient-sourced text, never the full prompt:
         # retrieved guideline chunks legitimately contain publication dates and

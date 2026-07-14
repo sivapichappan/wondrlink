@@ -1,0 +1,115 @@
+# Question-policy gold suite (pure python — identical in dry and llm mode).
+#
+# Each case: profile + model_state + turn signals -> the ONE topic the policy
+# should gently ask about, or {suppress: true} when it must stay quiet.
+#
+# Run: python3 scripts/eval/run_evals.py --cancer colorectal --suite question_policy
+
+description: Coverage-driven next-question selection + suppression rules
+
+cases:
+  # ------------------------------------------------ what to ask, in order
+  - id: empty_profile_asks_site_first
+    profile: {}
+    cancer_slug: null          # no cancer picked yet either
+    model_state: { turns_since_question: 3 }
+    expect: { topic: site }
+
+  - id: site_known_asks_stage
+    profile:
+      primaryDiagnosis: { site: colon }
+    model_state: { turns_since_question: 3 }
+    expect: { topic: stage }
+
+  - id: late_stage_prioritizes_biomarkers
+    profile:
+      patient: { age: 61, sex: Male, zipCode: "94110" }
+      primaryDiagnosis: { site: colon, stage: "Stage IV" }
+      treatments: [ { regimen: FOLFOX, status: active } ]
+    model_state: { turns_since_question: 3 }
+    expect: { topic: biomarkers }
+
+  - id: stage_unknown_stage_beats_biomarkers
+    profile:
+      patient: { age: 61 }
+      primaryDiagnosis: { site: colon }
+      treatments: [ { regimen: FOLFOX, status: active } ]
+    model_state: { turns_since_question: 3 }
+    expect: { topic: stage }
+
+  - id: trials_curiosity_needs_zip
+    profile:
+      patient: { age: 61, sex: Male }
+      primaryDiagnosis:
+        site: colon
+        stage: "Stage IV"
+        biomarkers: { KRAS: G12D }
+      treatments: [ { regimen: FOLFOX, status: active } ]
+    model_state: { turns_since_question: 5 }
+    expect: { topic: zip_code }
+
+  # ------------------------------------------------ suppression rules
+  - id: emotional_turn_never_asks
+    profile: {}
+    model_state: { turns_since_question: 9 }
+    signals: { query_type: emotional }
+    expect: { suppress: true }
+
+  - id: brief_mode_never_asks
+    profile: {}
+    model_state: { turns_since_question: 9 }
+    signals: { response_length: brief }
+    expect: { suppress: true }
+
+  - id: multi_part_question_never_asks
+    profile: {}
+    model_state: { turns_since_question: 9 }
+    signals: { question_marks: 3 }
+    expect: { suppress: true }
+
+  - id: pending_confirmation_takes_priority
+    profile: {}
+    model_state: { turns_since_question: 9 }
+    signals: { has_pending_confirmations: true }
+    expect: { suppress: true }
+
+  - id: cooldown_between_questions
+    profile: {}
+    model_state: { turns_since_question: 1 }
+    expect: { suppress: true }
+
+  - id: recently_asked_topic_skipped
+    profile:
+      primaryDiagnosis: { site: colon }
+    model_state:
+      turns_since_question: 5
+      asked_questions:
+        - { topic: stage, asked_at: "2099-01-01T00:00:00Z" }   # "just asked"
+    # Stage is skipped (recently asked); with stage unknown, biomarkers is
+    # damped, so treatments is the next-most-valuable topic.
+    expect: { topic: treatments }
+
+  - id: full_profile_stays_quiet
+    profile:
+      patient:
+        age: 61
+        sex: Male
+        zipCode: "94110"
+        ecog: "1"
+      primaryDiagnosis:
+        site: colon
+        stage: "Stage III"
+        histology: adenocarcinoma
+        biomarkers: { KRAS: G12D, MSI: MSS }
+      treatments: [ { regimen: FOLFOX, status: active, line: "1st line" } ]
+      symptoms: [ fatigue ]
+    model_state: { turns_since_question: 9 }
+    expect: { suppress: true }
+
+  # ------------------------------------------------ register adaptation
+  - id: technical_register_gets_technical_phrasing
+    profile:
+      primaryDiagnosis: { site: colon, stage: "Stage IV" }
+      treatments: [ { regimen: FOLFOX, status: active } ]
+    model_state: { turns_since_question: 3, register: technical }
+    expect: { topic: biomarkers }

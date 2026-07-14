@@ -1265,6 +1265,46 @@ def append_patient_event(user_id: str, kind: str, path: Optional[str] = None,
         return False
 
 
+def save_model_state(user_id: str, model_state: Dict[str, Any]) -> bool:
+    """
+    Targeted persist of raw_profile.model_state (question-policy bookkeeping).
+    Loads fresh and touches ONLY model_state so it can never clobber profile
+    writes made elsewhere in the same request (e.g. the extraction pipeline).
+    """
+    try:
+        client = get_admin_client()
+        result = client.table('patient_profiles') \
+            .select('raw_profile') \
+            .eq('user_id', user_id) \
+            .limit(1) \
+            .execute()
+        profile = (result.data[0].get('raw_profile') if result.data else None) or {}
+        profile['model_state'] = model_state
+        client.table('patient_profiles') \
+            .update({'raw_profile': profile}) \
+            .eq('user_id', user_id) \
+            .execute()
+        return True
+    except Exception as e:
+        logger.warning(f"save_model_state failed: {e}")
+        return False
+
+
+def update_lifecycle_stage_column(user_id: str, stage: str) -> bool:
+    """Update the patient_profiles.lifecycle_stage column (tolerates the
+    column not existing yet — migration 2026_07_15_lifecycle_stage.sql)."""
+    try:
+        client = get_admin_client()
+        client.table('patient_profiles') \
+            .update({'lifecycle_stage': stage}) \
+            .eq('user_id', user_id) \
+            .execute()
+        return True
+    except Exception as e:
+        logger.warning(f"update_lifecycle_stage_column failed (column missing?): {e}")
+        return False
+
+
 def load_patient_events(user_id: str, limit: int = 200,
                         kinds: Optional[List[str]] = None) -> List[Dict[str, Any]]:
     """Load a user's timeline, newest first. [] on any failure."""

@@ -1127,10 +1127,13 @@ def validate_trial_search_readiness(patient_context: Dict[str, Any]) -> Dict[str
             "missing_critical": ["zip_code", "stage"],
             "missing_helpful": ["biomarkers", "treatment_line", "age"],
             "prompt_message": (
-                "I don't have enough information to search for clinical trials yet. "
-                "Please update your profile with at least your **zip code** and **cancer stage** "
-                "so I can find relevant trials near you."
-            )
+                "I don't have enough information to search for clinical trials yet — "
+                "I just need your zip code and cancer stage to find relevant trials near you."
+            ),
+            # Just-in-time softening: instead of sending the user to a form,
+            # the client can ask ONE question inline / route it to chat.
+            "just_in_time_question": "What's your ZIP code? I'll use it to find trials near you.",
+            "chat_prefill": "My zip code is ",
         }
 
     missing_critical = []
@@ -1170,15 +1173,24 @@ def validate_trial_search_readiness(patient_context: Dict[str, Any]) -> Dict[str
         }
         missing_names = [field_names.get(f, f) for f in missing_critical]
         prompt_message = (
-            f"Before I can search for clinical trials, I need your "
-            f"**{' and '.join(missing_names)}**. "
-            f"Please update your profile with this information so I can find the most relevant trials for you."
+            f"Before I can search for clinical trials, I just need your "
+            f"**{' and '.join(missing_names)}** — you can tell me right here in chat."
         )
+        # One question at a time: ask for the highest-value missing field
+        # inline instead of blocking on a profile form.
+        if "zip_code" in missing_critical:
+            jit_question = "What's your ZIP code? I'll use it to find trials near you."
+            chat_prefill = "My zip code is "
+        else:
+            jit_question = "Has your care team told you the stage of your cancer?"
+            chat_prefill = "My cancer stage is "
         return {
             "ready": False,
             "missing_critical": missing_critical,
             "missing_helpful": missing_helpful,
-            "prompt_message": prompt_message
+            "prompt_message": prompt_message,
+            "just_in_time_question": jit_question,
+            "chat_prefill": chat_prefill,
         }
 
     # Ready but with helpful fields missing

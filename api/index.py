@@ -419,10 +419,30 @@ def api_get_patient():
             set_profile(profile)
             patient_context = extract_patient_context_complex(profile)
             patient_summary = format_patient_summary_complex(patient_context)
+
+            # Lifecycle read model: stage + a compact coverage summary
+            # ("What WondrChat knows") for the mobile My Care surface.
+            lifecycle_stage = "getting_to_know_you"
+            coverage_summary = None
+            try:
+                from question_policy import compute_coverage
+                lifecycle_stage = (profile.get("model_state") or {}).get(
+                    "lifecycle_stage", "getting_to_know_you")
+                cov = compute_coverage(profile, _resolve_cancer_slug(user_id, profile))
+                coverage_summary = {
+                    "score": cov["score"],
+                    "known_count": cov["known_count"],
+                    "missing_top": [topic for topic, _w in cov["missing_ranked"][:3]],
+                }
+            except Exception:
+                logger.exception("Coverage summary failed (non-fatal)")
+
             return jsonify({
                 "profile": profile,
                 "patient_summary": patient_summary,
-                "context": patient_context
+                "context": patient_context,
+                "lifecycle_stage": lifecycle_stage,
+                "coverage": coverage_summary
             })
         else:
             return jsonify({})
@@ -1278,14 +1298,37 @@ def api_chat():
         except Exception:
             logger.exception("Off-topic detection failed (continuing with normal flow)")
 
+        # --- Lifecycle question policy: pick at most ONE gentle "getting to
+        # know you" topic for this turn. Pure python (no LLM); assemble_prompt
+        # drops the directive itself if its urgency detection fires.
+        question_directive = None
+        coverage = None
+        try:
+            from question_policy import compute_coverage, select_next_question
+            profile_for_policy = patient_profile if isinstance(patient_profile, dict) else {}
+            coverage = compute_coverage(profile_for_policy, cancer_slug)
+            model_state_view = profile_for_policy.get("model_state") or {}
+            pending_now = ((profile_for_policy.get("beliefs") or {}).get("pending") or [])
+            question_directive = select_next_question(coverage, model_state_view, {
+                "query_type": query_type,
+                "question_marks": message.count("?"),
+                "response_length": response_length,
+                "has_pending_confirmations": bool(pending_now),
+                "register": model_state_view.get("register"),
+            })
+        except Exception:
+            logger.exception("Question policy failed (continuing without a question)")
+
         # Assemble prompt
         if mismatch_detected:
             message_with_note = f"{message}\n\n[SYSTEM NOTE: User asked about different cancer type than their profile]"
             prompt, prompt_metadata = assemble_prompt(message_with_note, retrieved, patient_profile, response_length,
-                                    conversation_context, patient_context)
+                                    conversation_context, patient_context,
+                                    question_directive=question_directive)
         else:
             prompt, prompt_metadata = assemble_prompt(message, retrieved, patient_profile, response_length,
-                                    conversation_context, patient_context)
+                                    conversation_context, patient_context,
+                                    question_directive=question_directive)
 
         # Check LLM availability
         llm_status = get_llm_status()
@@ -1437,7 +1480,9 @@ def api_chat():
                             "error": "incomplete_profile",
                             "message": readiness["prompt_message"],
                             "missing_critical": readiness["missing_critical"],
-                            "missing_helpful": readiness["missing_helpful"]
+                            "missing_helpful": readiness["missing_helpful"],
+                            "just_in_time_question": readiness.get("just_in_time_question"),
+                            "chat_prefill": readiness.get("chat_prefill"),
                         }
                     else:
                         trials_result = search_trials_for_patient(patient_context, max_results=5, radius_miles=100)
@@ -1564,6 +1609,37 @@ def api_chat():
             except Exception as e:
                 logger.error(f"Error in profile update scanning: {e}", exc_info=True)
 
+            # --- Lifecycle bookkeeping: question cooldowns + stage ladder ---
+            lifecycle_stage = None
+            try:
+                from question_policy import advance_lifecycle_stage, compute_coverage, record_turn
+                from supabase_storage import (
+                    append_patient_event, save_model_state, update_lifecycle_stage_column,
+                )
+                profile_for_policy = patient_profile if isinstance(patient_profile, dict) else {}
+                model_state = profile_for_policy.setdefault("model_state", {})
+                # Only count the topic as asked if assemble_prompt actually
+                # rendered the directive (it drops it on urgent turns).
+                record_turn(model_state, prompt_metadata.get("question_topic_asked"))
+                fresh_coverage = compute_coverage(profile_for_policy, cancer_slug)
+                model_state["coverage_score"] = fresh_coverage["score"]
+                lifecycle_stage, stage_changed = advance_lifecycle_stage(profile_for_policy, fresh_coverage)
+                save_model_state(user_id, model_state)
+                if stage_changed:
+                    update_lifecycle_stage_column(user_id, lifecycle_stage)
+                    append_patient_event(user_id, "stage_transition",
+                                         payload={"stage": lifecycle_stage,
+                                                  "coverage": fresh_coverage["score"]},
+                                         source="system",
+                                         session_id=(active_conversation_id or session_id))
+                if prompt_metadata.get("question_topic_asked"):
+                    append_patient_event(user_id, "question_asked",
+                                         payload={"topic": prompt_metadata["question_topic_asked"]},
+                                         source="system",
+                                         session_id=(active_conversation_id or session_id))
+            except Exception:
+                logger.exception("Lifecycle bookkeeping failed (non-fatal)")
+
             # Extract sources for the frontend panel
             sources_metadata = []
             guidelines_used = []
@@ -1620,6 +1696,7 @@ def api_chat():
                 "has_guidelines": len(guidelines_used) > 0,
                 "clinical_trials": clinical_trials_data,
                 "pending_confirmations": pending_confirmations or None,
+                "lifecycle_stage": lifecycle_stage,
                 "urgency": {
                     "detected": prompt_metadata.get('urgency_detected', False),
                     "level": prompt_metadata.get('urgency_level'),
@@ -1922,6 +1999,8 @@ def api_clinical_trials():
                 "error": readiness["prompt_message"],
                 "missing_critical": readiness["missing_critical"],
                 "missing_helpful": readiness["missing_helpful"],
+                "just_in_time_question": readiness.get("just_in_time_question"),
+                "chat_prefill": readiness.get("chat_prefill"),
                 "trials": []
             }), 400
 

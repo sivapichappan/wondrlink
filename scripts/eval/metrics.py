@@ -249,6 +249,39 @@ def extraction_accuracy(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
+def question_policy_accuracy(results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Score question-policy cases (invoked only for `question_policy` suites).
+    Each result carries `selected` = the policy's {topic,...} or None.
+    Expectations: {suppress: true} or {topic: "<name>"}.
+    """
+    total = 0
+    passes = 0
+    detail = []
+    for r in results:
+        expect = r.get("expect") or {}
+        if "suppress" not in expect and "topic" not in expect:
+            continue
+        total += 1
+        selected = r.get("selected")
+        if expect.get("suppress"):
+            ok = selected is None
+        else:
+            ok = selected is not None and selected.get("topic") == expect.get("topic")
+        if ok:
+            passes += 1
+        else:
+            detail.append({"id": r.get("id"), "expected": expect,
+                           "selected": (selected or {}).get("topic")})
+    return {
+        "metric": "question_policy_accuracy",
+        "value": passes / total if total else 1.0,
+        "pass": passes,
+        "total": total,
+        "detail": detail,
+    }
+
+
 ALL_METRICS = (
     off_topic_accuracy,
     route_accuracy,
