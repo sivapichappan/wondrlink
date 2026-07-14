@@ -255,7 +255,9 @@ def run_extraction_case(case: Dict[str, Any], mode: str) -> Dict[str, Any]:
 
 def run_question_policy_case(case: Dict[str, Any], cancer: str) -> Dict[str, Any]:
     """One question-policy case: profile/model_state/signals fixture -> the
-    policy's selection. Pure python — runs identically in dry and llm mode."""
+    policy's selection. Pure python — runs identically in dry and llm mode.
+    An optional `connections:` fixture exercises the Modeler expectation
+    candidates exactly as the route wires them when FEATURE_MODELER_ACTIVE."""
     from question_policy import compute_coverage, select_next_question
 
     profile = case.get("profile") or {}
@@ -266,8 +268,16 @@ def run_question_policy_case(case: Dict[str, Any], cancer: str) -> Dict[str, Any
     signals.setdefault("response_length", "normal")
     signals.setdefault("has_pending_confirmations", False)
 
+    expectation_candidates = None
+    if case.get("connections"):
+        from datetime import datetime
+        from modeler import expectation_question_candidates
+        expectation_candidates = expectation_question_candidates(
+            case["connections"], datetime(2026, 7, 14, 12, 0, 0))
+
     coverage = compute_coverage(profile, case.get("cancer_slug", cancer))
-    selected = select_next_question(coverage, model_state, signals)
+    selected = select_next_question(coverage, model_state, signals,
+                                    expectation_candidates=expectation_candidates)
     return {
         "id": case.get("id", "case"),
         "expect": case.get("expect") or {},

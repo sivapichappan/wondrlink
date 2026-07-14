@@ -205,12 +205,19 @@ def _topic_recently_asked(model_state: Dict[str, Any], topic: str) -> bool:
 
 
 def select_next_question(coverage: Dict[str, Any], model_state: Dict[str, Any],
-                         signals: Dict[str, Any]) -> Optional[Dict[str, str]]:
+                         signals: Dict[str, Any],
+                         expectation_candidates: Optional[List[Dict[str, Any]]] = None,
+                         ) -> Optional[Dict[str, str]]:
     """
     Pick at most one topic to gently ask about this turn, or None.
 
     signals: {query_type, question_marks, response_length,
               has_pending_confirmations, register}
+    expectation_candidates: Modeler expectation check-ins
+      [{topic: "exp:<id>", importance, directive: {plain, technical}}] —
+      STANDARD cadence: they enter the same ranked list as coverage topics
+      (locked decision), so every suppression below and both cooldowns apply
+      to them unchanged.
     (Urgency/crisis suppression happens downstream: assemble_prompt drops the
     directive when its own urgency detection fires, and crisis turns never
     reach prompt assembly at all.)
@@ -229,10 +236,22 @@ def select_next_question(coverage: Dict[str, Any], model_state: Dict[str, Any],
     register = signals.get("register") or model_state.get("register") or "plain"
     register_key = "technical" if register == "technical" else "plain"
 
-    for topic, _importance in coverage.get("missing_ranked") or []:
+    ranked: List[Tuple[str, float, Optional[Dict[str, str]]]] = [
+        (topic, importance, None)
+        for topic, importance in coverage.get("missing_ranked") or []
+    ]
+    for cand in expectation_candidates or []:
+        ranked.append((cand["topic"], float(cand.get("importance", 0.55)),
+                       cand.get("directive") or {}))
+    ranked.sort(key=lambda item: item[1], reverse=True)
+
+    for topic, _importance, exp_directive in ranked:
         if _topic_recently_asked(model_state, topic):
             continue
-        directive = TOPIC_DIRECTIVES.get(topic, {}).get(register_key)
+        if exp_directive is not None:
+            directive = exp_directive.get(register_key) or exp_directive.get("plain")
+        else:
+            directive = TOPIC_DIRECTIVES.get(topic, {}).get(register_key)
         if directive:
             return {"topic": topic, "directive": directive, "register": register_key}
     return None

@@ -1390,19 +1390,37 @@ def api_chat():
         # drops the directive itself if its urgency detection fires.
         question_directive = None
         coverage = None
+        connections_summary = None
         try:
             from question_policy import compute_coverage, select_next_question
             profile_for_policy = patient_profile if isinstance(patient_profile, dict) else {}
             coverage = compute_coverage(profile_for_policy, cancer_slug)
             model_state_view = profile_for_policy.get("model_state") or {}
             pending_now = ((profile_for_policy.get("beliefs") or {}).get("pending") or [])
+
+            # Modeler consumers (Push 2) — dormant until FEATURE_MODELER_ACTIVE.
+            expectation_candidates = None
+            try:
+                from datetime import datetime as _dt
+                from modeler import (
+                    expectation_question_candidates, modeler_active,
+                    render_connections_summary,
+                )
+                if modeler_active():
+                    connections_view = profile_for_policy.get("connections") or {}
+                    connections_summary = render_connections_summary(connections_view, _dt.utcnow())
+                    expectation_candidates = expectation_question_candidates(
+                        connections_view, _dt.utcnow())
+            except Exception:
+                logger.exception("Modeler consumers failed (continuing without)")
+
             question_directive = select_next_question(coverage, model_state_view, {
                 "query_type": query_type,
                 "question_marks": message.count("?"),
                 "response_length": response_length,
                 "has_pending_confirmations": bool(pending_now),
                 "register": model_state_view.get("register"),
-            })
+            }, expectation_candidates=expectation_candidates)
         except Exception:
             logger.exception("Question policy failed (continuing without a question)")
 
@@ -1411,11 +1429,13 @@ def api_chat():
             message_with_note = f"{message}\n\n[SYSTEM NOTE: User asked about different cancer type than their profile]"
             prompt, prompt_metadata = assemble_prompt(message_with_note, retrieved, patient_profile, response_length,
                                     conversation_context, patient_context,
-                                    question_directive=question_directive)
+                                    question_directive=question_directive,
+                                    connections_summary=connections_summary)
         else:
             prompt, prompt_metadata = assemble_prompt(message, retrieved, patient_profile, response_length,
                                     conversation_context, patient_context,
-                                    question_directive=question_directive)
+                                    question_directive=question_directive,
+                                    connections_summary=connections_summary)
 
         # Check LLM availability
         llm_status = get_llm_status()

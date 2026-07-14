@@ -80,9 +80,10 @@ def test_dated_public_chunk_not_blocked():
 
     payload = meta.get('pii_guard_payload')
     check("metadata exposes pii_guard_payload", payload is not None)
-    check("payload has the four PHI-bearing components",
+    check("payload has the five PHI-bearing components",
           payload is not None and
-          set(payload.keys()) == {'message', 'patient_context', 'patient_profile', 'conversation_context'})
+          set(payload.keys()) == {'message', 'patient_context', 'patient_profile',
+                                  'conversation_context', 'connections_summary'})
 
     payload_leaks = detect_pii_leaks(payload)
     check("payload scan is clean (request goes through)",

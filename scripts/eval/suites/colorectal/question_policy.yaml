@@ -113,3 +113,70 @@ cases:
       treatments: [ { regimen: FOLFOX, status: active } ]
     model_state: { turns_since_question: 3, register: technical }
     expect: { topic: biomarkers }
+
+  # ------------------------------------------------ Modeler expectation check-ins
+  # (fixture "now" is 2026-07-14T12:00; windows below bracket or miss it)
+  - id: expectation_loses_to_critical_coverage_gap
+    profile:
+      primaryDiagnosis: { site: colon }     # stage unknown (importance 0.9)
+    model_state: { turns_since_question: 3 }
+    connections: &neuropathy_connections
+      expectations:
+        - id: exp_test01
+          status: open
+          window: { opens: "2026-07-01T00:00:00Z", closes: "2026-08-01T00:00:00Z" }
+          ask:
+            topic: "exp:exp_test01"
+            plain: "whether any tingling or numbness in their hands or feet has changed lately"
+            technical: "whether peripheral neuropathy has progressed since the last cycle"
+    expect: { topic: stage }   # 0.9 coverage gap outranks the 0.55 expectation
+
+  - id: expectation_wins_when_coverage_nearly_full
+    profile: &full_profile
+      patient: { age: 61, sex: Male, zipCode: "94110", ecog: "1" }
+      primaryDiagnosis:
+        site: colon
+        stage: "Stage III"
+        histology: adenocarcinoma
+        biomarkers: { KRAS: G12D }
+      treatments: [ { regimen: FOLFOX, status: active } ]
+      symptoms: [ neuropathy ]
+    model_state: { turns_since_question: 3 }
+    connections: *neuropathy_connections
+    expect: { topic: "exp:exp_test01" }
+
+  - id: expectation_suppressed_on_emotional_turn
+    profile: *full_profile
+    model_state: { turns_since_question: 9 }
+    signals: { query_type: emotional }
+    connections: *neuropathy_connections
+    expect: { suppress: true }
+
+  - id: expectation_respects_turn_cooldown
+    profile: *full_profile
+    model_state: { turns_since_question: 1 }
+    connections: *neuropathy_connections
+    expect: { suppress: true }
+
+  - id: expectation_not_reasked_within_topic_cooldown
+    profile: *full_profile
+    model_state:
+      turns_since_question: 5
+      asked_questions:
+        - { topic: "exp:exp_test01", asked_at: "2099-01-01T00:00:00Z" }
+    connections: *neuropathy_connections
+    expect: { suppress: true }   # exp asked recently; coverage has nothing left
+
+  - id: closed_window_expectation_excluded
+    profile: *full_profile
+    model_state: { turns_since_question: 5 }
+    connections:
+      expectations:
+        - id: exp_test02
+          status: open
+          window: { opens: "2026-05-01T00:00:00Z", closes: "2026-06-01T00:00:00Z" }
+          ask:
+            topic: "exp:exp_test02"
+            plain: "whether anything changed"
+            technical: "whether anything changed"
+    expect: { suppress: true }   # window closed -> no candidate, nothing else missing

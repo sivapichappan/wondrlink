@@ -206,6 +206,7 @@ TOKEN_BUDGET = {
     'question': 100,    # User question
     'instructions': 200,# Response instructions
     'question_policy': 120,  # "Getting to know you" question directive block
+    'connections': 150, # Modeler connections-summary block (STEP 6d)
     'response': 1200    # Buffer for response
 }
 
@@ -2374,7 +2375,8 @@ def format_conversation_context(history: List[Dict[str, str]], max_tokens: int =
 def assemble_prompt(message: str, retrieved: list, patient: dict,
                     response_length: str = "normal", conversation_context: str = "",
                     patient_context: Dict[str, Any] = None,
-                    question_directive: Optional[Dict[str, str]] = None) -> Tuple[str, dict]:
+                    question_directive: Optional[Dict[str, str]] = None,
+                    connections_summary: Optional[str] = None) -> Tuple[str, dict]:
     """
     Enhanced prompt assembly with:
     - Query-relevant context filtering
@@ -2801,6 +2803,19 @@ After your comfort opening, gently provide helpful information."""
         prompt_parts.append("• Reference the patient's specific biomarkers and MSI status when discussing trial relevance")
         prompt_parts.append("• If structured trial data is provided below, reference those specific trials. If not, discuss trials in general terms only.")
 
+    # STEP 6d — Modeler connections summary (Push 2). Internal context only:
+    # the model may weave it in where directly relevant, never present it as
+    # a diagnosis or prediction. Suppressed on urgent turns like 6c. The
+    # summary is patient-derived text, so the route's PII guard scans it
+    # (added to pii_guard_payload below).
+    if connections_summary and not urgency_info['detected']:
+        prompt_parts.append(
+            "WHAT WE'VE NOTICED (internal context — weave in only where directly "
+            "relevant to the user's question; never present as a diagnosis, "
+            "prediction, or new information dump):\n"
+            + truncate_to_tokens(connections_summary, TOKEN_BUDGET['connections'])
+        )
+
     # STEP 6c — "Getting to know you" question directive (lifecycle policy).
     # The route selects at most one missing-info topic per eligible turn;
     # suppressed here whenever this prompt's own urgency detection fired —
@@ -2858,6 +2873,9 @@ After your comfort opening, gently provide helpful information."""
             'patient_context': patient_context,
             'patient_profile': patient,
             'conversation_context': conversation_context,
+            # Modeler summary is patient-derived text (edge labels come from
+            # patient data) — it must cross the guard like everything else.
+            'connections_summary': connections_summary or "",
         },
     }
 
