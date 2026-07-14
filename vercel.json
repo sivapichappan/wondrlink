@@ -36,5 +36,11 @@
       "src": "/(.*)",
       "dest": "/public/$1"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/modeler/cron",
+      "schedule": "0 7 * * *"
+    }
   ]
 }

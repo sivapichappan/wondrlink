@@ -64,6 +64,7 @@ RATE_LIMIT_VISIT_RECAP   = (10, 60)
 RATE_LIMIT_APPEAL        = (5, 60)      # insurance appeal
 RATE_LIMIT_DEEP_RESEARCH = (3, 300)
 RATE_LIMIT_PRIVACY_APPEAL = (3, 86400)  # 3 per day
+RATE_LIMIT_MODELER       = (6, 60)      # abuse guard; the real gate is the debounce
 
 
 def feature_enabled(flag_name: str) -> bool:
@@ -403,6 +404,92 @@ def api_confirm_belief():
     except Exception as e:
         logger.exception("confirm_belief error")
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/modeler/run", methods=["POST"])
+@require_auth
+def api_modeler_run():
+    """
+    End-of-conversation trigger (client fire-and-forget): run one Modeler pass
+    for the caller. Debounce gates inside run_for_user do the real limiting;
+    the rate limit here is only an abuse guard. 403 while FEATURE_MODELER is off.
+    """
+    try:
+        user_id = request.user["user_id"]
+        from rate_limit import check_rate_limit
+        allowed, _remaining = check_rate_limit(user_id, 'modeler_run', *RATE_LIMIT_MODELER)
+        if not allowed:
+            return jsonify({"error": "Too many requests"}), 429
+
+        from modeler import modeler_enabled, run_for_user
+        if not modeler_enabled():
+            return jsonify({"error": "disabled"}), 403
+        result = run_for_user(user_id, trigger="client")
+        status_code = 500 if result.get("status") == "error" else 200
+        return jsonify(result), status_code
+    except Exception:
+        logger.exception("modeler run error")
+        return jsonify({"status": "error"}), 500
+
+
+@app.route("/api/modeler/cron", methods=["GET"])
+def api_modeler_cron():
+    """
+    Nightly catch-up (Vercel cron). Auth: Vercel sends Authorization: Bearer
+    $CRON_SECRET when that env var exists. Time-guarded loop, oldest-run-first;
+    the response carries counts only — never user ids.
+    """
+    import hmac as _hmac
+    secret = os.environ.get("CRON_SECRET", "")
+    provided = request.headers.get("Authorization", "")
+    if not secret or not _hmac.compare_digest(provided, f"Bearer {secret}"):
+        return jsonify({"error": "unauthorized"}), 401
+
+    from modeler import modeler_enabled, run_for_user
+    if not modeler_enabled():
+        return jsonify({"status": "disabled"})
+
+    import time as _time
+    started = _time.time()
+    from supabase_storage import load_profile, recent_event_user_ids
+    candidates = recent_event_user_ids(hours=26)
+
+    # Oldest last-run first so a backlog drains fairly across nights.
+    def _last_run(uid: str) -> str:
+        profile = load_profile(uid) or {}
+        return ((profile.get("connections") or {}).get("meta") or {}).get("last_run_at") or ""
+    candidates.sort(key=_last_run)
+
+    ran = skipped = errors = 0
+    for uid in candidates:
+        if _time.time() - started > 40:   # leave headroom under maxDuration 60
+            break
+        result = run_for_user(uid, trigger="cron")
+        status = result.get("status")
+        if status == "ran":
+            ran += 1
+        elif status == "error":
+            errors += 1
+        else:
+            skipped += 1
+    return jsonify({"candidates": len(candidates), "ran": ran, "skipped": skipped,
+                    "errors": errors, "elapsed_ms": int((_time.time() - started) * 1000)})
+
+
+@app.route("/api/modeler/graph", methods=["GET"])
+@require_auth
+def api_modeler_graph():
+    """The caller's own connections graph (review/demo surface; shadow-safe)."""
+    try:
+        from modeler import ensure_connections, modeler_enabled
+        if not modeler_enabled():
+            return jsonify({"error": "disabled"}), 403
+        user_id = request.user["user_id"]
+        profile = load_profile(user_id) or {}
+        return jsonify({"connections": ensure_connections(profile)})
+    except Exception:
+        logger.exception("modeler graph error")
+        return jsonify({"error": "Failed to load graph"}), 500
 
 
 @app.route("/api/get_patient", methods=["GET"])

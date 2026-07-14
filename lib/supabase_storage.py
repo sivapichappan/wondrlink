@@ -1329,6 +1329,29 @@ def load_patient_events(user_id: str, limit: int = 200,
         return []
 
 
+def recent_event_user_ids(hours: int = 26) -> List[str]:
+    """Distinct user_ids with patient_events in the last N hours (cron
+    candidate discovery — dedupe happens here, at pilot scale this is tiny)."""
+    try:
+        from datetime import datetime, timedelta
+        cutoff = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
+        client = get_admin_client()
+        result = client.table('patient_events') \
+            .select('user_id') \
+            .gt('recorded_at', cutoff) \
+            .limit(2000) \
+            .execute()
+        seen: List[str] = []
+        for row in (result.data or []):
+            uid = row.get('user_id')
+            if uid and uid not in seen:
+                seen.append(uid)
+        return seen
+    except Exception as e:
+        logger.warning(f"recent_event_user_ids failed: {e}")
+        return []
+
+
 def save_connections(user_id: str, connections: Dict[str, Any]) -> bool:
     """
     Targeted persist of raw_profile.connections (the Modeler's graph).
