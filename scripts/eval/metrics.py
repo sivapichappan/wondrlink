@@ -194,6 +194,61 @@ def keyword_compliance(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
+def extraction_accuracy(results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Score extraction-suite cases (NOT part of ALL_METRICS — run_evals invokes
+    it only for `extraction` suites, whose results carry a `decisions` list).
+
+    A case passes when:
+      - every expected decision matches a produced one on path + action
+        (+ value when the expectation pins one, compared case-insensitively), and
+      - no forbidden path received a non-NOOP decision.
+    """
+    def norm(v: Any) -> Any:
+        # Type-tolerant scalar compare: regex stores age/weight as strings,
+        # the LLM may emit ints — "62" == 62 for our purposes.
+        return str(v).strip().lower() if isinstance(v, (str, int, float)) else v
+
+    total = 0
+    passes = 0
+    detail = []
+    for r in results:
+        expect = r.get("expect") or {}
+        expected = expect.get("decisions")
+        if expected is None and "forbid_paths" not in expect:
+            continue
+        total += 1
+        produced = {d["path"]: d for d in (r.get("decisions") or [])}
+        problems = []
+
+        for exp in expected or []:
+            got = produced.get(exp["path"])
+            if got is None:
+                problems.append(f"missing decision for {exp['path']}")
+            elif got["action"] != exp["action"]:
+                problems.append(f"{exp['path']}: action {got['action']} != {exp['action']}")
+            elif "value" in exp and norm(got.get("new_value")) != norm(exp["value"]):
+                problems.append(f"{exp['path']}: value mismatch")
+
+        for path in expect.get("forbid_paths") or []:
+            got = produced.get(path)
+            if got is not None and got["action"] != "NOOP":
+                problems.append(f"forbidden path extracted: {path} ({got['action']})")
+
+        if problems:
+            detail.append({"id": r.get("id"), "problems": problems})
+        else:
+            passes += 1
+
+    return {
+        "metric": "extraction_accuracy",
+        "value": passes / total if total else 1.0,
+        "pass": passes,
+        "total": total,
+        "detail": detail,
+    }
+
+
 ALL_METRICS = (
     off_topic_accuracy,
     route_accuracy,

@@ -1,0 +1,127 @@
+# Gold extraction suite — lung. See colorectal/extraction.yaml for format.
+# Run: python3 scripts/eval/run_evals.py --cancer lung --suite extraction --mode llm
+
+description: Extraction + reconcile gold cases (lung)
+
+cases:
+  # ---------------------------------------------------------- regex channel
+  - id: age_explicit
+    message: "I am 68 years old"
+    expect:
+      decisions:
+        - { path: patient.age, action: ADD, value: "68" }
+
+  - id: stage_explicit_regex_commits
+    message: "I was diagnosed with stage 4 lung cancer in the spring"
+    expect:
+      decisions:
+        - { path: primaryDiagnosis.stage, action: ADD, value: "Stage IV" }
+
+  - id: weight_explicit
+    message: "My weight is 145 lbs now"
+    expect:
+      decisions:
+        - { path: patient.weight, action: ADD, value: "145" }
+
+  # ---------------------------------------------------------- LLM channel
+  - id: egfr_mutation_goes_pending
+    llm_only: true
+    message: "The biopsy showed an EGFR mutation"
+    expect:
+      decisions:
+        - { path: primaryDiagnosis.biomarkers.EGFR, action: PENDING_CONFIRMATION }
+
+  - id: osimertinib_start_goes_pending
+    llm_only: true
+    message: "I've been on osimertinib for about a month now"
+    expect:
+      decisions:
+        - { path: treatments.osimertinib, action: PENDING_CONFIRMATION }
+
+  - id: immunotherapy_stop_invalidates
+    llm_only: true
+    message: "They took me off the pembrolizumab after the scan"
+    profile:
+      beliefs:
+        version: 1
+        pending: []
+        fields:
+          treatments.pembrolizumab:
+            value: { regimen: "pembrolizumab", status: "active" }
+            confidence: 0.9
+            status: confirmed
+            source: form
+            history: []
+    expect:
+      decisions:
+        - { path: treatments.pembrolizumab, action: INVALIDATE }
+
+  - id: shortness_of_breath_add
+    llm_only: true
+    message: "The shortness of breath has gotten worse when I climb stairs"
+    expect:
+      decisions:
+        - { path: symptoms.shortness_of_breath, action: ADD }
+
+  - id: copd_comorbidity_goes_pending
+    llm_only: true
+    message: "I've had COPD for years, long before the cancer"
+    expect:
+      decisions:
+        - { path: patient.comorbidities.copd, action: PENDING_CONFIRMATION }
+
+  # ---------------------------------------------------------- must-NOT-extract
+  - id: pure_question_no_facts
+    llm_only: true
+    message: "How does immunotherapy work for lung cancer?"
+    expect:
+      decisions: []
+      forbid_paths:
+        - treatments.immunotherapy
+        - treatments.pembrolizumab
+
+  - id: spouse_smoker_not_extracted
+    llm_only: true
+    message: "My wife smoked for 30 years, is she at risk too?"
+    expect:
+      decisions: []
+      forbid_paths:
+        - patient.comorbidities.smoking
+
+  - id: hypothetical_stage_not_extracted
+    llm_only: true
+    message: "What would treatment look like if it were stage 3?"
+    expect:
+      decisions: []
+      forbid_paths:
+        - primaryDiagnosis.stage
+
+  # ---------------------------------------------------------- robustness
+  - id: multi_fact_age_symptom
+    llm_only: true
+    message: "I'm 71 and this cough just will not go away"
+    expect:
+      decisions:
+        - { path: patient.age, action: ADD, value: "71" }
+        - { path: symptoms.cough, action: ADD }
+
+  - id: known_egfr_reinforces
+    llm_only: true
+    message: "Given my EGFR mutation, what are my options?"
+    profile:
+      beliefs:
+        version: 1
+        pending: []
+        fields:
+          primaryDiagnosis.biomarkers.EGFR:
+            value: "mutation"
+            confidence: 1.0
+            status: confirmed
+            source: form
+            history: []
+    expect:
+      # Either "extracted then reconciled to NOOP" or "not re-extracted" is
+      # safe; the invariant is no non-NOOP action on the known marker.
+      decisions: []
+      forbid_paths:
+        - primaryDiagnosis.biomarkers.EGFR

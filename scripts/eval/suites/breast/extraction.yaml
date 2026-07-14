@@ -1,0 +1,139 @@
+# Gold extraction suite — breast. See colorectal/extraction.yaml for format.
+# Run: python3 scripts/eval/run_evals.py --cancer breast --suite extraction --mode llm
+
+description: Extraction + reconcile gold cases (breast)
+
+cases:
+  # ---------------------------------------------------------- regex channel
+  - id: age_explicit
+    message: "I'm 47 years old"
+    expect:
+      decisions:
+        - { path: patient.age, action: ADD, value: "47" }
+
+  - id: stage_explicit_regex_commits
+    message: "I have stage 2 breast cancer"
+    expect:
+      decisions:
+        - { path: primaryDiagnosis.stage, action: ADD, value: "Stage II" }
+
+  - id: zip_explicit
+    message: "My zip code is 60611"
+    expect:
+      decisions:
+        - { path: patient.zipCode, action: ADD, value: "60611" }
+
+  # ---------------------------------------------------------- LLM channel
+  - id: her2_positive_goes_pending
+    llm_only: true
+    message: "My pathology came back HER2 positive"
+    expect:
+      decisions:
+        - { path: primaryDiagnosis.biomarkers.HER2, action: PENDING_CONFIRMATION }
+
+  - id: tamoxifen_start_goes_pending
+    llm_only: true
+    message: "I just started tamoxifen after my surgery"
+    expect:
+      decisions:
+        - { path: treatments.tamoxifen, action: PENDING_CONFIRMATION }
+
+  - id: letrozole_stop_invalidates
+    llm_only: true
+    message: "We stopped the letrozole because of the joint pain"
+    profile:
+      beliefs:
+        version: 1
+        pending: []
+        fields:
+          treatments.letrozole:
+            value: { regimen: "letrozole", status: "active" }
+            confidence: 0.9
+            status: confirmed
+            source: form
+            history: []
+    expect:
+      decisions:
+        - { path: treatments.letrozole, action: INVALIDATE }
+
+  - id: hot_flashes_symptom_add
+    llm_only: true
+    message: "The hot flashes from the hormone therapy are keeping me up at night"
+    expect:
+      decisions:
+        - { path: symptoms.hot_flashes, action: ADD }
+
+  - id: stage_conflicts_confirmed
+    llm_only: true
+    message: "They restaged me and now they say it's stage 3"
+    profile:
+      beliefs:
+        version: 1
+        pending: []
+        fields:
+          primaryDiagnosis.stage:
+            value: "Stage II"
+            confidence: 1.0
+            status: confirmed
+            source: form
+            history: []
+    expect:
+      decisions:
+        - { path: primaryDiagnosis.stage, action: PENDING_CONFIRMATION }
+
+  # ---------------------------------------------------------- must-NOT-extract
+  - id: pure_question_no_facts
+    llm_only: true
+    message: "What does HER2 positive actually mean?"
+    expect:
+      decisions: []
+      forbid_paths:
+        - primaryDiagnosis.biomarkers.HER2
+
+  - id: sister_history_not_extracted
+    llm_only: true
+    message: "My sister had breast cancer at 50, should I worry about my daughters?"
+    expect:
+      decisions: []
+      forbid_paths:
+        - primaryDiagnosis.stage
+        - patient.age
+
+  - id: hypothetical_treatment_not_extracted
+    llm_only: true
+    message: "If they put me on chemo, would I lose my hair?"
+    expect:
+      decisions: []
+      forbid_paths:
+        - treatments.chemo
+        - treatments.chemotherapy
+
+  # ---------------------------------------------------------- robustness
+  - id: multi_fact_age_symptom
+    llm_only: true
+    message: "I'm 51 and the fatigue since radiation has been rough"
+    expect:
+      decisions:
+        - { path: patient.age, action: ADD, value: "51" }
+        - { path: symptoms.fatigue, action: ADD }
+
+  - id: known_her2_reinforces
+    llm_only: true
+    message: "Since I'm HER2 positive, is Herceptin an option?"
+    profile:
+      beliefs:
+        version: 1
+        pending: []
+        fields:
+          primaryDiagnosis.biomarkers.HER2:
+            value: "positive"
+            confidence: 1.0
+            status: confirmed
+            source: form
+            history: []
+    expect:
+      # Either "extracted then reconciled to NOOP" or "not re-extracted" is
+      # safe; the invariant is no non-NOOP action on the known marker.
+      decisions: []
+      forbid_paths:
+        - primaryDiagnosis.biomarkers.HER2

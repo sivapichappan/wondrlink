@@ -29,6 +29,12 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
+try:  # keys for --mode llm; mirrors scripts/test_all_features.py
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 # lib/ also needs to be on sys.path because lib/supabase_storage.py does
@@ -210,6 +216,43 @@ def run_prompt(prompt: Dict[str, Any], cancer: str, chunks: List[Any], mode: str
     return result
 
 
+def run_extraction_case(case: Dict[str, Any], mode: str) -> Dict[str, Any]:
+    """
+    Execute one extraction-suite case: message + profile fixture -> reconcile
+    decisions. In dry mode only the deterministic regex channel runs (no LLM);
+    cases whose expectations need the LLM channel should set `llm_only: true`
+    and are skipped in dry mode by the caller.
+    """
+    from patient_model import (
+        CONF_REGEX, _flatten_v1_updates, extract_facts, reconcile,
+    )
+    from llm_utils import _quick_extract_profile_updates
+
+    message = case["message"]
+    profile = case.get("profile") or {}
+    beliefs = profile.get("beliefs") or {"version": 1, "fields": {}, "pending": []}
+
+    if mode == "dry":
+        candidates = _flatten_v1_updates(
+            _quick_extract_profile_updates(message) or {}, "chat_regex", CONF_REGEX)
+    else:
+        candidates = extract_facts(message, profile)
+
+    decisions = reconcile(candidates, beliefs)
+    return {
+        "id": case.get("id", message[:40]),
+        "query": message,
+        "expect": case.get("expect") or {},
+        "decisions": [
+            {"path": d.path, "action": d.action, "new_value": d.new_value,
+             "old_value": d.old_value, "confidence": d.confidence,
+             "reason": d.reason, "high_stakes": d.high_stakes}
+            for d in decisions
+        ],
+        "mode": mode,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Per-cancer eval harness.")
     parser.add_argument("--cancer", required=True, help="Cancer slug (e.g. colorectal).")
@@ -239,12 +282,30 @@ def main() -> int:
         logger.warning("No chunks loaded — retrieval-coverage and tier-2 routing will be limited.")
 
     all_results = []
+    extraction_results = []
     for suite in suites:
         try:
             spec = load_suite(args.cancer, suite)
         except FileNotFoundError as e:
             logger.error("%s", e)
             return 2
+
+        # Extraction suites have their own shape (message + profile fixture ->
+        # reconcile decisions) and their own metric; keep them out of the
+        # chat-pipeline metrics entirely.
+        if suite == "extraction":
+            cases = spec.get("cases") or []
+            runnable = [c for c in cases
+                        if not (args.mode == "dry" and c.get("llm_only"))]
+            skipped = len(cases) - len(runnable)
+            logger.info("Running suite=extraction (%d cases, %d llm-only skipped) mode=%s",
+                        len(runnable), skipped, args.mode)
+            for c in runnable:
+                r = run_extraction_case(c, args.mode)
+                r["suite"] = suite
+                extraction_results.append(r)
+            continue
+
         prompts = spec.get("prompts") or []
         logger.info("Running suite=%s (%d prompts) for cancer=%s mode=%s",
                     suite, len(prompts), args.cancer, args.mode)
@@ -254,15 +315,32 @@ def main() -> int:
             all_results.append(r)
 
     # Compute metrics
+    try:
+        from model_registry import get_registry_snapshot
+        models_snapshot = get_registry_snapshot()
+    except Exception:
+        models_snapshot = {}
     summary = {
         "cancer": args.cancer,
         "suites": suites,
         "mode": args.mode,
+        "models": models_snapshot,
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "metrics": {},
     }
     failed = False
     chunks_loaded = bool(chunks)
+
+    if extraction_results:
+        m = metrics.extraction_accuracy(extraction_results)
+        summary["metrics"][m["metric"]] = {k: v for k, v in m.items() if k != "detail"}
+        threshold = 0.80
+        passed_thresh = m["total"] == 0 or m["value"] >= threshold
+        print(f"  {m['metric']:24s} {m['value']:.2%}  ({m['pass']}/{m['total']})  threshold={threshold:.0%}  {'PASS' if passed_thresh else 'FAIL'}")
+        if not passed_thresh:
+            failed = True
+            for d in m["detail"][:5]:
+                print(f"      - {d}")
     for fn in metrics.ALL_METRICS:
         m = fn(all_results)
         summary["metrics"][m["metric"]] = {k: v for k, v in m.items() if k != "detail"}
@@ -304,6 +382,8 @@ def main() -> int:
                 for s in (r.get("sources") or [])
             ]
             f.write(json.dumps(payload) + "\n")
+        for r in extraction_results:
+            f.write(json.dumps(r) + "\n")
     logger.info("Wrote report → %s", report_path)
 
     return 1 if failed else 0

@@ -1,0 +1,279 @@
+# Gold extraction suite — colorectal.
+#
+# Each case: one patient chat message (+ optional profile/beliefs fixture) ->
+# the reconcile decisions extraction v2 MUST produce. Cases without `llm_only`
+# are regex-reachable and run in --mode dry; `llm_only: true` cases need the
+# extractor model and run only in --mode llm.
+#
+# expect.decisions:  every entry must match a produced decision on
+#                    path + action (+ value when pinned).
+# expect.forbid_paths: paths that must NOT receive a non-NOOP decision.
+#
+# Run: python3 scripts/eval/run_evals.py --cancer colorectal --suite extraction --mode llm
+
+description: Extraction + reconcile gold cases (colorectal)
+
+cases:
+  # ---------------------------------------------------------- regex channel
+  - id: zip_explicit
+    message: "My zip code is 94110"
+    expect:
+      decisions:
+        - { path: patient.zipCode, action: ADD, value: "94110" }
+
+  - id: age_explicit
+    message: "I am 62 years old"
+    expect:
+      decisions:
+        - { path: patient.age, action: ADD, value: "62" }
+
+  - id: weight_explicit
+    message: "I weigh 180 pounds these days"
+    expect:
+      decisions:
+        - { path: patient.weight, action: ADD, value: "180" }
+
+  - id: stage_explicit_regex_commits
+    message: "I was diagnosed with stage 3 colon cancer last month"
+    expect:
+      decisions:
+        - { path: primaryDiagnosis.stage, action: ADD, value: "Stage III" }
+      # Regression lock: the old age regex matched the "age" inside "stage 3"
+      # and silently wrote age=3 to profiles.
+      forbid_paths:
+        - patient.age
+
+  - id: name_explicit
+    message: "My name is Maria and I have a question"
+    expect:
+      decisions:
+        - { path: patient.firstName, action: ADD, value: "Maria" }
+
+  - id: zip_update_provisional
+    message: "I moved to 10029 recently"
+    profile:
+      beliefs:
+        version: 1
+        pending: []
+        fields:
+          patient.zipCode:
+            value: "94110"
+            confidence: 0.6
+            status: provisional
+            source: chat
+            history: []
+    expect:
+      decisions:
+        - { path: patient.zipCode, action: UPDATE, value: "10029" }
+
+  - id: stage_conflicts_confirmed_never_silent
+    message: "I'm stage 4 now"
+    profile:
+      beliefs:
+        version: 1
+        pending: []
+        fields:
+          primaryDiagnosis.stage:
+            value: "Stage III"
+            confidence: 1.0
+            status: confirmed
+            source: form
+            history: []
+    expect:
+      decisions:
+        - { path: primaryDiagnosis.stage, action: PENDING_CONFIRMATION }
+      forbid_paths:
+        - patient.age
+
+  - id: age_reinforce_same_value
+    message: "I'm 62, like I said before"
+    profile:
+      beliefs:
+        version: 1
+        pending: []
+        fields:
+          patient.age:
+            value: "62"
+            confidence: 0.8
+            status: provisional
+            source: chat
+            history: []
+    expect:
+      decisions:
+        - { path: patient.age, action: NOOP }
+
+  - id: stage_question_not_extracted
+    message: "What does stage 4 mean for colon cancer?"
+    expect:
+      # Regression lock: the old bare `stage N` regex matched questions and
+      # hypotheticals and silently set the user's stage.
+      decisions: []
+      forbid_paths:
+        - primaryDiagnosis.stage
+
+  # ---------------------------------------------------------- LLM channel
+  - id: biomarker_kras_goes_pending
+    llm_only: true
+    message: "My oncologist told me my tumor is KRAS G12D positive"
+    expect:
+      decisions:
+        - { path: primaryDiagnosis.biomarkers.KRAS, action: PENDING_CONFIRMATION }
+
+  - id: biomarker_msi_high
+    llm_only: true
+    message: "The genetic testing came back and I'm MSI-high"
+    expect:
+      decisions:
+        - { path: primaryDiagnosis.biomarkers.MSI, action: PENDING_CONFIRMATION }
+
+  - id: treatment_start_goes_pending
+    llm_only: true
+    message: "I started FOLFOX chemotherapy two weeks ago"
+    expect:
+      decisions:
+        - { path: treatments.folfox, action: PENDING_CONFIRMATION }
+
+  - id: treatment_negation_invalidates
+    llm_only: true
+    message: "I'm not on FOLFOX anymore, we stopped it"
+    profile:
+      beliefs:
+        version: 1
+        pending: []
+        fields:
+          treatments.folfox:
+            value: { regimen: "FOLFOX", status: "active" }
+            confidence: 0.9
+            status: confirmed
+            source: form
+            history: []
+    expect:
+      decisions:
+        - { path: treatments.folfox, action: INVALIDATE }
+
+  - id: symptom_add
+    llm_only: true
+    message: "I've been dealing with a lot of nausea this week"
+    expect:
+      decisions:
+        - { path: symptoms.nausea, action: ADD }
+
+  - id: symptom_resolved_invalidates
+    llm_only: true
+    message: "Good news, the nausea is finally gone"
+    profile:
+      beliefs:
+        version: 1
+        pending: []
+        fields:
+          symptoms.nausea:
+            value: "nausea"
+            confidence: 0.7
+            status: provisional
+            source: chat
+            history: []
+    expect:
+      decisions:
+        - { path: symptoms.nausea, action: INVALIDATE }
+
+  - id: comorbidity_goes_pending
+    llm_only: true
+    message: "On top of the cancer I also have type 2 diabetes"
+    expect:
+      decisions:
+        - { path: patient.comorbidities.type_2_diabetes, action: PENDING_CONFIRMATION }
+
+  - id: histology_goes_pending
+    llm_only: true
+    message: "The biopsy said it's adenocarcinoma"
+    expect:
+      decisions:
+        - { path: primaryDiagnosis.histology, action: PENDING_CONFIRMATION }
+
+  - id: multi_fact_age_and_symptom
+    llm_only: true
+    message: "I'm 58 and the fatigue has been overwhelming lately"
+    expect:
+      decisions:
+        - { path: patient.age, action: ADD, value: "58" }
+        - { path: symptoms.fatigue, action: ADD }
+
+  # ---------------------------------------------------------- must-NOT-extract
+  - id: pure_question_no_facts
+    llm_only: true
+    message: "What are the most common side effects of chemotherapy?"
+    expect:
+      decisions: []
+      forbid_paths:
+        - symptoms.nausea
+        - symptoms.fatigue
+        - treatments.chemotherapy
+
+  - id: other_person_fact_not_extracted
+    llm_only: true
+    message: "My mother has diabetes, does that increase my risk?"
+    expect:
+      decisions: []
+      forbid_paths:
+        - patient.comorbidities.diabetes
+        - patient.comorbidities.type_2_diabetes
+
+  - id: hypothetical_not_extracted
+    llm_only: true
+    message: "If I were stage 4, would I still qualify for surgery?"
+    expect:
+      decisions: []
+      forbid_paths:
+        - primaryDiagnosis.stage
+
+  - id: general_info_request_no_facts
+    llm_only: true
+    message: "Tell me about FOLFOX and how it works"
+    expect:
+      decisions: []
+      forbid_paths:
+        - treatments.folfox
+
+  - id: friend_treatment_not_extracted
+    llm_only: true
+    message: "My friend was on capecitabine and it helped her a lot"
+    expect:
+      decisions: []
+      forbid_paths:
+        - treatments.capecitabine
+
+  # ---------------------------------------------------------- robustness
+  - id: caregiver_speaking_for_patient
+    llm_only: true
+    message: "I'm asking for my husband, the patient. He is on FOLFIRI now."
+    expect:
+      decisions:
+        - { path: treatments.folfiri, action: PENDING_CONFIRMATION }
+
+  - id: ecog_low_stakes_adds
+    llm_only: true
+    message: "My doctor rated my ECOG as 1"
+    expect:
+      decisions:
+        - { path: patient.ecog, action: ADD }
+
+  - id: already_known_biomarker_reinforces
+    llm_only: true
+    message: "As you know I'm KRAS G12D"
+    profile:
+      beliefs:
+        version: 1
+        pending: []
+        fields:
+          primaryDiagnosis.biomarkers.KRAS:
+            value: "G12D"
+            confidence: 0.9
+            status: confirmed
+            source: form
+            history: []
+    expect:
+      # Either "extracted then reconciled to NOOP" or "not re-extracted" is
+      # safe; the invariant is no non-NOOP action on the known marker.
+      decisions: []
+      forbid_paths:
+        - primaryDiagnosis.biomarkers.KRAS

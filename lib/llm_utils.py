@@ -3328,7 +3328,9 @@ def _quick_extract_profile_updates(message: str) -> dict:
     # Age patterns
     age_patterns = [
         r"(?:i\s+am|i'm|my\s+age\s+is)\s+(\d{1,3})\s*(?:years?\s*old)?",
-        r"(?:my\s+)?age[:\s]+(\d{1,3})",
+        # \b so "stage 3" / "dosage 5" can never match as age (real prod bug:
+        # every "stage 3" mention silently wrote age=3 to the profile).
+        r"(?:my\s+)?\bage[:\s]+(\d{1,3})",
         r"(\d{1,3})\s*(?:years?\s*old|yo|y\.?o\.?)",
     ]
     for pattern in age_patterns:
@@ -3357,10 +3359,13 @@ def _quick_extract_profile_updates(message: str) -> dict:
                 updates["patient"]["weight"] = str(weight)
                 break
 
-    # Stage patterns
+    # Stage patterns — both require a first-person/possessive assertion. The
+    # old bare `stage\s*N` variant matched questions and hypotheticals
+    # ("what does stage 4 mean?", "if I were stage 4…") and silently wrote
+    # the user's stage. Assertions only:
     stage_patterns = [
-        r"(?:i\s+am|i'm|i\s+have|diagnosed\s+with)\s+stage\s+(i{1,3}v?|[1-4])",
-        r"(?:my\s+)?(?:cancer\s+)?stage\s*(?:is|:)?\s*(i{1,3}v?|[1-4])",
+        r"(?:i\s+am|i'm|i\s+have|diagnosed\s+with)\s+stage\s+(i{1,3}v?|[1-4])\b",
+        r"my\s+(?:cancer\s+)?stage\s+(?:is|:)\s*(i{1,3}v?|[1-4])\b",
     ]
     for pattern in stage_patterns:
         match = re.search(pattern, msg_lower)
@@ -3374,9 +3379,14 @@ def _quick_extract_profile_updates(message: str) -> dict:
                 updates["primaryDiagnosis"]["stage"] = stage_map[stage_raw]
                 break
 
-    # Name patterns
+    # Name patterns. The lead-in is case-insensitive (scoped (?i: ...) so a
+    # sentence-initial "My name is …" matches) while the captured name itself
+    # stays case-sensitive — capitalization is the signal it's a name. The old
+    # "i'm <Name>" variant is dropped: case-insensitive it would capture any
+    # capitalized word ("I'm Stage…" -> name "Stage"); the LLM channel handles
+    # those phrasings instead.
     name_patterns = [
-        r"(?:my\s+name\s+is|i'm|call\s+me)\s+([A-Z][a-z]+)",
+        r"(?i:my\s+name\s+is|call\s+me)\s+([A-Z][a-z]+)",
     ]
     for pattern in name_patterns:
         match = re.search(pattern, message)  # Case-sensitive for names

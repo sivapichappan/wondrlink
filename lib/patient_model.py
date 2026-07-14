@@ -251,6 +251,22 @@ def _parse_llm_facts(raw: Any) -> List[CandidateFact]:
         # Only accept known path shapes — the model must not invent namespaces.
         if not path.startswith(("patient.", "primaryDiagnosis.", "treatments.", "symptoms.")):
             continue
+        # Normalize the identity segment deterministically — the model writes
+        # "treatments.FOLFOX" / "symptoms.hotflashes"; belief paths are slugged
+        # from the VALUE where it names the thing (it preserves separators the
+        # model drops from path segments), and biomarkers are uppercased.
+        parts = path.split(".")
+        if parts[0] == "treatments" and len(parts) == 2:
+            name = value.get("regimen") if isinstance(value, dict) else None
+            path = f"treatments.{_slug(str(name) if name else parts[1])}"
+        elif parts[0] == "symptoms" and len(parts) == 2:
+            name = value if isinstance(value, str) else parts[1]
+            path = f"symptoms.{_slug(str(name))}"
+        elif parts[:2] == ["patient", "comorbidities"] and len(parts) == 3:
+            name = value if isinstance(value, str) else parts[2]
+            path = f"patient.comorbidities.{_slug(str(name))}"
+        elif parts[:2] == ["primaryDiagnosis", "biomarkers"] and len(parts) == 3:
+            path = f"primaryDiagnosis.biomarkers.{parts[2].upper()}"
         try:
             conf = float(f.get("confidence", CONF_LLM_DEFAULT))
         except (TypeError, ValueError):
@@ -687,6 +703,104 @@ def confirm_belief(user_id: str, confirmation_id: str, accept: bool) -> Dict[str
         logger.error("confirm_belief: save_profile failed")
         return {"status": "error"}
     return out
+
+
+# ---------------------------------------------------------------------------
+# Form absorption — the wizard stays a first-class accelerator
+# ---------------------------------------------------------------------------
+
+_FORM_SCALAR_PATHS: Tuple[Tuple[str, str], ...] = (
+    ("patient", "firstName"), ("patient", "age"), ("patient", "sex"),
+    ("patient", "zipCode"), ("patient", "ecog"), ("patient", "weight"),
+    ("patient", "heightFt"), ("patient", "heightIn"), ("patient", "race_ethnicity"),
+    ("patient", "allergies"),
+    ("primaryDiagnosis", "site"), ("primaryDiagnosis", "stage"),
+    ("primaryDiagnosis", "histology"),
+)
+
+
+def absorb_form_profile(profile: dict, only_missing: bool = False) -> int:
+    """
+    Upsert beliefs from the materialized profile with source=form, confirmed,
+    confidence 1.0 — the wizard/manual form is authoritative user input.
+    Called on profile upload so form saves keep the belief store in sync.
+
+    only_missing=True is the lazy-sync mode used before reconcile in the chat
+    write path: it creates beliefs only for materialized fields that have no
+    belief yet (legacy stragglers the backfill missed), never touching
+    existing ones — so a negation of a legacy fact has a prior to invalidate.
+
+    Returns the number of belief fields written/updated.
+    """
+    beliefs = ensure_beliefs(profile)
+    now = _now_iso()
+    count = 0
+
+    def upsert(path: str, value: Any) -> None:
+        nonlocal count
+        prior = beliefs["fields"].get(path)
+        if only_missing and prior is not None:
+            return
+        entry = {
+            "value": value, "confidence": CONF_FORM, "status": "confirmed",
+            "source": "form", "session_id": None,
+            "first_observed": (prior or {}).get("first_observed", now),
+            "last_updated": now, "confirmed_at": now,
+            "history": list((prior or {}).get("history", [])),
+        }
+        if prior and _norm_value(prior.get("value")) != _norm_value(value):
+            entry["history"].insert(0, {
+                "value": prior.get("value"), "status": prior.get("status"),
+                "source": prior.get("source"), "superseded_at": now,
+                "reason": "form_update",
+            })
+            entry["history"] = entry["history"][:HISTORY_CAP]
+        beliefs["fields"][path] = entry
+        count += 1
+
+    for section, key in _FORM_SCALAR_PATHS:
+        val = (profile.get(section) or {}).get(key)
+        if val not in (None, "", []):
+            upsert(f"{section}.{key}", val)
+
+    for marker, result in ((profile.get("primaryDiagnosis") or {}).get("biomarkers") or {}).items():
+        if result not in (None, ""):
+            upsert(f"primaryDiagnosis.biomarkers.{str(marker).upper()}", result)
+
+    for c in (profile.get("patient") or {}).get("comorbidities") or []:
+        if isinstance(c, str) and c.strip():
+            upsert(f"patient.comorbidities.{_slug(c)}", c)
+
+    for tx in profile.get("treatments") or []:
+        if isinstance(tx, dict):
+            name = tx.get("regimen") or tx.get("category")
+            if name:
+                clean = {k: v for k, v in tx.items() if v not in (None, "", [])}
+                upsert(f"treatments.{_slug(name)}", clean)
+
+    for sym in profile.get("symptoms") or []:
+        if isinstance(sym, str) and sym.strip():
+            upsert(f"symptoms.{_slug(sym)}", sym.strip())
+
+    return count
+
+
+# Persistence-layer sub-objects that live inside raw_profile but are NOT part
+# of what a form/wizard submits. A profile upload must never wipe them.
+PRESERVED_PROFILE_KEYS: Tuple[str, ...] = (
+    "beliefs", "model_state", "_sources",
+    "visit_recaps", "previsit_questions", "appeal_drafts", "privacy_appeals",
+)
+
+
+def carry_over_app_state(incoming: dict, existing: Optional[dict]) -> dict:
+    """Copy preserved sub-objects from the stored profile into an uploaded one."""
+    if not existing:
+        return incoming
+    for key in PRESERVED_PROFILE_KEYS:
+        if key not in incoming and key in existing:
+            incoming[key] = existing[key]
+    return incoming
 
 
 # ---------------------------------------------------------------------------

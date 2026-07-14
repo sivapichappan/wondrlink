@@ -339,6 +339,17 @@ def api_upload_profile():
             content = file.read()
             profile = json.loads(content.decode('utf-8'))
 
+        # A form/wizard upload replaces the profile document — carry over the
+        # app-state sub-objects it doesn't know about (beliefs, model_state,
+        # visit recaps, …) and absorb the form's fields into the belief store
+        # as source=form / confirmed (the form stays a first-class accelerator).
+        try:
+            from patient_model import absorb_form_profile, carry_over_app_state
+            profile = carry_over_app_state(profile, load_profile(user_id))
+            absorb_form_profile(profile)
+        except Exception:
+            logger.exception("Form belief absorption failed (profile still saved)")
+
         # Save to Supabase
         if not save_profile(user_id, profile):
             logger.error(f"Failed to save profile to database for user {user_id}")
@@ -361,6 +372,37 @@ def api_upload_profile():
     except Exception as e:
         logger.exception("upload_profile error")
         return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/confirm_belief", methods=["POST"])
+@require_auth
+def api_confirm_belief():
+    """
+    Resolve a pending belief confirmation (the "is that right?" chip).
+
+    Body: {"confirmation_id": str, "accept": bool}
+    accept=true  -> the fact is committed as confirmed.
+    accept=false -> the fact is dropped; response carries a gentle
+                    corrected_question the client can prefill.
+    """
+    try:
+        user_id = request.user["user_id"]
+        data = request.get_json(silent=True) or {}
+        confirmation_id = data.get("confirmation_id")
+        accept = data.get("accept")
+        if not confirmation_id or not isinstance(accept, bool):
+            return jsonify({"error": "confirmation_id and accept (boolean) are required"}), 400
+
+        from patient_model import confirm_belief
+        result = confirm_belief(user_id, str(confirmation_id), accept)
+        if result.get("status") == "not_found":
+            return jsonify({"error": "Confirmation not found (it may have expired)"}), 404
+        if result.get("status") == "error":
+            return jsonify({"error": "Failed to save"}), 500
+        return jsonify(result)
+    except Exception as e:
+        logger.exception("confirm_belief error")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/get_patient", methods=["GET"])
@@ -1453,9 +1495,43 @@ def api_chat():
             # legacy write instead of calling the v1 extractor separately.
             profile_updates = {}
             update_success = False
+            pending_confirmations = []
             try:
+                beliefs_write = os.getenv("FEATURE_BELIEFS_WRITE", "false").lower() == "true"
                 shadow_on = os.getenv("FEATURE_EXTRACTION_SHADOW", "false").lower() == "true"
-                if shadow_on:
+
+                if beliefs_write:
+                    # Extraction v2 IS the writer: beliefs + materialized
+                    # profile + pending-confirmation queue ("is that right?"
+                    # chips). update_profile_with_sources is retired from the
+                    # chat path (the wizard still uses it).
+                    from patient_model import (
+                        absorb_form_profile, apply_decisions, extract_facts,
+                        reconcile, update_register_signal,
+                    )
+                    profile_obj = patient_profile if isinstance(patient_profile, dict) else {}
+                    # Lazy-sync: materialized fields with no belief yet (legacy
+                    # stragglers) get one, so conflicts/negations have a prior.
+                    absorb_form_profile(profile_obj, only_missing=True)
+                    candidates = extract_facts(original_message, profile_obj)
+                    beliefs_view = profile_obj.get("beliefs") or \
+                        {"version": 1, "fields": {}, "pending": []}
+                    decisions = reconcile(candidates, beliefs_view)
+                    update_register_signal(original_message, profile_obj)
+                    apply_res = apply_decisions(
+                        user_id, profile_obj, decisions,
+                        session_id=(active_conversation_id or session_id), shadow=False,
+                    )
+                    pending_confirmations = [
+                        {"id": p["id"], "path": p["path"], "prompt": p["prompt"],
+                         "proposed_value": p["proposed_value"]}
+                        for p in apply_res.pending_confirmations
+                    ]
+                    profile_updates = {path: True for path in apply_res.committed_paths}
+                    update_success = bool(apply_res.committed_paths)
+                    if profile_updates:
+                        logger.info(f"Belief updates for user {user_id}: {sorted(profile_updates.keys())}")
+                elif shadow_on:
                     from patient_model import (
                         apply_decisions, candidates_to_v1_updates, extract_facts, reconcile,
                     )
@@ -1473,7 +1549,7 @@ def api_chat():
                     profile_updates = extract_profile_updates_from_query(
                         original_message, patient_profile or {})
 
-                if profile_updates:
+                if profile_updates and not beliefs_write:
                     logger.info(f"Detected profile updates for user {user_id}: {list(profile_updates.keys())}")
                     source_info = {
                         "source_type": "chat",
@@ -1543,6 +1619,7 @@ def api_chat():
                 "guidelines_used": guidelines_used,
                 "has_guidelines": len(guidelines_used) > 0,
                 "clinical_trials": clinical_trials_data,
+                "pending_confirmations": pending_confirmations or None,
                 "urgency": {
                     "detected": prompt_metadata.get('urgency_detected', False),
                     "level": prompt_metadata.get('urgency_level'),
@@ -1590,6 +1667,7 @@ def api_chat():
                         "resources": response_data.get("resources", []),
                         "urgency": response_data.get("urgency"),
                         "clinical_trials": response_data.get("clinical_trials"),
+                        "pending_confirmations": response_data.get("pending_confirmations"),
                         "api_used": response_data.get("api_used"),
                     }
                     append_qa_to_conversation(
