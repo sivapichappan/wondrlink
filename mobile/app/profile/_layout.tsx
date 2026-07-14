@@ -1,7 +1,6 @@
 import { Stack } from 'expo-router';
 
 import { HeaderBack } from '@/components/common/HeaderBack';
-import { HeaderSos } from '@/components/common/HeaderSos';
 import { Colors } from '@/constants/theme';
 
 export default function ProfileLayout() {
@@ -14,7 +13,6 @@ export default function ProfileLayout() {
         contentStyle: { backgroundColor: Colors.surface },
         animation: 'slide_from_right',
         animationDuration: 250,
-        headerRight: () => <HeaderSos />,
       }}>
       <Stack.Screen
         name="index"

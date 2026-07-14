@@ -11,7 +11,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { Activity, Bot, CalendarClock, ChevronRight, ClipboardList, Microscope } from 'lucide-react-native';
+import { Activity, CalendarClock, ChevronRight, ClipboardList, Microscope } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { ChatInput } from '@/components/chat/ChatInput';
@@ -57,7 +57,7 @@ export default function HomeScreen() {
 
   return (
     <Screen
-      header={<TopBar leading="menu" showFocusChip />}
+      header={<TopBar leading="menu" />}
       footer={
         <ChatInput
           onSend={startThread}
@@ -113,11 +113,10 @@ export default function HomeScreen() {
         <Chip Icon={ClipboardList} label="Pre-visit questions" onPress={() => router.push('/tools/previsit')} />
       </View>
 
-      {/* Short AI disclosure (full verbatim disclosure lands in-thread via SessionMeta) */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, alignSelf: 'center', backgroundColor: Colors.sidebarBg, borderRadius: Radius.pill, paddingVertical: 6, paddingHorizontal: Spacing.md }}>
-        <Bot size={13} color={Colors.primary} />
-        <Text style={{ fontSize: FontSize.xs, color: Colors.textSecondary }}>AI support tool · not medical advice</Text>
-      </View>
+      {/* Discreet AI note — full verbatim disclosure lands in-thread via SessionMeta. */}
+      <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, textAlign: 'center' }}>
+        AI support tool · not medical advice
+      </Text>
 
       <WelcomeProfileModal
         visible={welcomeOpen}

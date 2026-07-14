@@ -13,13 +13,14 @@
  */
 
 import { router } from 'expo-router';
-import { Activity, HeartPulse, LayoutGrid, LifeBuoy, Search, Settings, SquarePen, User } from 'lucide-react-native';
+import { Activity, HeartPulse, LayoutGrid, LifeBuoy, Search, Settings, SquarePen, Tag, User } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { BackHandler, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors, FontSize, Fonts, Radius } from '@/constants/theme';
+import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { useCareSnapshot, useProfile } from '@/hooks/useCare';
 import { useConversations } from '@/hooks/useConversations';
 import { useWatchlist } from '@/hooks/useWatchlist';
@@ -38,7 +39,9 @@ export function AppDrawer() {
   const watchlist = useWatchlist();
   const snap = useCareSnapshot();
   const profile = useProfile();
+  const ack = useAcknowledgement();
 
+  const cancerDisplay = ack.data?.cancer_display ?? 'Pick cancer';
   const savedCount = watchlist.trials.length;
   const daysSince = snap.data?.days_since_symptom;
   const checkinDue = daysSince == null || daysSince >= 7;
@@ -164,6 +167,12 @@ export function AppDrawer() {
 
           {/* My Care */}
           <SectionLabel>MY CARE</SectionLabel>
+          <DrawerRow
+            icon={<Tag size={17} color={Colors.textSecondary} />}
+            label="Cancer focus"
+            hint={cancerDisplay}
+            onPress={() => go('/profile/cancer-switcher')}
+          />
           <DrawerRow icon={<User size={17} color={Colors.textSecondary} />} label="Profile" onPress={() => go('/profile')} />
           <DrawerRow icon={<HeartPulse size={17} color={Colors.textSecondary} />} label="Care snapshot" onPress={() => go('/care')} />
           <DrawerRow
