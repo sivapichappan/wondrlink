@@ -26,6 +26,7 @@ import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { NEW_CONVERSATION, useChat } from '@/hooks/useChat';
 import { useConversations } from '@/hooks/useConversations';
 import { useGuardedSend } from '@/hooks/useGuardedSend';
+import { useModelerTrigger } from '@/hooks/useModelerTrigger';
 import { ApiError, extractErrorMessage } from '@/lib/api/client';
 import type { ChatHistoryMessage } from '@shared/types';
 
@@ -53,6 +54,15 @@ export default function ChatThreadScreen() {
 
   const { guardedSend, crisis, continueCrisis, closeCrisis } = useGuardedSend(sendMessage);
 
+  // End-of-conversation Modeler ping (Push 2): count sends this session and
+  // fire on thread-exit / app-background. Server debounce does the limiting.
+  const [sentCount, setSentCount] = useState(0);
+  useModelerTrigger(sentCount);
+  const sendAndCount = (text: string) => {
+    setSentCount((c) => c + 1);
+    guardedSend(text);
+  };
+
   useEffect(() => {
     if (messages.length > 0) {
       const t = setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
@@ -66,7 +76,7 @@ export default function ChatThreadScreen() {
     if (!q || isSending) return;
     if (lastHandledQ.current === q) return;
     lastHandledQ.current = q;
-    guardedSend(q);
+    sendAndCount(q);
     router.setParams({ q: undefined });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.q, isSending]);
@@ -81,7 +91,7 @@ export default function ChatThreadScreen() {
     }
     return (
       <Animated.View entering={FadeIn.duration(180)} style={{ paddingHorizontal: 12, paddingVertical: 6 }}>
-        <BotResponseCard message={item} onPickFollowup={(t) => guardedSend(t)} />
+        <BotResponseCard message={item} onPickFollowup={(t) => sendAndCount(t)} />
       </Animated.View>
     );
   };
@@ -152,7 +162,7 @@ export default function ChatThreadScreen() {
           </View>
         )}
 
-        <ChatInput onSend={guardedSend} disabled={isSending} prefill={params.prefill} />
+        <ChatInput onSend={sendAndCount} disabled={isSending} prefill={params.prefill} />
       </KeyboardAvoidingView>
 
       <CrisisModal category={crisis?.hit.category ?? null} onContinue={continueCrisis} onClose={closeCrisis} />
