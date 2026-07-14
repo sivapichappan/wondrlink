@@ -25,6 +25,7 @@ import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { useCareSnapshot, useProfile } from '@/hooks/useCare';
 import { useConversations } from '@/hooks/useConversations';
 import { useWatchlist } from '@/hooks/useWatchlist';
+import { LifecycleStageLine } from './LifecycleStageLine';
 import { useNavOverlay } from './NavOverlay';
 
 const DRAWER_W = 310;
@@ -185,6 +186,7 @@ export function AppDrawer() {
 
           {/* My Care */}
           <SectionLabel>MY CARE</SectionLabel>
+          <LifecycleStageLine stage={profile.data?.lifecycle_stage} />
           <DrawerRow
             icon={<Tag size={17} color={Colors.textSecondary} />}
             label="Cancer focus"

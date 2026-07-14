@@ -40,6 +40,9 @@ export const ENDPOINTS = {
   conversation: (id: string) => `/api/conversations/${id}`,
   conversationMessages: (id: string) => `/api/conversations/${id}/messages`,
 
+  // --- Patient lifecycle (belief store) ---
+  confirmBelief: '/api/confirm_belief',
+
   // --- Profile (clearProfile is POST per api/index.py:307) ---
   uploadProfile: '/api/upload_profile',
   getPatient: '/api/get_patient',

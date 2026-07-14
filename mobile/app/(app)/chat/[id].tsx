@@ -30,7 +30,7 @@ import { ApiError, extractErrorMessage } from '@/lib/api/client';
 import type { ChatHistoryMessage } from '@shared/types';
 
 export default function ChatThreadScreen() {
-  const params = useLocalSearchParams<{ id: string; q?: string }>();
+  const params = useLocalSearchParams<{ id: string; q?: string; prefill?: string }>();
   const id = params.id ?? NEW_CONVERSATION;
   const ack = useAcknowledgement();
   const listRef = useRef<FlatList<ChatHistoryMessage>>(null);
@@ -152,7 +152,7 @@ export default function ChatThreadScreen() {
           </View>
         )}
 
-        <ChatInput onSend={guardedSend} disabled={isSending} />
+        <ChatInput onSend={guardedSend} disabled={isSending} prefill={params.prefill} />
       </KeyboardAvoidingView>
 
       <CrisisModal category={crisis?.hit.category ?? null} onContinue={continueCrisis} onClose={closeCrisis} />

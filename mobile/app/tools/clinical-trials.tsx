@@ -337,32 +337,61 @@ function WidenCallout({
 
 function ErrorBlock({ err, onBack }: { err: unknown; onBack: () => void }) {
   let message = 'Could not search trials right now.';
-  let missing: string[] = [];
+  let jitQuestion: string | null = null;
+  let chatPrefill: string | null = null;
   if (err instanceof ApiError && err.body) {
     if (err.body.error) message = err.body.error;
-    const mc = (err.body as { missing_critical?: string[] }).missing_critical;
-    if (Array.isArray(mc)) missing = mc;
+    const body = err.body as { just_in_time_question?: string; chat_prefill?: string };
+    jitQuestion = body.just_in_time_question ?? null;
+    chatPrefill = body.chat_prefill ?? null;
   }
+
+  // Just-in-time softening: instead of "go fill out your profile", ask the ONE
+  // missing question and hand it to chat with the composer prefilled.
+  if (jitQuestion) {
+    return (
+      <View style={{ gap: 10 }}>
+        <View
+          style={{
+            padding: 14,
+            borderRadius: Radius.md,
+            backgroundColor: Colors.sidebarBg,
+            gap: 8,
+          }}>
+          <Text style={{ color: Colors.textPrimary, fontFamily: Fonts.sansSemiBold, fontSize: FontSize.md }}>
+            One quick question
+          </Text>
+          <Text style={{ color: Colors.textSecondary, fontSize: FontSize.base, lineHeight: 19 }}>
+            {jitQuestion}
+          </Text>
+        </View>
+        <Button
+          label="Answer in chat"
+          fullWidth
+          onPress={() =>
+            router.push(`/chat/new?prefill=${encodeURIComponent(chatPrefill ?? '')}` as never)
+          }
+        />
+        <Button label="Back to tools" variant="ghost" fullWidth onPress={onBack} />
+      </View>
+    );
+  }
+
   return (
     <View style={{ gap: 10 }}>
       <View
         style={{
           padding: 14,
-          borderRadius: 12,
+          borderRadius: Radius.md,
           backgroundColor: Colors.warningBg,
           borderWidth: 1,
           borderColor: Colors.warning,
           gap: 8,
         }}>
-        <Text style={{ color: Colors.textPrimary, fontFamily: Fonts.sansSemiBold, fontSize: 14 }}>
+        <Text style={{ color: Colors.textPrimary, fontFamily: Fonts.sansSemiBold, fontSize: FontSize.md }}>
           Need a bit more information
         </Text>
-        <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 19 }}>{message}</Text>
-        {missing.length > 0 && (
-          <Text style={{ color: Colors.textSecondary, fontSize: 12 }}>
-            Missing: {missing.join(', ')}
-          </Text>
-        )}
+        <Text style={{ color: Colors.textSecondary, fontSize: FontSize.base, lineHeight: 19 }}>{message}</Text>
       </View>
       <Button label="Back to tools" variant="secondary" fullWidth onPress={onBack} />
     </View>

@@ -15,7 +15,7 @@ import {
 } from 'expo-speech-recognition';
 import { router } from 'expo-router';
 import { Activity, AudioLines, ClipboardList, Microscope, Mic, Plus, Send, Square, X } from 'lucide-react-native';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -38,19 +38,28 @@ interface Props {
   onSend: (text: string) => void;
   disabled?: boolean;
   placeholder?: string;
+  /** Pre-fill the composer (e.g. "My zip code is ") without sending. */
+  prefill?: string;
 }
 
 function joinParts(...parts: string[]): string {
   return parts.map((p) => p.trim()).filter(Boolean).join(' ');
 }
 
-export function ChatInput({ onSend, disabled, placeholder = "Let's talk" }: Props) {
+export function ChatInput({ onSend, disabled, placeholder = "Let's talk", prefill }: Props) {
   const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
   const [recording, setRecording] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const overflow = text.length > MAX_CHARS;
   const canSend = !disabled && text.trim().length > 0 && !overflow;
+
+  // Prefill the composer (never sends) — used by the trials "one quick
+  // question" hand-off. Only applies over an empty composer.
+  useEffect(() => {
+    if (prefill && !text) setText(prefill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill]);
 
   const baseRef = useRef('');
   const finalRef = useRef('');

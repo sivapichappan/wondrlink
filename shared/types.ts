@@ -149,6 +149,21 @@ export interface ConversationsListResponse {
   conversations: Conversation[];
 }
 
+/** A fact awaiting the user's "is that right?" confirmation (belief store). */
+export interface PendingConfirmation {
+  id: string;
+  path: string;
+  prompt: string;
+  proposed_value?: unknown;
+}
+
+/** Passive-lifecycle stage (see lib/question_policy.py — monotonic ladder). */
+export type LifecycleStage =
+  | 'getting_to_know_you'
+  | 'understanding_treatment'
+  | 'connected'
+  | 'trial_ready';
+
 export interface CreateConversationResponse {
   id: string;
   title: string;
@@ -249,6 +264,7 @@ export interface ChatHistoryMessage {
     resources?: ChatResource[];
     urgency?: ChatUrgency | null;
     clinical_trials?: ChatClinicalTrialsBlock | null;
+    pending_confirmations?: PendingConfirmation[] | null;
     api_used?: string;
   };
 }
@@ -284,6 +300,10 @@ export interface ChatResponse {
   has_guidelines: boolean;
   clinical_trials: ChatClinicalTrialsBlock | null;
   urgency: ChatUrgency | null;
+  /** Facts awaiting "is that right?" confirmation (belief store). */
+  pending_confirmations?: PendingConfirmation[] | null;
+  /** The patient's lifecycle stage after this turn. */
+  lifecycle_stage?: LifecycleStage | null;
   /** Conversation this turn was persisted to (multi-conversation model). */
   conversation_id?: string | null;
   /** Server-assigned title, echoed on the first turn of a new conversation. */
@@ -389,6 +409,14 @@ export interface GetPatientResponse {
   profile?: PatientProfile;
   patient_summary?: string;
   context?: Record<string, unknown>;
+  /** Passive-lifecycle stage (absent on older servers). */
+  lifecycle_stage?: LifecycleStage;
+  /** "What WondrChat knows" summary for My Care (absent on older servers). */
+  coverage?: {
+    score: number;
+    known_count: number;
+    missing_top: string[];
+  } | null;
 }
 
 export interface UploadProfileResponse {

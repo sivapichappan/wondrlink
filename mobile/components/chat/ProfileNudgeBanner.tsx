@@ -8,16 +8,16 @@ interface Props {
 }
 
 /**
- * Persistent profile-completion nudge — shown on the chat screen whenever
- * the user has no patient profile. Stays visible until they build one;
- * intentionally NOT dismissible.
+ * Gentle lifecycle nudge — shown while WondrChat is still getting to know a
+ * profile-less user. Passive framing: chatting is the primary path; the
+ * 2-minute form is an optional accelerator.
  */
 export function ProfileNudgeBanner({ onPress }: Props) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel="Set up your patient profile for better answers"
+      accessibilityLabel="Optional 2-minute setup for a head start"
       style={({ pressed }) => [
         styles.outer,
         pressed && { backgroundColor: Colors.surfaceMuted },
@@ -27,9 +27,9 @@ export function ProfileNudgeBanner({ onPress }: Props) {
           <Sparkles size={16} color={Colors.surface} />
         </View>
         <View style={styles.text}>
-          <Text style={styles.title}>Set up your profile for better answers</Text>
+          <Text style={styles.title}>WondrChat learns about you as you chat</Text>
           <Text style={styles.subtitle} numberOfLines={2} ellipsizeMode="tail">
-            Takes ~2 min. WondrChat tailors responses to your stage, biomarkers, and treatments.
+            Just start talking. Want a head start? An optional 2-minute setup is here.
           </Text>
         </View>
         <ChevronRight size={18} color={Colors.primary} />

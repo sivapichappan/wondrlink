@@ -42,3 +42,15 @@ export function clearChatHistory() {
     method: 'DELETE',
   });
 }
+
+/** Resolve an "is that right?" belief confirmation chip. */
+export function confirmBelief(confirmationId: string, accept: boolean) {
+  return apiFetch<{
+    status: 'confirmed' | 'rejected';
+    path?: string;
+    corrected_question?: string;
+  }>(ENDPOINTS.confirmBelief, {
+    method: 'POST',
+    body: { confirmation_id: confirmationId, accept },
+  });
+}

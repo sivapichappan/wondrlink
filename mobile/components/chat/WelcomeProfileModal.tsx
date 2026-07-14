@@ -58,10 +58,11 @@ export function WelcomeProfileModal({ visible, onBuildProfile, onSkip }: Props) 
             </Text>
 
             <View style={styles.calloutCard}>
-              <Text style={styles.calloutHeader}>One quick step makes everything better</Text>
+              <Text style={styles.calloutHeader}>Just start chatting</Text>
               <Text style={styles.calloutBody}>
-                Set up your patient profile, a 2-minute wizard. Every answer the AI gives gets
-                meaningfully better when it knows your stage, biomarkers, and treatments.
+                No forms needed. WondrChat learns about you naturally as you talk, and may
+                occasionally ask a gentle question. The more you chat, the more personal
+                every answer gets.
               </Text>
             </View>
 
@@ -81,8 +82,8 @@ export function WelcomeProfileModal({ visible, onBuildProfile, onSkip }: Props) 
           </ScrollView>
 
           <View style={styles.footer}>
-            <Button label="Build my profile" size="lg" fullWidth onPress={onBuildProfile} />
-            <Button label="Maybe later" variant="ghost" fullWidth onPress={onSkip} />
+            <Button label="Start chatting" size="lg" fullWidth onPress={onSkip} />
+            <Button label="Prefer a form? 2-minute setup" variant="ghost" fullWidth onPress={onBuildProfile} />
           </View>
         </Pressable>
       </View>

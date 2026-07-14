@@ -12,6 +12,7 @@ import { Activity, ChevronRight, LineChart, Tag } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 import { CareSnapshot } from '@/components/care/CareSnapshot';
+import { LIFECYCLE_LABELS } from '@/components/common/LifecycleStageLine';
 import { TopBar } from '@/components/common/TopBar';
 import { Card } from '@/components/ui/Card';
 import { IconCircle } from '@/components/ui/IconCircle';
@@ -58,8 +59,15 @@ export default function MyCareScreen() {
   const summary =
     profile.data?.patient_summary ||
     [stage ? `Stage ${stage}` : null, cancerDisplay].filter(Boolean).join(' · ') ||
-    'Add your diagnosis and treatments';
-  const pct = Math.round(completenessOf(profile.data?.profile) * 100);
+    'Chat with WondrChat and it learns as you go';
+  // "What WondrChat knows": server coverage when available (lifecycle model),
+  // client-derived completeness as a fallback against older servers.
+  const coverage = profile.data?.coverage;
+  const pct = Math.round((coverage?.score ?? completenessOf(profile.data?.profile)) * 100);
+  const knowsLabel = coverage
+    ? `WondrChat knows ${coverage.known_count} thing${coverage.known_count === 1 ? '' : 's'} about your care`
+    : `Profile ${pct}% complete`;
+  const stageLabel = LIFECYCLE_LABELS[profile.data?.lifecycle_stage ?? 'getting_to_know_you'];
 
   const days = snap.data?.days_since_symptom;
   const checkinDue = days == null || days >= 7;
@@ -84,8 +92,10 @@ export default function MyCareScreen() {
               <View style={{ width: `${pct}%`, height: '100%', backgroundColor: Colors.primary }} />
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>Profile {pct}% complete</Text>
-              {pct < 100 && <Text style={{ fontSize: FontSize.sm, fontFamily: Fonts.sansSemiBold, color: Colors.primary }}>Complete it →</Text>}
+              <Text numberOfLines={1} style={{ flex: 1, fontSize: FontSize.xs, color: Colors.textMuted }}>
+                {knowsLabel} · {stageLabel}
+              </Text>
+              {pct < 100 && <Text style={{ fontSize: FontSize.sm, fontFamily: Fonts.sansSemiBold, color: Colors.primary }}>Add details →</Text>}
             </View>
           </>
         )}

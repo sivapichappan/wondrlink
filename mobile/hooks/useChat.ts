@@ -86,6 +86,7 @@ export function useChat(conversationId: string, opts: UseChatOptions = {}) {
           resources: resp.resources,
           urgency: resp.urgency,
           clinical_trials: resp.clinical_trials,
+          pending_confirmations: resp.pending_confirmations,
           api_used: resp.api_used,
         },
       };

@@ -6,6 +6,7 @@ import { Colors, Fonts, Radius } from '@/constants/theme';
 import { PER_MESSAGE_FOOTER } from '@shared/disclaimers';
 import type { ChatHistoryMessage } from '@shared/types';
 
+import { ConfirmationChips } from './ConfirmationChips';
 import { FollowupChips } from './FollowupChips';
 import { MarkdownText } from './MarkdownText';
 import { MessageActions } from './MessageActions';
@@ -60,6 +61,11 @@ export function BotResponseCard({ message, onPickFollowup }: Props) {
       <UrgencyBanner urgency={meta.urgency} />
 
       <MarkdownText>{message.content}</MarkdownText>
+
+      {/* "Is that right?" chips — always visible (never behind Show details). */}
+      {!!meta.pending_confirmations?.length && (
+        <ConfirmationChips confirmations={meta.pending_confirmations} />
+      )}
 
       <MessageActions messageText={message.content} />
 
