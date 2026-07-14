@@ -44,7 +44,8 @@ function joinParts(...parts: string[]): string {
   return parts.map((p) => p.trim()).filter(Boolean).join(' ');
 }
 
-export function ChatInput({ onSend, disabled, placeholder = 'Ask anything…' }: Props) {
+export function ChatInput({ onSend, disabled, placeholder = "Let's talk" }: Props) {
+  const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
   const [recording, setRecording] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -125,37 +126,29 @@ export function ChatInput({ onSend, disabled, placeholder = 'Ask anything…' }:
   };
 
   return (
-    <View style={styles.bar}>
+    <View style={[styles.bar, { marginBottom: insets.bottom + Spacing.sm }]}>
       <View style={styles.row}>
-        {/* Plus / quick actions */}
-        <Pressable
-          onPress={() => setActionsOpen(true)}
-          disabled={disabled}
-          accessibilityRole="button"
-          accessibilityLabel="Quick actions"
-          hitSlop={8}>
+        {/* + / quick actions */}
+        <Pressable onPress={() => setActionsOpen(true)} disabled={disabled} accessibilityRole="button" accessibilityLabel="Quick actions" hitSlop={8}>
           <View style={styles.plusCircle}>
             <Plus size={21} color={Colors.primary} strokeWidth={2} />
           </View>
         </Pressable>
 
-        {/* Input with inline mic */}
+        {/* Input */}
         <View style={styles.inputCol}>
-          <View style={styles.inputPill}>
-            <TextInput
-              value={text}
-              onChangeText={setText}
-              placeholder={recording ? 'Listening…' : placeholder}
-              placeholderTextColor={recording ? Colors.primary : Colors.textMuted}
-              multiline
-              editable={!disabled}
-              blurOnSubmit={false}
-              returnKeyType={Platform.OS === 'ios' ? 'default' : 'send'}
-              onSubmitEditing={Platform.OS === 'android' ? submit : undefined}
-              style={styles.input}
-            />
-            <MicButton recording={recording} disabled={disabled} onPress={toggleMic} />
-          </View>
+          <TextInput
+            value={text}
+            onChangeText={setText}
+            placeholder={recording ? 'Listening…' : placeholder}
+            placeholderTextColor={recording ? Colors.primary : Colors.textMuted}
+            multiline
+            editable={!disabled}
+            blurOnSubmit={false}
+            returnKeyType={Platform.OS === 'ios' ? 'default' : 'send'}
+            onSubmitEditing={Platform.OS === 'android' ? submit : undefined}
+            style={styles.input}
+          />
           {overflow && (
             <View style={styles.overflowChip}>
               <Text style={styles.overflowText}>
@@ -165,6 +158,8 @@ export function ChatInput({ onSend, disabled, placeholder = 'Ask anything…' }:
           )}
         </View>
 
+        {/* Mic (one-tap dictation) + send */}
+        <MicButton recording={recording} disabled={disabled} onPress={toggleMic} />
         <SendButton canSend={canSend} onPress={submit} />
       </View>
 
@@ -303,12 +298,21 @@ function QuickActionsSheet({ open, onClose, onVoice }: { open: boolean; onClose:
 }
 
 const styles = StyleSheet.create({
+  // Floating rounded bar, lifted off the bottom edge.
   bar: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.sm,
     backgroundColor: Colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    shadowColor: '#0F201C',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   row: {
     flexDirection: 'row',
@@ -317,7 +321,7 @@ const styles = StyleSheet.create({
   plusCircle: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: Radius.pill,
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -327,29 +331,22 @@ const styles = StyleSheet.create({
   inputCol: {
     flex: 1,
     minWidth: 0,
-    marginHorizontal: 8,
-  },
-  inputPill: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    backgroundColor: Colors.surfaceMuted,
-    borderRadius: Radius.md,
-    paddingRight: 6,
+    marginHorizontal: Spacing.xs,
   },
   input: {
-    flex: 1,
-    minHeight: 44,
-    maxHeight: 140,
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 12,
+    minHeight: 40,
+    maxHeight: 120,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 9,
+    backgroundColor: Colors.surfaceMuted,
+    borderRadius: Radius.md,
     color: Colors.textPrimary,
     fontSize: 16,
     fontFamily: Fonts.sans,
-    lineHeight: 22,
+    lineHeight: 20,
   },
   micInline: {
-    width: 36,
+    width: 40,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
@@ -370,7 +367,7 @@ const styles = StyleSheet.create({
   sendCircle: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: Radius.pill,
     borderWidth: 1,
     overflow: 'hidden',
     position: 'relative',

@@ -22,7 +22,6 @@ import { IconCircle } from '@/components/ui/IconCircle';
 import { Screen } from '@/components/ui/Screen';
 import { SectionLabel } from '@/components/ui/SectionLabel';
 import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
-import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { useCareSnapshot, useHero, useProfile } from '@/hooks/useCare';
 import { NEW_CONVERSATION } from '@/hooks/useChat';
 import { useWelcomePromptSeen } from '@/hooks/useWelcomePromptSeen';
@@ -32,7 +31,6 @@ export default function HomeScreen() {
   const hero = useHero();
   const snap = useCareSnapshot();
   const profile = useProfile();
-  const ack = useAcknowledgement();
 
   const hasProfile = !!profile.data?.profile;
   const showProfileNudge = !profile.isLoading && !hasProfile;
@@ -59,11 +57,7 @@ export default function HomeScreen() {
     <Screen
       header={<TopBar leading="menu" />}
       footer={
-        <ChatInput
-          onSend={startThread}
-          disabled={chatDisabled}
-          placeholder={ack.data?.cancer_display ? `Ask about ${ack.data.cancer_display.toLowerCase()}, or say how you feel…` : 'Ask anything, or say how you feel…'}
-        />
+        <ChatInput onSend={startThread} disabled={chatDisabled} />
       }
       keyboardAvoiding
       gap={Spacing.lg}>

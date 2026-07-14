@@ -152,11 +152,7 @@ export default function ChatThreadScreen() {
           </View>
         )}
 
-        <ChatInput
-          onSend={guardedSend}
-          disabled={isSending}
-          placeholder={ack.data?.cancer_display ? `Ask about ${ack.data.cancer_display.toLowerCase()}…` : 'Ask a question…'}
-        />
+        <ChatInput onSend={guardedSend} disabled={isSending} />
       </KeyboardAvoidingView>
 
       <CrisisModal category={crisis?.hit.category ?? null} onContinue={continueCrisis} onClose={closeCrisis} />
