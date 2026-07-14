@@ -1230,6 +1230,58 @@ def clear_chat_history(user_id: str) -> bool:
 # SCREENING SCORES (Items 3, 4, 5 - PHQ-9/GAD-7/PSS-10/ISI)
 # =============================================================================
 
+# -------------------------
+# Patient timeline (patient_events — append-only)
+# Migration: supabase_migrations/2026_07_15_patient_events.sql
+# -------------------------
+
+def append_patient_event(user_id: str, kind: str, path: Optional[str] = None,
+                         payload: Optional[dict] = None, source: str = 'system',
+                         session_id: Optional[str] = None,
+                         occurred_at: Optional[str] = None) -> bool:
+    """
+    Append one row to the patient's timeline. Never raises; a timeline miss
+    must never break the flow that produced it (chat, screening, recap).
+    """
+    try:
+        client = get_admin_client()
+        row: Dict[str, Any] = {
+            'user_id': user_id,
+            'kind': kind,
+            'payload': payload or {},
+            'source': source,
+        }
+        if path:
+            row['path'] = path
+        if session_id:
+            row['session_id'] = session_id
+        if occurred_at:
+            row['occurred_at'] = occurred_at
+        client.table('patient_events').insert(row).execute()
+        return True
+    except Exception as e:
+        # Table may not exist yet (migration not applied) — degrade silently.
+        logger.warning(f"append_patient_event({kind}) failed: {e}")
+        return False
+
+
+def load_patient_events(user_id: str, limit: int = 200,
+                        kinds: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    """Load a user's timeline, newest first. [] on any failure."""
+    try:
+        client = get_admin_client()
+        query = client.table('patient_events') \
+            .select('kind, path, payload, source, session_id, occurred_at, recorded_at') \
+            .eq('user_id', user_id)
+        if kinds:
+            query = query.in_('kind', kinds)
+        result = query.order('recorded_at', desc=True).limit(limit).execute()
+        return result.data or []
+    except Exception as e:
+        logger.warning(f"load_patient_events failed: {e}")
+        return []
+
+
 def save_screening_score(user_id: str, instrument: str, scores: dict,
                           total_score: int, severity_label: str) -> bool:
     """Save a completed screening instrument score."""
@@ -1244,6 +1296,13 @@ def save_screening_score(user_id: str, instrument: str, scores: dict,
             'completed_at': datetime.now().isoformat()
         }).execute()
         logger.info(f"Saved {instrument} score for user {user_id}: {total_score} ({severity_label})")
+        # Mirror into the patient timeline (screening_scores stays authoritative
+        # for the wellness UI; patient_events is the unified longitudinal record).
+        append_patient_event(user_id, 'screening_score', payload={
+            'instrument': instrument,
+            'total_score': total_score,
+            'severity_label': severity_label,
+        }, source='screening')
         return True
     except Exception as e:
         logger.error(f"Failed to save screening score: {e}")
@@ -1307,6 +1366,7 @@ def delete_all_user_data(user_id: str) -> dict:
       - patient_profiles      — full row
       - chat_messages         — all rows for user
       - screening_scores      — all rows for user
+      - patient_events        — all rows for user (lifecycle timeline)
       - user_acknowledgements — full row including consent_metadata
       - chat_feedback         — all rows for user
       - conversations         — all rows for user
@@ -1336,6 +1396,7 @@ def delete_all_user_data(user_id: str) -> dict:
             'patient_profiles',
             'chat_messages',
             'screening_scores',
+            'patient_events',
             'user_acknowledgements',
             'chat_feedback',
             'conversations',

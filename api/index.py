@@ -2016,6 +2016,15 @@ def api_visit_recap():
                 existing = existing[-20:]
             patient_profile['visit_recaps'] = existing
             saved = save_profile(user_id, patient_profile)
+            # Mirror into the patient timeline (profile array stays authoritative
+            # for the recap UI; patient_events is the longitudinal record).
+            if saved:
+                from supabase_storage import append_patient_event
+                append_patient_event(user_id, 'visit_recap', payload={
+                    "treatment_changes": recap['treatment_changes'],
+                    "action_items_count": len(recap['action_items'] or []),
+                    "flags": recap['flags'],
+                }, source='visit_recap')
         except Exception as e:
             logger.error(f"Failed to save visit recap to profile: {e}")
 
