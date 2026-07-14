@@ -116,8 +116,32 @@ def test_message_pii_still_caught():
           f"got {leak_names(leaks)}")
 
 
+def test_extractor_profile_context_hygiene():
+    print("\n4. Profile-extraction LLM call never sees raw identifiers or bookkeeping")
+    from llm_utils import _extraction_profile_context
+    raw_profile = {
+        'patient': {
+            'firstName': 'Margaret', 'lastName': 'Okafor',
+            'dob': '1961-03-14', 'zipCode': '94110',
+            'age': 64, 'sex': 'Female',
+        },
+        'primaryDiagnosis': {'stage': 'Stage III', 'biomarkers': {'KRAS': 'G12D'}},
+        '_sources': {'patient.age': {'source_type': 'chat', 'session_id': 'abc-123'}},
+        'visit_recaps': [{'timestamp': '2026-07-01T10:00:00Z', 'transcript_preview': 'Dr. Chen said...'}],
+    }
+    ctx = _extraction_profile_context(raw_profile)
+    check("name stripped from extractor context", 'Margaret' not in ctx and 'Okafor' not in ctx)
+    check("dob/zip stripped from extractor context", '1961-03-14' not in ctx and '94110' not in ctx)
+    check("_sources/visit_recaps stripped", '_sources' not in ctx and 'visit_recaps' not in ctx)
+    check("clinical data preserved (stage, biomarker)", 'Stage III' in ctx and 'KRAS' in ctx)
+
+    # Un-strippable PII smuggled in a free-text field -> context omitted entirely.
+    leaky = {'patient': {'notes': 'call my nurse at 555-867-5309'}}
+    check("leaky free-text profile context omitted", _extraction_profile_context(leaky) == '{}')
+
+
 def test_conversation_scrubber_pipeline():
-    print("\n4. Conversation scrubber neutralizes PII before the guard sees it")
+    print("\n5. Conversation scrubber neutralizes PII before the guard sees it")
     convo = "User: email me at jane.doe@example.com\nAssistant: I can't email you."
     _prompt, meta = build("What were we discussing?", [], {}, dict(CLEAN_CONTEXT), conversation=convo)
     payload = meta['pii_guard_payload']
@@ -134,6 +158,7 @@ if __name__ == '__main__':
     test_dated_public_chunk_not_blocked()
     test_real_phi_in_profile_still_caught()
     test_message_pii_still_caught()
+    test_extractor_profile_context_hygiene()
     test_conversation_scrubber_pipeline()
     print("\n" + "=" * 60)
     if FAILURES:

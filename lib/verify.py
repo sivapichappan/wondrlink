@@ -82,13 +82,14 @@ Output the JSON object now. No prose, no preamble — just the JSON."""
 
     try:
         from llm_utils import get_groq_client
+        from model_registry import get_model
         client = get_groq_client()
         if not client:
             logger.warning("Groq unavailable for verification — passing through")
             return default_pass
 
         completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model=get_model("verifier"),
             messages=[
                 {"role": "system", "content": VERIFIER_SYSTEM},
                 {"role": "user", "content": verifier_prompt}

@@ -120,6 +120,15 @@ def deidentify_raw_profile(patient: dict) -> dict:
     if isinstance(dx, dict) and 'dateOfDiagnosis' in dx:
         dx['dateOfDiagnosis'] = _relativize_date(dx['dateOfDiagnosis'])
 
+    # Strip app bookkeeping sub-objects. These carry session ids, timestamps,
+    # transcript previews, and (for beliefs/model_state) extraction provenance —
+    # none of it is clinical context an LLM needs, and some of it is PHI-adjacent.
+    for key in (
+        '_sources', 'beliefs', 'model_state',
+        'visit_recaps', 'previsit_questions', 'appeal_drafts', 'privacy_appeals',
+    ):
+        safe.pop(key, None)
+
     return safe
 
 

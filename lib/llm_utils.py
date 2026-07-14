@@ -1848,9 +1848,10 @@ def derive_subqueries(query: str) -> List[str]:
         client = get_groq_client()
         if not client:
             return []
+        from model_registry import get_model
         prompt = SUBQUERY_DERIVATION_PROMPT.format(query=query[:500])
         completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model=get_model("verifier"),
             messages=[{"role": "user", "content": prompt}],
             max_tokens=200,
             temperature=0.2,
@@ -3212,9 +3213,10 @@ def call_llm(prompt: str, response_length: str = "normal", temperature: float = 
             logger.warning(together_error)
             return None
         try:
-            logger.info(f"Calling Together AI (70B), response_length: {response_length}, temp: {effective_temperature}")
+            from model_registry import get_model
+            logger.info(f"Calling Together AI (chat), response_length: {response_length}, temp: {effective_temperature}")
             response = client.chat.completions.create(
-                model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
+                model=get_model("chat"),
                 messages=[
                     {"role": "system", "content": settings["system_message"]},
                     {"role": "user", "content": prompt}
@@ -3244,9 +3246,10 @@ def call_llm(prompt: str, response_length: str = "normal", temperature: float = 
             logger.warning(groq_error)
             return None
         try:
-            logger.info(f"Calling Groq (8B), response_length: {response_length}, temp: {effective_temperature}")
+            from model_registry import get_model
+            logger.info(f"Calling Groq (fallback), response_length: {response_length}, temp: {effective_temperature}")
             response = client.chat.completions.create(
-                model="llama-3.1-8b-instant",
+                model=get_model("fallback"),
                 messages=[
                     {"role": "system", "content": settings["system_message"]},
                     {"role": "user", "content": prompt}
@@ -3386,6 +3389,31 @@ def _quick_extract_profile_updates(message: str) -> dict:
     return updates
 
 
+def _extraction_profile_context(current_profile: dict) -> str:
+    """
+    Build the LLM-safe profile-context JSON for the extractor call.
+
+    De-identify-before-LLM rule (.claude/rules/backend-python.md): the raw
+    profile must never reach Together/Groq. This strips identifiers + app
+    bookkeeping via deidentify_raw_profile (which also drops _sources /
+    beliefs / model_state / visit_recaps etc.), then runs the leak guard as
+    belt-and-suspenders. On a detected leak the profile context is omitted
+    entirely (extraction still works from the message alone).
+    """
+    from deidentify import deidentify_raw_profile, detect_pii_leaks
+    safe_profile = deidentify_raw_profile(current_profile or {})
+    leaks = detect_pii_leaks({"profile_context": safe_profile})
+    if leaks:
+        # Log leak TYPES only — never values.
+        leak_types = ",".join(sorted({name for name, _snippet in leaks}))
+        logger.warning(
+            "Extractor profile context failed PII guard (%s); omitting profile context",
+            leak_types,
+        )
+        return "{}"
+    return json.dumps(safe_profile, indent=2)
+
+
 def extract_profile_updates_from_query(message: str, current_profile: dict) -> dict:
     """
     Scan user query for profile-relevant updates using LLM.
@@ -3395,7 +3423,8 @@ def extract_profile_updates_from_query(message: str, current_profile: dict) -> d
     # First, try quick regex-based extraction for common simple updates
     quick_updates = _quick_extract_profile_updates(message)
     if quick_updates:
-        logger.info(f"Quick extraction found updates: {quick_updates}")
+        # Log field paths only — extracted values are PII (name, zip, ...).
+        logger.info(f"Quick extraction found update fields: {sorted(quick_updates.keys())}")
         return quick_updates
 
     client = get_together_client() or get_groq_client()
@@ -3440,10 +3469,12 @@ def extract_profile_updates_from_query(message: str, current_profile: dict) -> d
     Include ONLY the fields that have changed.
     """
     
-    current_profile_json = json.dumps(current_profile, indent=2)
-    
+    # De-identified profile context only — never the raw profile (PII rule).
+    current_profile_json = _extraction_profile_context(current_profile)
+
     try:
-        model = "meta-llama/Llama-3.3-70B-Instruct-Turbo" if get_together_client() else "llama-3.1-8b-instant"
+        from model_registry import get_model
+        model = get_model("extractor") if get_together_client() else get_model("fallback")
         response = client.chat.completions.create(
             model=model,
             messages=[
@@ -3453,12 +3484,12 @@ def extract_profile_updates_from_query(message: str, current_profile: dict) -> d
             response_format={"type": "json_object"},
             temperature=0.1,
         )
-        
+
         if response and response.choices:
             content = response.choices[0].message.content
             return json.loads(content)
     except Exception as e:
         logger.error(f"Profile extraction failed: {e}")
-    
+
     return {}
 

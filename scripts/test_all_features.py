@@ -15,7 +15,9 @@ from datetime import datetime
 from dotenv import load_dotenv
 load_dotenv()
 
-# Add lib directory to path
+# Add repo root + lib directory to path (llm_utils imports `lib.prompts`,
+# which needs the repo root importable too)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'lib'))
 
 from profile_utils import (
@@ -685,9 +687,13 @@ def run_llm_test(question_data, patient_context, all_chunks, profile):
         response, api_used = call_llm(prompt, response_length="normal", query_type=query_type)
 
         if not urgency_detected or urgency_level != 'emergency':
+            # get_relevant_resources now returns a structured list (rendered by
+            # the frontend as a resources row); append names for keyword checks.
             resources = get_relevant_resources(query_type, include_resources=True, query=question)
             if resources:
-                response += resources
+                response += "\n" + "\n".join(
+                    f"{r.get('name', '')} {r.get('url', '')}" for r in resources if isinstance(r, dict)
+                )
 
         # --- Validation checks ---
         checks = []
