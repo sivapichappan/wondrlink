@@ -13,10 +13,13 @@ import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Activity, CalendarClock, ChevronRight, ClipboardList, Microscope } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 
 import { ChatInput } from '@/components/chat/ChatInput';
 import { ProfileNudgeBanner } from '@/components/chat/ProfileNudgeBanner';
 import { WelcomeProfileModal } from '@/components/chat/WelcomeProfileModal';
+import { useNavOverlay } from '@/components/common/NavOverlay';
 import { TopBar } from '@/components/common/TopBar';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { Screen } from '@/components/ui/Screen';
@@ -47,13 +50,25 @@ export default function HomeScreen() {
   const pendingFollowups = hero.data?.last_visit?.pending_followups ?? 0;
   const lastVisitPretty = hero.data?.last_visit?.when_pretty;
 
+  const { openDrawer } = useNavOverlay();
+
   const startThread = (text: string) => {
     router.push(`/chat/${NEW_CONVERSATION}?q=${encodeURIComponent(text)}` as never);
   };
 
   const hasStrip = checkinDue || pendingFollowups > 0 || !!lastVisitPretty;
 
+  // Swipe right from the left edge of Home to open the drawer (pushed screens
+  // keep the native left-edge swipe-back instead).
+  const openEdge = Gesture.Pan()
+    .activeOffsetX([15, 9999])
+    .failOffsetY([-20, 20])
+    .onEnd((e) => {
+      if (e.translationX > 40 || e.velocityX > 500) runOnJS(openDrawer)();
+    });
+
   return (
+    <View style={{ flex: 1 }}>
     <Screen
       header={<TopBar leading="menu" />}
       footer={
@@ -121,6 +136,11 @@ export default function HomeScreen() {
         onSkip={() => welcomePrompt.markSeen()}
       />
     </Screen>
+      {/* Left-edge swipe-to-open-drawer zone. */}
+      <GestureDetector gesture={openEdge}>
+        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 28 }} />
+      </GestureDetector>
+    </View>
   );
 }
 

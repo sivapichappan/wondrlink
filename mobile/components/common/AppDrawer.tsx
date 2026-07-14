@@ -16,7 +16,8 @@ import { router } from 'expo-router';
 import { Activity, HeartPulse, LayoutGrid, LifeBuoy, Search, Settings, SquarePen, Tag, User } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { BackHandler, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors, FontSize, Fonts, Radius } from '@/constants/theme';
@@ -74,10 +75,26 @@ export function AppDrawer() {
     transform: [{ translateX: -DRAWER_W + progress.value * DRAWER_W }],
   }));
 
+  // Drag the open drawer left to close it (follows the finger; snaps on release).
+  const dragClose = Gesture.Pan()
+    .activeOffsetX([-12, 12])
+    .onUpdate((e) => {
+      progress.value = Math.min(1, Math.max(0, 1 + e.translationX / DRAWER_W));
+    })
+    .onEnd((e) => {
+      if (progress.value < 0.6 || e.velocityX < -400) {
+        progress.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.cubic) });
+        runOnJS(closeDrawer)();
+      } else {
+        progress.value = withTiming(1, { duration: 200, easing: Easing.out(Easing.cubic) });
+      }
+    });
+
   const go = (path: string) => {
+    // Navigate FIRST (while the drawer still covers the screen), then close — so
+    // you don't see a flash of Home between closing the drawer and the push.
+    router.push(path as never);
     closeDrawer();
-    // Defer so the close animation isn't janked by the navigation transition.
-    setTimeout(() => router.push(path as never), 60);
   };
 
   return (
@@ -88,6 +105,7 @@ export function AppDrawer() {
         <Pressable style={{ flex: 1 }} onPress={closeDrawer} accessibilityLabel="Close menu" />
       </Animated.View>
 
+      <GestureDetector gesture={dragClose}>
       <Animated.View
         style={[
           {
@@ -196,8 +214,8 @@ export function AppDrawer() {
             label="Help & helplines"
             labelColor={Colors.warning}
             onPress={() => {
+              openHelp();
               closeDrawer();
-              setTimeout(openHelp, 60);
             }}
           />
 
@@ -237,6 +255,7 @@ export function AppDrawer() {
           </Pressable>
         </ScrollView>
       </Animated.View>
+      </GestureDetector>
     </View>
   );
 }
