@@ -1489,6 +1489,19 @@ def delete_all_user_data(user_id: str) -> dict:
 
 VALID_CONSENT_KEYS = ('consent_collection', 'consent_sharing', 'consent_terms')
 
+# DORMANT (Lifecycle Phase 5): opt-IN consent keys with NO signup baseline.
+# Unlike the three signup keys above, these default to NOT granted and only a
+# recorded 'grant'/'restore' turns them on. Invisible and unrecordable until
+# FEATURE_MODEL_IMPROVEMENT=true (attorney review + consent-version bump gate
+# activation — see docs/compliance/model_improvement_dormant.md). They must
+# NEVER feed chat_disabled.
+OPT_IN_CONSENT_KEYS = ('consent_model_improvement',)
+
+
+def _model_improvement_enabled() -> bool:
+    import os
+    return os.getenv('FEATURE_MODEL_IMPROVEMENT', 'false').lower() == 'true'
+
 
 def record_consent_action(
     user_id: str,
@@ -1498,11 +1511,18 @@ def record_consent_action(
     consent_version: str = '',
     ip_hash: str = '',
 ) -> bool:
-    """Insert a withdraw / restore row into consent_withdrawals."""
-    if consent_key not in VALID_CONSENT_KEYS:
-        return False
-    if action not in ('withdraw', 'restore'):
-        return False
+    """Insert a withdraw / restore / grant row into consent_withdrawals."""
+    if consent_key in OPT_IN_CONSENT_KEYS:
+        # Dormant opt-in keys are recordable only once the feature activates.
+        if not _model_improvement_enabled():
+            return False
+        if action not in ('withdraw', 'restore', 'grant'):
+            return False
+    else:
+        if consent_key not in VALID_CONSENT_KEYS:
+            return False
+        if action not in ('withdraw', 'restore'):
+            return False
     try:
         client = get_admin_client()
         client.table('consent_withdrawals').insert({
@@ -1537,6 +1557,13 @@ def get_consent_status(user_id: str) -> Dict[str, Any]:
         }
     """
     state = {k: {'granted': True, 'changed_at': None} for k in VALID_CONSENT_KEYS}
+    # Opt-in keys (dormant feature): NO signup baseline -> default NOT granted.
+    # Only surfaced when the feature flag is on; with the flag off the output
+    # is byte-identical to the legacy shape.
+    include_opt_in = _model_improvement_enabled()
+    if include_opt_in:
+        for k in OPT_IN_CONSENT_KEYS:
+            state[k] = {'granted': False, 'changed_at': None}
     try:
         client = get_admin_client()
         # Pull the user's rows ordered most-recent-first per key; one query.
@@ -1548,15 +1575,24 @@ def get_consent_status(user_id: str) -> Dict[str, Any]:
         seen = set()
         for row in (resp.data or []):
             key = row.get('consent_key')
-            if key in seen or key not in VALID_CONSENT_KEYS:
+            if key in seen:
                 continue
-            seen.add(key)
-            state[key] = {
-                'granted': row.get('action') == 'restore',
-                'changed_at': row.get('created_at'),
-            }
+            if key in VALID_CONSENT_KEYS:
+                seen.add(key)
+                state[key] = {
+                    'granted': row.get('action') == 'restore',
+                    'changed_at': row.get('created_at'),
+                }
+            elif include_opt_in and key in OPT_IN_CONSENT_KEYS:
+                seen.add(key)
+                state[key] = {
+                    'granted': row.get('action') in ('grant', 'restore'),
+                    'changed_at': row.get('created_at'),
+                }
     except Exception as e:
         logger.warning("get_consent_status query failed: %s", e)
+    # chat_disabled NEVER considers opt-in keys — declining the research
+    # opt-in must not degrade the product.
     state['chat_disabled'] = not (
         state['consent_collection']['granted'] and state['consent_sharing']['granted']
     )

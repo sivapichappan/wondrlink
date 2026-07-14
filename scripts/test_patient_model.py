@@ -178,6 +178,47 @@ def test_form_absorption():
           "beliefs" in merged and "model_state" in merged and "visit_recaps" in merged)
 
 
+def test_dormant_learning_loop_parity():
+    print("\n6. Dormant learning loop: flag off => byte-identical consent behavior")
+
+    class _FakeResp:
+        data: list = []
+
+    class _FakeTable:
+        def select(self, *_a, **_k): return self
+        def eq(self, *_a, **_k): return self
+        def order(self, *_a, **_k): return self
+        def execute(self): return _FakeResp()
+
+    class _FakeClient:
+        def table(self, *_a, **_k): return _FakeTable()
+
+    real_get_admin = supabase_storage.get_admin_client
+    supabase_storage.get_admin_client = lambda: _FakeClient()
+    try:
+        os.environ.pop("FEATURE_MODEL_IMPROVEMENT", None)
+        status_off = supabase_storage.get_consent_status("user-x")
+        check("flag off: legacy keys only",
+              set(status_off.keys()) ==
+              {"consent_collection", "consent_sharing", "consent_terms", "chat_disabled"})
+        check("flag off: opt-in key unrecordable",
+              supabase_storage.record_consent_action("user-x", "consent_model_improvement", "grant") is False)
+
+        import learning_loop
+        check("flag off: emitter is a hard no-op",
+              learning_loop.emit_pattern_record("user-x", {"cancer_slug": "colorectal", "topic": "t"}) is False)
+
+        os.environ["FEATURE_MODEL_IMPROVEMENT"] = "true"
+        status_on = supabase_storage.get_consent_status("user-x")
+        check("flag on: opt-in key appears, default NOT granted",
+              status_on.get("consent_model_improvement", {}).get("granted") is False)
+        check("flag on: opt-in never affects chat_disabled",
+              status_on["chat_disabled"] is False)
+    finally:
+        os.environ.pop("FEATURE_MODEL_IMPROVEMENT", None)
+        supabase_storage.get_admin_client = real_get_admin
+
+
 if __name__ == '__main__':
     print("Patient-model integration tests (offline)")
     print("=" * 60)
@@ -186,6 +227,7 @@ if __name__ == '__main__':
     test_confirm_deny_roundtrip()
     test_pending_queue_hygiene()
     test_form_absorption()
+    test_dormant_learning_loop_parity()
     print("\n" + "=" * 60)
     if FAILURES:
         print(f"RESULT: {len(FAILURES)} FAILURE(S): {FAILURES}")
