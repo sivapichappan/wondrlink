@@ -73,7 +73,7 @@ CONVERSATION_CHARS_PER_TURN = 200
 GUIDELINE_TOP_K = 6
 
 LLM_TIMEOUT_S = 45
-LLM_MAX_TOKENS = 2500
+LLM_MAX_TOKENS = 3500   # 2500 truncated rich-profile outputs mid-JSON (go-live seed run)
 LLM_TEMPERATURE = 0.2
 
 VALID_RELS = (
@@ -352,7 +352,18 @@ def call_modeler_llm(payload: str) -> Optional[dict]:
         except TypeError:
             response = client.chat.completions.create(**kwargs)
         if response and response.choices:
-            return json.loads(response.choices[0].message.content or "{}")
+            content = (response.choices[0].message.content or "").strip()
+            # Some runs wrap the JSON in markdown fences despite json mode.
+            if content.startswith("```"):
+                content = content.split("```", 2)[1]
+                content = content[4:] if content.startswith("json") else content
+            # Truncated output (hit max_tokens) parses as garbage — detect and
+            # log distinctly so the run event tells the real story.
+            finish = getattr(response.choices[0], "finish_reason", None)
+            if finish == "length":
+                logger.warning("Modeler output truncated at max_tokens; run rejected")
+                return None
+            return json.loads(content or "{}")
     except Exception as e:
         logger.warning(f"Modeler LLM call failed ({type(e).__name__})")
     return None
