@@ -314,6 +314,41 @@ def extract_facts(message: str, current_profile: dict) -> List[CandidateFact]:
     return candidates
 
 
+def candidates_to_v1_updates(candidates: List[CandidateFact]) -> dict:
+    """
+    Convert candidate facts back into the legacy nested-updates dict so the v1
+    write path (update_profile_with_sources) behaves as before while v2 runs
+    in shadow. Reproduces v1's regex-short-circuit semantics: when regex found
+    anything, only regex facts are written (v1 skipped the LLM entirely).
+    Negations are dropped (v1 had no concept of them).
+    """
+    regex_facts = [c for c in candidates if c.source == "chat_regex" and c.polarity == "affirm"]
+    pool = regex_facts if regex_facts else [c for c in candidates if c.polarity == "affirm"]
+
+    out: dict = {}
+    for cand in pool:
+        parts = cand.path.split(".")
+        if parts[0] == "patient" and len(parts) == 2:
+            out.setdefault("patient", {})[parts[1]] = cand.value
+        elif parts[:2] == ["patient", "comorbidities"] and len(parts) == 3:
+            comorbidities = out.setdefault("patient", {}).setdefault("comorbidities", [])
+            name = cand.value if isinstance(cand.value, str) else parts[2]
+            if name not in comorbidities:
+                comorbidities.append(name)
+        elif parts[0] == "primaryDiagnosis" and len(parts) == 2:
+            out.setdefault("primaryDiagnosis", {})[parts[1]] = cand.value
+        elif parts[:2] == ["primaryDiagnosis", "biomarkers"] and len(parts) == 3:
+            out.setdefault("primaryDiagnosis", {}).setdefault("biomarkers", {})[parts[2]] = cand.value
+        elif parts[0] == "treatments" and isinstance(cand.value, dict):
+            out.setdefault("treatments", []).append(dict(cand.value))
+        elif parts[0] == "symptoms":
+            name = cand.value if isinstance(cand.value, str) else parts[-1]
+            symptoms = out.setdefault("symptoms", [])
+            if name not in symptoms:
+                symptoms.append(name)
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Reconcile (pure — no I/O, no LLM)
 # ---------------------------------------------------------------------------

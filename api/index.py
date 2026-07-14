@@ -1442,10 +1442,37 @@ def api_chat():
             # "Persist this turn" block just before the return.
 
             # --- Feature 1: Scan for profile updates ---
+            # Legacy v1 remains the profile WRITER. When shadow mode is on
+            # (FEATURE_EXTRACTION_SHADOW=true; env read directly — the
+            # feature_enabled() helper defaults to TRUE and must not gate a
+            # dormant feature), extraction v2 (extract+reconcile) runs on the
+            # same turn and records its would-be decisions as
+            # patient_events(kind='shadow_extraction') WITHOUT touching the
+            # profile. To keep one extractor LLM call per turn, v2's merged
+            # candidates are converted back to the v1 patch shape for the
+            # legacy write instead of calling the v1 extractor separately.
             profile_updates = {}
             update_success = False
             try:
-                profile_updates = extract_profile_updates_from_query(original_message, patient_profile or {})
+                shadow_on = os.getenv("FEATURE_EXTRACTION_SHADOW", "false").lower() == "true"
+                if shadow_on:
+                    from patient_model import (
+                        apply_decisions, candidates_to_v1_updates, extract_facts, reconcile,
+                    )
+                    candidates = extract_facts(original_message, patient_profile or {})
+                    beliefs_view = (patient_profile or {}).get("beliefs") or \
+                        {"version": 1, "fields": {}, "pending": []}
+                    decisions = reconcile(candidates, beliefs_view)
+                    if decisions:
+                        apply_decisions(
+                            user_id, patient_profile or {}, decisions,
+                            session_id=(active_conversation_id or session_id), shadow=True,
+                        )
+                    profile_updates = candidates_to_v1_updates(candidates)
+                else:
+                    profile_updates = extract_profile_updates_from_query(
+                        original_message, patient_profile or {})
+
                 if profile_updates:
                     logger.info(f"Detected profile updates for user {user_id}: {list(profile_updates.keys())}")
                     source_info = {
