@@ -282,6 +282,20 @@ def question_policy_accuracy(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
+def modeler_integrity(results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Score modeler-suite checks (each result: {id, pass, detail})."""
+    total = len(results)
+    passes = sum(1 for r in results if r.get("pass"))
+    return {
+        "metric": "modeler_integrity",
+        "value": passes / total if total else 1.0,
+        "pass": passes,
+        "total": total,
+        "detail": [{"id": r.get("id"), "detail": r.get("detail")}
+                   for r in results if not r.get("pass")],
+    }
+
+
 ALL_METRICS = (
     off_topic_accuracy,
     route_accuracy,

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<!--
+  Modeler graph visualizer — LOCAL review/demo tool. Never deployed
+  (scripts/ is .vercelignore'd); open this file directly in a browser.
+
+  Two ways to load a graph:
+   1. Drag-drop a JSON file exported by:  python3 scripts/modeler_report.py -\-user <uuid> -\-json graph.json
+   2. Paste an API base + a user JWT and click Fetch (GET /api/modeler/graph).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WondrChat — Modeler graph</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<style>
+  :root { color-scheme: light; }
+  body { margin:0; font:14px/1.45 -apple-system, "Segoe UI", sans-serif; color:#1a2b3c; display:flex; height:100vh; }
+  #left { flex:1; position:relative; background:#fafbfc; }
+  #panel { width:360px; border-left:1px solid #e3e8ee; padding:16px; overflow-y:auto; background:#fff; }
+  h1 { font-size:16px; margin:0 0 10px; }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:#6b7a8c; margin:18px 0 6px; }
+  #toolbar { position:absolute; top:12px; left:12px; background:#fff; border:1px solid #e3e8ee; border-radius:10px; padding:10px; display:flex; gap:6px; flex-wrap:wrap; max-width:520px; box-shadow:0 2px 8px rgba(0,0,0,.06); }
+  input { border:1px solid #cfd8e0; border-radius:7px; padding:6px 8px; font-size:12px; }
+  #apiBase { width:180px; } #jwt { width:150px; }
+  button { border:0; border-radius:7px; padding:6px 12px; background:#0f766e; color:#fff; font-size:12px; cursor:pointer; }
+  #drop { font-size:11px; color:#6b7a8c; width:100%; }
+  svg { width:100%; height:100%; }
+  .edge-hypothesis { stroke:#94a3b8; stroke-dasharray:none; }
+  .edge-corroborated { stroke:#0f766e; stroke-width:2.5; }
+  .edge-refuted { stroke:#dc2626; stroke-dasharray:4 3; opacity:.6; }
+  .node text { font-size:11px; fill:#1a2b3c; }
+  .rel-label { font-size:9px; fill:#6b7a8c; }
+  .exp { border-left:3px solid #0f766e; background:#f0fdfa; border-radius:6px; padding:8px 10px; margin-bottom:8px; font-size:12px; }
+  .exp.hit { border-color:#16a34a; } .exp.miss { border-color:#dc2626; } .exp.expired { border-color:#9ca3af; background:#f8fafc; }
+  .badge { display:inline-block; font-size:10px; padding:1px 7px; border-radius:99px; background:#e2e8f0; margin-left:6px; }
+  .stat { display:inline-block; margin-right:12px; }
+  .stat b { font-size:18px; }
+  .refl { font-size:12px; padding:6px 0; border-bottom:1px solid #eef2f6; }
+</style>
+</head>
+<body>
+<div id="left">
+  <div id="toolbar">
+    <input id="apiBase" placeholder="https://wondrchat.vercel.app" value="https://wondrchat.vercel.app">
+    <input id="jwt" placeholder="paste user JWT" type="password">
+    <button onclick="fetchGraph()">Fetch</button>
+    <div id="drop">…or drag-drop a graph.json anywhere on the page</div>
+  </div>
+  <svg></svg>
+</div>
+<div id="panel">
+  <h1>Connections</h1>
+  <div id="stats">No graph loaded.</div>
+  <h2>Expectations</h2><div id="exps"></div>
+  <h2>Reflections</h2><div id="refls"></div>
+</div>
+
+<script>
+const TYPE_COLOR = { treatment:'#0ea5e9', symptom:'#f59e0b', biomarker:'#8b5cf6',
+                     condition:'#64748b', therapy_option:'#10b981', finding:'#ec4899' };
+
+function render(connections) {
+  const edges = connections.edges || [];
+  const nodesById = new Map();
+  edges.forEach(e => {
+    [e.src, e.dst].forEach(n => {
+      if (!nodesById.has(n.key)) nodesById.set(n.key, { id:n.key, label:n.label, type:n.type });
+    });
+  });
+  const nodes = [...nodesById.values()];
+  const links = edges.map(e => ({ source:e.src.key, target:e.dst.key,
+                                  rel:e.rel, status:e.status, strength:e.strength }));
+
+  const svg = d3.select('svg'); svg.selectAll('*').remove();
+  const { width, height } = svg.node().getBoundingClientRect();
+  const sim = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(d => d.id).distance(140))
+    .force('charge', d3.forceManyBody().strength(-420))
+    .force('center', d3.forceCenter(width/2, height/2))
+    .force('collide', d3.forceCollide(46));
+
+  const link = svg.append('g').selectAll('line').data(links).join('line')
+    .attr('class', d => 'edge-' + d.status)
+    .attr('stroke-width', d => 1 + 2*(d.strength || .5));
+  const relLabel = svg.append('g').selectAll('text').data(links).join('text')
+    .attr('class','rel-label').text(d => d.rel.replace(/_/g,' '));
+  const node = svg.append('g').selectAll('g').data(nodes).join('g').attr('class','node')
+    .call(d3.drag()
+      .on('start', (ev,d) => { if (!ev.active) sim.alphaTarget(.25).restart(); d.fx=d.x; d.fy=d.y; })
+      .on('drag',  (ev,d) => { d.fx=ev.x; d.fy=ev.y; })
+      .on('end',   (ev,d) => { if (!ev.active) sim.alphaTarget(0); d.fx=null; d.fy=null; }));
+  node.append('circle').attr('r', 22)
+    .attr('fill', d => (TYPE_COLOR[d.type]||'#94a3b8') + '33')
+    .attr('stroke', d => TYPE_COLOR[d.type]||'#94a3b8').attr('stroke-width', 2);
+  node.append('text').attr('text-anchor','middle').attr('dy', 36)
+    .text(d => d.label && d.label.length > 22 ? d.label.slice(0,21)+'…' : d.label);
+
+  sim.on('tick', () => {
+    link.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y)
+        .attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+    relLabel.attr('x',d=>(d.source.x+d.target.x)/2).attr('y',d=>(d.source.y+d.target.y)/2 - 4);
+    node.attr('transform', d=>`translate(${d.x},${d.y})`);
+  });
+
+  const cal = connections.calibration || {};
+  document.getElementById('stats').innerHTML =
+    `<span class="stat"><b>${edges.length}</b> edges</span>` +
+    `<span class="stat"><b>${cal.hits??0}</b> hits</span>` +
+    `<span class="stat"><b>${cal.misses??0}</b> misses</span>` +
+    `<span class="stat"><b>${cal.expired??0}</b> expired</span>` +
+    `<span class="stat"><b>${cal.hit_rate??'–'}</b> hit-rate</span>`;
+
+  document.getElementById('exps').innerHTML = (connections.expectations||[]).map(x =>
+    `<div class="exp ${x.status}">${x.statement}` +
+    `<span class="badge">${x.status}</span><span class="badge">${x.basis}</span>` +
+    `<div style="color:#6b7a8c;margin-top:3px">${(x.window?.opens||'').slice(0,10)} → ${(x.window?.closes||'').slice(0,10)}</div></div>`
+  ).join('') || '<i>none</i>';
+
+  document.getElementById('refls').innerHTML = (connections.reflections||[]).map(r =>
+    `<div class="refl">[${r.status}] ${r.statement}` +
+    (r.proposed_belief ? `<div style="color:#6b7a8c">→ ${r.proposed_belief.path} = ${JSON.stringify(r.proposed_belief.value)}</div>` : '') +
+    `</div>`
+  ).join('') || '<i>none</i>';
+}
+
+async function fetchGraph() {
+  const base = document.getElementById('apiBase').value.replace(/\/$/, '');
+  const jwt = document.getElementById('jwt').value.trim();
+  try {
+    const res = await fetch(base + '/api/modeler/graph', { headers: { Authorization: 'Bearer ' + jwt } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    render((await res.json()).connections || {});
+  } catch (e) { alert('Fetch failed: ' + e.message); }
+}
+
+addEventListener('dragover', e => e.preventDefault());
+addEventListener('drop', async e => {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const data = JSON.parse(await file.text());
+  render(data.connections || data);
+});
+</script>
+</body>
+</html>

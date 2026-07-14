@@ -1,0 +1,59 @@
+# Modeler engine integrity suite.
+#
+# dry:  parse + merge the golden fixture (tests/fixtures/modeler_golden.json)
+#       and assert op counts, corroboration on the second pass, and
+#       expectation dedupe. Free; part of the standard dry battery.
+# llm:  ONE real DeepSeek-V4-Pro run against the fixture patient (~$0.02-0.05
+#       per run - run sparingly, e.g. at deploy checkpoints or before a flip).
+#       Asserts valid JSON, enough accepted ops after strict validation,
+#       bounded rejects, and no prognosis vocabulary.
+#
+# Run: python3 scripts/eval/run_evals.py --cancer colorectal --suite modeler --mode dry|llm
+
+description: Modeler engine integrity (golden fixture / one live V4-Pro run)
+
+dry:
+  expect_edges: 2
+  expect_expectations: 1
+  expect_reflections: 1
+
+llm:
+  min_accepted_ops: 1
+  max_reject_ratio: 0.5
+  profile:
+    patient:
+      age: 62
+      sex: Male
+    primaryDiagnosis:
+      site: colon
+      stage: "Stage III"
+      biomarkers:
+        KRAS: G12D
+    treatments:
+      - regimen: FOLFOX
+        status: active
+    symptoms:
+      - neuropathy
+      - fatigue
+    beliefs:
+      version: 1
+      pending: []
+      fields:
+        treatments.folfox:
+          value: { regimen: FOLFOX, status: active }
+          confidence: 1.0
+          status: confirmed
+          source: form
+          history: []
+        primaryDiagnosis.biomarkers.KRAS:
+          value: G12D
+          confidence: 1.0
+          status: confirmed
+          source: form
+          history: []
+        primaryDiagnosis.stage:
+          value: "Stage III"
+          confidence: 1.0
+          status: confirmed
+          source: form
+          history: []

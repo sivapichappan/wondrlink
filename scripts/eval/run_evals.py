@@ -276,6 +276,85 @@ def run_question_policy_case(case: Dict[str, Any], cancer: str) -> Dict[str, Any
     }
 
 
+def run_modeler_suite(spec: Dict[str, Any], mode: str) -> List[Dict[str, Any]]:
+    """
+    Modeler engine integrity checks.
+    dry: parse+merge the golden fixture (tests/fixtures/modeler_golden.json)
+         and assert the expected op counts + corroboration behavior.
+    llm: ONE real V4-Pro run against the yaml fixture patient (~$0.05) —
+         asserts valid JSON, enough accepted ops, bounded rejects, and no
+         prognosis vocabulary. Run sparingly.
+    """
+    import copy
+    import json as _json
+    from datetime import datetime
+
+    from modeler import (
+        _has_prognosis_language, assemble_modeler_input, call_modeler_llm,
+        ensure_connections, merge_graph, parse_modeler_output,
+    )
+
+    fixture_path = _ROOT.parent.parent / "tests" / "fixtures" / "modeler_golden.json"
+    with fixture_path.open() as f:
+        golden = _json.load(f)
+    now = datetime(2026, 7, 14, 12, 0, 0)
+    checks: List[Dict[str, Any]] = []
+
+    def check(cid: str, ok: bool, detail: str = "") -> None:
+        checks.append({"id": cid, "pass": bool(ok), "detail": detail})
+
+    if mode == "dry":
+        expect = spec.get("dry") or {}
+        index = set(golden["index"])
+        ops, rejects = parse_modeler_output(copy.deepcopy(golden["output"]), index)
+        check("golden_parses_clean", sum(rejects.values()) == 0, f"rejects={rejects}")
+        check("golden_edge_count",
+              len(ops["edges"]) == expect.get("expect_edges", 2),
+              f"got {len(ops['edges'])}")
+        check("golden_expectation_count",
+              len(ops["expectations_open"]) == expect.get("expect_expectations", 1),
+              f"got {len(ops['expectations_open'])}")
+        check("golden_reflection_count",
+              len(ops["reflections"]) == expect.get("expect_reflections", 1),
+              f"got {len(ops['reflections'])}")
+        connections = ensure_connections({})
+        deltas = merge_graph(connections, ops, golden["events"], golden["chunks"], now)
+        check("merge_new_edges", deltas["new_edges"] == expect.get("expect_edges", 2),
+              f"got {deltas['new_edges']}")
+        merge_graph(connections, ops, golden["events"], golden["chunks"], now)
+        check("second_pass_corroborates",
+              any(e["status"] == "corroborated" for e in connections["edges"]))
+        check("expectations_dedupe",
+              sum(1 for x in connections["expectations"] if x["status"] == "open") == 1)
+        return checks
+
+    # llm mode — one real modeler call against the fixture patient.
+    llm_spec = spec.get("llm") or {}
+    profile = llm_spec.get("profile") or {}
+    payload, _guard, index = assemble_modeler_input(
+        profile, golden["events"], {}, [], golden["chunks"], ensure_connections({}), now)
+    raw = call_modeler_llm(payload)
+    check("llm_returned_valid_json", isinstance(raw, dict),
+          "no/invalid response from V4-Pro")
+    if isinstance(raw, dict):
+        ops, rejects = parse_modeler_output(raw, index)
+        accepted = sum(len(v) for v in ops.values())
+        rejected = sum(rejects.values())
+        total = accepted + rejected
+        check("llm_min_accepted_ops",
+              accepted >= llm_spec.get("min_accepted_ops", 1),
+              f"accepted={accepted} rejects={rejects}")
+        check("llm_reject_ratio_bounded",
+              total == 0 or rejected / total <= llm_spec.get("max_reject_ratio", 0.5),
+              f"{rejected}/{total} rejected")
+        statements = [e["src"]["label"] + " " + e["dst"]["label"] for e in ops["edges"]] + \
+                     [x["statement"] for x in ops["expectations_open"]] + \
+                     [r["statement"] for r in ops["reflections"]]
+        check("llm_no_prognosis_language",
+              not any(_has_prognosis_language(s) for s in statements))
+    return checks
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Per-cancer eval harness.")
     parser.add_argument("--cancer", required=True, help="Cancer slug (e.g. colorectal).")
@@ -307,12 +386,20 @@ def main() -> int:
     all_results = []
     extraction_results = []
     policy_results = []
+    modeler_results = []
     for suite in suites:
         try:
             spec = load_suite(args.cancer, suite)
         except FileNotFoundError as e:
             logger.error("%s", e)
             return 2
+
+        if suite == "modeler":
+            logger.info("Running suite=modeler mode=%s", args.mode)
+            for r in run_modeler_suite(spec, args.mode):
+                r["suite"] = suite
+                modeler_results.append(r)
+            continue
 
         if suite == "question_policy":
             cases = spec.get("cases") or []
@@ -367,6 +454,7 @@ def main() -> int:
     for special_results, metric_fn, threshold in (
         (extraction_results, metrics.extraction_accuracy, 0.80),
         (policy_results, metrics.question_policy_accuracy, 0.90),
+        (modeler_results, metrics.modeler_integrity, 1.00),
     ):
         if not special_results:
             continue
@@ -422,6 +510,8 @@ def main() -> int:
         for r in extraction_results:
             f.write(json.dumps(r) + "\n")
         for r in policy_results:
+            f.write(json.dumps(r) + "\n")
+        for r in modeler_results:
             f.write(json.dumps(r) + "\n")
     logger.info("Wrote report → %s", report_path)
 
