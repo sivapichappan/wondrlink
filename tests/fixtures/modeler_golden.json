@@ -1,0 +1,91 @@
+{
+  "_comment": "Golden Modeler fixture: a realistic V4-Pro-shaped output plus the input context it references. Used by tests/test_modeler.py and the dry modeler eval suite. Events are ordered newest-first exactly as load_patient_events returns them; E1 is events[0].",
+  "index": [
+    "E1", "E2", "E3", "E4", "E5",
+    "C1", "C2",
+    "G1", "G2",
+    "treatments.folfox",
+    "primaryDiagnosis.biomarkers.KRAS",
+    "primaryDiagnosis.stage"
+  ],
+  "events": [
+    {"kind": "screening_score", "path": null,
+     "payload": {"instrument": "symptom_burden", "total_score": 14, "severity_label": "moderate"},
+     "source": "screening", "recorded_at": "2026-07-10T15:00:00"},
+    {"kind": "belief_add", "path": "symptoms.neuropathy",
+     "payload": {"value": "neuropathy", "confidence": 0.95},
+     "source": "chat", "recorded_at": "2026-07-08T10:00:00"},
+    {"kind": "belief_update", "path": "treatments.folfox",
+     "payload": {"value": {"regimen": "FOLFOX", "status": "active"}},
+     "source": "chat", "recorded_at": "2026-06-20T09:00:00"},
+    {"kind": "question_asked", "path": null,
+     "payload": {"topic": "biomarkers"},
+     "source": "system", "recorded_at": "2026-06-18T12:00:00"},
+    {"kind": "belief_add", "path": "primaryDiagnosis.biomarkers.KRAS",
+     "payload": {"value": "G12D", "confidence": 1.0},
+     "source": "form", "recorded_at": "2026-06-01T08:00:00"}
+  ],
+  "chunks": [
+    {"filename": "NCCN_colon.pdf", "chunk_index": 12,
+     "content": "Oxaliplatin-based regimens such as FOLFOX commonly cause cumulative peripheral neuropathy, typically emerging around cycles 3-6..."},
+    {"filename": "NCCN_colon.pdf", "chunk_index": 44,
+     "content": "KRAS-mutant tumors do not benefit from anti-EGFR antibodies such as cetuximab or panitumumab..."}
+  ],
+  "output": {
+    "edges": [
+      {
+        "src": {"type": "treatment", "key": "treatments.folfox", "label": "FOLFOX"},
+        "rel": "causes",
+        "dst": {"type": "symptom", "key": "symptoms.neuropathy", "label": "peripheral neuropathy"},
+        "status": "hypothesis",
+        "strength": 0.7,
+        "evidence": [
+          {"kind": "event", "ref": "E2", "note": "neuropathy reported while on FOLFOX"},
+          {"kind": "guideline", "ref": "G1", "note": "oxaliplatin neuropathy is expected"}
+        ]
+      },
+      {
+        "src": {"type": "biomarker", "key": "primaryDiagnosis.biomarkers.KRAS", "label": "KRAS G12D"},
+        "rel": "contraindicates",
+        "dst": {"type": "therapy_option", "key": "anti_egfr", "label": "anti-EGFR antibodies"},
+        "status": "hypothesis",
+        "strength": 0.9,
+        "evidence": [
+          {"kind": "belief", "ref": "primaryDiagnosis.biomarkers.KRAS", "note": "KRAS G12D confirmed"},
+          {"kind": "guideline", "ref": "G2", "note": "KRAS-mutant excludes anti-EGFR"}
+        ]
+      }
+    ],
+    "expectations": {
+      "open": [
+        {
+          "statement": "Peripheral neuropathy may worsen around cycles 4-6 of FOLFOX",
+          "basis": "guideline",
+          "opens_in_days": 7,
+          "closes_in_days": 45,
+          "check": {"kind": "screening_score", "payload_field": "total_score", "op": "gte", "value": 16},
+          "ask": {
+            "plain": "whether any tingling or numbness in their hands or feet has changed lately",
+            "technical": "whether peripheral neuropathy symptoms have progressed since the last cycle"
+          },
+          "evidence": [
+            {"kind": "event", "ref": "E3", "note": "FOLFOX active since ~5 weeks"},
+            {"kind": "guideline", "ref": "G1", "note": "typical cycle 3-6 emergence"}
+          ]
+        }
+      ],
+      "resolve": []
+    },
+    "reflections": [
+      {
+        "statement": "Patient appears to be tolerating first-line FOLFOX with emerging neuropathy",
+        "rationale": "FOLFOX active belief plus new neuropathy report and moderate symptom burden",
+        "proposed_belief": {"path": "treatments.line", "value": "1st-line"},
+        "evidence": [
+          {"kind": "event", "ref": "E3", "note": "regimen active"},
+          {"kind": "event", "ref": "E2", "note": "neuropathy added"}
+        ]
+      }
+    ]
+  }
+}

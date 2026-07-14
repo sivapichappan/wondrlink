@@ -152,6 +152,47 @@ def test_conversation_scrubber_pipeline():
           '[EMAIL]' in payload['conversation_context'])
 
 
+def test_modeler_payload_hygiene():
+    print("\n6. Modeler input assembly: relativized + de-identified, guard aborts on poison")
+    from datetime import datetime
+    from modeler import assemble_modeler_input, ensure_connections
+
+    now = datetime(2026, 7, 14, 12, 0, 0)
+    clean_profile = {
+        "patient": {"age": 62},
+        "primaryDiagnosis": {"site": "colon", "stage": "Stage III"},
+        "treatments": [{"regimen": "FOLFOX", "status": "active"}],
+        "beliefs": {"version": 1, "pending": [], "fields": {
+            "primaryDiagnosis.stage": {"value": "Stage III", "confidence": 1.0,
+                                       "status": "confirmed", "source": "form", "history": []},
+        }},
+    }
+    events = [{"kind": "belief_add", "path": "symptoms.fatigue",
+               "payload": {"value": "fatigue"}, "source": "chat",
+               "recorded_at": "2026-07-10T15:00:00"}]
+    _payload, guard, _index = assemble_modeler_input(
+        clean_profile, events, {}, [], [], ensure_connections({}), now)
+    leaks = detect_pii_leaks(guard)
+    check("clean relativized payload passes the guard",
+          leaks == [], f"got {leak_names(leaks)}")
+    check("timestamps rendered as day offsets, not ISO dates",
+          "T-3d" in guard["timeline"] and "2026-07-10" not in guard["timeline"])
+
+    # Poison must land in a section the payload actually serializes — a belief
+    # value is the realistic leak path (free text that slipped past extraction).
+    import copy
+    poisoned = copy.deepcopy(clean_profile)
+    poisoned["beliefs"]["fields"]["symptoms.notes"] = {
+        "value": "call my nurse at 555-867-5309", "confidence": 0.6,
+        "status": "provisional", "source": "chat", "history": [],
+    }
+    _payload2, guard2, _i2 = assemble_modeler_input(
+        poisoned, events, {}, [], [], ensure_connections({}), now)
+    leak_types = leak_names(detect_pii_leaks(guard2))
+    check("poisoned belief value detected by the guard (run would abort)",
+          any("phone" in t for t in leak_types), f"got {leak_types}")
+
+
 if __name__ == '__main__':
     print("PII leak guard scope tests")
     print("=" * 60)
@@ -160,6 +201,7 @@ if __name__ == '__main__':
     test_message_pii_still_caught()
     test_extractor_profile_context_hygiene()
     test_conversation_scrubber_pipeline()
+    test_modeler_payload_hygiene()
     print("\n" + "=" * 60)
     if FAILURES:
         print(f"RESULT: {len(FAILURES)} FAILURE(S): {FAILURES}")

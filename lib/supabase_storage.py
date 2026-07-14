@@ -1306,8 +1306,13 @@ def update_lifecycle_stage_column(user_id: str, stage: str) -> bool:
 
 
 def load_patient_events(user_id: str, limit: int = 200,
-                        kinds: Optional[List[str]] = None) -> List[Dict[str, Any]]:
-    """Load a user's timeline, newest first. [] on any failure."""
+                        kinds: Optional[List[str]] = None,
+                        since: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Load a user's timeline, newest first. [] on any failure.
+
+    since: ISO timestamp — only events with recorded_at strictly after it
+    (used by the Modeler's watermark + context-tail windowing).
+    """
     try:
         client = get_admin_client()
         query = client.table('patient_events') \
@@ -1315,11 +1320,38 @@ def load_patient_events(user_id: str, limit: int = 200,
             .eq('user_id', user_id)
         if kinds:
             query = query.in_('kind', kinds)
+        if since:
+            query = query.gt('recorded_at', since)
         result = query.order('recorded_at', desc=True).limit(limit).execute()
         return result.data or []
     except Exception as e:
         logger.warning(f"load_patient_events failed: {e}")
         return []
+
+
+def save_connections(user_id: str, connections: Dict[str, Any]) -> bool:
+    """
+    Targeted persist of raw_profile.connections (the Modeler's graph).
+    Loads fresh and touches ONLY the connections sub-object so it can never
+    clobber profile writes made elsewhere (same pattern as save_model_state).
+    """
+    try:
+        client = get_admin_client()
+        result = client.table('patient_profiles') \
+            .select('raw_profile') \
+            .eq('user_id', user_id) \
+            .limit(1) \
+            .execute()
+        profile = (result.data[0].get('raw_profile') if result.data else None) or {}
+        profile['connections'] = connections
+        client.table('patient_profiles') \
+            .update({'raw_profile': profile}) \
+            .eq('user_id', user_id) \
+            .execute()
+        return True
+    except Exception as e:
+        logger.warning(f"save_connections failed: {e}")
+        return False
 
 
 def save_screening_score(user_id: str, instrument: str, scores: dict,
