@@ -19,7 +19,7 @@ export default function About() {
         <Text style={{ color: Colors.textSecondary, fontSize: 14, lineHeight: 21 }}>
           A colon cancer informational guide built by the WondrLink Foundation. WondrChat is
           designed to help patients and caregivers understand diagnosis, treatment options,
-          screenings, and resources — in plain language.
+          screenings, and resources, in plain language.
         </Text>
 
         <View

@@ -63,10 +63,10 @@ const INSTRUMENTS: Record<ScreeningInstrument, InstrumentDef> = {
     ],
     severity: [
       { max: 4, label: 'Minimal', blurb: 'Symptoms are minimal. Keep checking in.' },
-      { max: 9, label: 'Mild', blurb: 'Mild symptoms — worth mentioning at your next visit.' },
-      { max: 14, label: 'Moderate', blurb: 'Moderate symptoms — share with your healthcare provider.' },
-      { max: 19, label: 'Moderately severe', blurb: 'Symptoms are moderately severe — please share with your provider.' },
-      { max: 27, label: 'Severe', blurb: 'Severe symptoms — please contact your provider.' },
+      { max: 9, label: 'Mild', blurb: 'Mild symptoms, worth mentioning at your next visit.' },
+      { max: 14, label: 'Moderate', blurb: 'Moderate symptoms, share with your healthcare provider.' },
+      { max: 19, label: 'Moderately severe', blurb: 'Symptoms are moderately severe, please share with your provider.' },
+      { max: 27, label: 'Severe', blurb: 'Severe symptoms, please contact your provider.' },
     ],
   },
   GAD7: {
@@ -91,9 +91,9 @@ const INSTRUMENTS: Record<ScreeningInstrument, InstrumentDef> = {
     ],
     severity: [
       { max: 4, label: 'Minimal', blurb: 'Minimal anxiety symptoms.' },
-      { max: 9, label: 'Mild', blurb: 'Mild anxiety — mention at your next visit.' },
-      { max: 14, label: 'Moderate', blurb: 'Moderate anxiety — share with your provider.' },
-      { max: 21, label: 'Severe', blurb: 'Severe anxiety — please contact your provider.' },
+      { max: 9, label: 'Mild', blurb: 'Mild anxiety, mention at your next visit.' },
+      { max: 14, label: 'Moderate', blurb: 'Moderate anxiety, share with your provider.' },
+      { max: 21, label: 'Severe', blurb: 'Severe anxiety, please contact your provider.' },
     ],
   },
   PSS10: {
@@ -123,8 +123,8 @@ const INSTRUMENTS: Record<ScreeningInstrument, InstrumentDef> = {
     reverseScored: [3, 4, 6, 7],
     severity: [
       { max: 13, label: 'Low perceived stress', blurb: 'Stress is in the low range.' },
-      { max: 26, label: 'Moderate perceived stress', blurb: 'Stress is in the moderate range — share with your provider.' },
-      { max: 40, label: 'High perceived stress', blurb: 'Stress is in the high range — please share with your provider.' },
+      { max: 26, label: 'Moderate perceived stress', blurb: 'Stress is in the moderate range, share with your provider.' },
+      { max: 40, label: 'High perceived stress', blurb: 'Stress is in the high range, please share with your provider.' },
     ],
   },
   ISI: {
@@ -150,9 +150,9 @@ const INSTRUMENTS: Record<ScreeningInstrument, InstrumentDef> = {
     ],
     severity: [
       { max: 7, label: 'No clinically significant insomnia', blurb: 'Sleep is in the healthy range.' },
-      { max: 14, label: 'Subthreshold insomnia', blurb: 'Some sleep difficulty — share with your provider.' },
-      { max: 21, label: 'Moderate insomnia', blurb: 'Moderate insomnia — please share with your provider.' },
-      { max: 28, label: 'Severe insomnia', blurb: 'Severe insomnia — please contact your provider.' },
+      { max: 14, label: 'Subthreshold insomnia', blurb: 'Some sleep difficulty, share with your provider.' },
+      { max: 21, label: 'Moderate insomnia', blurb: 'Moderate insomnia, please share with your provider.' },
+      { max: 28, label: 'Severe insomnia', blurb: 'Severe insomnia, please contact your provider.' },
     ],
   },
   SYMPTOM: {
@@ -181,9 +181,9 @@ const INSTRUMENTS: Record<ScreeningInstrument, InstrumentDef> = {
     ],
     severity: [
       { max: 8, label: 'Mild symptoms', blurb: 'Symptom burden is in the mild range.' },
-      { max: 18, label: 'Moderate symptoms', blurb: 'Moderate symptoms — share with your provider.' },
-      { max: 28, label: 'Significant symptoms', blurb: 'Significant symptoms — please share with your provider.' },
-      { max: 40, label: 'Severe symptoms', blurb: 'Severe symptoms — please contact your provider promptly.' },
+      { max: 18, label: 'Moderate symptoms', blurb: 'Moderate symptoms, share with your provider.' },
+      { max: 28, label: 'Significant symptoms', blurb: 'Significant symptoms, please share with your provider.' },
+      { max: 40, label: 'Severe symptoms', blurb: 'Severe symptoms, please contact your provider promptly.' },
     ],
   },
   PREMM5: {
@@ -210,8 +210,8 @@ const INSTRUMENTS: Record<ScreeningInstrument, InstrumentDef> = {
     ],
     severity: [
       { max: 1, label: 'Low risk', blurb: 'Lower hereditary cancer risk. Share with your provider.' },
-      { max: 3, label: 'Moderate risk', blurb: 'Moderate hereditary risk — consider discussing genetic counseling with your provider. Find a counselor at nsgc.org.' },
-      { max: 10, label: 'High risk', blurb: 'Elevated hereditary cancer risk — genetic counseling is recommended. Find a counselor at nsgc.org.' },
+      { max: 3, label: 'Moderate risk', blurb: 'Moderate hereditary risk, consider discussing genetic counseling with your provider. Find a counselor at nsgc.org.' },
+      { max: 10, label: 'High risk', blurb: 'Elevated hereditary cancer risk, genetic counseling is recommended. Find a counselor at nsgc.org.' },
     ],
   },
 };

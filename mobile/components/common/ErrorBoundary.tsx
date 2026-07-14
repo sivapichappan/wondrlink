@@ -67,7 +67,7 @@ export class ErrorBoundary extends Component<Props, State> {
             lineHeight: 21,
             textAlign: 'center',
           }}>
-          WondrChat hit an unexpected error. The team has been notified. You can try again — your
+          WondrChat hit an unexpected error. The team has been notified. You can try again, your
           chat history is safe.
         </Text>
         <View

@@ -41,7 +41,7 @@ export default function Register() {
     } catch (e) {
       // NoSessionError = sign-up succeeded but Supabase has email
       // confirmation enabled, so there's no session yet. This is a
-      // success path, not an error — surface as an info/success banner
+      // success path, not an error, surface as an info/success banner
       // with a clear "Go to Log In" CTA, not red error text.
       if (e instanceof NoSessionError) {
         setVerifyEmail(email.trim());
@@ -110,7 +110,7 @@ export default function Register() {
           />
         </ScrollView>
 
-        {/* Pinned action area — always visible above the keyboard */}
+        {/* Pinned action area, always visible above the keyboard */}
         <View
           style={{
             padding: 16,
@@ -145,7 +145,7 @@ export default function Register() {
  *
  * Surfaces a clear next step + a Resend button (Supabase rate-limits
  * the resend aggressively, so we show a generic "we tried again"
- * message regardless of result — never reveal whether the account
+ * message regardless of result, never reveal whether the account
  * exists).
  */
 function VerifyEmailScreen({
@@ -165,7 +165,7 @@ function VerifyEmailScreen({
       await resendSignupConfirmation(email);
       setResendNote("We've sent another verification email. Check your inbox (and spam).");
     } catch (e) {
-      // Supabase often rate-limits — show a generic message either way.
+      // Supabase often rate-limits, show a generic message either way.
       // Real failures still surface so we can debug.
       const isRateLimit =
         e && typeof e === 'object' && 'message' in e &&
@@ -173,7 +173,7 @@ function VerifyEmailScreen({
         /rate|too many|wait/i.test((e as any).message);
       setResendNote(
         isRateLimit
-          ? "Please wait a minute before requesting another email — Supabase rate-limits these."
+          ? "Please wait a minute before requesting another email, Supabase rate-limits these."
           : "We tried to resend. If you still don't see the email in a few minutes, check spam or use a different address."
       );
     } finally {

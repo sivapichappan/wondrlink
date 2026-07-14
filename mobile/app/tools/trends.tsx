@@ -143,7 +143,7 @@ function TrendCard({ meta, points }: { meta: InstrumentMeta; points: ScreeningHi
         </View>
       ) : values.length === 1 ? (
         <Text style={{ color: Colors.textMuted, fontSize: 12, fontStyle: 'italic' }}>
-          One entry — take another to see a trend.
+          One entry, take another to see a trend.
         </Text>
       ) : null}
     </View>

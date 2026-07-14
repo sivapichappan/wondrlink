@@ -1,5 +1,5 @@
 /**
- * TrialCard — the single shared clinical-trial card (Tools screen + in-chat).
+ * TrialCard, the single shared clinical-trial card (Tools screen + in-chat).
  *
  * Layout: match band (tier + eligibility) → plain-language summary → optional
  * warning callout → facts (Treatment / Who can join / Nearest site inline;
@@ -42,7 +42,7 @@ function whoCanJoin(e?: ChatClinicalTrial['eligibility']): string {
 
 /** "May require MSS tumors; patient is MSI-H" -> "…— your profile is MSI-H." */
 function patientizeWarning(w: string): string {
-  let out = w.replace(/;\s*patient is/i, ' — your profile is');
+  let out = w.replace(/;\s*patient is/i, ', your profile is');
   if (!/[.!?]$/.test(out)) out += '.';
   return out;
 }
@@ -137,7 +137,7 @@ export function TrialCard({ trial: t, saved, onToggleSave }: Props) {
           </Pressable>
         </View>
 
-        {/* Actions — visuals on static inner Views (NativeWind rule). */}
+        {/* Actions, visuals on static inner Views (NativeWind rule). */}
         <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
           <Pressable
             onPress={() => Linking.openURL(url).catch(() => {})}

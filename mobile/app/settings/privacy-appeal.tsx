@@ -20,7 +20,7 @@ const TYPES: Array<{ value: PrivacyAppealType; label: string; blurb: string }> =
     label: 'Consent withdrawal',
     blurb: 'I want to withdraw a previously granted consent.',
   },
-  { value: 'other', label: 'Other', blurb: 'Something else — describe below.' },
+  { value: 'other', label: 'Other', blurb: 'Something else, describe below.' },
 ];
 
 export default function PrivacyAppeal() {

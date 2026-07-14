@@ -14,7 +14,7 @@ const VALUE_BULLETS: { Icon: typeof Sparkles; title: string; body: string }[] = 
   {
     Icon: HeartPulse,
     title: 'Answers tuned to you',
-    body: 'WondrChat uses your diagnosis, stage, and treatments to give responses that actually match your situation — not generic info.',
+    body: 'WondrChat uses your diagnosis, stage, and treatments to give responses that actually match your situation, not generic info.',
   },
   {
     Icon: Microscope,
@@ -54,13 +54,13 @@ export function WelcomeProfileModal({ visible, onBuildProfile, onSkip }: Props) 
             <Text style={styles.title}>Welcome to WondrChat</Text>
             <Text style={styles.subtitle}>
               An AI assistant that helps you understand your diagnosis, treatments, and trial
-              options in everyday language — paired with a human Navigator when you need one.
+              options in everyday language, paired with a human Navigator when you need one.
             </Text>
 
             <View style={styles.calloutCard}>
               <Text style={styles.calloutHeader}>One quick step makes everything better</Text>
               <Text style={styles.calloutBody}>
-                Set up your patient profile — a 2-minute wizard. Every answer the AI gives gets
+                Set up your patient profile, a 2-minute wizard. Every answer the AI gives gets
                 meaningfully better when it knows your stage, biomarkers, and treatments.
               </Text>
             </View>

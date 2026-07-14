@@ -82,7 +82,7 @@ export default function CancerSwitcherScreen() {
       setError('Pick a cancer first.');
       return;
     }
-    // Confirm when switching away from the existing cancer — chat history
+    // Confirm when switching away from the existing cancer, chat history
     // stays, but personalised retrievals will pivot to the new corpus.
     if (initialSlug && initialSlug !== pickedSlug) {
       Alert.alert(
@@ -311,7 +311,7 @@ function CancerCard({
               ? `Tailored from ${option.doc_count} guideline document${option.doc_count === 1 ? '' : 's'}`
               : option.ready
                 ? 'Ready'
-                : 'Preview — limited corpus'}
+                : 'Preview, limited corpus'}
           </Text>
         </View>
         {selected && (

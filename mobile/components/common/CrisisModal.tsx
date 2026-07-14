@@ -89,7 +89,7 @@ export function CrisisModal({ category, onContinue, onClose }: Props) {
                 key={h.name}
                 onPress={() => Linking.openURL(h.tel).catch(() => {})}
                 accessibilityRole="button"
-                accessibilityLabel={`${h.name} — ${h.number}`}
+                accessibilityLabel={`${h.name}, ${h.number}`}
                 style={({ pressed }) => ({
                   flexDirection: 'row',
                   alignItems: 'center',

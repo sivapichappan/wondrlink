@@ -66,7 +66,7 @@ export default function HomeScreen() {
       {/* Greeting */}
       <View style={{ paddingTop: Spacing.xs }}>
         <Text style={{ fontFamily: Fonts.serifBold, fontSize: FontSize.h1, lineHeight: 36, color: Colors.textPrimary }}>
-          {firstName ? `Hi ${firstName} —` : 'Hi —'}
+          {firstName ? `Hi ${firstName},` : 'Hi there,'}
         </Text>
         <Text style={{ fontFamily: Fonts.serif, fontSize: FontSize.h1, lineHeight: 36, color: Colors.textSecondary }}>
           how are you feeling today?

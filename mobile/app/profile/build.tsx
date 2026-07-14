@@ -32,7 +32,7 @@ const ECOG = [
 ];
 
 const STAGES = [
-  { value: 'Stage I', desc: 'Early — in colon wall only' },
+  { value: 'Stage I', desc: 'Early, in colon wall only' },
   { value: 'Stage II', desc: 'Grown through colon wall' },
   { value: 'Stage III', desc: 'Spread to lymph nodes' },
   { value: 'Stage IV', desc: 'Spread to other organs' },
@@ -873,7 +873,7 @@ function ChipMultiSelect({
   };
   return (
     <View style={{ gap: 8 }}>
-      <Text style={pillStyles.helper}>Tap any that apply — you can pick several.</Text>
+      <Text style={pillStyles.helper}>Tap any that apply, you can pick several.</Text>
       <View style={pillStyles.row}>
         {options.map((opt) => {
           const isSel = selected.includes(opt);

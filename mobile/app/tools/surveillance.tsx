@@ -40,7 +40,7 @@ export default function SurveillanceScreen() {
         {q.data?.schedule && q.data.schedule.length > 0 && (
           <>
             <Text style={{ color: Colors.textMuted, fontSize: 12, lineHeight: 18 }}>
-              Personalized timeline based on your stage and surgery date. Times are approximate —
+              Personalized timeline based on your stage and surgery date. Times are approximate;
               your oncologist may adjust.
             </Text>
             {q.data.schedule.map((m, i) => (

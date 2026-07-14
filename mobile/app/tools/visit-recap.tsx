@@ -85,7 +85,7 @@ export default function VisitRecapScreen() {
         <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }} keyboardShouldPersistTaps="handled">
           <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 19 }}>
             Record your appointment as it happens, or type notes from what you remember. WondrChat
-            organizes it into discussion points, treatment changes, and action items — and keeps a
+            organizes it into discussion points, treatment changes, and action items, and keeps a
             history so you can look back.
           </Text>
 
