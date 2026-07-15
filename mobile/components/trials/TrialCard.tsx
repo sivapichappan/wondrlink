@@ -76,6 +76,7 @@ export function TrialCard({ trial: t, saved, onToggleSave }: Props) {
   const eligibleLabel = t.likely_eligible === false ? 'Check criteria first' : 'Likely eligible';
   const url = t.url || `https://clinicaltrials.gov/study/${t.nct_id}`;
   const warning = t.relevance?.warnings?.[0];
+  const reasons = (t.relevance?.reasons ?? []).slice(0, 2).join(' · ');
   const summary = t.plain_summary || t.brief_summary || '';
 
   const primaryFacts = [
@@ -111,6 +112,11 @@ export function TrialCard({ trial: t, saved, onToggleSave }: Props) {
       <View style={{ padding: Spacing.lg, gap: Spacing.md }}>
         {summary ? (
           <Text style={{ color: Colors.textPrimary, fontFamily: Fonts.sansSemiBold, fontSize: FontSize.lg, lineHeight: 21 }}>{summary}</Text>
+        ) : null}
+
+        {/* Why this matches (top-2 reasons — web parity) */}
+        {reasons ? (
+          <Text style={{ color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 18 }}>{reasons}</Text>
         ) : null}
 
         {/* Warning callout */}

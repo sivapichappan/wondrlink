@@ -7,6 +7,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
 
+import { sendTrialFeedback } from '@/lib/api/trials';
+
 const STORAGE_KEY = 'wondrlink:trial_watchlist';
 
 export interface SavedTrial {
@@ -60,6 +62,7 @@ export function useWatchlist(): Hook {
     (trial: Omit<SavedTrial, 'saved_at'>) => {
       if (trials.some((t) => t.nct_id === trial.nct_id)) return;
       persist([{ ...trial, saved_at: new Date().toISOString() }, ...trials]);
+      void sendTrialFeedback(trial.nct_id, 'saved'); // fire-and-forget telemetry
     },
     [trials, persist],
   );
@@ -67,6 +70,7 @@ export function useWatchlist(): Hook {
   const remove = useCallback(
     (nctId: string) => {
       persist(trials.filter((t) => t.nct_id !== nctId));
+      void sendTrialFeedback(nctId, 'removed');
     },
     [trials, persist],
   );
