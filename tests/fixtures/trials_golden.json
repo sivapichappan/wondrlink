@@ -1,0 +1,108 @@
+{
+  "_comment": "Golden trials-ranking fixture (Push 3). A KRAS G12D patient whose connections graph flips the ordering: legacy ranks the cetuximab trial first; the graph demotes it (KRAS contraindicates anti-EGFR, corroborated 0.8 -> -20) and boosts the KRAS-targeted trial (supports_therapy hypothesis 0.75 -> +6). Consumed by tests/test_trials_ranking.py and the trials_ranking eval suite.",
+  "patient_context": {
+    "age": 62,
+    "gender": "Male",
+    "zip_code": "94110",
+    "biomarkers": "KRAS: G12D mutation, MSI: MSS",
+    "treatment_line": "second",
+    "completed_regimens": ["FOLFOX"]
+  },
+  "connections": {
+    "version": 1,
+    "edges": [
+      {
+        "id": "primarydiagnosis_biomarkers_kras--contraindicates--anti_egfr",
+        "src": {"type": "biomarker", "key": "primaryDiagnosis.biomarkers.KRAS", "label": "KRAS G12D"},
+        "rel": "contraindicates",
+        "dst": {"type": "therapy_option", "key": "anti_egfr", "label": "anti-EGFR antibodies"},
+        "status": "corroborated", "strength": 0.8,
+        "evidence": [{"kind": "guideline", "ref": "guideline:NCCN_colon.pdf#chunk44", "note": ""}],
+        "times_seen": 3
+      },
+      {
+        "id": "primarydiagnosis_biomarkers_kras--supports_therapy--kras_targeted",
+        "src": {"type": "biomarker", "key": "primaryDiagnosis.biomarkers.KRAS", "label": "KRAS G12D"},
+        "rel": "supports_therapy",
+        "dst": {"type": "therapy_option", "key": "kras_targeted", "label": "KRAS-targeted therapy"},
+        "status": "hypothesis", "strength": 0.75,
+        "evidence": [{"kind": "guideline", "ref": "guideline:NCCN_colon.pdf#chunk51", "note": ""}],
+        "times_seen": 1
+      },
+      {
+        "id": "treatments_folfox--causes--symptoms_neuropathy",
+        "src": {"type": "treatment", "key": "treatments.folfox", "label": "FOLFOX"},
+        "rel": "causes",
+        "dst": {"type": "symptom", "key": "symptoms.neuropathy", "label": "neuropathy"},
+        "status": "corroborated", "strength": 0.8,
+        "evidence": [{"kind": "event", "ref": "event:belief_add@x", "note": ""}],
+        "times_seen": 2
+      },
+      {
+        "id": "msi--contraindicates--platinum_chemo",
+        "src": {"type": "biomarker", "key": "primaryDiagnosis.biomarkers.MSI", "label": "MSI status"},
+        "rel": "contraindicates",
+        "dst": {"type": "therapy_option", "key": "platinum_chemo", "label": "platinum chemotherapy"},
+        "status": "refuted", "strength": 0.9,
+        "evidence": [{"kind": "event", "ref": "event:belief_update@x", "note": ""}],
+        "times_seen": 2
+      }
+    ]
+  },
+  "trials": [
+    {
+      "nct_id": "NCT01000001",
+      "title": "Cetuximab Plus FOLFIRI in Second-Line Metastatic Colorectal Cancer",
+      "official_title": "",
+      "brief_summary": "Evaluates cetuximab with FOLFIRI chemotherapy after progression on first-line therapy.",
+      "interventions": [{"name": "Cetuximab", "type": "Drug"}, {"name": "FOLFIRI", "type": "Drug"}],
+      "conditions": ["Colorectal Neoplasms"],
+      "study_purpose": "treatment",
+      "min_age": "18 Years", "max_age": "", "sex": "All",
+      "nearest_distance_miles": 20
+    },
+    {
+      "nct_id": "NCT01000002",
+      "title": "MRTX1133 in KRAS G12D Mutant Advanced Colorectal Cancer",
+      "official_title": "",
+      "brief_summary": "A KRAS-targeted therapy for patients whose tumors carry the G12D mutation.",
+      "interventions": [{"name": "MRTX1133", "type": "Drug"}],
+      "conditions": ["Colorectal Neoplasms"],
+      "study_purpose": "treatment",
+      "min_age": "18 Years", "max_age": "", "sex": "All",
+      "nearest_distance_miles": 40
+    },
+    {
+      "nct_id": "NCT01000003",
+      "title": "Pembrolizumab in MSI-H Solid Tumors",
+      "official_title": "",
+      "brief_summary": "Checkpoint blockade for microsatellite instability high tumors.",
+      "interventions": [{"name": "Pembrolizumab", "type": "Drug"}],
+      "conditions": ["Solid Tumors"],
+      "study_purpose": "treatment",
+      "min_age": "18 Years", "max_age": "", "sex": "All",
+      "nearest_distance_miles": 60
+    },
+    {
+      "nct_id": "NCT01000004",
+      "title": "Oxaliplatin Plus S-1 Rechallenge in Colorectal Cancer",
+      "official_title": "",
+      "brief_summary": "Rechallenge with oxaliplatin-based chemotherapy.",
+      "interventions": [{"name": "Oxaliplatin", "type": "Drug"}, {"name": "Fluorouracil", "type": "Drug"}],
+      "conditions": ["Colorectal Neoplasms"],
+      "study_purpose": "treatment",
+      "min_age": "18 Years", "max_age": "", "sex": "All",
+      "nearest_distance_miles": 30
+    }
+  ],
+  "expected": {
+    "legacy_scores": {"NCT01000001": 80, "NCT01000002": 75, "NCT01000003": 62, "NCT01000004": 65},
+    "graph_deltas": {"NCT01000001": -20, "NCT01000002": 6, "NCT01000004": 0},
+    "graph_scores": {"NCT01000001": 60, "NCT01000002": 81, "NCT01000003": 62, "NCT01000004": 65},
+    "legacy_order": ["NCT01000001", "NCT01000002", "NCT01000004", "NCT01000003"],
+    "graph_order": ["NCT01000002", "NCT01000004", "NCT01000003", "NCT01000001"],
+    "contra_warning_substrings": ["Cetuximab", "KRAS G12D", "often less effective"],
+    "toxicity_warning_substrings": ["neuropathy", "FOLFOX", "similar treatment"],
+    "completed_warning_substrings": ["already completed FOLFOX"]
+  }
+}

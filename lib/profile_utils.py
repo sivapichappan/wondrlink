@@ -607,19 +607,24 @@ def extract_patient_context_complex(profile: dict) -> Dict[str, Any]:
         context['current_cycle_number'] = None
         context['treatment_line'] = None
         context['current_regimen'] = None
+        context['completed_regimens'] = []
 
         for treatment in treatments:
-            if isinstance(treatment, dict) and treatment.get('status') == 'active':
+            if not isinstance(treatment, dict):
+                continue
+            if treatment.get('status') == 'active' and context['current_regimen'] is None:
                 context['current_cycle_number'] = treatment.get('cycleNumber')
                 context['treatment_line'] = treatment.get('line')
                 context['current_regimen'] = treatment.get('regimen')
-                break
+            elif treatment.get('status') in ('completed', 'discontinued') and treatment.get('regimen'):
+                context['completed_regimens'].append(treatment['regimen'])
     else:
         context['current_treatments'] = []
         context['medications'] = []
         context['current_cycle_number'] = None
         context['treatment_line'] = None
         context['current_regimen'] = None
+        context['completed_regimens'] = []
 
     context['symptoms'] = extract_current_symptoms(profile)
 

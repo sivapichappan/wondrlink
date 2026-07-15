@@ -11,6 +11,7 @@ import requests
 import logging
 import hashlib
 import json
+import re
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 
@@ -958,20 +959,189 @@ def _parse_age(age_str: str) -> Optional[int]:
     return None
 
 
+# ---------------------------------------------------------------------------
+# Graph-aware ranking (Push 3): the per-patient connections graph built by
+# lib/modeler.py adjusts trial RANKING — never filters. Pure functions over the
+# durable edge-dict shape; deliberately zero imports from modeler.
+# ---------------------------------------------------------------------------
+
+# Cross-cancer oncology drug-class synonyms for matching graph edge labels
+# ("anti-EGFR antibodies") against trial intervention names ("Cetuximab") and
+# vice versa. All entries pre-normalized (see _norm_term). Curated + static by
+# design — no fuzzy matching. Promote to config/ if it outgrows this.
+DRUG_CLASS_SYNONYMS: Dict[str, List[str]] = {
+    "anti egfr": ["egfr inhibitor", "cetuximab", "panitumumab", "erbitux", "vectibix"],
+    "checkpoint inhibitor": ["immunotherapy", "anti pd 1", "anti pd l1", "pembrolizumab",
+                             "nivolumab", "atezolizumab", "durvalumab", "ipilimumab",
+                             "dostarlimab", "keytruda", "opdivo"],
+    "anti vegf": ["bevacizumab", "ramucirumab", "aflibercept", "avastin"],
+    "braf inhibitor": ["encorafenib", "dabrafenib", "vemurafenib"],
+    "her2 targeted": ["anti her2", "trastuzumab", "pertuzumab", "tucatinib", "lapatinib"],
+    "parp inhibitor": ["olaparib", "niraparib", "rucaparib", "talazoparib"],
+    "fluoropyrimidine": ["5 fu", "fluorouracil", "capecitabine", "xeloda",
+                         "folfox", "folfiri", "folfoxiri"],
+    "platinum": ["oxaliplatin", "cisplatin", "carboplatin"],
+}
+
+# Graph signal weights: demotions/boosts scaled by edge strength, capped.
+GRAPH_CONTRA_CORROBORATED = -25
+GRAPH_CONTRA_HYPOTHESIS = -15
+GRAPH_SUPPORT_CORROBORATED = 15
+GRAPH_SUPPORT_HYPOTHESIS = 8
+GRAPH_DEMOTION_FLOOR = -30
+GRAPH_BOOST_CEILING = 20
+
+
+def _norm_term(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(text or "").lower()).strip()
+
+
+def _expand_terms(node: Dict[str, Any]) -> List[str]:
+    """Edge-node label+key, normalized + bidirectionally class-expanded."""
+    terms = {t for t in (_norm_term(node.get("label")), _norm_term(node.get("key")))
+             if len(t) >= 4}
+    expanded = set(terms)
+    for class_key, members in DRUG_CLASS_SYNONYMS.items():
+        family = [class_key] + members
+        for term in terms:
+            if any(re.search(rf"\b{re.escape(m)}\b", term) or
+                   re.search(rf"\b{re.escape(term)}\b", m) for m in family):
+                expanded.update(family)
+                break
+    return sorted(expanded)
+
+
+def _match_trial(terms: List[str], interventions: List[str], trial_text: str
+                 ) -> Optional[str]:
+    """Word-boundary match of any term against interventions (then trial text
+    for terms >=5 chars). Returns the matched intervention display name (or the
+    term) — never bare substring matching."""
+    normalized = [(name, _norm_term(name)) for name in interventions]
+    for term in terms:
+        pattern = re.compile(rf"\b{re.escape(term)}\b")
+        for display, norm in normalized:
+            if not norm:
+                continue
+            if term == norm or pattern.search(norm) or \
+                    (len(norm) >= 4 and re.search(rf"\b{re.escape(norm)}\b", term)):
+                return display
+        if len(term) >= 5 and pattern.search(trial_text):
+            return term
+    return None
+
+
+def graph_trial_signals(connections: Optional[Dict[str, Any]],
+                        interventions: List[str],
+                        trial_text: str) -> Dict[str, Any]:
+    """
+    Interpret the patient's connections graph against one trial.
+
+    Returns {"delta": int, "reasons": [...], "warnings": [...], "edge_ids": [...]}.
+    Falsy/empty graph -> zero-effect result (the legacy-score guarantee).
+    Contraindication = demotion + warning; supports_therapy = boost + reason;
+    observed toxicity (treatment--causes-->symptom) = WARNING ONLY (tolerability
+    is information, not an efficacy signal — never down-rank a drug the patient
+    is doing well on). Refuted edges ignored. Never hard-excludes a trial.
+    """
+    result = {"delta": 0, "reasons": [], "warnings": [], "edge_ids": []}
+    edges = (connections or {}).get("edges") or []
+    if not edges:
+        return result
+
+    normalized_text = _norm_term(trial_text)
+    demotion = 0
+    boost = 0
+    seen_matches: set = set()
+
+    for edge in edges:
+        status = edge.get("status")
+        if status == "refuted":
+            continue
+        rel = edge.get("rel")
+        strength = float(edge.get("strength", 0.5))
+        src, dst = edge.get("src") or {}, edge.get("dst") or {}
+
+        if rel == "contraindicates":
+            matched = _match_trial(_expand_terms(dst), interventions, normalized_text)
+            if not matched or ("contra", matched.lower()) in seen_matches:
+                continue
+            seen_matches.add(("contra", matched.lower()))
+            weight = GRAPH_CONTRA_CORROBORATED if status == "corroborated" \
+                else GRAPH_CONTRA_HYPOTHESIS
+            demotion += round(weight * strength)
+            hedge = "is often less effective" if status == "corroborated" \
+                else "may be less effective"
+            result["warnings"].append(
+                f"This trial includes {matched}, which {hedge} with your "
+                f"{src.get('label', 'test')} result")
+            result["edge_ids"].append(edge.get("id"))
+
+        elif rel == "supports_therapy":
+            matched = _match_trial(_expand_terms(dst), interventions, normalized_text)
+            if not matched or ("support", matched.lower()) in seen_matches:
+                continue
+            seen_matches.add(("support", matched.lower()))
+            weight = GRAPH_SUPPORT_CORROBORATED if status == "corroborated" \
+                else GRAPH_SUPPORT_HYPOTHESIS
+            boost += round(weight * strength)
+            result["reasons"].append(
+                f"Your {src.get('label', 'profile')} may make "
+                f"{dst.get('label', 'this approach')} a good fit")
+            result["edge_ids"].append(edge.get("id"))
+
+        elif rel == "causes" and (src.get("type") == "treatment"):
+            matched = _match_trial(_expand_terms(src), interventions, normalized_text)
+            if not matched or ("tox", matched.lower()) in seen_matches:
+                continue
+            seen_matches.add(("tox", matched.lower()))
+            result["warnings"].append(
+                f"You've had {dst.get('label', 'side effects')} with "
+                f"{src.get('label', 'a similar treatment')} before — this trial "
+                f"includes a similar treatment")
+            result["edge_ids"].append(edge.get("id"))
+
+    result["delta"] = max(GRAPH_DEMOTION_FLOOR, demotion) + min(GRAPH_BOOST_CEILING, boost)
+    return result
+
+
+_NCT_ID_RE = re.compile(r"^NCT\d{8}$")
+_FEEDBACK_ACTIONS = ("saved", "removed", "viewed")
+
+
+def validate_trial_feedback(body: Any) -> Optional[Dict[str, str]]:
+    """Validate a POST /api/trials/feedback body. Returns the normalized
+    payload {nct_id, action, surface} or None when invalid."""
+    if not isinstance(body, dict):
+        return None
+    nct_id = str(body.get("nct_id") or "").strip().upper()
+    action = str(body.get("action") or "").strip().lower()
+    if not _NCT_ID_RE.match(nct_id) or action not in _FEEDBACK_ACTIONS:
+        return None
+    surface = str(body.get("surface") or "")[:20]
+    return {"nct_id": nct_id, "action": action, "surface": surface or "unknown"}
+
+
 def score_trial_relevance(trial: Dict[str, Any],
-                          patient_context: Dict[str, Any]) -> Dict[str, Any]:
+                          patient_context: Dict[str, Any],
+                          connections: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Score a clinical trial's relevance to the patient profile.
 
     Checks age eligibility, sex eligibility, biomarker alignment,
-    treatment line alignment, and distance.
+    treatment line alignment, and distance. When `connections` (the Modeler's
+    per-patient graph) is provided, graph signals adjust the RANKING —
+    contraindication demotions, therapy-support boosts, toxicity-history
+    warnings — but never exclude a trial. connections=None (or an empty graph)
+    yields byte-identical legacy behavior.
 
     Args:
         trial: Parsed trial dict from parse_trial_result()
         patient_context: Patient context from extract_patient_context_complex()
+        connections: raw_profile['connections'] or None
 
     Returns:
-        Dict with: score (0-100), reasons (list), warnings (list), eligible (bool)
+        Dict with: score (0-100), reasons (list), warnings (list), eligible (bool),
+        graph ({applied, delta, edge_ids}) when connections were applied
     """
     score = 50  # Base score
     reasons = []
@@ -1099,15 +1269,43 @@ def score_trial_relevance(trial: Dict[str, Any],
         reasons.append("Treatment-focused")
         score += 5
 
+    # --- 7. Completed-regimen repeat (warning only — the patient may still
+    # want a trial of a regimen they've had, e.g. rechallenge; just say so).
+    intervention_list = [i.get("name", "") for i in (trial.get("interventions") or [])]
+    for regimen in patient_context.get("completed_regimens") or []:
+        matched = _match_trial(_expand_terms({"label": regimen, "key": regimen}),
+                               intervention_list, _norm_term(trial_text))
+        if matched:
+            warnings.append(f"You've already completed {regimen}; this trial "
+                            f"uses a similar treatment")
+            break
+
+    # --- 8. Connections-graph signals (Push 3) — ranking adjustments +
+    # rationale from the patient's model. PREPENDED so a contraindication is
+    # always warnings[0] (mobile renders only the first warning).
+    graph_info = None
+    if connections:
+        signals = graph_trial_signals(connections, intervention_list,
+                                      _norm_term(trial_text))
+        if signals["edge_ids"]:
+            score += signals["delta"]
+            reasons = signals["reasons"] + reasons
+            warnings = signals["warnings"] + warnings
+            graph_info = {"applied": True, "delta": signals["delta"],
+                          "edge_ids": signals["edge_ids"]}
+
     # Clamp score to 0-100
     score = max(0, min(100, score))
 
-    return {
+    result = {
         "score": score,
         "reasons": reasons,
         "warnings": warnings,
         "eligible": eligible
     }
+    if graph_info:
+        result["graph"] = graph_info
+    return result
 
 
 def validate_trial_search_readiness(patient_context: Dict[str, Any]) -> Dict[str, Any]:
@@ -1218,7 +1416,8 @@ def validate_trial_search_readiness(patient_context: Dict[str, Any]) -> Dict[str
 
 def search_trials_for_patient(patient_context: Dict[str, Any],
                                max_results: int = MAX_RESULTS,
-                               radius_miles: Optional[int] = 100) -> Dict[str, Any]:
+                               radius_miles: Optional[int] = 100,
+                               connections: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Search for clinical trials matching patient profile.
 
@@ -1226,6 +1425,8 @@ def search_trials_for_patient(patient_context: Dict[str, Any],
         patient_context: From extract_patient_context_complex()
         max_results: Maximum trials to return
         radius_miles: Geo search radius in miles (25/50/100), or None nationwide
+        connections: the Modeler's per-patient graph (raw_profile['connections'])
+            — graph-aware ranking when provided; None = legacy scoring
 
     Returns:
         Dict with: trials (list), total_found, search_criteria, error (if any)
@@ -1285,7 +1486,7 @@ def search_trials_for_patient(patient_context: Dict[str, Any],
     # Parse and score the FULL fetched set, then rank and keep the top N.
     trials = [parse_trial_result(s, preferred_state=patient_state, patient_zip=zip_code) for s in studies]
     for trial in trials:
-        relevance = score_trial_relevance(trial, patient_context)
+        relevance = score_trial_relevance(trial, patient_context, connections=connections)
         score = relevance["score"]
         trial["relevance_score"] = score
         trial["relevance_reasons"] = relevance["reasons"]
@@ -1299,6 +1500,8 @@ def search_trials_for_patient(patient_context: Dict[str, Any],
             "reasons": relevance["reasons"],
             "warnings": relevance["warnings"],
         }
+        if relevance.get("graph"):
+            trial["relevance"]["graph"] = relevance["graph"]
 
     # Sort trials by relevance score (highest first), then keep the display cap
     trials.sort(key=lambda t: t.get("relevance_score", 0), reverse=True)
