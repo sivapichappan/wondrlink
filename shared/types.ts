@@ -232,6 +232,8 @@ export interface ChatClinicalTrial {
     band: 'strong' | 'moderate' | 'general';
     reasons: string[];
     warnings: string[];
+    /** Present when the patient's connections graph adjusted this trial (Push 3). */
+    graph?: { applied: boolean; delta: number; edge_ids: string[] };
   };
   // Flat mirrors the web SPA reads (kept alongside nested `relevance`).
   relevance_score?: number;

@@ -1,0 +1,11 @@
+# Graph-aware trial-ranking integrity suite (Push 3).
+#
+# Deterministic — no network, no LLM; identical in dry and llm mode. The
+# checks run against tests/fixtures/trials_golden.json (the same fixture the
+# pytest suite locks): legacy scores byte-identical without a graph, the
+# KRAS-patient ordering flip with one, and plain-language contraindication
+# warnings.
+#
+# Run: python3 scripts/eval/run_evals.py --cancer colorectal --suite trials_ranking --mode dry
+
+description: Graph-aware trial ranking vs the golden fixture (threshold 1.00)

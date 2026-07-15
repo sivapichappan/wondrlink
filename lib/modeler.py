@@ -76,6 +76,12 @@ LLM_TIMEOUT_S = 45
 LLM_MAX_TOKENS = 3500   # 2500 truncated rich-profile outputs mid-JSON (go-live seed run)
 LLM_TEMPERATURE = 0.2
 
+# Event kinds excluded from the Modeler's timeline AND (because the debounce
+# counts post-filter) from the MIN_NEW_EVENTS gate: shadow bookkeeping and
+# high-volume trials-browsing telemetry carry no longitudinal signal.
+# trial_feedback (saves/removes) IS ingested — a saved trial is real signal.
+_EXCLUDED_EVENT_KINDS = ("shadow_extraction", "trials_shown")
+
 VALID_RELS = (
     "causes", "exacerbates", "relieves", "indicates",
     "supports_therapy", "contraindicates", "temporal_assoc",
@@ -896,7 +902,7 @@ def run_for_user(user_id: str, trigger: str = "manual", force: bool = False) -> 
     watermark = meta.get("watermark")
     new_events = load_patient_events(user_id, limit=TIMELINE_EVENT_LIMIT, since=watermark) \
         if watermark else load_patient_events(user_id, limit=TIMELINE_EVENT_LIMIT)
-    new_events = [e for e in new_events if e.get("kind") != "shadow_extraction"]
+    new_events = [e for e in new_events if e.get("kind") not in _EXCLUDED_EVENT_KINDS]
 
     if not force:
         due, reason = should_run(connections, len(new_events), now)
@@ -906,7 +912,7 @@ def run_for_user(user_id: str, trigger: str = "manual", force: bool = False) -> 
     # Context tail: everything in the last 60 days (plus the new events).
     tail_since = _iso(now - timedelta(days=TIMELINE_TAIL_DAYS))
     events = load_patient_events(user_id, limit=TIMELINE_EVENT_LIMIT, since=tail_since)
-    events = [e for e in events if e.get("kind") != "shadow_extraction"]
+    events = [e for e in events if e.get("kind") not in _EXCLUDED_EVENT_KINDS]
     seen_ts = {e.get("recorded_at") for e in events}
     events.extend(e for e in new_events if e.get("recorded_at") not in seen_ts)
 

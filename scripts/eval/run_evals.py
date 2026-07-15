@@ -365,6 +365,51 @@ def run_modeler_suite(spec: Dict[str, Any], mode: str) -> List[Dict[str, Any]]:
     return checks
 
 
+def run_trials_ranking_suite(spec: Dict[str, Any], mode: str) -> List[Dict[str, Any]]:
+    """
+    Graph-aware trial-ranking integrity vs tests/fixtures/trials_golden.json.
+    Deterministic (no network, no LLM) — identical in dry and llm mode.
+    """
+    import copy
+    import json as _json
+
+    from clinical_trials import score_trial_relevance
+
+    fixture_path = _ROOT.parent.parent / "tests" / "fixtures" / "trials_golden.json"
+    with fixture_path.open() as f:
+        golden = _json.load(f)
+    ctx = golden["patient_context"]
+    graph = golden["connections"]
+    expected = golden["expected"]
+    checks: List[Dict[str, Any]] = []
+
+    def check(cid: str, ok: bool, detail: str = "") -> None:
+        checks.append({"id": cid, "pass": bool(ok), "detail": detail})
+
+    def score_all(connections):
+        return {t["nct_id"]: score_trial_relevance(copy.deepcopy(t), ctx,
+                                                   connections=connections)
+                for t in golden["trials"]}
+
+    legacy = score_all(None)
+    check("legacy_scores", all(legacy[n]["score"] == s
+                               for n, s in expected["legacy_scores"].items()),
+          str({n: legacy[n]["score"] for n in expected["legacy_scores"]}))
+    check("empty_graph_identical", legacy == score_all({"edges": []}))
+
+    ranked = score_all(graph)
+    check("graph_scores", all(ranked[n]["score"] == s
+                              for n, s in expected["graph_scores"].items()),
+          str({n: ranked[n]["score"] for n in expected["graph_scores"]}))
+    order = sorted(ranked, key=lambda n: ranked[n]["score"], reverse=True)
+    check("graph_ordering_flip", order == expected["graph_order"], str(order))
+    contra = " ".join(ranked[expected["graph_order"][-1]]["warnings"])
+    check("contra_warning_first_and_plain",
+          all(s in contra for s in expected["contra_warning_substrings"])
+          and "contraindicat" not in contra.lower())
+    return checks
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Per-cancer eval harness.")
     parser.add_argument("--cancer", required=True, help="Cancer slug (e.g. colorectal).")
@@ -397,12 +442,20 @@ def main() -> int:
     extraction_results = []
     policy_results = []
     modeler_results = []
+    trials_results = []
     for suite in suites:
         try:
             spec = load_suite(args.cancer, suite)
         except FileNotFoundError as e:
             logger.error("%s", e)
             return 2
+
+        if suite == "trials_ranking":
+            logger.info("Running suite=trials_ranking (deterministic)")
+            for r in run_trials_ranking_suite(spec, args.mode):
+                r["suite"] = suite
+                trials_results.append(r)
+            continue
 
         if suite == "modeler":
             logger.info("Running suite=modeler mode=%s", args.mode)
@@ -465,6 +518,7 @@ def main() -> int:
         (extraction_results, metrics.extraction_accuracy, 0.80),
         (policy_results, metrics.question_policy_accuracy, 0.90),
         (modeler_results, metrics.modeler_integrity, 1.00),
+        (trials_results, metrics.trials_ranking_integrity, 1.00),
     ):
         if not special_results:
             continue
@@ -522,6 +576,8 @@ def main() -> int:
         for r in policy_results:
             f.write(json.dumps(r) + "\n")
         for r in modeler_results:
+            f.write(json.dumps(r) + "\n")
+        for r in trials_results:
             f.write(json.dumps(r) + "\n")
     logger.info("Wrote report → %s", report_path)
 

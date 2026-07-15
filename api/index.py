@@ -65,6 +65,7 @@ RATE_LIMIT_APPEAL        = (5, 60)      # insurance appeal
 RATE_LIMIT_DEEP_RESEARCH = (3, 300)
 RATE_LIMIT_PRIVACY_APPEAL = (3, 86400)  # 3 per day
 RATE_LIMIT_MODELER       = (6, 60)      # abuse guard; the real gate is the debounce
+RATE_LIMIT_TRIALS_FEEDBACK = (60, 60)   # save/remove/view pings while browsing
 
 
 def feature_enabled(flag_name: str) -> bool:
@@ -92,6 +93,38 @@ def _resolve_cancer_slug(user_id, profile):
         except Exception:
             slug = None
     return slug
+
+
+def _emit_trials_shown(user_id, surface, results, session_id=None):
+    """Trial-search telemetry (Push 3): one compact patient_event per serve.
+    Unconditional — telemetry doesn't depend on the modeler flag; excluded
+    from the Modeler's timeline via _EXCLUDED_EVENT_KINDS. Never raises."""
+    try:
+        from supabase_storage import append_patient_event
+        trials = results.get("trials") or []
+        entries = []
+        graph_applied = False
+        for t in trials[:12]:
+            entry = {"nct_id": t.get("nct_id"),
+                     "score": t.get("relevance_score"),
+                     "band": (t.get("relevance") or {}).get("band")}
+            graph = (t.get("relevance") or {}).get("graph") or {}
+            if graph.get("applied"):
+                graph_applied = True
+                if graph.get("delta"):
+                    entry["graph_delta"] = graph["delta"]
+            entries.append(entry)
+        append_patient_event(user_id, "trials_shown", payload={
+            "surface": surface,
+            "count": len(trials),
+            "total_found": results.get("total_found", 0),
+            "radius_miles": results.get("radius_miles"),
+            "relaxed_location": results.get("relaxed_location", False),
+            "graph_applied": graph_applied,
+            "trials": entries,
+        }, source="system", session_id=session_id)
+    except Exception:
+        logger.warning("trials_shown emit failed (non-fatal)")
 
 
 # Will be assigned after `app` is created (see below).
@@ -474,6 +507,34 @@ def api_modeler_cron():
             skipped += 1
     return jsonify({"candidates": len(candidates), "ran": ran, "skipped": skipped,
                     "errors": errors, "elapsed_ms": int((_time.time() - started) * 1000)})
+
+
+@app.route("/api/trials/feedback", methods=["POST"])
+@require_auth
+def api_trials_feedback():
+    """Trial-interaction telemetry (Push 3): saved / removed / viewed.
+    The client watchlist stays client-side — this event is the server-side
+    record, and it feeds the Modeler's timeline (genuine longitudinal signal)."""
+    try:
+        user_id = request.user["user_id"]
+        from rate_limit import check_rate_limit
+        allowed, _remaining = check_rate_limit(user_id, 'trials_feedback',
+                                               *RATE_LIMIT_TRIALS_FEEDBACK)
+        if not allowed:
+            return jsonify({"error": "Too many requests"}), 429
+
+        from clinical_trials import validate_trial_feedback
+        payload = validate_trial_feedback(request.get_json(silent=True))
+        if payload is None:
+            return jsonify({"error": "Invalid feedback payload"}), 400
+
+        from supabase_storage import append_patient_event
+        append_patient_event(user_id, "trial_feedback", payload=payload,
+                             source="client")
+        return jsonify({"status": "ok"})
+    except Exception:
+        logger.exception("trials feedback error")
+        return jsonify({"status": "error"}), 500
 
 
 @app.route("/api/modeler/graph", methods=["GET"])
@@ -1592,7 +1653,14 @@ def api_chat():
                             "chat_prefill": readiness.get("chat_prefill"),
                         }
                     else:
-                        trials_result = search_trials_for_patient(patient_context, max_results=5, radius_miles=100)
+                        # Graph-aware ranking (Push 3): the Modeler's per-patient
+                        # graph adjusts ordering + rationale when active.
+                        from modeler import modeler_active
+                        trial_connections = ((patient_profile or {}).get("connections")
+                                             if modeler_active() else None)
+                        trials_result = search_trials_for_patient(
+                            patient_context, max_results=5, radius_miles=100,
+                            connections=trial_connections)
                         if not trials_result.get("error"):
                             # Return full trials data for frontend rendering
                             clinical_trials_data = {
@@ -1605,6 +1673,8 @@ def api_chat():
                             if readiness.get("prompt_message"):
                                 clinical_trials_data["profile_completeness"] = readiness["prompt_message"]
                             logger.info(f"Found {clinical_trials_data['found']} clinical trials for user")
+                            _emit_trials_shown(user_id, "chat", trials_result,
+                                               session_id=active_conversation_id or session_id)
                         elif trials_result.get("error") == "no_zip_code":
                             clinical_trials_data = {
                                 "error": "no_zip_code",
@@ -2111,8 +2181,13 @@ def api_clinical_trials():
                 "trials": []
             }), 400
 
-        # Search for clinical trials
-        results = search_trials_for_patient(patient_context, max_results=max_results, radius_miles=radius_miles)
+        # Search for clinical trials. Graph-aware ranking (Push 3): the
+        # Modeler's per-patient graph adjusts ordering + rationale when active.
+        from modeler import modeler_active
+        trial_connections = profile.get("connections") if modeler_active() else None
+        results = search_trials_for_patient(patient_context, max_results=max_results,
+                                            radius_miles=radius_miles,
+                                            connections=trial_connections)
 
         if results.get("error"):
             return jsonify({
@@ -2124,6 +2199,8 @@ def api_clinical_trials():
         # Per-radius recruiting totals for the summary line (only when asked —
         # it's 4 extra cheap count queries; the chat path never requests them).
         radius_counts = count_trials_for_radii(patient_context) if request.args.get("counts") else None
+
+        _emit_trials_shown(user_id, "api", results)
 
         return jsonify({
             "status": "ok",
