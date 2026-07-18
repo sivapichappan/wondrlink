@@ -33,10 +33,21 @@ from typing import Dict
 
 # segment -> (provider, default model id, env override var)
 _SEGMENTS: Dict[str, Dict[str, str]] = {
+    # Sage voice (Workstream C, 2026-07-18): chat moved to Claude Sonnet.
+    # Requires ANTHROPIC_API_KEY at runtime; when the key is absent the call
+    # path falls back to chat_together automatically, so deploys are safe
+    # before the key lands. Rollback = MODEL_CHAT_PROVIDER=together.
     "chat": {
+        "provider": "anthropic",
+        "default": "claude-sonnet-5",
+        "env": "MODEL_CHAT",
+    },
+    # The Together-side chat model: primary when chat provider is 'together',
+    # first fallback when the anthropic call is unavailable/fails.
+    "chat_together": {
         "provider": "together",
         "default": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-        "env": "MODEL_CHAT",
+        "env": "MODEL_CHAT_TOGETHER",
     },
     "extractor": {
         "provider": "together",
@@ -72,11 +83,13 @@ def get_model(segment: str) -> str:
 
 
 def get_provider(segment: str) -> str:
-    """Provider name ('together' | 'groq') for a segment."""
+    """Provider name ('anthropic' | 'together' | 'groq') for a segment.
+    Env-overridable via <ENV>_PROVIDER (e.g. MODEL_CHAT_PROVIDER=together
+    rolls the chat voice back to Together without a deploy)."""
     seg = _SEGMENTS.get(segment)
     if seg is None:
         raise KeyError(f"Unknown model segment: {segment!r}")
-    return seg["provider"]
+    return os.getenv(seg["env"] + "_PROVIDER", seg["provider"])
 
 
 def get_registry_snapshot() -> Dict[str, str]:

@@ -34,3 +34,12 @@ guard (`detect_pii_leaks`) scans the PHI-bearing payload. The extractor builds i
 profile context via `_extraction_profile_context()` in `lib/llm_utils.py`, which
 de-identifies, strips bookkeeping (`_sources`, `beliefs`, `model_state`, recaps),
 and omits the context entirely if the guard trips.
+
+## Chat provider chain (Workstream C, 2026-07-18)
+
+Chat voice = `claude-sonnet-5` (Anthropic Messages API, plain requests, no SDK).
+Chain: anthropic -> chat_together (Llama-3.3-70B) -> groq. No ANTHROPIC_API_KEY =
+automatic Together fallback, so deploys are safe before the key lands.
+Rollback without deploy: `MODEL_CHAT_PROVIDER=together`. Full llm-mode eval
+battery + cost readout REQUIRED once ANTHROPIC_API_KEY is set (one variable
+per eval window - no prompt changes in the same window).

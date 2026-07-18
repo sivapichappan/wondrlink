@@ -3238,12 +3238,57 @@ def call_llm(prompt: str, response_length: str = "normal", temperature: float = 
     # Use settings temperature unless explicitly overridden
     effective_temperature = temperature if temperature is not None else settings["temperature"]
 
-    # Always use Together AI (70B) as primary for consistent quality
-    preferred_model = "together"
-    logger.info(f"Using Together AI (70B) for query type: {query_type or 'unknown'}")
+    from model_registry import get_model, get_provider
 
+    # Provider chain: anthropic (Sage voice, Workstream C) -> together -> groq.
+    # With MODEL_CHAT_PROVIDER=together the anthropic step is skipped entirely.
+    chat_provider = get_provider("chat")
+
+    anthropic_error = None
     together_error = None
     groq_error = None
+
+    def try_anthropic():
+        """Claude Sonnet via the Messages API (plain requests — no SDK dep)."""
+        nonlocal anthropic_error
+        import requests as _requests
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            anthropic_error = "ANTHROPIC_API_KEY not set"
+            logger.warning(anthropic_error)
+            return None
+        try:
+            logger.info(f"Calling Anthropic (chat), response_length: {response_length}, temp: {effective_temperature}")
+            resp = _requests.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": get_model("chat"),
+                    "max_tokens": settings["max_tokens"],
+                    "temperature": effective_temperature,
+                    "system": settings["system_message"],
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+                timeout=45,
+            )
+            if resp.status_code == 200:
+                blocks = resp.json().get("content") or []
+                text = "".join(b.get("text", "") for b in blocks if b.get("type") == "text")
+                if text.strip():
+                    logger.info(f"Anthropic response success - length: {len(text)}")
+                    return text.strip(), "anthropic"
+                anthropic_error = "Anthropic returned empty content"
+            else:
+                anthropic_error = f"Anthropic API error: HTTP {resp.status_code}"
+            logger.warning(anthropic_error)
+        except Exception as e:
+            anthropic_error = f"Anthropic API error: {type(e).__name__}"
+            logger.warning(anthropic_error)
+        return None
 
     def try_together():
         """Try Together AI (70B model)."""
@@ -3254,10 +3299,13 @@ def call_llm(prompt: str, response_length: str = "normal", temperature: float = 
             logger.warning(together_error)
             return None
         try:
-            from model_registry import get_model
             logger.info(f"Calling Together AI (chat), response_length: {response_length}, temp: {effective_temperature}")
+            # When anthropic is the primary chat provider, the Together slot is
+            # the fallback voice (chat_together) — never send a Claude id here.
+            together_model = get_model("chat") if chat_provider == "together" \
+                else get_model("chat_together")
             response = client.chat.completions.create(
-                model=get_model("chat"),
+                model=together_model,
                 messages=[
                     {"role": "system", "content": settings["system_message"]},
                     {"role": "user", "content": prompt}
@@ -3287,7 +3335,6 @@ def call_llm(prompt: str, response_length: str = "normal", temperature: float = 
             logger.warning(groq_error)
             return None
         try:
-            from model_registry import get_model
             logger.info(f"Calling Groq (fallback), response_length: {response_length}, temp: {effective_temperature}")
             response = client.chat.completions.create(
                 model=get_model("fallback"),
@@ -3311,26 +3358,23 @@ def call_llm(prompt: str, response_length: str = "normal", temperature: float = 
             logger.warning(groq_error)
         return None
 
-    # Try preferred model first, then fallback
-    if preferred_model == "groq":
-        result = try_groq()
+    # Provider chain: anthropic first when it's the chat provider, then
+    # Together, then Groq. Every step degrades gracefully.
+    if chat_provider == "anthropic":
+        result = try_anthropic()
         if result:
             return result
-        # Fallback to Together
-        result = try_together()
-        if result:
-            return result
-    else:
-        result = try_together()
-        if result:
-            return result
-        # Fallback to Groq
-        result = try_groq()
-        if result:
-            return result
+    result = try_together()
+    if result:
+        return result
+    result = try_groq()
+    if result:
+        return result
 
-    # Both failed - include detailed error messages
+    # All failed - include detailed error messages
     error_details = []
+    if anthropic_error:
+        error_details.append(f"Anthropic: {anthropic_error}")
     if together_error:
         error_details.append(f"Together: {together_error}")
     if groq_error:
