@@ -33,12 +33,12 @@ level in ALL patient-facing text — UI copy, backend-generated strings, AND AI 
   eval harness + test suites
 
 ## Workstream A — Rename → Sage (rides with the first push)
-- [ ] Mobile: app.json display name → Sage (KEEP bundle identifier; keep EAS
+- [x] Mobile: app.json display name → Sage (KEEP bundle identifier; keep EAS
       slug/projectId internals so the EAS project isn't orphaned); all UI strings,
       drawer, welcome copy, HelpSheet header
 - [ ] App Store Connect: rename the existing app record to Sage (display-name change
       only — testers + history preserved)
-- [ ] Web SPA branding sweep; `mysage.chat` domain (DNS access → open question)
+- [x] Web SPA branding sweep DONE; `mysage.chat` domain still open (DNS access → open question)
 - [x] Backend patient-facing strings: chat lead-ins ("Here are clinical trials…"),
       just-in-time questions, confirmation prompts, trial warnings
 - [x] Docs/README/HANDOFF naming sweep; entity footer "Wondrlink / Fwollo LLC" → confirm
@@ -48,17 +48,17 @@ level in ALL patient-facing text — UI copy, backend-generated strings, AND AI 
 
 ## Workstream B — FIRST PUSH: Onboarding + Home + Auth (doc Phases 1–2, screens 1–3c)
 _Rule: current design system, new flow. No visual redesign._
-- [ ] **Phone OTP login** (screen 1): Supabase phone provider + Twilio Verify; "Text me
+- [x] **Phone OTP login** (screen 1): Supabase phone provider + Twilio Verify; "Text me
       a code"; no password, no email. Migration story for existing email pilot users
       (link phone to existing account or fresh start — decide with supervisor)
-- [ ] **Screen 2 — the branch**: "Who are you here for?" (Myself / A loved one) on its
+- [x] **Screen 2 — the branch**: "Who are you here for?" (Myself / A loved one) on its
       own uncluttered screen; sets `perspective` for everything downstream
 - [x] **Screens 2a/2b — basics**: name, birth year, gender, location (caregiver variant
       adds their name + relationship + patient's name). Location = "use my location" tap
       OR free-text city/postal → store **lat/long + display name** (global from day one;
       backend already geocodes internally — ClinicalTrials.gov `filter.geo` takes lat/long
       directly, so this simplifies the trial path)
-- [ ] **Anchor question in chat** (screen 3): "what type of cancer?" asked conversationally
+- [x] **Anchor question in chat** (screen 3): "what type of cancer?" asked conversationally
       — common-type chips + type-ahead accepting plain words ("stomach" → gastric);
       escape hatches: "We're still finding out" + caregiver path. Still-diagnosing →
       capability menu reorders (visit recording + explanations first, trials wait)
@@ -74,7 +74,7 @@ _Rule: current design system, new flow. No visual redesign._
 ## Workstream C — Chat = Claude Sonnet (parallel; registry-gated)
 - [x] Anthropic provider support in the `llm_utils` call path; registry chat segment →
       **`claude-sonnet-5`**; `ANTHROPIC_API_KEY` in the Vercel team project
-- [ ] De-identification invariant unchanged (already provider-agnostic — runs before any
+- [x] De-identification invariant unchanged (already provider-agnostic — runs before any
       provider sees text)
 - [ ] Full eval battery on the swap ONLY (no prompt changes in the same window); capture
       a cost readout for the supervisor
