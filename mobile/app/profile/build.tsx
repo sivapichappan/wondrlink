@@ -411,7 +411,7 @@ interface StepProps {
 function StepBasics({ state, update }: StepProps) {
   return (
     <>
-      <Hint title="Basics" body="A few details so WondrChat can address you and gauge fit for trials." />
+      <Hint title="Basics" body="A few details so Sage can address you and gauge fit for trials." />
       <Field label="First name">
         <Input
           value={state.firstName}
@@ -692,7 +692,7 @@ function StepSymptoms({ state, update }: StepProps) {
     <>
       <Hint
         title="Current symptoms"
-        body="What you're feeling right now. WondrChat uses this to know when to flag something worth raising with your care team."
+        body="What you're feeling right now. Sage uses this to know when to flag something worth raising with your care team."
       />
       <ChipMultiSelect
         options={SYMPTOMS}

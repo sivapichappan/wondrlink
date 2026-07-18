@@ -21,7 +21,7 @@ export default function Welcome() {
               color: Colors.textPrimary,
               lineHeight: 36,
             }}>
-            WondrChat
+            Sage
           </Text>
           <Text style={{ fontSize: 15, lineHeight: 22, color: Colors.textSecondary }}>
             {WELCOME_INTRO}

@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sage · Product flow · mysage.chat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F6F7F2; --ink:#20261D; --muted:#67705F; --faint:#9AA292;
+  --sage:#5F7355; --sage-deep:#3D4A35; --sage-tint:#E7ECE1; --sage-line:#C9D2C0;
+  --danger:#A73D2C; --danger-tint:#F6E4DF;
+  --white:#FFFFFF; --line:#DDE1D6;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{background:var(--paper); color:var(--ink); font-family:'Inter',sans-serif; font-size:16px; line-height:1.7;}
+.wrap{max-width:960px; margin:0 auto; padding:0 32px 96px;}
+h1,h2,h3,h4{font-family:'Fraunces',serif; font-weight:500; line-height:1.25;}
+h1{font-size:52px;}
+h2{font-size:30px; margin:0 0 12px;}
+h3{font-size:20px; margin:0 0 8px;}
+p{max-width:68ch;}
+a{color:var(--sage-deep);}
+
+.cover{padding:96px 0 64px; border-bottom:1px solid var(--line);}
+.cover .domain{display:inline-block; background:var(--sage-tint); color:var(--sage-deep); font-size:14px; font-weight:600; padding:4px 14px; border-radius:999px; margin-bottom:20px; letter-spacing:.02em;}
+.cover .thesis{font-family:'Fraunces',serif; font-size:22px; color:var(--muted); max-width:44ch; margin-top:16px;}
+.cover .meta{margin-top:28px; font-size:13px; color:var(--faint);}
+
+.section{padding:56px 0; border-bottom:1px solid var(--line);}
+.eyebrow{font-size:12px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--sage); margin-bottom:10px;}
+.lead{font-size:18px; color:var(--muted); margin-bottom:8px;}
+.section p + p{margin-top:14px;}
+
+.principles{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:18px; margin-top:28px;}
+.principle{background:var(--white); border:1px solid var(--line); border-radius:14px; padding:20px 22px;}
+.principle h3{color:var(--sage-deep);}
+.principle p{font-size:14.5px; color:var(--muted);}
+
+/* Flow spine */
+.spine{margin-top:32px; position:relative; padding-left:34px;}
+.spine::before{content:""; position:absolute; left:11px; top:8px; bottom:8px; width:2px; background:var(--sage-line);}
+.node{position:relative; margin-bottom:26px;}
+.node::before{content:""; position:absolute; left:-30px; top:6px; width:12px; height:12px; border-radius:50%; background:var(--sage); border:3px solid var(--paper);}
+.node h4{font-size:17px; margin-bottom:2px;}
+.node .screens{font-size:13px; color:var(--sage-deep); font-weight:600;}
+.node p{font-size:14.5px; color:var(--muted); margin-top:4px;}
+.branch{display:inline-block; background:var(--sage-tint); color:var(--sage-deep); font-size:12px; font-weight:600; padding:2px 10px; border-radius:999px; margin-left:6px;}
+
+/* Phone frames */
+.frames{display:flex; flex-wrap:wrap; gap:28px; margin:32px 0 8px; align-items:flex-start;}
+.frameblock{width:312px;}
+.framelabel{font-size:13px; font-weight:600; color:var(--sage-deep); margin-bottom:8px;}
+.phone{width:312px; background:var(--white); border:1px solid var(--line); border-radius:26px; padding:20px 18px; min-height:520px; display:flex; flex-direction:column; box-shadow:0 1px 3px rgba(32,38,29,.06);}
+.phone h3{font-size:19px;}
+.phone .sub{font-size:13px; color:var(--muted); margin:2px 0 16px;}
+.phead{display:flex; align-items:center; gap:10px; padding-bottom:12px; border-bottom:1px solid var(--line); margin-bottom:12px;}
+.avatar{width:34px; height:34px; border-radius:50%; background:var(--sage-tint); color:var(--sage-deep); display:flex; align-items:center; justify-content:center; font-weight:600; font-size:14px; flex-shrink:0;}
+.phead .who{font-size:14px; font-weight:600; line-height:1.2;}
+.phead .tag{font-size:11px; color:var(--faint);}
+.bub{background:var(--paper); border-radius:14px; padding:10px 13px; font-size:13.5px; line-height:1.5; max-width:92%; margin-bottom:8px;}
+.bub.user{background:var(--sage-tint); color:var(--sage-deep); align-self:flex-end; margin-left:auto;}
+.chips{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;}
+.chip{border:1px solid var(--line); border-radius:999px; padding:6px 14px; font-size:13px; background:var(--white);}
+.chip.on{border:2px solid var(--sage); color:var(--sage-deep); font-weight:500;}
+.chip.quiet{color:var(--muted);}
+.alist{display:flex; flex-direction:column; gap:8px; margin-bottom:10px;}
+.abtn{border:1px solid var(--line); border-radius:10px; padding:10px 13px; font-size:13.5px; background:var(--white); text-align:left;}
+.abtn.on{border:2px solid var(--sage); font-weight:500;}
+.field{margin-bottom:13px;}
+.field label{display:block; font-size:13px; color:var(--muted); margin-bottom:5px;}
+.input{border:1px solid var(--line); border-radius:9px; padding:9px 12px; font-size:14px; color:var(--faint); background:var(--white);}
+.input.filled{color:var(--ink);}
+.primary{background:var(--sage-deep); color:var(--white); border:none; border-radius:10px; padding:12px; font-size:14px; font-weight:600; text-align:center; margin-top:auto;}
+.ghost{border:1px solid var(--line); border-radius:10px; padding:11px; font-size:14px; text-align:center; background:var(--white); margin-top:8px;}
+.inrow{display:flex; gap:8px; align-items:center; margin-top:auto; padding-top:14px;}
+.icbtn{width:36px; height:36px; border-radius:10px; border:1px solid var(--line); background:var(--white); display:flex; align-items:center; justify-content:center; font-size:16px; color:var(--muted); flex-shrink:0;}
+.icbtn.send{background:var(--sage-deep); color:var(--white); border:none;}
+.inrow .input{flex:1;}
+.note{font-size:11.5px; color:var(--faint); text-align:center; margin-top:12px;}
+.alert{background:var(--danger-tint); border-radius:14px; padding:13px 14px; margin-bottom:10px;}
+.alert .t{font-size:13.5px; font-weight:600; color:var(--danger);}
+.alert p{font-size:13px; color:var(--danger); line-height:1.5; margin-top:6px;}
+.dangerbtn{background:var(--danger); color:var(--white); border:none; border-radius:10px; padding:11px; font-size:14px; font-weight:600; text-align:center; margin-bottom:8px;}
+.tcard{border:1px solid var(--line); border-radius:12px; padding:12px 13px; margin-bottom:9px;}
+.tcard .row{display:flex; justify-content:space-between; align-items:center;}
+.tcard .name{font-size:13.5px; font-weight:600;}
+.pill{font-size:11px; font-weight:600; background:var(--sage-tint); color:var(--sage-deep); padding:2px 9px; border-radius:999px;}
+.tcard .loc{font-size:12px; color:var(--muted); margin-top:5px;}
+.tcard .acts{display:flex; gap:6px; margin-top:9px;}
+.tcard .acts .chip{font-size:11.5px; padding:5px 10px; flex:1; text-align:center;}
+.prog{display:flex; align-items:center; gap:8px; margin-bottom:12px;}
+.prog .bar{flex:1; height:4px; background:var(--paper); border-radius:2px; overflow:hidden;}
+.prog .fill{height:4px; background:var(--sage); border-radius:2px;}
+.prog .saved{font-size:11.5px; color:var(--faint);}
+.check{color:var(--sage); font-weight:700; margin-right:6px;}
+.prow{border-top:1px solid var(--line); padding-top:10px; margin-top:10px;}
+.prow .k{font-size:11.5px; color:var(--faint);}
+.prow .v{font-size:13.5px; margin-top:2px;}
+.prow .dr{font-size:12px; color:var(--muted); margin-top:1px; font-style:italic;}
+
+.callout{background:var(--white); border-left:3px solid var(--sage); border-radius:0 12px 12px 0; padding:18px 22px; margin:24px 0; max-width:72ch;}
+.callout p{font-size:14.5px; color:var(--muted);}
+.callout .t{font-size:13px; font-weight:600; color:var(--sage-deep); letter-spacing:.06em; text-transform:uppercase; margin-bottom:6px;}
+
+table.spec{width:100%; border-collapse:collapse; margin-top:20px; font-size:14px;}
+table.spec th{text-align:left; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--sage-deep); border-bottom:2px solid var(--sage-line); padding:8px 12px 8px 0;}
+table.spec td{border-bottom:1px solid var(--line); padding:10px 12px 10px 0; vertical-align:top; color:var(--muted);}
+table.spec td:first-child{color:var(--ink); font-weight:500; white-space:nowrap;}
+
+footer{padding-top:40px; font-size:13px; color:var(--faint);}
+@media(max-width:720px){ h1{font-size:38px;} .wrap{padding:0 20px 64px;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="cover">
+  <span class="domain">mysage.chat</span>
+  <h1>Sage</h1>
+  <p class="thesis">A cancer companion you talk to like a friend, that quietly becomes an expert on your situation.</p>
+  <p class="meta">Product flow and wireframe walkthrough · v1 · July 2026 · Wondrlink / Fwollo</p>
+</div>
+
+<div class="section">
+  <div class="eyebrow">Overview</div>
+  <p class="lead">Sage is a companion for cancer patients and their caregivers. It records and summarizes doctor visits, explains reports and medical terms in plain words, keeps a health log, and matches patients to clinical trials, all through a single chat interface.</p>
+  <p>Sage learns about the patient gradually, through conversation, instead of demanding a long intake form. A patient gets from the front door to a live conversation in under sixty seconds, and the app earns each piece of information at the moment it becomes useful.</p>
+</div>
+
+<div class="section">
+  <div class="eyebrow">Product principles</div>
+  <h2>Five rules every screen follows</h2>
+  <div class="principles">
+    <div class="principle"><h3>Just-in-time, never twice</h3><p>Never ask for information until a task needs it, and never ask for the same thing twice. The profile is a byproduct of using the app, not a gate in front of it. Every profile field is nullable, and every feature degrades gracefully when a field is missing.</p></div>
+    <div class="principle"><h3>Sixth-grade words, doctor-grade data</h3><p>Patients answer in their own words ("it spread to my liver"). Sage translates to clinical vocabulary (metastatic, hepatic involvement) behind the scenes, and shows both languages back to the patient so they can verify and learn.</p></div>
+    <div class="principle"><h3>The chat is the app</h3><p>Every feature is an entry point into the same conversation. Buttons don't open forms; they inject an opening line into the chat, and Sage collects what it's missing conversationally.</p></div>
+    <div class="principle"><h3>Patient-provided only</h3><p>In v1, Sage knows only what the patient shares: typed, spoken, or uploaded. No provider integrations, no PHI authorizations. The UI says so plainly: "We only know what you share."</p></div>
+    <div class="principle"><h3>Escalate, don't reassure</h3><p>Sage never diagnoses and never talks a worried patient out of seeking care. Urgent symptoms trigger an immediate, unambiguous handoff to the care team or 911, followed by one useful non-medical action.</p></div>
+  </div>
+</div>
+<div class="section">
+  <div class="eyebrow">The flow at a glance</div>
+  <h2>One journey, five phases</h2>
+  <p class="lead">The whole product is a single path with one branch: is the account holder the patient, or a caregiver? That choice, made once during onboarding, changes the voice of every screen after it, but not the screens themselves.</p>
+  <div class="spine">
+    <div class="node"><h4>Phase 1 · Entry</h4><div class="screens">Screens 1, 2, 2a, 2b</div><p>Phone number and a code. Then the one decision that shapes everything, <span class="branch">myself / a loved one</span>, on its own screen, followed by one screen of basics. Under sixty seconds total.</p></div>
+    <div class="node"><h4>Phase 2 · First conversation</h4><div class="screens">Screens 3, 3b (3c in caregiver voice)</div><p>The first thing Sage asks is the anchor question: what type of cancer? Everything downstream adapts to the answer. Then the capability menu appears, already personalized, and on every launch after that, the app opens with the same menu plus "or just talk to me."</p></div>
+    <div class="node"><h4>Phase 3 · Core loop</h4><div class="screens">Screens 4a–4c, 7 (7b in caregiver voice)</div><p>The everyday features that need no profile: record a doctor visit, ask about a term, upload a record, keep a health log. The safety layer watches every message. Available from day one, forever.</p></div>
+    <div class="node"><h4>Phase 4 · The interview</h4><div class="screens">Screens 8–12</div><p>Triggered by any feature that requires knowing the patient's story: trial matching first, and anything we add later that depends on it. A pausable, resumable, plain-language interview that builds a trial-grade profile. Reports do the hard part: photos of pathology and labs replace questions no patient can answer.</p></div>
+    <div class="node"><h4>Phase 5 · Profile and trials</h4><div class="screens">Screens 13, 6</div><p>The profile is shown in both languages for confirmation, then matching runs. Results are framed honestly as "trials that may fit," with the final eligibility check always handed to the patient's doctor.</p></div>
+  </div>
+  <div class="callout"><div class="t">Why the branch is cheap</div><p>Caregiver mode is not a second set of screens. It is a voice layer: every string in the app carries template variables (patient name, pronoun, relationship, perspective), and the AI's system prompt carries the same context. Build fourteen screens once, render them in two voices.</p></div>
+</div>
+
+<div class="section">
+  <div class="eyebrow">Phase 1 · Entry</div>
+  <h2>Sixty seconds to a conversation</h2>
+  <p>Login is a phone number and a one-time code: no password, no email. The phone number is a deliberate architectural choice, not just a convenience: it becomes the universal key that later lets the same profile respond over SMS or WhatsApp from the number the patient already has. (Stack: Twilio Verify for OTP, Supabase for auth and profiles.)</p>
+  <p>Onboarding opens with the one question that branches the entire product, on its own uncluttered screen: <em>Who are you here for: myself, or a loved one?</em> (screen 2). The answer determines whose basics we collect next and the voice of every screen after.</p>
+  <p>The basics screen that follows asks four things: name, year of birth, gender, and where they live (screen 2a for patients, 2b for caregivers; the caregiver version describes the patient and additionally captures the caregiver's own name and relationship). Location is a "use my location" tap or a free-text city / postal code field, not a US ZIP field, so it works globally from day one. It is stored as lat/long plus a display name, because trial matching needs a distance radius, not a ZIP string.</p>
+  <div class="frames">
+    <div class="frameblock"><div class="framelabel">1 · Login</div>
+      <div class="phone">
+        <div style="text-align:center; margin-top:24px;"><div class="avatar" style="width:56px;height:56px;margin:0 auto;font-size:22px;">S</div><h3 style="margin-top:14px;">Hi, I'm Sage</h3><p class="sub" style="max-width:32ch;margin:4px auto 0;">A companion for your cancer journey. For you, or someone you love.</p></div>
+        <div class="field" style="margin-top:28px;"><label>Phone number</label><div class="input">+1 (555) 000-0000</div></div>
+        <div class="primary" style="margin-top:4px;">Text me a code</div>
+        <p class="note">No password. No email. Later you can text us from this number.</p>
+        <p class="note" style="margin-top:auto;">Not medical advice · Private and encrypted</p>
+      </div>
+    </div>
+    <div class="frameblock"><div class="framelabel">2 · The branch, on its own screen</div>
+      <div class="phone">
+        <div style="text-align:center; margin-top:36px;"><h3>Who are you here for?</h3><p class="sub" style="max-width:30ch;margin:6px auto 0;">This shapes how I talk with you. You can't get it wrong.</p></div>
+        <div class="alist" style="margin-top:28px;">
+          <div class="abtn" style="padding:16px 15px;"><span style="font-weight:600;">Myself</span><br><span style="font-size:12.5px;color:var(--muted);">I'm the patient</span></div>
+          <div class="abtn" style="padding:16px 15px;"><span style="font-weight:600;">A loved one</span><br><span style="font-size:12.5px;color:var(--muted);">I'm caring for someone</span></div>
+        </div>
+        <p class="note" style="margin-top:auto;">You can add another person later.</p>
+      </div>
+    </div>
+    <div class="frameblock"><div class="framelabel">2a · The basics: for myself</div>
+      <div class="phone">
+        <h3>Just four things</h3><p class="sub">Everything else, we'll learn as we chat.</p>
+        <div class="field"><label>Your name</label><div class="input filled">Juana</div></div>
+        <div class="field"><label>Year of birth</label><div class="input filled">1962</div></div>
+        <div class="field"><label>Gender</label><div class="chips"><span class="chip on">Female</span><span class="chip">Male</span><span class="chip">Other</span></div></div>
+        <div class="field"><label>Where you live</label><div class="chip" style="display:block;text-align:left;margin-bottom:7px;">⌖ Use my location</div><div class="input">City or postal code</div></div>
+        <p class="note" style="text-align:left;">Helps us find trials and care near you.</p>
+        <div class="primary">Start chatting</div>
+      </div>
+    </div>
+    <div class="frameblock"><div class="framelabel">2b · The basics: loved one branch</div>
+      <div class="phone">
+        <h3>About you and them</h3><p class="sub">Everything else, we'll learn as we chat.</p>
+        <div class="field"><label>Your name</label><div class="input filled">Miguel</div></div>
+        <div class="field"><label>Their name</label><div class="input filled">Rosa</div></div>
+        <div class="field"><label>They are your</label><div class="chips"><span class="chip on">Mom</span><span class="chip">Dad</span><span class="chip">Spouse</span><span class="chip">Child</span><span class="chip">Friend</span></div></div>
+        <div class="field"><label>Rosa's year of birth</label><div class="input filled">1948</div></div>
+        <p class="note" style="text-align:left;">We'll ask about Rosa's gender and location next.</p>
+        <div class="primary">Continue</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="section">
+  <div class="eyebrow">Phase 2 · First conversation</div>
+  <h2>The anchor question comes first</h2>
+  <p>The moment the patient lands in the chat, Sage asks the single most important question: <em>what type of cancer are you facing?</em> This is not part of any feature; it belongs to getting to know the patient. A companion that doesn't ask it immediately feels oddly incurious. And it is the anchor fact: every downstream question (sites of spread, treatments, biomarkers worth looking for) branches on the answer.</p>
+  <p>There are hundreds of cancer types, so this cannot be a dropdown. The screen offers a handful of common chips plus a type-ahead that accepts plain words: "stomach" finds gastric cancer, "blood cancer" offers leukemia, lymphoma, and myeloma. Two honest escape hatches are always present: <em>"We're still finding out"</em>, because many people arrive mid-workup and scared, without a name for it yet; and the caregiver path. For the still-being-diagnosed patient, the menu that follows reorders to lead with visit recording and term explanations, and trial matching waits.</p>
+  <p>After the answer, the capability menu appears, and it is already personalized. "Find clinical trials <em>for breast cancer</em>" signals that Sage is paying attention, and it means the trial interview later starts at question two, not question one.</p>
+  <p>Screen 3b is also the app's permanent home. Once the anchor question has been answered, every launch opens here: a short greeting, the four or five ways Sage can help, and "or just talk to me. Ask anything, anytime." The menu stays personalized to the patient's situation, and the open invitation keeps the door wide for whatever is actually on their mind that day.</p>
+  <div class="frames">
+    <div class="frameblock"><div class="framelabel">3 · First question</div>
+      <div class="phone">
+        <div class="phead"><div class="avatar">S</div><div><div class="who">Sage</div><div class="tag">Your companion</div></div></div>
+        <div class="bub">Hi Juana. I'm glad you're here. To help you best, can I ask: what type of cancer are you facing?</div>
+        <div class="chips"><span class="chip">Breast</span><span class="chip">Lung</span><span class="chip">Prostate</span><span class="chip">Colon</span><span class="chip">Blood cancer</span><span class="chip">Something else</span></div>
+        <div class="input" style="margin-bottom:4px;">Type it in your words, like stomach</div>
+        <div style="border:1px solid var(--line); border-radius:9px; margin-bottom:10px;"><div style="font-size:13px; padding:8px 12px; border-bottom:1px solid var(--line);">Stomach (gastric) cancer</div><div style="font-size:13px; padding:8px 12px; color:var(--muted);">Esophageal junction cancer</div></div>
+        <div class="chips"><span class="chip quiet">We're still finding out</span><span class="chip quiet">I'm asking for a family member</span></div>
+        <div class="inrow"><div class="icbtn">+</div><div class="input">Message Sage</div><div class="icbtn">🎙</div><div class="icbtn send">↑</div></div>
+      </div>
+    </div>
+    <div class="frameblock"><div class="framelabel">3b · Menu appears, personalized</div>
+      <div class="phone">
+        <div class="phead"><div class="avatar">S</div><div><div class="who">Sage</div><div class="tag">Your companion</div></div></div>
+        <div class="bub user">Breast cancer</div>
+        <div class="bub">Thank you for sharing that with me. I'll remember it, so you won't have to repeat yourself. Here's how I can help:</div>
+        <div class="alist">
+          <div class="abtn">🎙 Record a doctor visit</div>
+          <div class="abtn">🔍 Find clinical trials for breast cancer</div>
+          <div class="abtn">💬 Ask about a report or term</div>
+          <div class="abtn">📄 Add my medical records</div>
+        </div>
+        <p class="note" style="text-align:left;">Or just talk to me. Ask anything, anytime.</p>
+        <div class="inrow"><div class="icbtn">+</div><div class="input">Message Sage</div><div class="icbtn">🎙</div><div class="icbtn send">↑</div></div>
+      </div>
+    </div>
+    <div class="frameblock"><div class="framelabel">3c · Same screen, caregiver voice</div>
+      <div class="phone">
+        <div class="phead"><div class="avatar">S</div><div><div class="who">Sage</div><div class="tag">Here for you and Rosa</div></div></div>
+        <div class="bub">Hi Miguel. Caring for your mom is a lot, and you don't have to figure it out alone. What type of cancer is Rosa facing?</div>
+        <div class="chips"><span class="chip">Breast</span><span class="chip">Lung</span><span class="chip">Colon</span><span class="chip">Something else</span><span class="chip quiet">We're still finding out</span></div>
+        <div class="bub">And later, when I ask how she's doing day to day, answer as best you see it. You're often the one who notices.</div>
+        <div class="inrow"><div class="icbtn">+</div><div class="input">Message Sage</div><div class="icbtn">🎙</div><div class="icbtn send">↑</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="callout"><div class="t">Voice input everywhere</div><p>Every chat input row includes a microphone alongside the plus (upload) and send buttons. For this audience (older patients, stressed patients, tired caregivers), speaking is often easier than typing, and a later iteration should also read Sage's replies aloud as an option.</p></div>
+</div>
+
+<div class="section">
+  <div class="eyebrow">Phase 3 · Core loop</div>
+  <h2>Useful from day one, no profile required</h2>
+  <p>Two features carry the everyday value of Sage, and neither needs any profile at all. This matters: a patient can quit the trial interview halfway, or never start it, and still get real help every single day.</p>
+  <h3 style="margin-top:24px;">The visit recorder</h3>
+  <p>The patient taps record before a doctor visit. Sage transcribes live, and when the visit ends it produces the three things patients actually want, not a transcript: <em>what the doctor said</em> in plain words, <em>what I do next</em>, and <em>what to ask next time</em>. The visit is saved to the health log permanently.</p>
+  <p>Consent is handled up front: a one-tap "I've told my doctor I'm recording" confirmation, with a suggested script ("Do you mind if I record this so I can review it later?"). Recording-consent laws vary by state and country, and doctors almost always say yes when asked.</p>
+  <h3 style="margin-top:24px;">The safety layer</h3>
+  <p>A classifier runs on every message before the normal chat responds. When a message describes urgent symptoms (the canonical example is fever during chemotherapy, a possible neutropenic emergency), Sage does not chat. It escalates, unambiguously, with two large buttons: call the care team, call 911. Then, and only then, it offers one useful non-medical action (logging the symptom with a timestamp for the doctor) so the patient feels helped rather than dismissed. The red-flag symptom list must be authored and reviewed by a clinician, not by the engineering team.</p>
+  <p>The "Call my care team" button only works if we have the number, so within the first days of use, Sage should proactively ask "who's your oncologist, and what's the office number?" and store it. This is the one just-in-time exception worth prompting early, because it pays off exactly when the patient can't think straight.</p>
+  <div class="frames">
+    <div class="frameblock"><div class="framelabel">4a · Before you record: consent</div>
+      <div class="phone">
+        <h3>Before you record</h3><p class="sub">One quick thing, so everything stays fair and legal.</p>
+        <div class="bub">Ask your doctor first. Most say yes right away. You can say something like:</div>
+        <div class="tcard" style="background:var(--paper);border:none;">
+          <p style="font-family:'Fraunces',serif;font-size:15px;line-height:1.55;">"Do you mind if I record this so I can review it later? It helps me remember everything."</p>
+        </div>
+        <div class="abtn on" style="margin-top:12px;">✓ I've told my doctor I'm recording</div>
+        <p class="note" style="text-align:left;">Recording laws differ by state and country. Asking out loud keeps you covered everywhere.</p>
+        <div class="primary">Start recording</div>
+        <div class="ghost">Not this time</div>
+      </div>
+    </div>
+    <div class="frameblock"><div class="framelabel">4b · Visit recorder</div>
+      <div class="phone">
+        <h3>Recording visit</h3><p class="sub">Dr. Chen · Oncology · 12:41</p>
+        <div style="text-align:center; margin:12px 0;"><div class="avatar" style="width:68px;height:68px;margin:0 auto;background:var(--danger-tint);color:var(--danger);font-size:26px;">🎙</div></div>
+        <div class="bub"><span style="color:var(--faint);font-size:12px;">Live transcript</span><br>"...the scan shows the tumor has shrunk by about 30 percent, so we'll continue the current..."</div>
+        <p style="font-size:12px;color:var(--faint);margin:8px 0 6px;">After the visit you'll get:</p>
+        <p style="font-size:13.5px;margin:3px 0;"><span class="check">✓</span>Plain-language summary</p>
+        <p style="font-size:13.5px;margin:3px 0;"><span class="check">✓</span>Your next steps</p>
+        <p style="font-size:13.5px;margin:3px 0;"><span class="check">✓</span>Questions for next time</p>
+        <div style="display:flex;gap:8px;margin-top:auto;"><div class="ghost" style="flex:1;margin:0;">Pause</div><div class="primary" style="flex:1;margin:0;">Finish</div></div>
+      </div>
+    </div>
+    <div class="frameblock"><div class="framelabel">4c · After the visit: the summary</div>
+      <div class="phone">
+        <div style="display:flex;justify-content:space-between;align-items:center;"><h3>Today's visit</h3><span class="pill">Saved to log</span></div>
+        <p class="sub">Dr. Chen · Oncology · 22 min</p>
+        <div class="prow"><div class="k">What the doctor said</div><div class="v">The scan shows the tumor shrank by about 30%. Treatment is working, so you'll stay on the same plan.</div></div>
+        <div class="prow"><div class="k">What you do next</div><div class="v">Blood test before your next visit. Keep taking the anti-nausea pills with food.</div></div>
+        <div class="prow"><div class="k">Ask next time</div><div class="v">When is the next scan? Are there side effects to watch for as treatment continues?</div></div>
+        <div style="display:flex;gap:8px;margin-top:auto;"><div class="ghost" style="flex:1;margin:0;">Share</div><div class="ghost" style="flex:1;margin:0;">Full transcript</div></div>
+      </div>
+    </div>
+  </div>
+  <div style="border-top:1px solid var(--line); margin:36px 0 4px;"></div>
+  <div class="frames">
+    <div class="frameblock"><div class="framelabel">7 · Urgent symptom, patient voice</div>
+      <div class="phone">
+        <div class="bub user">I have a fever of 103 and chills since this morning</div>
+        <div class="alert"><div class="t">⚠ This needs a doctor now</div><p>A high fever during cancer treatment can be serious. Call your care team right away. If you feel very unwell, call 911.</p></div>
+        <div class="dangerbtn">📞 Call my care team</div>
+        <div class="ghost" style="margin:0 0 10px;">Call 911</div>
+        <div class="bub">I'm not able to help with emergencies, but I'll be here after. Would you like me to note this fever in your health log for your doctor?</div>
+        <div class="chips"><span class="chip">Yes, log it</span><span class="chip">Not now</span></div>
+        <div class="inrow"><div class="icbtn">+</div><div class="input">Message Sage</div><div class="icbtn">🎙</div><div class="icbtn send">↑</div></div>
+      </div>
+    </div>
+    <div class="frameblock"><div class="framelabel">7b · Same screen, caregiver voice</div>
+      <div class="phone">
+        <div class="bub user">My mom has a fever of 103 and she's confused</div>
+        <div class="alert"><div class="t">⚠ Rosa needs a doctor now</div><p>A high fever with confusion during cancer treatment can be serious. Call her care team right away. If she seems very unwell, call 911.</p></div>
+        <div class="dangerbtn">📞 Call Rosa's care team</div>
+        <div class="ghost" style="margin:0 0 10px;">Call 911</div>
+        <div class="bub">I'll note this in her health log with the time, so you can tell the doctor exactly when it started. You're doing the right thing, Miguel.</div>
+        <div class="inrow"><div class="icbtn">+</div><div class="input">Message Sage</div><div class="icbtn">🎙</div><div class="icbtn send">↑</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="section">
+  <div class="eyebrow">Phase 4 · The interview</div>
+  <h2>A trial-grade profile, built in plain words</h2>
+  <p>Visit recording needs no profile. Trial matching needs a nearly perfect one, and it is the first of what will be several features that depend on knowing the patient's full story. Any future capability that requires that knowledge triggers the same interview, and benefits from it having been done once. There are thousands of registered trials, and for any given patient only a handful genuinely fit. The fit depends on eligibility criteria far beyond location: cancer subtype, extent of disease, sites of spread, biomarkers, number of prior lines of therapy, performance status, lab values, and disqualifying conditions.</p>
+  <p>No sixth grader knows their "stage" or their "ECOG score." So the interview never uses those words. Each clinical variable maps to a question a patient can actually answer, and Sage extrapolates the answer to correct medical vocabulary behind the scenes:</p>
+  <table class="spec">
+    <tr><th>What matching needs</th><th>What Sage asks</th><th>How it maps</th></tr>
+    <tr><td>Stage / extent of disease</td><td>"Has the cancer spread?" No, it's in one place / To lymph nodes nearby / To other parts of my body</td><td>Localized · regional · metastatic</td></tr>
+    <tr><td>Sites of metastasis</td><td>"Which parts? Tap all your doctor has mentioned." Bones, liver, lungs, brain...</td><td>Brain, liver, lung involvement each open or close whole categories of trials</td></tr>
+    <tr><td>Prior lines of therapy</td><td>"What treatments have you had?" (checklist) + "Did the cancer come back or grow during any of these?"</td><td>The second question counts lines without ever saying "lines"</td></tr>
+    <tr><td>Performance status (ECOG)</td><td>"On most days, which sounds most like you?" Four answers from "up and about, living normally" to "in bed or a chair most of the day"</td><td>ECOG 0–3</td></tr>
+    <tr><td>Comorbidities / exclusions</td><td>"Do any of these apply to you?" Heart problems, diabetes, hepatitis or HIV, autoimmune condition</td><td>Common exclusion criteria</td></tr>
+    <tr><td>Biomarkers &amp; lab values</td><td>Not asked at all. "Take a photo of your pathology report or recent blood work."</td><td>Extracted from uploads, then confirmed by the patient in plain words</td></tr>
+  </table>
+  <div class="callout" style="margin-top:28px;"><div class="t">Two structural rules</div><p>Every answer saves the instant it's given, so the interview is pausable and resumable with zero loss. And the interview never blocks the rest of the app: a patient can quit halfway and still record tomorrow's doctor visit.</p></div>
+  <div class="frames">
+    <div class="frameblock"><div class="framelabel">8 · Interview intro</div>
+      <div class="phone">
+        <div style="text-align:center; margin-top:16px;"><div class="avatar" style="width:56px;height:56px;margin:0 auto;font-size:22px;">✎</div><h3 style="margin-top:14px;">Help me get the full picture</h3><p class="sub" style="max-width:34ch;margin:6px auto 0;">To find the right trials, I need to understand your situation. Simple questions, in your words, not medical words.</p></div>
+        <div style="margin-top:16px;">
+          <p style="font-size:13.5px;margin:5px 0;">🕐 About 10 minutes</p>
+          <p style="font-size:13.5px;margin:5px 0;">⏸ Stop anytime, I'll save your place</p>
+          <p style="font-size:13.5px;margin:5px 0;">📷 Photos of your reports help a lot</p>
+          <p style="font-size:13.5px;margin:5px 0;">💭 "I'm not sure" is always okay</p>
+        </div>
+        <div class="primary">Let's start</div>
+        <div class="ghost">Maybe later</div>
+      </div>
+    </div>
+    <div class="frameblock"><div class="framelabel">9 · Extent of disease</div>
+      <div class="phone">
+        <div class="prog"><div class="bar"><div class="fill" style="width:40%;"></div></div><span class="saved">Saved</span></div>
+        <div class="bub">As far as you know, has the cancer spread?</div>
+        <div class="alist">
+          <div class="abtn">No, it's in one place</div>
+          <div class="abtn">To lymph nodes nearby</div>
+          <div class="abtn on">To other parts of my body</div>
+          <div class="abtn" style="color:var(--muted);">I'm not sure</div>
+        </div>
+        <div class="bub">Okay. Which parts? Tap all that your doctor has mentioned.</div>
+        <div class="chips"><span class="chip">Bones</span><span class="chip on">Liver</span><span class="chip">Lungs</span><span class="chip">Brain</span><span class="chip">Somewhere else</span><span class="chip quiet">I'm not sure</span></div>
+        <div class="inrow"><div class="icbtn">+</div><div class="input">Or tell me in your words</div><div class="icbtn">🎙</div><div class="icbtn send">↑</div></div>
+      </div>
+    </div>
+    <div class="frameblock"><div class="framelabel">10 · Treatment history</div>
+      <div class="phone">
+        <div class="prog"><div class="bar"><div class="fill" style="width:60%;"></div></div><span class="saved">Saved</span></div>
+        <div class="bub">What treatments have you had so far? Tap all that apply.</div>
+        <div class="alist">
+          <div class="abtn on">✓ Surgery</div>
+          <div class="abtn on">✓ Chemo through a vein (IV)</div>
+          <div class="abtn">Cancer pills I take at home</div>
+          <div class="abtn">Radiation</div>
+          <div class="abtn">Immunotherapy</div>
+          <div class="abtn">No treatment yet</div>
+          <div class="abtn" style="color:var(--muted);">I'm not sure what it was called</div>
+        </div>
+        <div class="bub">During any of these, did the cancer come back or start growing again?</div>
+        <div class="chips"><span class="chip">Yes</span><span class="chip">No</span><span class="chip quiet">I'm not sure</span></div>
+      </div>
+    </div>
+    <div class="frameblock"><div class="framelabel">11 · Daily life (performance status)</div>
+      <div class="phone">
+        <div class="prog"><div class="bar"><div class="fill" style="width:75%;"></div></div><span class="saved">Saved</span></div>
+        <div class="bub">On most days lately, which sounds most like you?</div>
+        <div class="alist">
+          <div class="abtn">I'm up and about, living pretty normally</div>
+          <div class="abtn">I get tired, but I can do light things around the house</div>
+          <div class="abtn">I'm resting more than half the day</div>
+          <div class="abtn">I'm in bed or a chair most of the day</div>
+        </div>
+        <div class="bub">Do any of these apply to you? They matter for some trials.</div>
+        <div class="chips"><span class="chip">Heart problems</span><span class="chip">Diabetes</span><span class="chip">Hepatitis or HIV</span><span class="chip">Autoimmune condition</span><span class="chip">None of these</span></div>
+      </div>
+    </div>
+    <div class="frameblock"><div class="framelabel">12 · Reports do the hard part</div>
+      <div class="phone">
+        <div class="prog"><div class="bar"><div class="fill" style="width:90%;"></div></div><span class="saved">Saved</span></div>
+        <div class="bub">Last step, and it's the most powerful one. Your reports have details no one expects you to memorize. Take a photo of your pathology report or recent blood work.</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;"><div class="ghost" style="flex:1;margin:0;">📷 Take photo</div><div class="ghost" style="flex:1;margin:0;">📄 Upload file</div></div>
+        <div class="tcard">
+          <p style="font-size:12px;color:var(--faint);margin-bottom:7px;">pathology_report.jpg · Here's what I found:</p>
+          <p style="font-size:13.5px;margin:3px 0;"><span class="check">✓</span>Your cancer is HER2 positive</p>
+          <p style="font-size:13.5px;margin:3px 0;"><span class="check">✓</span>Hormone receptor positive (ER+)</p>
+          <p style="font-size:13.5px;margin:3px 0;"><span class="check">✓</span>Blood counts look complete</p>
+          <div class="acts"><span class="chip">Looks right</span><span class="chip">What does this mean?</span></div>
+        </div>
+        <p class="note">Don't have reports handy? Skip this. You can add them anytime.</p>
+      </div>
+    </div>
+  </div>
+  <div class="callout"><div class="t">Extraction is always confirmed</div><p>Sage never silently writes biomarkers into the profile from a photo. The patient confirms "looks right" first; a misread report produces confidently wrong trial matches, which is worse than no matches.</p></div>
+</div>
+<div class="section">
+  <div class="eyebrow">Phase 5 · Profile and trials</div>
+  <h2>Both languages, honest matches</h2>
+  <p>Before matching runs, the patient sees their whole story back, in their words <em>and</em> in their medical team's words. This screen does three jobs at once: the patient verifies we understood them, they gently learn their own medical vocabulary, and the profile becomes a document they can literally show their oncologist. The dual-language profile is a product feature in its own right, independent of trial matching.</p>
+  <p>The matches are framed honestly. The interview gets a patient to roughly 80% match precision; the remaining 20% (specific lab thresholds, washout periods, measurable-disease criteria) cannot be self-reported reliably. So results say "trials that <em>may</em> fit you," descriptions are translated from researcher language into plain words on demand, and every trial card carries a "Questions for my doctor" button, because the final eligibility check is always a conversation with the care team.</p>
+  <div class="frames">
+    <div class="frameblock"><div class="framelabel">13 · Your profile, both languages</div>
+      <div class="phone">
+        <div style="display:flex;justify-content:space-between;align-items:center;"><h3>Juana's story</h3><span class="pill">Ready for trials</span></div>
+        <div class="prow"><div class="k">In your words</div><div class="v">Breast cancer that spread to the liver</div><div class="dr">For your medical team: metastatic breast cancer, hepatic involvement</div></div>
+        <div class="prow"><div class="k">Treatments so far</div><div class="v">Surgery, then chemo. Cancer grew during chemo.</div><div class="dr">For your medical team: 1 prior line, progressed on therapy</div></div>
+        <div class="prow"><div class="k">From your reports</div><div class="v">HER2 positive, ER positive</div></div>
+        <div class="prow"><div class="k">Daily life</div><div class="v">Tired, but up and about</div><div class="dr">For your medical team: ECOG 1</div></div>
+        <div style="display:flex;gap:8px;margin-top:auto;"><div class="ghost" style="flex:1;margin:0;">Fix something</div><div class="primary" style="flex:1;margin:0;">Find my trials</div></div>
+      </div>
+    </div>
+    <div class="frameblock"><div class="framelabel">6 · Matched trials</div>
+      <div class="phone">
+        <div class="bub">Good news. I found 3 trials near San Diego that may fit you. Here are the closest:</div>
+        <div class="tcard">
+          <div class="row"><span class="name">HER2+ therapy study</span><span class="pill">Recruiting</span></div>
+          <div class="loc">📍 UC San Diego · 4 miles away</div>
+          <div class="acts"><span class="chip">Explain in plain words</span><span class="chip">Questions for my doctor</span></div>
+        </div>
+        <div class="tcard">
+          <div class="row"><span class="name">Immunotherapy combination</span><span class="pill">Recruiting</span></div>
+          <div class="loc">📍 Scripps La Jolla · 7 miles away</div>
+        </div>
+        <div class="bub">Want better matches? Upload your pathology report and I'll check biomarkers too.</div>
+        <div class="inrow"><div class="icbtn">+</div><div class="input">Message Sage</div><div class="icbtn">🎙</div><div class="icbtn send">↑</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="callout"><div class="t">Profiles go stale</div><p>A patient whose cancer progresses is exactly the one who needs fresh matches. Sage should gently re-open the interview every few months ("has anything changed since we last talked about your treatment?"), and any visit recording that mentions progression should trigger the same prompt.</p></div>
+</div>
+
+<div class="section">
+  <div class="eyebrow">The voice layer</div>
+  <h2>One app, two voices</h2>
+  <p>Caregiver mode is a rendering of the same fourteen screens, not a second product. Every user-facing string carries template variables (patient name, pronoun, relationship, and a self/caregiver perspective flag), and the AI's system prompt carries the same context. "What type of cancer are you facing?" becomes "What type of cancer is Rosa facing?" The safety screen becomes "Rosa needs a doctor now. Call her care team."</p>
+  <p>Two deliberate touches in the caregiver voice: Sage occasionally acknowledges the caregiver themselves ("Caring for your mom is a lot." "You're doing the right thing, Miguel."). Caregivers are exhausted and invisible, and a companion that sometimes sees <em>them</em>, not only the patient, is what makes people stay. And for the daily-life questions, caregivers often answer more accurately than patients do; Sage says so, which turns a data-quality quirk into a moment of respect.</p>
+  <p>The data model supports this from day one: the phone number owns the <em>account</em>, and the account contains a <em>patient profile</em> that may or may not be the account holder. This future-proofs the case where a caregiver manages a parent's profile and the parent later joins from their own phone.</p>
+</div>
+
+<div class="section">
+  <div class="eyebrow">For the developer</div>
+  <h2>Stack, data, and build notes</h2>
+  <table class="spec">
+    <tr><th>Layer</th><th>Choice</th><th>Notes</th></tr>
+    <tr><td>Auth</td><td>Twilio Verify (OTP) + Supabase</td><td>Same pattern as PulseUp. Phone number is the universal key; later enables SMS/WhatsApp/Telegram entry via Twilio messaging.</td></tr>
+    <tr><td>Chat + extraction</td><td>Claude API</td><td>One conversation loop with tool use: profile writes, trial search, document parsing. System prompt carries voice-layer context.</td></tr>
+    <tr><td>Transcription</td><td>Streaming speech-to-text (e.g. Whisper)</td><td>Live transcript during visits; summary generated at "Finish."</td></tr>
+    <tr><td>Trials</td><td>ClinicalTrials.gov public API</td><td>Query on type, subtype, biomarkers, extent, prior lines, ECOG, distance radius from stored lat/long.</td></tr>
+    <tr><td>Storage</td><td>Supabase (profiles, health log, uploads)</td><td>All profile fields nullable. Every interview answer writes immediately. Uploads stored with extraction results and patient confirmation state.</td></tr>
+  </table>
+  <p style="margin-top:24px;"><strong>Profile schema (all nullable):</strong> cancer_type, cancer_subtype, extent (localized / regional / metastatic), metastasis_sites[], biomarkers[], prior_treatments[], progressed_on_treatment, prior_lines (derived), ecog (derived), comorbidities[], labs{}, care_team{name, phone}, location{lat, lng, display}, plus account-level: account_holder_name, perspective (self / caregiver), relationship, patient_name.</p>
+  <p><strong>Safety classifier:</strong> runs before the chat model on every inbound message. Red-flag list authored by a clinician (fever on treatment, uncontrolled bleeding, sudden confusion, chest pain, suicidal distress → warm human resources). When triggered, the escalation card renders before any conversational reply.</p>
+  <p><strong>Content rules:</strong> sixth-grade reading level everywhere; "I'm not sure" on every question; nothing Sage says is diagnostic; extraction always confirmed by the patient before it enters the profile.</p>
+</div>
+
+<footer>
+  Sage · mysage.chat · Product flow v1 · Prepared July 2026 · Wondrlink / Fwollo LLC<br>
+  Sage provides information and organization, not medical advice. All clinical content pending physician review.
+</footer>
+
+</div>
+</body>
+</html>

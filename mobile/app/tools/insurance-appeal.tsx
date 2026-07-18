@@ -72,7 +72,7 @@ export default function InsuranceAppealScreen() {
         style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
           <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 19 }}>
-            Paste the denial reason or attach the denial letter PDF. WondrChat will draft an
+            Paste the denial reason or attach the denial letter PDF. Sage will draft an
             appeal grounded in NCCN/ASCO guidelines for your situation.
           </Text>
 

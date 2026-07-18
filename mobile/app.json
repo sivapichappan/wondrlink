@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "WondrChat",
+    "name": "Sage",
     "slug": "wondrchat",
     "version": "1.1.0",
     "orientation": "portrait",
@@ -11,10 +11,10 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "org.wondrlink.wondrchat",
-      "buildNumber": "19",
+      "buildNumber": "27",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSPhotoLibraryUsageDescription": "WondrChat needs photo library access if you choose to attach a document or photo, such as an insurance denial letter."
+        "NSPhotoLibraryUsageDescription": "Sage needs photo library access if you choose to attach a document or photo, such as an insurance denial letter."
       }
     },
     "android": {
@@ -50,8 +50,8 @@
       [
         "expo-speech-recognition",
         {
-          "microphonePermission": "WondrChat uses the microphone so you can ask questions by voice.",
-          "speechRecognitionPermission": "WondrChat transcribes your speech on-device to fill the chat box. Your audio stays on your phone.",
+          "microphonePermission": "Sage uses the microphone so you can ask questions by voice.",
+          "speechRecognitionPermission": "Sage transcribes your speech on-device to fill the chat box. Your audio stays on your phone.",
           "androidSpeechServicePackages": [
             "com.google.android.googlequicksearchbox"
           ]

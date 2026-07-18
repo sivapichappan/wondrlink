@@ -14,10 +14,10 @@ export default function About() {
       <Stack.Screen options={{ title: 'About' }} />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
         <Text style={{ fontFamily: Fonts.serifBold, fontSize: 22, color: Colors.textPrimary }}>
-          WondrChat
+          Sage
         </Text>
         <Text style={{ color: Colors.textSecondary, fontSize: 14, lineHeight: 21 }}>
-          A colon cancer informational guide built by the WondrLink Foundation. WondrChat is
+          A colon cancer informational guide built by the WondrLink Foundation. Sage is
           designed to help patients and caregivers understand diagnosis, treatment options,
           screenings, and resources, in plain language.
         </Text>

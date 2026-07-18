@@ -35,7 +35,7 @@ export function OfflineBanner() {
       }}>
       <WifiOff size={14} color={Colors.warning} />
       <Text style={{ color: Colors.warning, fontSize: 12, fontFamily: Fonts.sansMedium }}>
-        You're offline. WondrChat needs a connection to answer new questions.
+        You're offline. Sage needs a connection to answer new questions.
       </Text>
     </View>
   );

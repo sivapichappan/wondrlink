@@ -148,12 +148,12 @@ export default function CancerSwitcherScreen() {
               Cancer focus
             </Text>
             <Text style={{ color: Colors.textSecondary, fontSize: 14, lineHeight: 20 }}>
-              WondrChat tailors retrievals, treatment context, and trial matches to whichever
+              Sage tailors retrievals, treatment context, and trial matches to whichever
               cancer you select here. You can change this any time.
             </Text>
           </View>
 
-          <FieldLabel>Which cancer should WondrChat focus on?</FieldLabel>
+          <FieldLabel>Which cancer should Sage focus on?</FieldLabel>
           <View style={{ gap: 8 }}>
             {cancers.map((c) => (
               <CancerCard

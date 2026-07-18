@@ -29,7 +29,7 @@ export default function PrivacyPolicy() {
         </Text>
 
         <Section title="Service availability">
-          WondrChat is available to adults (18+) in the United States. It is not currently
+          Sage is available to adults (18+) in the United States. It is not currently
           available to residents of Illinois or Nevada due to state regulations that govern
           AI-delivered mental and behavioral health services, nor to residents of the EU, EEA,
           UK, or Switzerland while we complete the compliance work required to serve those regions.

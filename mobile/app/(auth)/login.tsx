@@ -53,7 +53,7 @@ export default function Login() {
             Welcome back
           </Text>
           <Text style={{ color: Colors.textSecondary, fontSize: 14, lineHeight: 20 }}>
-            Sign in to continue your WondrChat conversations.
+            Sign in to continue your Sage conversations.
           </Text>
 
           <TextField

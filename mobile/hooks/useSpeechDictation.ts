@@ -67,7 +67,7 @@ export function useSpeechDictation() {
     if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
       Alert.alert(
         'Microphone access needed',
-        'Enable Microphone and Speech Recognition for WondrChat in Settings to record a visit.',
+        'Enable Microphone and Speech Recognition for Sage in Settings to record a visit.',
       );
       return;
     }
@@ -83,7 +83,7 @@ export function useSpeechDictation() {
       if (!perm.granted) {
         Alert.alert(
           'Microphone access needed',
-          'Enable Microphone and Speech Recognition for WondrChat in Settings to record a visit.',
+          'Enable Microphone and Speech Recognition for Sage in Settings to record a visit.',
         );
         return;
       }

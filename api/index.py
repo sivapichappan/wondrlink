@@ -317,6 +317,142 @@ def api_login():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/auth/phone/send", methods=["POST"])
+def api_phone_send():
+    """Sage phone sign-in step 1: text a one-time code to the number.
+    First-time numbers are created automatically at verify time."""
+    try:
+        # Same geofence as registration (a first-time phone number IS a signup).
+        try:
+            from compliance import validate_country
+            ok, msg, code = validate_country(request.headers)
+            if not ok:
+                return jsonify({"error": msg, "code": "REGION_BLOCKED"}), code
+        except Exception:
+            pass
+
+        from rate_limit import check_rate_limit
+        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr or 'unknown').split(',')[0].strip()
+        allowed, _rem = check_rate_limit(client_ip, 'auth/phone_send', *RATE_LIMIT_AUTH_LOGIN)
+        if not allowed:
+            return jsonify({"error": "Too many codes requested. Please wait and try again."}), 429
+
+        data = request.get_json(silent=True) or {}
+        from auth_helpers import send_phone_otp
+        ok, error = send_phone_otp(str(data.get("phone", "")))
+        if not ok:
+            return jsonify({"error": error}), 400
+        return jsonify({"status": "ok", "message": "Code sent"})
+    except Exception:
+        logger.exception("Phone OTP send error")
+        return jsonify({"error": "Could not send a code. Please try again."}), 500
+
+
+@app.route("/api/auth/phone/verify", methods=["POST"])
+def api_phone_verify():
+    """Sage phone sign-in step 2: verify the code, return a session
+    (same token shape as /api/auth/login so the client plumbing is shared)."""
+    try:
+        from rate_limit import check_rate_limit
+        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr or 'unknown').split(',')[0].strip()
+        allowed, _rem = check_rate_limit(client_ip, 'auth/phone_verify', *RATE_LIMIT_AUTH_LOGIN)
+        if not allowed:
+            return jsonify({"error": "Too many attempts. Please wait and try again."}), 429
+
+        data = request.get_json(silent=True) or {}
+        from auth_helpers import verify_phone_otp
+        user_data, error = verify_phone_otp(str(data.get("phone", "")),
+                                            str(data.get("code", "")))
+        if error:
+            return jsonify({"error": error}), 401
+        logger.info(f"Phone user logged in: user_id={user_data.get('user_id')}")
+        return jsonify({
+            "status": "ok",
+            "message": "Logged in successfully",
+            "user": {
+                "user_id": user_data["user_id"],
+                "email": user_data.get("email"),
+                "phone": user_data.get("phone"),
+            },
+            "access_token": user_data["access_token"],
+            "refresh_token": user_data["refresh_token"],
+        })
+    except Exception:
+        logger.exception("Phone OTP verify error")
+        return jsonify({"error": "Sign-in failed. Please try again."}), 500
+
+
+@app.route("/api/account/basics", methods=["POST"])
+@require_auth
+def api_account_basics():
+    """
+    Sage onboarding basics (screens 2/2a/2b): who the account is for + the
+    minimal patient facts. Merges into raw_profile.patient (never replaces)
+    and absorbs the facts as confirmed form-sourced beliefs.
+    """
+    try:
+        user_id = request.user["user_id"]
+        data = request.get_json(silent=True) or {}
+
+        perspective = str(data.get("perspective", "self")).lower()
+        if perspective not in ("self", "caregiver"):
+            return jsonify({"error": "perspective must be self or caregiver"}), 400
+        account_holder_name = str(data.get("account_holder_name", "")).strip()[:80]
+        if not account_holder_name:
+            return jsonify({"error": "Please tell us your name"}), 400
+        relationship = (str(data.get("relationship", "")).strip()[:40] or None) \
+            if perspective == "caregiver" else None
+        patient_name = str(data.get("patient_name", "")).strip()[:80] or \
+            (account_holder_name if perspective == "self" else "")
+        if perspective == "caregiver" and not patient_name:
+            return jsonify({"error": "Please tell us their name"}), 400
+
+        patient_updates: dict = {"firstName": patient_name}
+        birth_year = data.get("birth_year")
+        try:
+            birth_year = int(birth_year)
+            from datetime import datetime as _dt
+            age = _dt.utcnow().year - birth_year
+            if 0 < age < 120:
+                patient_updates["age"] = age
+        except (TypeError, ValueError):
+            pass
+        gender = str(data.get("gender", "")).strip()
+        if gender in ("Female", "Male", "Other"):
+            patient_updates["sex"] = gender
+        location = data.get("location")
+        if isinstance(location, dict) and (location.get("display") or location.get("lat")):
+            patient_updates["location"] = {
+                "lat": location.get("lat"), "lng": location.get("lng"),
+                "display": str(location.get("display", ""))[:80],
+            }
+            # Trials still key on ZIP today: keep it in sync when the free-text
+            # location is a US ZIP code.
+            display = str(location.get("display", "")).strip()
+            if display.isdigit() and len(display) == 5:
+                patient_updates["zipCode"] = display
+
+        from supabase_storage import save_account_basics
+        if not save_account_basics(user_id, perspective, account_holder_name,
+                                   patient_updates, relationship):
+            return jsonify({"error": "Could not save. Please try again."}), 500
+
+        # Absorb the basics as confirmed form-sourced beliefs (best effort).
+        try:
+            from patient_model import absorb_form_profile
+            profile = load_profile(user_id)
+            if profile:
+                absorb_form_profile(profile, only_missing=True)
+                save_profile(user_id, profile)
+        except Exception:
+            logger.exception("basics belief absorption failed (non-fatal)")
+
+        return jsonify({"status": "ok"})
+    except Exception:
+        logger.exception("account basics error")
+        return jsonify({"error": "Could not save. Please try again."}), 500
+
+
 @app.route("/api/auth/logout", methods=["POST"])
 @require_auth
 def api_logout():
@@ -654,6 +790,14 @@ def api_check_acknowledgement():
                 cancer_display = display_name(cancer_slug)
         except Exception as _e:
             logger.warning("cancer_slug lookup failed: %s", _e)
+        # Sage onboarding: do we still need the who-for + basics screens?
+        basics = {}
+        try:
+            from supabase_storage import get_account_basics
+            basics = get_account_basics(user_id)
+        except Exception as _e:
+            logger.warning("account basics lookup failed: %s", _e)
+
         return jsonify({
             "acknowledged": acknowledged,
             "consent_version": version,
@@ -663,6 +807,9 @@ def api_check_acknowledgement():
             "cancer_slug": cancer_slug,
             "cancer_display": cancer_display,
             "needs_cancer_pick": cancer_slug is None,
+            "needs_basics": bool(basics.get('needs_basics', False)),
+            "perspective": basics.get('perspective', 'self'),
+            "account_holder_name": basics.get('account_holder_name'),
         })
     except Exception as e:
         logger.exception("check_acknowledgement error")

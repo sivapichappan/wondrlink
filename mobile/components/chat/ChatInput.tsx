@@ -82,7 +82,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Let's talk", prefil
     if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
       Alert.alert(
         'Microphone access needed',
-        'Enable Microphone and Speech Recognition for WondrChat in Settings to use voice input.',
+        'Enable Microphone and Speech Recognition for Sage in Settings to use voice input.',
       );
       return;
     }
@@ -95,7 +95,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Let's talk", prefil
       if (!perm.granted) {
         Alert.alert(
           'Microphone access needed',
-          'Enable Microphone and Speech Recognition for WondrChat in Settings to use voice input.',
+          'Enable Microphone and Speech Recognition for Sage in Settings to use voice input.',
         );
         return;
       }

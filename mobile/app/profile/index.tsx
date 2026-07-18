@@ -53,7 +53,7 @@ export default function ProfileViewScreen() {
   const reset = () => {
     Alert.alert(
       'Reset your profile?',
-      'This removes the personalized profile WondrChat uses. Your chat history is unaffected.',
+      'This removes the personalized profile Sage uses. Your chat history is unaffected.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -90,7 +90,7 @@ export default function ProfileViewScreen() {
             Build your profile
           </Text>
           <Text style={{ color: Colors.textSecondary, fontSize: 14, lineHeight: 21 }}>
-            Adding your diagnosis, biomarkers, and treatments lets WondrChat give answers that are
+            Adding your diagnosis, biomarkers, and treatments lets Sage give answers that are
             specific to your situation instead of generic. It only takes a few minutes and you can
             edit it any time.
           </Text>

@@ -41,8 +41,8 @@ export function TypingIndicator() {
     <View
       style={styles.row}
       accessibilityRole="text"
-      accessibilityLabel="WondrChat is typing">
-      <Text style={styles.label}>WondrChat is typing</Text>
+      accessibilityLabel="Sage is typing">
+      <Text style={styles.label}>Sage is typing</Text>
       <View style={styles.dots}>
         {dots.map((dot, i) => (
           <Animated.View

@@ -131,7 +131,7 @@ export function AppDrawer() {
           {/* Brand */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 8, paddingVertical: 10 }}>
             <Image source={LOGO} style={{ width: 24, height: 24, borderRadius: 6 }} />
-            <Text style={{ fontFamily: Fonts.serifBold, fontSize: FontSize.h3, color: Colors.textPrimary }}>WondrChat</Text>
+            <Text style={{ fontFamily: Fonts.serifBold, fontSize: FontSize.h3, color: Colors.textPrimary }}>Sage</Text>
           </View>
 
           <DrawerRow icon={<SquarePen size={17} color={Colors.primary} />} label="New chat" tint onPress={() => go('/chat/new')} />

@@ -50,7 +50,7 @@ export default function Feedback() {
               lineHeight: 21,
               textAlign: 'center',
             }}>
-            It helps us tune WondrChat for people in your situation.
+            It helps us tune Sage for people in your situation.
           </Text>
           <Button label="Back to Settings" fullWidth size="lg" onPress={() => router.back()} />
         </View>
@@ -66,7 +66,7 @@ export default function Feedback() {
         style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
           <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 19 }}>
-            How has WondrChat been overall?
+            How has Sage been overall?
           </Text>
 
           <View style={{ flexDirection: 'row', gap: 10 }}>

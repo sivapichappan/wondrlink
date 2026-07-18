@@ -27,7 +27,7 @@ export function ProfileNudgeBanner({ onPress }: Props) {
           <Sparkles size={16} color={Colors.surface} />
         </View>
         <View style={styles.text}>
-          <Text style={styles.title}>WondrChat learns about you as you chat</Text>
+          <Text style={styles.title}>Sage learns about you as you chat</Text>
           <Text style={styles.subtitle} numberOfLines={2} ellipsizeMode="tail">
             Just start talking. Want a head start? An optional 2-minute setup is here.
           </Text>

@@ -140,6 +140,6 @@ export const CONTACT = {
 export const CRISIS_MODAL = {
   title: 'It sounds like you may need urgent help',
   body:
-    'WondrChat is not equipped to help in an emergency. If you are in danger or in crisis, please reach out to one of the resources below now.',
+    'Sage is not equipped to help in an emergency. If you are in danger or in crisis, please reach out to one of the resources below now.',
   continueButton: 'I understand — continue anyway',
 } as const;

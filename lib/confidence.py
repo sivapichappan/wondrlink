@@ -284,7 +284,7 @@ def compute_retrieval_confidence(retrieved_chunks: List[Any]) -> Dict[str, Any]:
 #   "cancer education, treatment, screening, and wellness"
 # when no selected cancer (fallback).
 OFF_TOPIC_RESPONSE_TEMPLATE = (
-    "That seems outside what WondrLink can reliably help with. WondrLink "
+    "That seems outside what Sage can reliably help with. Sage "
     "focuses on {cancer_phrase} for patients and caregivers.\n\n"
     "If you have a question I can help with — your treatment, side effects, "
     "screening, mental wellness, or how to support a loved one — please ask.\n\n"
@@ -295,7 +295,7 @@ OFF_TOPIC_RESPONSE_TEMPLATE = (
 # "We noticed you're asking about a different cancer — want to switch?"
 CROSS_CANCER_PROMPT_TEMPLATE = (
     "It sounds like you're asking about {other_cancer_kind}, which is "
-    "different from your current WondrChat focus ({selected_cancer_kind}). "
+    "different from your current Sage focus ({selected_cancer_kind}). "
     "I can help you switch your focus in Settings → Profile, or I can keep "
     "answering general questions in the meantime.\n\n"
     "If you'd like a Personal Navigator to walk you through this, you can "

@@ -38,7 +38,7 @@ export default function PreVisitScreen() {
         <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
           <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 19 }}>
             Optional: share anything specific you want to discuss at your next visit (symptoms,
-            decisions, side effects). WondrChat will tailor the question list.
+            decisions, side effects). Sage will tailor the question list.
           </Text>
 
           <TextField

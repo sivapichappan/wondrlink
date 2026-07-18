@@ -59,13 +59,13 @@ export default function SettingsScreen() {
           href: '/profile',
           Icon: UserCog,
           title: 'Profile',
-          blurb: 'View and reset the personalization data WondrChat uses',
+          blurb: 'View and reset the personalization data Sage uses',
         },
         {
           href: '/profile/cancer-switcher',
           Icon: Tag,
           title: 'Cancer focus',
-          blurb: 'Switch which cancer WondrChat is tailored to',
+          blurb: 'Switch which cancer Sage is tailored to',
         },
         {
           href: '/settings/detail-level',
@@ -117,7 +117,7 @@ export default function SettingsScreen() {
       ],
     },
     {
-      title: 'Help WondrChat improve',
+      title: 'Help Sage improve',
       rows: [
         {
           href: '/settings/feedback',
@@ -144,7 +144,7 @@ export default function SettingsScreen() {
         {
           href: '/settings/about',
           Icon: Info,
-          title: 'About WondrChat',
+          title: 'About Sage',
           blurb: `Version ${Constants.expoConfig?.version ?? '—'}`,
         },
       ],

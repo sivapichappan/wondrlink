@@ -72,7 +72,7 @@ export function HelpSheet() {
             }}>
             <AlertOctagon size={18} color={Colors.danger} style={{ marginTop: 1 }} />
             <Text style={{ flex: 1, color: Colors.textPrimary, fontSize: FontSize.base, lineHeight: 19 }}>
-              <Text style={{ fontFamily: Fonts.sansSemiBold }}>Medical emergency?</Text> Call 911 immediately. WondrChat is
+              <Text style={{ fontFamily: Fonts.sansSemiBold }}>Medical emergency?</Text> Call 911 immediately. Sage is
               not built to handle emergencies.
             </Text>
           </View>

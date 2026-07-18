@@ -1265,6 +1265,72 @@ def append_patient_event(user_id: str, kind: str, path: Optional[str] = None,
         return False
 
 
+def get_account_basics(user_id: str) -> Dict[str, Any]:
+    """Account-level Sage fields + whether onboarding basics are done."""
+    try:
+        client = get_admin_client()
+        result = client.table('patient_profiles') \
+            .select('perspective, relationship, account_holder_name, raw_profile') \
+            .eq('user_id', user_id) \
+            .limit(1) \
+            .execute()
+        if not result.data:
+            return {'exists': False, 'needs_basics': True}
+        row = result.data[0]
+        patient = ((row.get('raw_profile') or {}).get('patient')) or {}
+        has_basics = bool(row.get('account_holder_name')) or bool(patient.get('firstName'))
+        return {
+            'exists': True,
+            'perspective': row.get('perspective') or 'self',
+            'relationship': row.get('relationship'),
+            'account_holder_name': row.get('account_holder_name'),
+            'needs_basics': not has_basics,
+        }
+    except Exception as e:
+        # Column-missing (pre-migration) or transient failure: don't block the
+        # gate — treat basics as done so existing users aren't re-onboarded.
+        logger.warning(f"get_account_basics failed: {e}")
+        return {'exists': True, 'needs_basics': False}
+
+
+def save_account_basics(user_id: str, perspective: str,
+                        account_holder_name: str,
+                        patient_updates: Dict[str, Any],
+                        relationship: Optional[str] = None) -> bool:
+    """
+    Persist the Sage onboarding basics: account columns + patient fields
+    (merged into raw_profile.patient — never wholesale replacement).
+    Creates the profile row if this is a brand-new (phone-OTP) user.
+    """
+    try:
+        client = get_admin_client()
+        result = client.table('patient_profiles') \
+            .select('raw_profile') \
+            .eq('user_id', user_id) \
+            .limit(1) \
+            .execute()
+        profile = (result.data[0].get('raw_profile') if result.data else None) or {}
+        patient = profile.setdefault('patient', {})
+        for key, value in (patient_updates or {}).items():
+            if value not in (None, ''):
+                patient[key] = value
+
+        payload = {
+            'raw_profile': profile,
+            'perspective': perspective,
+            'relationship': relationship,
+            'account_holder_name': account_holder_name,
+        }
+        if result.data:
+            client.table('patient_profiles').update(payload).eq('user_id', user_id).execute()
+        else:
+            client.table('patient_profiles').insert({'user_id': user_id, **payload}).execute()
+        return True
+    except Exception as e:
+        logger.warning(f"save_account_basics failed: {e}")
+        return False
+
+
 def save_model_state(user_id: str, model_state: Dict[str, Any]) -> bool:
     """
     Targeted persist of raw_profile.model_state (question-policy bookkeeping).

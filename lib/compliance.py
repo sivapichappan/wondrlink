@@ -43,7 +43,7 @@ STATE_REQUIREMENTS = {
     # Block list — AI mental/behavioral-health legislation we do not currently comply with
     "IL": {
         "block_signup": True,
-        "block_reason": "IL WOPR Act prohibits AI-delivered therapy/psychotherapy without a licensed professional. WondrChat's screening tools (PHQ-9, GAD-7) + response generation could be argued in scope.",
+        "block_reason": "IL WOPR Act prohibits AI-delivered therapy/psychotherapy without a licensed professional. Sage's screening tools (PHQ-9, GAD-7) + response generation could be argued in scope.",
         "law": "WOPR Act",
         "effective": "2025-08-04",
     },
@@ -168,7 +168,7 @@ def validate_country(headers) -> Tuple[bool, str, int]:
     if is_blocked_country(cc):
         return (
             False,
-            "WondrLink is not currently available to residents of the EU, EEA, "
+            "Sage is not currently available to residents of the EU, EEA, "
             "UK, or Switzerland. We're working on compliance with the applicable "
             "regulations (GDPR, EU AI Act) and hope to offer service in the "
             "future. Contact us at info@wondrlinkfoundation.org for updates.",
@@ -336,7 +336,7 @@ def validate_state(state: str) -> Tuple[bool, str, int]:
         block_list = " or ".join(labels) if labels else "your state"
         return (
             False,
-            f"WondrChat is not currently available to residents of {block_list} "
+            f"Sage is not currently available to residents of {block_list} "
             "due to state regulations governing AI in mental and behavioral health. "
             "We're working to expand access — thank you for your patience.",
             422,

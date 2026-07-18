@@ -118,6 +118,83 @@ def login_user(email: str, password: str) -> Tuple[Optional[Dict[str, Any]], Opt
         return None, "Login failed"
 
 
+_PHONE_RE = None
+
+
+def _normalize_phone(phone: str) -> Optional[str]:
+    """E.164-ish normalization: keep digits, require 10-15, prefix +.
+    US 10-digit numbers get +1. Returns None when it can't be a phone number."""
+    global _PHONE_RE
+    import re
+    if _PHONE_RE is None:
+        _PHONE_RE = re.compile(r"\d")
+    digits = "".join(_PHONE_RE.findall(phone or ""))
+    if len(digits) == 10:
+        digits = "1" + digits
+    if not (11 <= len(digits) <= 15):
+        return None
+    return "+" + digits
+
+
+def send_phone_otp(phone: str) -> Tuple[bool, Optional[str]]:
+    """
+    Send a one-time login code by SMS (Supabase phone provider; requires the
+    Twilio backend to be configured in the Supabase dashboard — until then this
+    returns a clear error and the email path keeps working).
+    """
+    normalized = _normalize_phone(phone)
+    if not normalized:
+        return False, "Please enter a valid phone number"
+    try:
+        client = get_supabase_client()
+        client.auth.sign_in_with_otp({"phone": normalized})
+        return True, None
+    except Exception as e:
+        error_msg = str(e)
+        logger.warning(f"Phone OTP send failed: {type(e).__name__}")
+        if "not enabled" in error_msg.lower() or "disabled" in error_msg.lower():
+            return False, "Phone sign-in is not available yet. Please use email for now."
+        if "rate" in error_msg.lower():
+            return False, "Too many codes sent. Please wait a minute and try again."
+        return False, "We could not send a code to that number. Check it and try again."
+
+
+def verify_phone_otp(phone: str, token: str) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+    """
+    Verify the SMS code and return a session (same shape as login_user).
+    First-time numbers are signed up automatically by Supabase.
+    """
+    normalized = _normalize_phone(phone)
+    if not normalized:
+        return None, "Please enter a valid phone number"
+    token = (token or "").strip()
+    if not token.isdigit() or not (4 <= len(token) <= 8):
+        return None, "That code does not look right. Please re-enter it."
+    try:
+        client = get_supabase_client()
+        response = client.auth.verify_otp({
+            "phone": normalized,
+            "token": token,
+            "type": "sms",
+        })
+        if response.user and response.session:
+            logger.info(f"Phone login: user_id={response.user.id}")
+            return {
+                "user_id": response.user.id,
+                "email": response.user.email,
+                "phone": response.user.phone,
+                "access_token": response.session.access_token,
+                "refresh_token": response.session.refresh_token,
+            }, None
+        return None, "That code did not work. Request a new one and try again."
+    except Exception as e:
+        error_msg = str(e)
+        logger.warning(f"Phone OTP verify failed: {type(e).__name__}")
+        if "expired" in error_msg.lower():
+            return None, "That code expired. Request a new one."
+        return None, "That code did not work. Request a new one and try again."
+
+
 def logout_user(access_token: str) -> bool:
     """
     Sign out a user.
