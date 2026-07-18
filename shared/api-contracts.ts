@@ -16,6 +16,9 @@ export const ENDPOINTS = {
   authLogin: '/api/auth/login',
   authLogout: '/api/auth/logout',
   authMe: '/api/auth/me',
+  authPhoneSend: '/api/auth/phone/send',
+  authPhoneVerify: '/api/auth/phone/verify',
+  accountBasics: '/api/account/basics',
 
   // --- Consent / Compliance ---
   checkAcknowledgement: '/api/check_acknowledgement',

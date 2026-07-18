@@ -67,6 +67,25 @@ export async function login(email: string, password: string) {
   return plugIntoSupabase(body);
 }
 
+/** Sage phone sign-in step 1: text a one-time code to the number. */
+export async function sendPhoneCode(phone: string) {
+  return apiFetch<{ status: 'ok'; message: string }>(ENDPOINTS.authPhoneSend, {
+    method: 'POST',
+    skipAuth: true,
+    body: { phone: phone.trim() },
+  });
+}
+
+/** Sage phone sign-in step 2: verify the code; first-time numbers become accounts. */
+export async function verifyPhoneCode(phone: string, code: string) {
+  const body = await apiFetch<AuthSuccessBody>(ENDPOINTS.authPhoneVerify, {
+    method: 'POST',
+    skipAuth: true,
+    body: { phone: phone.trim(), code: code.trim() },
+  });
+  return plugIntoSupabase(body);
+}
+
 /**
  * Resend the signup confirmation email. Called from the "check your
  * email" success screen so users who didn't receive the original email

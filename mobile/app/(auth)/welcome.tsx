@@ -30,18 +30,28 @@ export default function Welcome() {
 
         <View style={{ gap: 12 }}>
           <Button
-            label="Create account"
+            label="Continue with phone"
             fullWidth
             size="lg"
-            onPress={() => router.push('/(auth)/register')}
+            onPress={() => router.push('/(auth)/phone' as never)}
           />
           <Button
-            label="Log in"
+            label="Use email instead"
             variant="secondary"
             fullWidth
             size="lg"
             onPress={() => router.push('/(auth)/login')}
           />
+          <Text
+            onPress={() => router.push('/(auth)/register')}
+            style={{
+              textAlign: 'center',
+              color: Colors.textMuted,
+              fontSize: 13,
+              paddingVertical: 4,
+            }}>
+            New here with email? Create an account
+          </Text>
         </View>
       </View>
     </SafeAreaView>

@@ -45,6 +45,22 @@ export interface CheckAcknowledgementResponse {
   cancer_slug?: string | null;
   cancer_display?: string | null;
   needs_cancer_pick?: boolean;
+  /** Sage onboarding: who-for + basics screens still needed (absent on older servers). */
+  needs_basics?: boolean;
+  perspective?: 'self' | 'caregiver';
+  account_holder_name?: string | null;
+}
+
+/** Sage onboarding basics (screens 2/2a/2b). */
+export interface AccountBasicsRequest {
+  perspective: 'self' | 'caregiver';
+  account_holder_name: string;
+  /** Required when perspective is caregiver. */
+  patient_name?: string;
+  relationship?: string;
+  birth_year?: number;
+  gender?: 'Female' | 'Male' | 'Other';
+  location?: { lat?: number; lng?: number; display: string };
 }
 
 export type ConsentPayload = Record<ConsentField, boolean>;

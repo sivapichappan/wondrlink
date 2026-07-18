@@ -14,6 +14,8 @@ export default function OnboardingLayout() {
       }}>
       <Stack.Screen name="consent" options={{ title: 'Before you start', headerBackVisible: false }} />
       <Stack.Screen name="disclaimer" options={{ title: 'Privacy Notice' }} />
+      <Stack.Screen name="who-for" options={{ headerShown: false }} />
+      <Stack.Screen name="basics" options={{ title: 'The basics' }} />
       <Stack.Screen
         name="state-restricted"
         options={{ title: 'Not available', headerBackVisible: false }}

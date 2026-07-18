@@ -4,6 +4,7 @@
 
 import { ENDPOINTS } from '@shared/api-contracts';
 import type {
+  AccountBasicsRequest,
   FeedbackRequest,
   LimitSpiResponse,
   PrivacyAppealRequest,
@@ -11,6 +12,14 @@ import type {
 } from '@shared/types';
 
 import { apiFetch } from './client';
+
+/** Sage onboarding basics (who-for + the four facts). */
+export function saveAccountBasics(basics: AccountBasicsRequest) {
+  return apiFetch<{ status: 'ok' }>(ENDPOINTS.accountBasics, {
+    method: 'POST',
+    body: basics,
+  });
+}
 
 export function submitPrivacyAppeal(body: PrivacyAppealRequest) {
   return apiFetch<PrivacyAppealResponse>(ENDPOINTS.privacyAppeal, {

@@ -72,6 +72,15 @@ function RootGate() {
       return;
     }
 
+    // Sage onboarding: consent is done but we don't know who this account is
+    // for yet — the who-for + basics screens come before the app.
+    if (data.needs_basics) {
+      const inBasicsFlow =
+        top === '(onboarding)' && (second === 'who-for' || second === 'basics');
+      if (!inBasicsFlow) router.replace('/(onboarding)/who-for' as never);
+      return;
+    }
+
     // All clear → main app. Only redirect when the user is still parked in
     // auth/onboarding; otherwise leave them on whatever root-stack screen
     // they pushed (profile, tools, settings) so the back-stack behaves.
