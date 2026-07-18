@@ -39,9 +39,9 @@ level in ALL patient-facing text — UI copy, backend-generated strings, AND AI 
 - [ ] App Store Connect: rename the existing app record to Sage (display-name change
       only — testers + history preserved)
 - [ ] Web SPA branding sweep; `mysage.chat` domain (DNS access → open question)
-- [ ] Backend patient-facing strings: chat lead-ins ("Here are clinical trials…"),
+- [x] Backend patient-facing strings: chat lead-ins ("Here are clinical trials…"),
       just-in-time questions, confirmation prompts, trial warnings
-- [ ] Docs/README/HANDOFF naming sweep; entity footer "Wondrlink / Fwollo LLC" → confirm
+- [x] Docs/README/HANDOFF naming sweep; entity footer "Wondrlink / Fwollo LLC" → confirm
       with supervisor before it appears anywhere patient-facing
 - [ ] Em-dash + reading-level sweep extended to system prompts; add an eval check
       (assert no em dash in generated answers; flag >6th-grade vocabulary)
@@ -53,7 +53,7 @@ _Rule: current design system, new flow. No visual redesign._
       (link phone to existing account or fresh start — decide with supervisor)
 - [ ] **Screen 2 — the branch**: "Who are you here for?" (Myself / A loved one) on its
       own uncluttered screen; sets `perspective` for everything downstream
-- [ ] **Screens 2a/2b — basics**: name, birth year, gender, location (caregiver variant
+- [x] **Screens 2a/2b — basics**: name, birth year, gender, location (caregiver variant
       adds their name + relationship + patient's name). Location = "use my location" tap
       OR free-text city/postal → store **lat/long + display name** (global from day one;
       backend already geocodes internally — ClinicalTrials.gov `filter.geo` takes lat/long
@@ -62,17 +62,17 @@ _Rule: current design system, new flow. No visual redesign._
       — common-type chips + type-ahead accepting plain words ("stomach" → gastric);
       escape hatches: "We're still finding out" + caregiver path. Still-diagnosing →
       capability menu reorders (visit recording + explanations first, trials wait)
-- [ ] **Capability-menu home** (screen 3b): personalized menu ("Find clinical trials for
+- [x] **Capability-menu home** (screen 3b): personalized menu ("Find clinical trials for
       breast cancer") + "or just talk to me" — permanent home after the anchor answer.
       Buttons inject chat openers (existing `?q=` handoff does exactly this)
-- [ ] **Data model NOW** (cheap now, painful later): account ≠ patient_profile split;
+- [x] **Data model NOW** (cheap now, painful later): account ≠ patient_profile split;
       account-level fields `account_holder_name`, `perspective` (self/caregiver),
       `relationship`, `patient_name`. Voice layer renders later (Workstream F)
-- [ ] Mic (voice input) in every composer row (doc callout: this audience speaks more
+- [x] Mic (voice input) in every composer row (doc callout: this audience speaks more
       easily than it types)
 
 ## Workstream C — Chat = Claude Sonnet (parallel; registry-gated)
-- [ ] Anthropic provider support in the `llm_utils` call path; registry chat segment →
+- [x] Anthropic provider support in the `llm_utils` call path; registry chat segment →
       **`claude-sonnet-5`**; `ANTHROPIC_API_KEY` in the Vercel team project
 - [ ] De-identification invariant unchanged (already provider-agnostic — runs before any
       provider sees text)
