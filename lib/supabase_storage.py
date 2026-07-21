@@ -1265,6 +1265,44 @@ def append_patient_event(user_id: str, kind: str, path: Optional[str] = None,
         return False
 
 
+def log_safety_classification(user_id: str, conversation_id: Optional[str],
+                              message: str, result: Any) -> bool:
+    """
+    Persist one non-NONE safety classification to the audit table
+    (supervisor requirement: every non-NONE classification is logged WITH
+    the message for weekly review). The message text lives only in this
+    user-scoped, RLS'd table — the console log line below carries no PHI.
+    Never raises; degrades silently pre-migration like append_patient_event.
+    """
+    try:
+        from safety_rules import rules_version
+        client = get_admin_client()
+        row: Dict[str, Any] = {
+            'user_id': user_id,
+            'conversation_id': conversation_id,
+            'message': message,
+            'tier': result.tier,
+            'category': result.category or None,
+            'confidence': result.confidence,
+            'rationale': result.rationale or None,
+            'rule_matched': bool(result.rule_matched),
+            'source': result.source,
+            'rules_version': rules_version(),
+            'model': result.model,
+            'latency_ms': result.latency_ms,
+        }
+        client.table('safety_classifications').insert(row).execute()
+        logger.info(
+            f"SAFETY_CLASSIFICATION tier={result.tier} category={result.category} "
+            f"source={result.source} rule_matched={result.rule_matched} "
+            f"latency_ms={result.latency_ms}"
+        )
+        return True
+    except Exception as e:
+        logger.warning(f"log_safety_classification failed: {type(e).__name__}")
+        return False
+
+
 def get_account_basics(user_id: str) -> Dict[str, Any]:
     """Account-level Sage fields + whether onboarding basics are done."""
     try:
@@ -1524,15 +1562,16 @@ def delete_all_user_data(user_id: str) -> dict:
     with per-table deletion results.
 
     Scope of this function (under our direct control):
-      - patient_profiles      — full row
-      - chat_messages         — all rows for user
-      - screening_scores      — all rows for user
-      - patient_events        — all rows for user (lifecycle timeline)
-      - user_acknowledgements — full row including consent_metadata
-      - chat_feedback         — all rows for user
-      - conversations         — all rows for user
-      - messages              — all rows for user
-      - rate_limits           — all rows for user_id (as identifier)
+      - patient_profiles        — full row
+      - chat_messages           — all rows for user
+      - screening_scores        — all rows for user
+      - patient_events          — all rows for user (lifecycle timeline)
+      - user_acknowledgements   — full row including consent_metadata
+      - chat_feedback           — all rows for user
+      - conversations           — all rows for user
+      - messages                — all rows for user
+      - safety_classifications  — all rows for user (safety audit log)
+      - rate_limits             — all rows for user_id (as identifier)
 
     Sub-processor data NOT under our direct control (documented in
     docs/compliance/subprocessor_chain.md — retention per their ToS):
@@ -1562,6 +1601,7 @@ def delete_all_user_data(user_id: str) -> dict:
             'chat_feedback',
             'conversations',
             'messages',
+            'safety_classifications',
             'rate_limits',
         ]
 

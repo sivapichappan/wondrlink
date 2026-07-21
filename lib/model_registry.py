@@ -7,11 +7,12 @@ a model is a Vercel env change (instantly revertible), never a code change.
 
 Segments
 --------
-chat       The patient-facing conversation model (Together). The app's voice.
-extractor  Structured fact extraction from chat turns (Together, JSON mode).
-verifier   Response verification / small utility calls (Groq, fast + cheap).
-fallback   Chat fallback when Together is unavailable (Groq).
-modeler    RESERVED for the future connections-layer Modeler (no caller yet).
+chat        The patient-facing conversation model (Together). The app's voice.
+extractor   Structured fact extraction from chat turns (Together, JSON mode).
+verifier    Response verification / small utility calls (Groq, fast + cheap).
+classifier  Pre-chat safety tiering of every inbound message (Groq, fast).
+fallback    Chat fallback when Together is unavailable (Groq).
+modeler     Connections-layer Modeler (background reasoning, Together).
 
 Chat-model swap procedure (e.g. evaluating moonshotai/Kimi-K2.6)
 ----------------------------------------------------------------
@@ -59,6 +60,19 @@ _SEGMENTS: Dict[str, Dict[str, str]] = {
         "provider": "groq",
         "default": "llama-3.1-8b-instant",
         "env": "MODEL_VERIFIER",
+    },
+    # Pre-chat safety classifier (supervisor mandate 2026-07-21): tiers every
+    # inbound message against config/safety/ rules BEFORE the chat model.
+    # Groq 70B-versatile won the 2026-07-21 bake-off: 10/10 tier accuracy,
+    # p50 ~0.6s (Together 70B-Turbo: same accuracy, p50 ~2s; 8B/20B-class
+    # and reasoning models mis-tiered or truncated). Groq rate limits are
+    # PER-MODEL, so this rides the 70b-versatile 12k-TPM bucket, separate
+    # from the 8B verifier. Alternate via MODEL_CLASSIFIER_PROVIDER=together
+    # + MODEL_CLASSIFIER=meta-llama/Llama-3.3-70B-Instruct-Turbo.
+    "classifier": {
+        "provider": "groq",
+        "default": "llama-3.3-70b-versatile",
+        "env": "MODEL_CLASSIFIER",
     },
     # Emergency chat backup when Together is down. 70B on Groq is still
     # near-instant, so the backup is no longer a quality cliff (2026-07-18).
