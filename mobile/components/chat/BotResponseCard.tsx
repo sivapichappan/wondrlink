@@ -7,6 +7,7 @@ import { PER_MESSAGE_FOOTER } from '@shared/disclaimers';
 import type { ChatHistoryMessage } from '@shared/types';
 
 import { ConfirmationChips } from './ConfirmationChips';
+import { EscalationCard } from './EscalationCard';
 import { FollowupChips } from './FollowupChips';
 import { MarkdownText } from './MarkdownText';
 import { MessageActions } from './MessageActions';
@@ -58,7 +59,13 @@ export function BotResponseCard({ message, onPickFollowup }: Props) {
         shadowOffset: { width: 0, height: 2 },
         elevation: 1,
       }}>
-      <UrgencyBanner urgency={meta.urgency} />
+      {/* T1/T2/MH escalation card renders INSTEAD of the urgency banner
+          (T3 and legacy urgency keep the banner). */}
+      {meta.safety && meta.safety.tier !== 'T3' ? (
+        <EscalationCard safety={meta.safety} crisisResources={meta.crisis_resources} />
+      ) : (
+        <UrgencyBanner urgency={meta.urgency} />
+      )}
 
       <MarkdownText>{message.content}</MarkdownText>
 

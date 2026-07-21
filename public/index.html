@@ -10548,8 +10548,11 @@
             messages.appendChild(div);
             messages.scrollTop = messages.scrollHeight;
 
-            // Urgency banner is still a separate page-level overlay; unchanged.
-            if (metadata && metadata.urgency && metadata.urgency.detected) {
+            // Safety classifier: T1/T2/MH render an in-thread escalation card;
+            // T3 and legacy urgency keep the banner.
+            if (metadata && metadata.safety && metadata.safety.tier !== 'T3') {
+                renderEscalationCard(metadata.safety, metadata.crisis_resources);
+            } else if (metadata && metadata.urgency && metadata.urgency.detected) {
                 showUrgencyBanner(metadata.urgency);
             }
 
@@ -10852,12 +10855,54 @@
             } catch (_) {}
         }
 
+        // Safety-classifier escalation card (T1/T2/MH). Reuses the
+        // urgency-banner styles; MH gets the softer treatment with 988 first
+        // (never the medical card). The emergency number comes from the
+        // server config (safety.emergency_number).
+        function renderEscalationCard(safety, crisisResources) {
+            const en = (safety && safety.emergency_number) || '911';
+            const isMH = safety.tier === 'MH';
+            const isT1 = safety.tier === 'T1';
+            const card = document.createElement('div');
+            card.className = `urgency-banner ${isMH ? 'urgent' : 'emergency'}`;
+
+            const resources = (crisisResources && crisisResources.resources) || [];
+            const resourceLines = resources
+                .map((r) => `<div>${escapeHtml(r.name)}: ${escapeHtml(r.contact)}</div>`)
+                .join('');
+
+            let ctas = '';
+            if (isMH) {
+                ctas = `<a class="urgency-banner-cta" href="tel:988">Call or text 988</a>`;
+            } else if (isT1) {
+                ctas = `<a class="urgency-banner-cta" href="tel:${en}">Call ${en}</a>`;
+            } else {
+                ctas = `<a class="urgency-banner-cta" href="tel:${en}">Call ${en} if you feel very unwell</a>`;
+            }
+
+            card.innerHTML = `
+                <div class="urgency-banner-icon"><i data-lucide="${isMH ? 'heart' : 'siren'}" style="width:22px;height:22px;stroke-width:2;"></i></div>
+                <div class="urgency-banner-content">
+                    <div class="urgency-banner-title">${escapeHtml(safety.patient_line || '')}</div>
+                    ${resourceLines}
+                    ${ctas}
+                </div>
+            `;
+
+            const messages = document.getElementById('messages');
+            messages.insertBefore(card, messages.firstChild);
+            if (typeof lucide !== 'undefined') {
+                try { lucide.createIcons(); } catch (_) {}
+            }
+        }
+
         function showUrgencyBanner(urgency) {
             // Remove any existing urgency banner
             const existing = document.querySelector('.urgency-banner');
             if (existing) existing.remove();
 
-            const isEmergency = urgency.level === 'emergency';
+            // Case-insensitive: the server sends EMERGENCY / URGENT / SAME_DAY.
+            const isEmergency = String(urgency.level || '').toLowerCase() === 'emergency';
             const banner = document.createElement('div');
             banner.className = `urgency-banner ${isEmergency ? 'emergency' : 'urgent'}`;
 

@@ -35,6 +35,9 @@ export const ENDPOINTS = {
   clearChat: '/api/clear_chat',
   feedback: '/api/feedback',
 
+  // --- Safety (escalation card actions) ---
+  safetyLogSymptom: '/api/safety/log_symptom',
+
   // --- Conversations (multi-conversation drawer: New chat / Recents / Search) ---
   // list (GET) + create (POST) share the base path. `conversation(id)` builds
   // the per-conversation paths: GET `${...}/messages`, PATCH rename, DELETE.

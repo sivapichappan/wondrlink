@@ -88,6 +88,10 @@ export function useChat(conversationId: string, opts: UseChatOptions = {}) {
           clinical_trials: resp.clinical_trials,
           pending_confirmations: resp.pending_confirmations,
           api_used: resp.api_used,
+          is_crisis: resp.is_crisis,
+          crisis_resources: resp.crisis_resources,
+          crisis_category: resp.crisis_category,
+          safety: resp.safety,
         },
       };
       qc.setQueryData(key, (prev: { messages: ChatHistoryMessage[] } | undefined) => ({

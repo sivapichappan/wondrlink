@@ -266,6 +266,43 @@ export interface ChatClinicalTrialsBlock {
   search_criteria: Record<string, unknown>;
 }
 
+// =============================================================================
+// SAFETY CLASSIFIER  (pre-chat tiering; config/safety/ rules)
+// =============================================================================
+
+export type SafetyTier = 'T1' | 'T2' | 'T3' | 'MH';
+
+/**
+ * Escalation payload from the pre-chat safety classifier.
+ * T1/T2/MH arrive on a short-circuit response (no normal answer — the
+ * `answer` field is the crisis response text and the card renders above
+ * it). T3 arrives alongside a normal answer as a same-day banner.
+ */
+export interface ChatSafety {
+  tier: SafetyTier;
+  category: string;
+  patient_line: string;
+  rule_matched: boolean;
+  confidence?: number;
+  /** Config value (911 default) so non-US launches are an env change. */
+  emergency_number: string;
+  /** T2 only: show the "Log this symptom" action. */
+  offer_symptom_log?: boolean;
+  rules_version?: string;
+}
+
+/** Structured crisis resources (mirrors the PHQ-9 screening path's shape). */
+export interface CrisisResources {
+  message: string;
+  resources: { name: string; contact: string }[];
+}
+
+export interface LogSymptomRequest {
+  tier: SafetyTier;
+  category: string;
+  note?: string;
+}
+
 /**
  * Persisted chat message as returned by /api/chat_history.
  * For assistant messages, `metadata` mirrors the bot-side fields of
@@ -284,6 +321,10 @@ export interface ChatHistoryMessage {
     clinical_trials?: ChatClinicalTrialsBlock | null;
     pending_confirmations?: PendingConfirmation[] | null;
     api_used?: string;
+    is_crisis?: boolean;
+    crisis_resources?: CrisisResources | null;
+    crisis_category?: string | null;
+    safety?: ChatSafety | null;
   };
 }
 
@@ -318,6 +359,12 @@ export interface ChatResponse {
   has_guidelines: boolean;
   clinical_trials: ChatClinicalTrialsBlock | null;
   urgency: ChatUrgency | null;
+  /** Set on safety-classifier escalations (T1/T2/MH short-circuit, or T3
+   *  banner alongside a normal answer). */
+  is_crisis?: boolean;
+  crisis_resources?: CrisisResources | null;
+  crisis_category?: string | null;
+  safety?: ChatSafety | null;
   /** Facts awaiting "is that right?" confirmation (belief store). */
   pending_confirmations?: PendingConfirmation[] | null;
   /** The patient's lifecycle stage after this turn. */

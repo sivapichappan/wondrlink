@@ -12,10 +12,19 @@ import type {
   ChatHistoryResponse,
   ChatRequest,
   ChatResponse,
+  LogSymptomRequest,
   SaveMessageRequest,
 } from '@shared/types';
 
 import { apiFetch } from './client';
+
+/** T2 escalation card action: put the symptom on the record with a timestamp. */
+export function logSymptom(body: LogSymptomRequest) {
+  return apiFetch<{ status: 'ok' }>(ENDPOINTS.safetyLogSymptom, {
+    method: 'POST',
+    body,
+  });
+}
 
 export function sendChatMessage(body: ChatRequest) {
   return apiFetch<ChatResponse>(ENDPOINTS.chat, {
