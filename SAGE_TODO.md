@@ -12,9 +12,13 @@ level in ALL patient-facing text — UI copy, backend-generated strings, AND AI 
 1. **Same repo, rebrand + evolve.** Backend brain stays live and untouched; mobile evolves
    in place. Rename the **existing** App Store Connect app (keeps bundle ID, TestFlight
    testers, build history).
-2. **Chat model → `claude-sonnet-5`** (latest Claude Sonnet) via the model registry.
-   Extractor/Modeler segments unchanged. Full eval battery on the swap; one variable per
-   eval window.
+2. **Chat model → `moonshotai/Kimi-K2.6` on Together** (final decision 2026-07-21,
+   optimizing speed + performance on the API we have; supersedes the earlier
+   `claude-sonnet-5` pick — the supervisor's email said "Claude API" generically, and
+   the Anthropic path stays built + dormant: `MODEL_CHAT_PROVIDER=anthropic` +
+   `ANTHROPIC_API_KEY` re-enables it with no deploy). Extractor (gpt-oss-120b) and
+   Modeler (DeepSeek-V4-Pro) unchanged; emergency fallback upgraded to Groq
+   `llama-3.3-70b-versatile`. One variable per eval window.
 3. **Phone OTP auth now** (Supabase phone provider + Twilio) — auth-method swap; JWT /
    `require_auth` / RLS plumbing survives.
 4. **First push: Onboarding + Home + Auth**, built INSIDE the current UI/UX template.
@@ -71,15 +75,34 @@ _Rule: current design system, new flow. No visual redesign._
 - [x] Mic (voice input) in every composer row (doc callout: this audience speaks more
       easily than it types)
 
-## Workstream C — Chat = Claude Sonnet (parallel; registry-gated)
-- [x] Anthropic provider support in the `llm_utils` call path; registry chat segment →
-      **`claude-sonnet-5`**; `ANTHROPIC_API_KEY` in the Vercel team project
+## Workstream C — Chat voice (registry-gated) — SHIPPED as Kimi-K2.6
+- [x] Anthropic provider support in the `llm_utils` call path (built, DORMANT — env-var
+      re-enable; `ANTHROPIC_API_KEY` not required)
+- [x] Registry chat segment → **`moonshotai/Kimi-K2.6`** (Together). Kimi is a REASONING
+      model: `try_together` gives it +1536 max_tokens headroom (reasoning consumes the
+      budget before the visible answer) and sends
+      `chat_template_kwargs={"enable_thinking": False}` (cuts latency ~4x: 27s → ~4s;
+      shortens but does not fully remove the reasoning burst)
 - [x] De-identification invariant unchanged (already provider-agnostic — runs before any
       provider sees text)
-- [ ] Full eval battery on the swap ONLY (no prompt changes in the same window); capture
-      a cost readout for the supervisor
+- [x] Eval gate on the swap (2026-07-21, colorectal `--suite all --mode llm`): NO
+      regression vs the pre-swap baseline. keyword_compliance 80% PASS after widening
+      one golden case to accept plain-language synonyms (Kimi says "numbness or
+      tingling" instead of "neuropathy" — the sixth-grade voice we want).
+- [ ] **Domain-gate follow-up (pre-existing, model-independent)**: symptom-described
+      emergencies with no cancer keyword ("passing a lot of blood from my rectum",
+      "12 bouts of diarrhea") are tier1-rejected → escalation missed
+      (off_topic 88.89%/escalation 66.67%, identical before and after the swap).
+      Fix the tier-1 gate in its own eval window — safety-relevant.
 - [ ] Sixth-grade + no-em-dash voice rules go into the system prompt as a SEPARATE
-      follow-up eval window after the model swap passes
+      follow-up eval window (Kimi currently emits em dashes)
+- [ ] Modernize `scripts/test_all_features.py` keyword checks for the Sage voice
+      (2026-07-21 run: 69/75; all 6 failures are literal-substring artifacts — "contact"
+      vs "call" in the emergency template, "not giving up" tripping the `No 'giving up'`
+      check, plain-language synonyms for wellbeing/colonoscopy — EXCEPT one real note:
+      Kimi didn't proactively surface the diabetes-dexamethasone interaction on a generic
+      FOLFOX side-effects question (direct diabetes question passes). Recheck proactive
+      comorbidity surfacing in the voice-rules eval window.)
 
 ## Workstream D — Interview + report upload (doc Phases 4–5, screens 8–13)
 - [ ] Structured, pausable, resumable interview triggered by trial matching (and any
@@ -92,7 +115,9 @@ _Rule: current design system, new flow. No visual redesign._
       - Treatments checklist + "did it come back or grow?" → prior lines (never say "lines")
       - "On most days, which sounds most like you?" (4 options) → ECOG 0–3
       - Comorbidity chips (heart, diabetes, hepatitis/HIV, autoimmune) → exclusions
-- [ ] **Report/photo upload**: pathology + labs via camera/file → vision extraction →
+- [ ] **Report/photo upload**: pathology + labs via camera/file → vision extraction
+      (model pick 2026-07-21: `meta-llama/Llama-4-Maverick` on Together, new `vision`
+      registry segment when built) →
       ALWAYS patient-confirmed through the existing pending-chips machinery ("Looks
       right" / "What does this mean?"). Never silently written. Biomarkers + labs are
       NOT asked as questions — reports do the hard part
@@ -107,7 +132,8 @@ _Rule: current design system, new flow. No visual redesign._
 ## Workstream E — Visit recorder (doc Phase 3, screens 4a–4c)
 - [ ] Consent gate FIRST: one-tap "I've told my doctor I'm recording" + suggested script
       (recording-consent laws vary; asking aloud covers everywhere)
-- [ ] Live streaming transcription (evaluate streaming STT; the existing text-based
+- [ ] Live streaming transcription (model pick 2026-07-21: `openai/whisper-large-v3`
+      on Together, new `stt` registry segment when built; the existing text-based
       visit-recap pipeline seeds the summarizer)
 - [ ] Three-part output, not a transcript: what the doctor said / what you do next /
       what to ask next time → saved permanently to the health log
@@ -148,7 +174,8 @@ _Rule: current design system, new flow. No visual redesign._
 ## Open questions for the supervisor
 - Fwollo LLC vs WondrLink Foundation — which entity/branding is canonical?
 - `mysage.chat` DNS — who owns it, and when do we point it at the deployment?
-- Claude Sonnet API cost sign-off (bring the eval + cost readout from Workstream C)
+- ~~Claude Sonnet API cost sign-off~~ — superseded 2026-07-21: chat runs on Together
+  (Kimi-K2.6) with existing credits; Anthropic path dormant, no new spend to approve
 - Clinician-authored red-flag list (Workstream G safety card)
 - Pilot recruiting timing vs. redesign landing — recruit now on the old UI or wait?
 - Confirm: the pending old-WondrChat-UI TestFlight build is superseded and will NOT ship

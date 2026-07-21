@@ -3304,15 +3304,27 @@ def call_llm(prompt: str, response_length: str = "normal", temperature: float = 
             # the fallback voice (chat_together) — never send a Claude id here.
             together_model = get_model("chat") if chat_provider == "together" \
                 else get_model("chat_together")
+            # Reasoning models (Kimi K2.x) think in a separate `reasoning`
+            # field that consumes max_tokens BEFORE the visible answer — a
+            # 150-token brief budget yields an empty reply. Give them headroom
+            # and ask the chat template to skip thinking (cuts latency ~4x;
+            # it shortens the reasoning burst but does not fully remove it,
+            # hence the headroom stays).
+            max_tokens = settings["max_tokens"]
+            extra_kwargs: Dict[str, Any] = {}
+            if "kimi" in together_model.lower():
+                max_tokens += 1536
+                extra_kwargs["chat_template_kwargs"] = {"enable_thinking": False}
             response = client.chat.completions.create(
                 model=together_model,
                 messages=[
                     {"role": "system", "content": settings["system_message"]},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=settings["max_tokens"],
+                max_tokens=max_tokens,
                 temperature=effective_temperature,
                 top_p=0.9,
+                **extra_kwargs,
             )
             if response and response.choices and len(response.choices) > 0:
                 content = response.choices[0].message.content

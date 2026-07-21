@@ -33,20 +33,21 @@ from typing import Dict
 
 # segment -> (provider, default model id, env override var)
 _SEGMENTS: Dict[str, Dict[str, str]] = {
-    # Sage voice (Workstream C, 2026-07-18): chat moved to Claude Sonnet.
-    # Requires ANTHROPIC_API_KEY at runtime; when the key is absent the call
-    # path falls back to chat_together automatically, so deploys are safe
-    # before the key lands. Rollback = MODEL_CHAT_PROVIDER=together.
+    # Sage voice (final decision 2026-07-18): Kimi-K2.6 on Together — the
+    # strongest conversational model on the platform at interactive speed.
+    # The Anthropic path stays built + dormant: MODEL_CHAT_PROVIDER=anthropic
+    # + MODEL_CHAT=claude-sonnet-5 + ANTHROPIC_API_KEY re-enables it with no
+    # deploy. Rollback to the previous voice: MODEL_CHAT=meta-llama/Llama-3.3-70B-Instruct-Turbo.
     "chat": {
-        "provider": "anthropic",
-        "default": "claude-sonnet-5",
+        "provider": "together",
+        "default": "moonshotai/Kimi-K2.6",
         "env": "MODEL_CHAT",
     },
-    # The Together-side chat model: primary when chat provider is 'together',
-    # first fallback when the anthropic call is unavailable/fails.
+    # The Together-side chat model when the primary chat provider is NOT
+    # together (e.g. anthropic primary -> this is the first fallback voice).
     "chat_together": {
         "provider": "together",
-        "default": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+        "default": "moonshotai/Kimi-K2.6",
         "env": "MODEL_CHAT_TOGETHER",
     },
     "extractor": {
@@ -59,9 +60,11 @@ _SEGMENTS: Dict[str, Dict[str, str]] = {
         "default": "llama-3.1-8b-instant",
         "env": "MODEL_VERIFIER",
     },
+    # Emergency chat backup when Together is down. 70B on Groq is still
+    # near-instant, so the backup is no longer a quality cliff (2026-07-18).
     "fallback": {
         "provider": "groq",
-        "default": "llama-3.1-8b-instant",
+        "default": "llama-3.3-70b-versatile",
         "env": "MODEL_FALLBACK",
     },
     # Reserved for the future connections-layer Modeler (background reasoning

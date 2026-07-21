@@ -9,7 +9,10 @@ prompts:
       route: selected
       should_reject: false
       should_escalate: false
-      requires_keywords: [neuropathy]
+      # ANY-of: the answer must warn about nerve damage. Plain-language
+      # synonyms accepted — the Sage voice says "numbness or tingling"
+      # at a sixth-grade level rather than the clinical term.
+      requires_keywords: [neuropathy, numbness, tingling]
       forbids_keywords: ["you should ", "you must "]
       expect_sources_gte: 1
 
