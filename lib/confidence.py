@@ -341,105 +341,17 @@ OFF_TOPIC_RESPONSE = render_off_topic_response("colorectal")
 
 CrisisCategory = Literal["self_harm", "medical_emergency", "urgent_oncology"]
 
-
-_CRISIS_PATTERNS: List[Tuple[str, CrisisCategory]] = [
-    # --- Self-harm / suicide ---
-    ("suicide", "self_harm"),
-    ("kill myself", "self_harm"),
-    ("end my life", "self_harm"),
-    ("end it all", "self_harm"),
-    ("hurt myself", "self_harm"),
-    ("cut myself", "self_harm"),
-    ("overdose", "self_harm"),
-    ("took too many", "self_harm"),
-    ("no reason to live", "self_harm"),
-    ("better off dead", "self_harm"),
-    ("want to die", "self_harm"),
-    ("don't want to keep living", "self_harm"),
-    ("don't want to live", "self_harm"),
-    ("what's the point", "self_harm"),  # only in combination with despair phrasing — see below
-    # --- Cardiac / respiratory emergency ---
-    ("chest pain", "medical_emergency"),
-    ("can't breathe", "medical_emergency"),
-    ("cant breathe", "medical_emergency"),
-    ("trouble breathing", "medical_emergency"),
-    ("severe shortness of breath", "medical_emergency"),
-    # --- Hemorrhage ---
-    ("severe bleeding", "medical_emergency"),
-    ("vomiting blood", "medical_emergency"),
-    ("coughing up blood", "medical_emergency"),
-    ("coughed up blood", "medical_emergency"),
-    ("cough up blood", "medical_emergency"),
-    ("coughed up bright", "medical_emergency"),     # "coughed up bright red blood"
-    ("coughing up bright", "medical_emergency"),    # present continuous variant
-    ("spit up blood", "medical_emergency"),
-    ("spitting up blood", "medical_emergency"),
-    ("can't stop bleeding", "medical_emergency"),
-    ("cant stop bleeding", "medical_emergency"),
-    # --- Stroke ---
-    ("slurred speech", "medical_emergency"),
-    ("speech is slurred", "medical_emergency"),
-    ("speech is slurring", "medical_emergency"),
-    ("slurring my speech", "medical_emergency"),
-    ("numb on one side", "medical_emergency"),
-    ("face drooping", "medical_emergency"),
-    # --- Spinal cord compression (oncology emergency) ---
-    ("legs feel weak", "medical_emergency"),
-    ("legs feel numb", "medical_emergency"),
-    ("legs are weak", "medical_emergency"),
-    ("legs getting weak", "medical_emergency"),
-    ("legs are numb", "medical_emergency"),
-    ("legs are getting weak", "medical_emergency"),
-    ("legs are getting numb", "medical_emergency"),
-    # --- Raised ICP / brain metastases / intracranial bleed.
-    #     Severe headache + confusion is the classic oncology red flag.
-    ("severe headache", "medical_emergency"),
-    ("worst headache", "medical_emergency"),
-    ("sudden headache", "medical_emergency"),
-    ("headache with confusion", "medical_emergency"),
-    ("seizure", "medical_emergency"),
-    # --- Severe dehydration / treatment toxicity (oncology urgent) ---
-    ("can't keep anything down", "urgent_oncology"),
-    ("cant keep anything down", "urgent_oncology"),
-    ("haven't been able to keep", "urgent_oncology"),
-    ("havent been able to keep", "urgent_oncology"),
-    ("uncontrolled vomiting", "urgent_oncology"),
-    ("severe vomiting", "urgent_oncology"),
-    ("keep vomiting", "urgent_oncology"),
-    ("vomiting everything", "urgent_oncology"),
-    ("belly feels stretched", "urgent_oncology"),
-    ("uncontrolled diarrhea", "urgent_oncology"),
-    ("severe diarrhea", "urgent_oncology"),
-    ("can't urinate", "urgent_oncology"),
-    ("cant urinate", "urgent_oncology"),
-    ("urinary retention", "urgent_oncology"),
-    # --- Cancer-treatment-related dyspnea / ILD (T-DXd, ICIs, bleomycin) ---
-    # "Shortness of breath" alone is broad in healthy people but in cancer-care
-    # context it's the sentinel symptom for drug-induced pneumonitis (T-DXd,
-    # checkpoint inhibitors), pulmonary embolism (advanced cancer is hyper-
-    # coagulable), or anthracycline cardiotoxicity. Urgent-oncology rather
-    # than full medical_emergency unless paired with "severe".
-    ("shortness of breath", "urgent_oncology"),
-    ("short of breath", "urgent_oncology"),
-    ("getting very short of breath", "urgent_oncology"),
-    ("dry cough", "urgent_oncology"),
-    ("new cough", "urgent_oncology"),
-    ("trouble catching my breath", "urgent_oncology"),
-    # --- Fever during chemo ---
-    ("fever of 100", "urgent_oncology"),
-    ("fever of 101", "urgent_oncology"),
-    ("fever of 102", "urgent_oncology"),
-    ("fever of 103", "urgent_oncology"),
-    ("high fever", "urgent_oncology"),
-]
-
-# "what's the point" alone has high false-positive risk ("what's the point of
-# this lab test?"). Require it co-occur with a despair phrase to count as
-# self-harm.
-_DESPAIR_COMODIFIERS = [
-    "keep living", "live", "go on", "trying", "fight", "be here", "wake up",
-    "exhausted", "exhausting", "hopeless",
-]
+# The keyword list now lives as DATA in config/safety/ (the supervisor's
+# sage-safety-rules-v0.9.json plus the local-extensions file that absorbed
+# the old _CRISIS_PATTERNS phrases). lib/safety_rules.deterministic_match
+# is the single matcher; this shim maps its tiers onto the legacy category
+# names so existing callers (chat endpoint, eval runner) keep working.
+_TIER_TO_LEGACY_CATEGORY: Dict[str, CrisisCategory] = {
+    "MH": "self_harm",
+    "T1": "medical_emergency",
+    "T2": "urgent_oncology",
+    "T3": "urgent_oncology",
+}
 
 
 def detect_crisis_pattern(query: str) -> Optional[Dict[str, str]]:
@@ -448,29 +360,25 @@ def detect_crisis_pattern(query: str) -> Optional[Dict[str, str]]:
 
     Cancer-agnostic — same fires regardless of selected_cancer. Designed to
     run BEFORE Tier 1 so it catches bare crisis prompts that lack any
-    oncology vocab.
+    oncology vocab. Delegates to the tiered safety-rules matcher; the MH
+    self-harm category keeps precedence over medical tiers below T1.
     """
-    if not query:
+    from safety_rules import deterministic_match
+
+    hit = deterministic_match(query)
+    if hit is None:
         return None
-    q_lower = query.lower()
-    for pattern, category in _CRISIS_PATTERNS:
-        if pattern == "what's the point":
-            # Only when co-located with a despair co-modifier (60-char window).
-            idx = q_lower.find(pattern)
-            if idx < 0:
-                continue
-            window = q_lower[max(0, idx - 60):idx + len(pattern) + 60]
-            if any(c in window for c in _DESPAIR_COMODIFIERS):
-                return {"category": category, "matched": pattern}
-            continue
-        if pattern in q_lower:
-            return {"category": category, "matched": pattern}
-    return None
+    category = _TIER_TO_LEGACY_CATEGORY.get(hit["tier"])
+    if category is None:
+        return None
+    return {"category": category, "matched": hit["matched_phrase"]}
 
 
 # Hardcoded crisis responses. Each must include the words listed by
 # escalation_accuracy metric tokens: "911" / "988" / "same day" / "urgent" /
-# "right away". The LLM is bypassed entirely for these.
+# "right away". The LLM is bypassed entirely for these. The emergency number
+# is a config value ({emergency_number}, default 911) so a non-US launch is
+# an env change, not a copy edit.
 
 _CRISIS_RESPONSES: Dict[str, str] = {
     "self_harm": (
@@ -479,12 +387,12 @@ _CRISIS_RESPONSES: Dict[str, str] = {
         "support — please reach out **right away** to one of these:\n\n"
         "- **988 Suicide & Crisis Lifeline** — call or text **988**, free, 24/7\n"
         "- **Crisis Text Line** — text **HOME** to **741741**, free, 24/7\n"
-        "- **Emergency services** — **911** if you are in immediate danger\n\n"
+        "- **Emergency services** — **{emergency_number}** if you are in immediate danger\n\n"
         "You don't have to navigate this alone, and there is help available "
         "this minute. Please reach out before doing anything else."
     ),
     "medical_emergency": (
-        "What you're describing sounds like a medical emergency. Please **call 911** "
+        "What you're describing sounds like a medical emergency. Please **call {emergency_number}** "
         "or go to the nearest emergency room **right away** — don't wait to message "
         "us or anyone else.\n\n"
         "If you have your oncology team's after-hours line, you can also call them "
@@ -503,7 +411,10 @@ _CRISIS_RESPONSES: Dict[str, str] = {
 
 def render_crisis_response(category: str) -> str:
     """Return the hardcoded crisis response text for the given category."""
-    return _CRISIS_RESPONSES.get(category, _CRISIS_RESPONSES["urgent_oncology"])
+    from safety_rules import emergency_number
+
+    template = _CRISIS_RESPONSES.get(category, _CRISIS_RESPONSES["urgent_oncology"])
+    return template.format(emergency_number=emergency_number())
 
 
 def crisis_resources_for(category: str) -> Dict[str, Any]:
@@ -511,20 +422,23 @@ def crisis_resources_for(category: str) -> Dict[str, Any]:
     Structured crisis_resources payload (mirrors the PHQ-9 Q9 path's shape so
     the frontend can render the same UI).
     """
+    from safety_rules import emergency_number
+
+    _en = emergency_number()
     if category == "self_harm":
         return {
             "message": "You indicated thoughts of self-harm. Please reach out for support immediately.",
             "resources": [
                 {"name": "988 Suicide & Crisis Lifeline", "contact": "Call or text 988"},
                 {"name": "Crisis Text Line", "contact": "Text HOME to 741741"},
-                {"name": "Emergency Services", "contact": "Call 911"},
+                {"name": "Emergency Services", "contact": f"Call {_en}"},
             ],
         }
     if category == "medical_emergency":
         return {
             "message": "What you're describing sounds like a medical emergency.",
             "resources": [
-                {"name": "Emergency Services", "contact": "Call 911"},
+                {"name": "Emergency Services", "contact": f"Call {_en}"},
                 {"name": "Oncology after-hours line", "contact": "Call your oncology team"},
             ],
         }
@@ -533,6 +447,6 @@ def crisis_resources_for(category: str) -> Dict[str, Any]:
         "message": "Contact your oncology team the same day.",
         "resources": [
             {"name": "Oncology team", "contact": "Call your oncologist's nurse line"},
-            {"name": "Emergency Services", "contact": "Call 911 if symptoms worsen"},
+            {"name": "Emergency Services", "contact": f"Call {_en} if symptoms worsen"},
         ],
     }

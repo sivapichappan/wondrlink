@@ -1,0 +1,168 @@
+{
+  "version": "ext1",
+  "status": "Repo-owned extensions to sage-safety-rules-v0.9.json. Same schema. Holds the battle-tested typed-phrase triggers migrated from the legacy lib/confidence.py _CRISIS_PATTERNS list, mapped onto the supervisor's tiers. Candidates for promotion into the next supervisor rules version (physician review covers both files).",
+  "notes": "The base file's triggers are written as clinical descriptions; these are phrases patients actually type. Both files feed the same deterministic matcher. The optional co_modifiers field (used by the what's-the-point rule) requires one of the listed words within 60 characters of the trigger; the base schema does not use it.",
+  "rules": [
+    {
+      "tier": "MH",
+      "category": "self_harm",
+      "triggers": [
+        "suicide",
+        "kill myself",
+        "end my life",
+        "end it all",
+        "hurt myself",
+        "cut myself",
+        "overdose",
+        "took too many",
+        "no reason to live",
+        "better off dead",
+        "want to die",
+        "don't want to keep living",
+        "don't want to live"
+      ],
+      "note": "Legacy self_harm list. An active ingestion ('overdose', 'took too many') is expected to be raised to T1 by the AI-judgment layer; the deterministic floor keeps the warm MH response as the minimum."
+    },
+    {
+      "tier": "MH",
+      "category": "self_harm",
+      "triggers": [
+        "what's the point"
+      ],
+      "co_modifiers": [
+        "keep living",
+        "live",
+        "go on",
+        "trying",
+        "fight",
+        "be here",
+        "wake up",
+        "exhausted",
+        "exhausting",
+        "hopeless"
+      ],
+      "note": "High false-positive phrase ('what's the point of this lab test?'). Fires only with a despair co-modifier within 60 characters."
+    },
+    {
+      "tier": "T1",
+      "category": "breathing",
+      "triggers": [
+        "cant breathe",
+        "trouble breathing"
+      ],
+      "note": "Apostrophe-less and paraphrase variants of the base breathing rule."
+    },
+    {
+      "tier": "T1",
+      "category": "bleeding_severe",
+      "triggers": [
+        "severe bleeding",
+        "coughing up blood",
+        "coughed up blood",
+        "cough up blood",
+        "coughed up bright",
+        "coughing up bright",
+        "spit up blood",
+        "spitting up blood",
+        "can't stop bleeding",
+        "cant stop bleeding"
+      ],
+      "note": "Typed-phrase hemorrhage variants. Base rule 'coughing up blood more than streaks' never appears verbatim in patient messages; deterministic floor treats any coughed blood as T1 and the AI layer can keep it there or explain streaks."
+    },
+    {
+      "tier": "T1",
+      "category": "stroke_signs",
+      "triggers": [
+        "speech is slurred",
+        "speech is slurring",
+        "slurring my speech",
+        "numb on one side"
+      ]
+    },
+    {
+      "tier": "T2",
+      "category": "cord_compression",
+      "triggers": [
+        "legs feel weak",
+        "legs feel numb",
+        "legs are weak",
+        "legs getting weak",
+        "legs are numb",
+        "legs are getting weak",
+        "legs are getting numb"
+      ],
+      "note": "Possible spinal cord compression. Legacy list treated this as a 911-level emergency; the base file's clinical placement is T2 (care team within the hour), so it lands at T2 here."
+    },
+    {
+      "tier": "T2",
+      "category": "neuro_new",
+      "triggers": [
+        "severe headache",
+        "worst headache",
+        "sudden headache",
+        "headache with confusion"
+      ],
+      "note": "Raised ICP / brain mets red flags. Matches the base neuro_new tier."
+    },
+    {
+      "tier": "T2",
+      "category": "gi_severe",
+      "triggers": [
+        "can't keep anything down",
+        "cant keep anything down",
+        "haven't been able to keep",
+        "havent been able to keep",
+        "uncontrolled vomiting",
+        "severe vomiting",
+        "keep vomiting",
+        "vomiting everything",
+        "belly feels stretched",
+        "uncontrolled diarrhea",
+        "severe diarrhea"
+      ]
+    },
+    {
+      "tier": "T2",
+      "category": "urinary",
+      "triggers": [
+        "can't urinate",
+        "cant urinate",
+        "urinary retention"
+      ]
+    },
+    {
+      "tier": "T2",
+      "category": "breathing_on_treatment",
+      "triggers": [
+        "shortness of breath",
+        "short of breath",
+        "trouble catching my breath"
+      ],
+      "note": "In cancer care this is the sentinel symptom for pneumonitis, pulmonary embolism, or cardiotoxicity. Severe variants are T1 via the base breathing rule."
+    },
+    {
+      "tier": "T2",
+      "category": "fever_on_treatment",
+      "triggers": [
+        "fever of 100",
+        "fever of 101",
+        "fever of 102",
+        "fever of 103",
+        "fever of 104",
+        "high fever",
+        "shaking chills",
+        "rigors"
+      ],
+      "note": "Deterministic floor cannot verify the decimal or treatment status, so any stated fever holds at T2 (err toward escalation, per the base file's most important rule)."
+    },
+    {
+      "tier": "T3",
+      "category": "cough_mild",
+      "triggers": [
+        "dry cough",
+        "new cough"
+      ],
+      "note": "Base file places new cough without breathing trouble at T3. Cough WITH breathing trouble hits the breathing rules first (higher tier wins)."
+    }
+  ]
+}
