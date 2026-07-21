@@ -673,6 +673,40 @@ def api_trials_feedback():
         return jsonify({"status": "error"}), 500
 
 
+@app.route("/api/safety/log_symptom", methods=["POST"])
+@require_auth
+def api_safety_log_symptom():
+    """T2 escalation card's "Log this symptom" action: one timestamped
+    patient_events row so the symptom is on the record when the patient
+    talks to their care team (supervisor doc: "the one useful non-medical
+    action"). No free-text is required; the note is patient-authored."""
+    try:
+        user_id = request.user["user_id"]
+        from rate_limit import check_rate_limit
+        allowed, _remaining = check_rate_limit(user_id, 'safety_log_symptom',
+                                               *RATE_LIMIT_TRIALS_FEEDBACK)
+        if not allowed:
+            return jsonify({"error": "Too many requests"}), 429
+
+        body = request.get_json(silent=True) or {}
+        tier = str(body.get("tier") or "")
+        category = str(body.get("category") or "")[:80]
+        note = str(body.get("note") or "")[:500]
+        if tier not in ("T1", "T2", "T3", "MH") or not category:
+            return jsonify({"error": "Invalid symptom payload"}), 400
+
+        from supabase_storage import append_patient_event
+        append_patient_event(
+            user_id, "symptom_report",
+            payload={"tier": tier, "category": category, "note": note},
+            source="safety_card",
+        )
+        return jsonify({"status": "ok"})
+    except Exception:
+        logger.exception("safety log_symptom error")
+        return jsonify({"status": "error"}), 500
+
+
 @app.route("/api/modeler/graph", methods=["GET"])
 @require_auth
 def api_modeler_graph():
@@ -1461,66 +1495,43 @@ def api_chat():
         cancer_types_filter = [cancer_slug, 'general'] if cancer_slug else None
         patient_context['cancer_slug'] = cancer_slug
 
-        # ----- CRISIS SHORT-CIRCUIT --------------------------------------
-        # Runs BEFORE Tier 1. Bare crisis prompts ("I don't want to keep
-        # living", "I can't keep anything down for 36 hours") lack any
-        # oncology vocab and were being rejected by the off-topic filter
-        # — the exact wrong outcome. Detect those phrases here, bypass
-        # the LLM, and return a hardcoded safety response with helplines.
-        # The LLM cannot soften or hedge what it never sees.
+        # ----- SAFETY CLASSIFIER (supervisor mandate 2026-07-21) ----------
+        # Supersedes the crisis short-circuit. Every inbound message is
+        # tiered (T1/T2/T3/MH/NONE) by lib/safety_classifier BEFORE the chat
+        # model: deterministic keyword floor + LLM judgment layer that can
+        # only raise the tier. Started HERE and joined right after retrieval
+        # so the ~0.6s LLM call runs concurrently with hybrid_search and
+        # adds ~0 wall-clock. T1/T2/MH short-circuit with an escalation
+        # card; T3 rides alongside the normal reply as a banner; the LLM
+        # never sees a T1/T2/MH message, so it cannot soften the response.
+        safety_future = None
+        safety_executor = None
         try:
-            from confidence import (
-                detect_crisis_pattern, render_crisis_response,
-                crisis_resources_for,
-            )
-            _crisis_hit = detect_crisis_pattern(message)
-            if _crisis_hit:
-                _cat = _crisis_hit['category']
-                logger.warning(
-                    f"CRISIS_SHORTCIRCUIT user={user_id} category={_cat} matched={_crisis_hit['matched']!r}"
+            from concurrent.futures import ThreadPoolExecutor
+            from safety_classifier import classify_message, SafetyResult
+
+            _tx_summary = str(patient_context.get('current_treatments') or '')
+            _on_active_tx = bool(patient_context.get('current_regimen')) or \
+                ('active' in _tx_summary.lower())
+
+            def _run_safety_classifier() -> "SafetyResult":
+                _perspective = 'self'
+                try:
+                    from supabase_storage import get_account_basics
+                    _basics = get_account_basics(user_id) or {}
+                    _perspective = _basics.get('perspective') or 'self'
+                except Exception:
+                    pass
+                return classify_message(
+                    message,
+                    on_active_treatment=_on_active_tx,
+                    perspective=_perspective,
                 )
-                _crisis_answer = render_crisis_response(_cat)
-                _crisis_res = crisis_resources_for(_cat)
-                _crisis_level = {
-                    'self_harm': 'EMERGENCY',
-                    'medical_emergency': 'EMERGENCY',
-                    'urgent_oncology': 'URGENT',
-                }.get(_cat, 'URGENT')
-                return jsonify({
-                    "answer": _crisis_answer,
-                    "api_used": "crisis-shortcircuit",
-                    "retrieved_count": 0,
-                    "response_length": response_length,
-                    "patient_context_used": False,
-                    "mismatch_detected": False,
-                    "pii_filtered": False,
-                    "validation_warnings": [],
-                    "medical_safety_check": True,
-                    "conversation_length": 0,
-                    "has_profile_updates": False,
-                    "profile_updates_saved": None,
-                    "sources": [],
-                    "citations": {},
-                    "resources": [],
-                    "followups": [],
-                    "guidelines_used": [],
-                    "has_guidelines": False,
-                    "clinical_trials": None,
-                    "urgency": {
-                        "detected": True,
-                        "level": _crisis_level,
-                        "guidance": _crisis_res.get("message"),
-                    },
-                    "is_crisis": True,
-                    "crisis_resources": _crisis_res,
-                    "crisis_category": _cat,
-                    "debug_info": {
-                        "api_used": "crisis-shortcircuit",
-                        "crisis_matched": _crisis_hit['matched'],
-                    },
-                })
-        except Exception as _crisis_err:
-            logger.exception(f"Crisis shortcircuit failed (continuing to normal flow): {_crisis_err}")
+
+            safety_executor = ThreadPoolExecutor(max_workers=1)
+            safety_future = safety_executor.submit(_run_safety_classifier)
+        except Exception:
+            logger.exception("Safety classifier failed to start (continuing)")
 
         # Classify query type early — it drives both the symptom-context injection
         # below and the chunk-retrieval top_k. Must be set before any branch reads it.
@@ -1574,22 +1585,129 @@ def api_chat():
             except Exception:
                 logger.exception("search_chunks also failed")
 
-        # Off-topic detection — refuse with redirect if query is outside scope
+        # ----- SAFETY CLASSIFIER JOIN -------------------------------------
+        # Retrieval is done; collect the classifier result (usually already
+        # finished). classify_message has its own internal timeout and never
+        # raises; the outer timeout only guards a wedged thread.
+        safety_result = None
+        if safety_future is not None:
+            try:
+                safety_result = safety_future.result(timeout=6)
+            except Exception:
+                logger.exception("Safety classifier join failed (continuing)")
+            finally:
+                try:
+                    safety_executor.shutdown(wait=False)
+                except Exception:
+                    pass
+        safety_tier = safety_result.tier if safety_result else 'NONE'
+
+        if safety_result is not None and safety_tier != 'NONE':
+            try:
+                from supabase_storage import log_safety_classification
+                log_safety_classification(
+                    user_id, active_conversation_id, message, safety_result)
+            except Exception:
+                logger.warning("safety classification logging failed")
+
+        if safety_tier in ('T1', 'T2', 'MH'):
+            # Escalation card INSTEAD of a chat reply. Legacy fields
+            # (is_crisis / crisis_resources / crisis_category / urgency) are
+            # preserved for older clients; the new `safety` block carries the
+            # tier card. The chat LLM never sees this message.
+            from confidence import render_crisis_response, crisis_resources_for
+            from safety_classifier import render_patient_line
+            from safety_rules import emergency_number, rules_version
+
+            _legacy_cat = {
+                'MH': 'self_harm',
+                'T1': 'medical_emergency',
+                'T2': 'urgent_oncology',
+            }[safety_tier]
+            _crisis_res = crisis_resources_for(_legacy_cat)
+            _level = 'EMERGENCY' if safety_tier in ('T1', 'MH') else 'URGENT'
+            _perspective = 'self'
+            _patient_first = None
+            try:
+                from supabase_storage import get_account_basics
+                _b = get_account_basics(user_id) or {}
+                _perspective = _b.get('perspective') or 'self'
+                _patient = (patient_profile or {}).get('patient') or {}
+                _patient_first = _patient.get('firstName') or None
+            except Exception:
+                pass
+            _line = render_patient_line(
+                safety_tier, _perspective, _patient_first)
+            logger.warning(
+                f"SAFETY_ESCALATION tier={safety_tier} "
+                f"category={safety_result.category} "
+                f"source={safety_result.source} "
+                f"rule_matched={safety_result.rule_matched}"
+            )
+            return jsonify({
+                "answer": render_crisis_response(_legacy_cat),
+                "api_used": "safety-classifier",
+                "retrieved_count": 0,
+                "response_length": response_length,
+                "patient_context_used": False,
+                "mismatch_detected": False,
+                "pii_filtered": False,
+                "validation_warnings": [],
+                "medical_safety_check": True,
+                "conversation_length": len(history),
+                "has_profile_updates": False,
+                "profile_updates_saved": None,
+                "sources": [],
+                "citations": {},
+                "resources": [],
+                "followups": [],
+                "guidelines_used": [],
+                "has_guidelines": False,
+                "clinical_trials": None,
+                "urgency": {
+                    "detected": True,
+                    "level": _level,
+                    "guidance": _line or _crisis_res.get("message"),
+                },
+                "is_crisis": True,
+                "crisis_resources": _crisis_res,
+                "crisis_category": _legacy_cat,
+                "safety": {
+                    "tier": safety_tier,
+                    "category": safety_result.category,
+                    "patient_line": _line,
+                    "rule_matched": safety_result.rule_matched,
+                    "confidence": safety_result.confidence,
+                    "emergency_number": emergency_number(),
+                    "offer_symptom_log": safety_tier == 'T2',
+                    "rules_version": rules_version(),
+                },
+                "debug_info": {
+                    "api_used": "safety-classifier",
+                    "safety_source": safety_result.source,
+                },
+            })
+
+        # Off-topic detection — refuse with redirect if query is outside scope.
+        # Any non-NONE safety tier (i.e. T3 here) is in-domain BY DEFINITION:
+        # symptom-described emergencies without oncology vocab ("passing a lot
+        # of blood from my rectum") used to die on this gate.
         try:
             from confidence import is_in_oncology_domain, render_off_topic_response
-            on_topic, ot_reason = is_in_oncology_domain(message, retrieved)
-            if not on_topic:
-                logger.info(f"Off-topic query refused: {ot_reason}")
-                return jsonify({
-                    "status": "ok",
-                    "answer": render_off_topic_response(cancer_slug),
-                    "api_used": "off-topic-filter",
-                    "retrieved_count": 0,
-                    "off_topic": True,
-                    "sources": [],
-                    "guidelines_used": [],
-                    "has_guidelines": False,
-                })
+            if safety_tier == 'NONE':
+                on_topic, ot_reason = is_in_oncology_domain(message, retrieved)
+                if not on_topic:
+                    logger.info(f"Off-topic query refused: {ot_reason}")
+                    return jsonify({
+                        "status": "ok",
+                        "answer": render_off_topic_response(cancer_slug),
+                        "api_used": "off-topic-filter",
+                        "retrieved_count": 0,
+                        "off_topic": True,
+                        "sources": [],
+                        "guidelines_used": [],
+                        "has_guidelines": False,
+                    })
         except Exception:
             logger.exception("Off-topic detection failed (continuing with normal flow)")
 
@@ -1998,6 +2116,34 @@ def api_chat():
             except Exception as e:
                 logger.error(f"Error extracting source metadata: {e}", exc_info=True)
 
+            # T3 (same-day) banner: the classifier's verdict wins over the
+            # prompt-injection urgency so exactly ONE banner renders, and the
+            # structured safety block rides along for the card UI.
+            safety_block = None
+            t3_urgency = None
+            if safety_result is not None and safety_tier == 'T3':
+                try:
+                    from safety_classifier import render_patient_line
+                    from safety_rules import emergency_number, rules_version
+                    _t3_line = render_patient_line('T3', 'self', None)
+                    t3_urgency = {
+                        "detected": True,
+                        "level": "SAME_DAY",
+                        "guidance": _t3_line,
+                    }
+                    safety_block = {
+                        "tier": "T3",
+                        "category": safety_result.category,
+                        "patient_line": _t3_line,
+                        "rule_matched": safety_result.rule_matched,
+                        "confidence": safety_result.confidence,
+                        "emergency_number": emergency_number(),
+                        "offer_symptom_log": False,
+                        "rules_version": rules_version(),
+                    }
+                except Exception:
+                    logger.exception("T3 safety block build failed")
+
             # Build response
             response_data = {
                 "answer": final_answer,
@@ -2021,11 +2167,12 @@ def api_chat():
                 "clinical_trials": clinical_trials_data,
                 "pending_confirmations": pending_confirmations or None,
                 "lifecycle_stage": lifecycle_stage,
-                "urgency": {
+                "urgency": t3_urgency or ({
                     "detected": prompt_metadata.get('urgency_detected', False),
                     "level": prompt_metadata.get('urgency_level'),
                     "guidance": prompt_metadata.get('urgency_guidance', '')
-                } if prompt_metadata.get('urgency_detected') else None,
+                } if prompt_metadata.get('urgency_detected') else None),
+                "safety": safety_block,
                 "debug_info": {
                     "api_used": api_used,
                     "retrieved_count": len(retrieved),
