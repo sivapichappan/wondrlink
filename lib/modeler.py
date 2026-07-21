@@ -353,10 +353,16 @@ def call_modeler_llm(payload: str) -> Optional[dict]:
         max_tokens=LLM_MAX_TOKENS,
     )
     try:
+        import time as _time
+        from ai_gateway import log_llm_call
+        _t0 = _time.perf_counter()
         try:
             response = client.chat.completions.create(timeout=LLM_TIMEOUT_S, **kwargs)
         except TypeError:
             response = client.chat.completions.create(**kwargs)
+        log_llm_call("modeler", "together", get_model("modeler"),
+                     int((_time.perf_counter() - _t0) * 1000),
+                     usage=getattr(response, "usage", None))
         if response and response.choices:
             content = (response.choices[0].message.content or "").strip()
             # Some runs wrap the JSON in markdown fences despite json mode.

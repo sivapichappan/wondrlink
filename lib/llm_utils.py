@@ -1852,12 +1852,18 @@ def derive_subqueries(query: str) -> List[str]:
             return []
         from model_registry import get_model
         prompt = SUBQUERY_DERIVATION_PROMPT.format(query=query[:500])
+        import time as _time
+        from ai_gateway import log_llm_call
+        _t0 = _time.perf_counter()
         completion = client.chat.completions.create(
             model=get_model("verifier"),
             messages=[{"role": "user", "content": prompt}],
             max_tokens=200,
             temperature=0.2,
         )
+        log_llm_call("subquery", "groq", get_model("verifier"),
+                     int((_time.perf_counter() - _t0) * 1000),
+                     usage=getattr(completion, "usage", None))
         raw = (completion.choices[0].message.content or "").strip()
         match = _re_citations.search(r'\[[\s\S]*\]', raw)
         if not match:
@@ -3259,6 +3265,9 @@ def call_llm(prompt: str, response_length: str = "normal", temperature: float = 
             return None
         try:
             logger.info(f"Calling Anthropic (chat), response_length: {response_length}, temp: {effective_temperature}")
+            import time as _time
+            from ai_gateway import log_llm_call
+            _t0 = _time.perf_counter()
             resp = _requests.post(
                 "https://api.anthropic.com/v1/messages",
                 headers={
@@ -3275,6 +3284,12 @@ def call_llm(prompt: str, response_length: str = "normal", temperature: float = 
                 },
                 timeout=45,
             )
+            _latency = int((_time.perf_counter() - _t0) * 1000)
+            _usage = (resp.json().get("usage") or {}) if resp.status_code == 200 else {}
+            log_llm_call("chat", "anthropic", get_model("chat"), _latency,
+                         prompt_tokens=_usage.get("input_tokens"),
+                         completion_tokens=_usage.get("output_tokens"),
+                         ok=resp.status_code == 200)
             if resp.status_code == 200:
                 blocks = resp.json().get("content") or []
                 text = "".join(b.get("text", "") for b in blocks if b.get("type") == "text")
@@ -3315,6 +3330,9 @@ def call_llm(prompt: str, response_length: str = "normal", temperature: float = 
             if "kimi" in together_model.lower():
                 max_tokens += 1536
                 extra_kwargs["chat_template_kwargs"] = {"enable_thinking": False}
+            import time as _time
+            from ai_gateway import log_llm_call
+            _t0 = _time.perf_counter()
             response = client.chat.completions.create(
                 model=together_model,
                 messages=[
@@ -3326,6 +3344,9 @@ def call_llm(prompt: str, response_length: str = "normal", temperature: float = 
                 top_p=0.9,
                 **extra_kwargs,
             )
+            log_llm_call("chat", "together", together_model,
+                         int((_time.perf_counter() - _t0) * 1000),
+                         usage=getattr(response, "usage", None))
             if response and response.choices and len(response.choices) > 0:
                 content = response.choices[0].message.content
                 if content:
@@ -3348,6 +3369,9 @@ def call_llm(prompt: str, response_length: str = "normal", temperature: float = 
             return None
         try:
             logger.info(f"Calling Groq (fallback), response_length: {response_length}, temp: {effective_temperature}")
+            import time as _time
+            from ai_gateway import log_llm_call
+            _t0 = _time.perf_counter()
             response = client.chat.completions.create(
                 model=get_model("fallback"),
                 messages=[
@@ -3358,6 +3382,9 @@ def call_llm(prompt: str, response_length: str = "normal", temperature: float = 
                 temperature=effective_temperature,
                 top_p=0.9,
             )
+            log_llm_call("chat", "groq", get_model("fallback"),
+                         int((_time.perf_counter() - _t0) * 1000),
+                         usage=getattr(response, "usage", None))
             if response and response.choices and len(response.choices) > 0:
                 content = response.choices[0].message.content
                 if content:
@@ -3582,6 +3609,9 @@ def extract_profile_updates_from_query(message: str, current_profile: dict) -> d
     try:
         from model_registry import get_model
         model = get_model("extractor") if get_together_client() else get_model("fallback")
+        import time as _time
+        from ai_gateway import log_llm_call
+        _t0 = _time.perf_counter()
         response = client.chat.completions.create(
             model=model,
             messages=[
@@ -3591,6 +3621,10 @@ def extract_profile_updates_from_query(message: str, current_profile: dict) -> d
             response_format={"type": "json_object"},
             temperature=0.1,
         )
+        log_llm_call("extract",
+                     "together" if get_together_client() else "groq",
+                     model, int((_time.perf_counter() - _t0) * 1000),
+                     usage=getattr(response, "usage", None))
 
         if response and response.choices:
             content = response.choices[0].message.content

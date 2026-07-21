@@ -210,6 +210,12 @@ def _call_classifier_llm(
     start = time.perf_counter()
     response = client.chat.completions.create(**call_kwargs)
     latency_ms = int((time.perf_counter() - start) * 1000)
+    try:
+        from ai_gateway import log_llm_call
+        log_llm_call("classify", get_provider("classifier"), model, latency_ms,
+                     usage=getattr(response, "usage", None))
+    except Exception:
+        pass
     content = ""
     if response and response.choices:
         content = response.choices[0].message.content or ""

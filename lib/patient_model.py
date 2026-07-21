@@ -314,11 +314,18 @@ def extract_facts(message: str, current_profile: dict) -> List[CandidateFact]:
             response_format={"type": "json_object"},
             temperature=0.1,
         )
+        import time as _time
+        from ai_gateway import log_llm_call
+        _t0 = _time.perf_counter()
         try:
             response = client.chat.completions.create(timeout=EXTRACTOR_TIMEOUT_S, **kwargs)
         except TypeError:
             # SDK without per-request timeout support
             response = client.chat.completions.create(**kwargs)
+        log_llm_call("extract",
+                     "together" if get_together_client() else "groq",
+                     model, int((_time.perf_counter() - _t0) * 1000),
+                     usage=getattr(response, "usage", None))
         if response and response.choices:
             parsed = json.loads(response.choices[0].message.content or "{}")
             for cand in _parse_llm_facts(parsed):

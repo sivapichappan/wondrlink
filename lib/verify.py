@@ -88,6 +88,9 @@ Output the JSON object now. No prose, no preamble — just the JSON."""
             logger.warning("Groq unavailable for verification — passing through")
             return default_pass
 
+        import time as _time
+        from ai_gateway import log_llm_call
+        _t0 = _time.perf_counter()
         completion = client.chat.completions.create(
             model=get_model("verifier"),
             messages=[
@@ -98,6 +101,9 @@ Output the JSON object now. No prose, no preamble — just the JSON."""
             temperature=0.1,
             top_p=0.9,
         )
+        log_llm_call("verify", "groq", get_model("verifier"),
+                     int((_time.perf_counter() - _t0) * 1000),
+                     usage=getattr(completion, "usage", None))
 
         if not completion or not completion.choices:
             return default_pass
