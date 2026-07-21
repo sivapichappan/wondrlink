@@ -1,0 +1,275 @@
+{
+  "version": "0.9",
+  "status": "DRAFT. Requires physician review before production use with real patients.",
+  "notes": "Tiers determine the UI response. The classifier errs toward escalation: when in doubt between two tiers, pick the higher. Being on active treatment (chemo, immunotherapy, radiation, recent surgery) raises borderline cases one tier.",
+  "tiers": {
+    "T1": {
+      "label": "emergency",
+      "ui": "Escalation card. Lead with Call 911 (or local emergency number). Care team button second. No chat reply before the card.",
+      "patient_line": "This is an emergency. Call 911 now."
+    },
+    "T2": {
+      "label": "urgent",
+      "ui": "Escalation card. Lead with Call your care team right away. Call 911 if you feel very unwell. Offer to log the symptom with timestamp after the card.",
+      "patient_line": "This needs a doctor now. Call your care team right away."
+    },
+    "T3": {
+      "label": "same_day",
+      "ui": "Soft banner above the chat reply: This is worth a call to your care team today. Normal conversation continues below it.",
+      "patient_line": "This is worth a call to your care team today."
+    },
+    "MH": {
+      "label": "mental_health_crisis",
+      "ui": "Compassionate message, not the medical card. Provide crisis resources (988 in the US) and the care team option. Never discuss methods. Stay warm, stay with the user, do not end the conversation.",
+      "patient_line": "I'm really glad you told me. You deserve support right now."
+    }
+  },
+  "rules": [
+    {
+      "tier": "T1",
+      "category": "breathing",
+      "triggers": [
+        "severe shortness of breath",
+        "can't breathe",
+        "struggling to breathe",
+        "lips or face turning blue"
+      ]
+    },
+    {
+      "tier": "T1",
+      "category": "cardiac",
+      "triggers": [
+        "chest pain",
+        "chest pressure or tightness",
+        "pain spreading to arm or jaw"
+      ]
+    },
+    {
+      "tier": "T1",
+      "category": "stroke_signs",
+      "triggers": [
+        "face drooping",
+        "slurred speech",
+        "sudden weakness or numbness on one side",
+        "sudden trouble seeing or walking"
+      ]
+    },
+    {
+      "tier": "T1",
+      "category": "neuro_collapse",
+      "triggers": [
+        "seizure",
+        "unresponsive",
+        "fainted and hard to wake",
+        "sudden severe confusion"
+      ]
+    },
+    {
+      "tier": "T1",
+      "category": "bleeding_severe",
+      "triggers": [
+        "bleeding that will not stop",
+        "vomiting blood",
+        "coughing up blood more than streaks",
+        "large amounts of blood in stool"
+      ]
+    },
+    {
+      "tier": "T1",
+      "category": "allergic",
+      "triggers": [
+        "throat or tongue swelling",
+        "hives with trouble breathing",
+        "severe reaction after new medication or infusion"
+      ]
+    },
+    {
+      "tier": "T2",
+      "category": "fever_on_treatment",
+      "triggers": [
+        "fever of 100.4 F / 38 C or higher",
+        "any fever during chemo or within 6 weeks of chemo",
+        "shaking chills or rigors"
+      ],
+      "note": "Possible neutropenic fever. The single most important rule in this file."
+    },
+    {
+      "tier": "T2",
+      "category": "cord_compression",
+      "triggers": [
+        "new back pain with leg weakness or numbness",
+        "trouble controlling bladder or bowels",
+        "numbness in the groin area"
+      ],
+      "note": "Possible spinal cord compression."
+    },
+    {
+      "tier": "T2",
+      "category": "neuro_new",
+      "triggers": [
+        "new confusion",
+        "extreme drowsiness",
+        "sudden severe headache unlike usual",
+        "sudden vision changes"
+      ]
+    },
+    {
+      "tier": "T2",
+      "category": "gi_severe",
+      "triggers": [
+        "can't keep any fluids down for 24 hours",
+        "vomiting that won't stop",
+        "severe diarrhea, 6 or more episodes a day",
+        "severe belly pain",
+        "no bowel movement plus swollen painful belly"
+      ],
+      "note": "Severe diarrhea on immunotherapy may be colitis."
+    },
+    {
+      "tier": "T2",
+      "category": "clot_signs",
+      "triggers": [
+        "new swelling or pain in one leg",
+        "sudden calf pain",
+        "one leg warmer or redder than the other"
+      ],
+      "note": "Possible DVT. If paired with breathing trouble, treat as T1."
+    },
+    {
+      "tier": "T2",
+      "category": "bleeding_moderate",
+      "triggers": [
+        "nosebleed or gum bleeding that won't stop",
+        "blood in urine",
+        "blood in stool",
+        "unusual bruising appearing quickly"
+      ],
+      "note": "Possible low platelets."
+    },
+    {
+      "tier": "T2",
+      "category": "infection_site",
+      "triggers": [
+        "redness, swelling, warmth, or discharge at port or catheter site",
+        "surgical wound opening or leaking"
+      ]
+    },
+    {
+      "tier": "T2",
+      "category": "urinary",
+      "triggers": [
+        "little or no urine for a day",
+        "very dark urine with weakness"
+      ]
+    },
+    {
+      "tier": "T2",
+      "category": "jaundice",
+      "triggers": [
+        "skin or eyes turning yellow"
+      ]
+    },
+    {
+      "tier": "T2",
+      "category": "pain_uncontrolled",
+      "triggers": [
+        "severe pain not helped by prescribed medication"
+      ]
+    },
+    {
+      "tier": "T2",
+      "category": "skin_severe",
+      "triggers": [
+        "blistering or peeling rash",
+        "rash spreading quickly",
+        "mouth sores so bad you can't drink"
+      ]
+    },
+    {
+      "tier": "T3",
+      "category": "fever_low_no_treatment",
+      "triggers": [
+        "low-grade fever, under 100.4 F, not on active treatment"
+      ]
+    },
+    {
+      "tier": "T3",
+      "category": "gi_moderate",
+      "triggers": [
+        "diarrhea a few times a day",
+        "nausea mostly controlled but persistent",
+        "constipation for 3 days"
+      ]
+    },
+    {
+      "tier": "T3",
+      "category": "intake",
+      "triggers": [
+        "barely eating for several days",
+        "losing weight quickly"
+      ]
+    },
+    {
+      "tier": "T3",
+      "category": "swelling_mild",
+      "triggers": [
+        "new mild swelling in feet or ankles"
+      ]
+    },
+    {
+      "tier": "T3",
+      "category": "cough_mild",
+      "triggers": [
+        "new cough without breathing trouble"
+      ]
+    },
+    {
+      "tier": "T3",
+      "category": "mood_decline",
+      "triggers": [
+        "can't sleep for days",
+        "feeling hopeless or very low for more than two weeks"
+      ],
+      "note": "If any self-harm intent appears, this becomes MH."
+    },
+    {
+      "tier": "MH",
+      "category": "self_harm",
+      "triggers": [
+        "wanting to die",
+        "suicidal thoughts",
+        "planning to hurt themselves",
+        "feeling like a burden and wanting to disappear"
+      ],
+      "note": "Respond with warmth first. 988 Suicide and Crisis Lifeline in the US. Never discuss or list methods. Keep the conversation open."
+    }
+  ],
+  "context_modifiers": [
+    "on_active_treatment: raises borderline T3 fever, GI, and bleeding cases to T2",
+    "caregiver_voice: all patient_lines re-render with the patient's name and pronouns, e.g. 'Rosa needs a doctor now'",
+    "region: emergency number is a config value (911 default). Localize before launching outside the US."
+  ],
+  "classifier_contract": {
+    "input": "single inbound message plus minimal context: on_active_treatment (bool), perspective (self or caregiver), patient_name",
+    "output": {
+      "tier": "T1 | T2 | T3 | MH | NONE",
+      "category": "string",
+      "confidence": "0-1",
+      "rationale": "one sentence",
+      "rule_matched": "boolean. True if a listed rule applies, false if the tier was assigned by AI judgment beyond the list."
+    },
+    "behavior": "Runs before the chat model on every inbound message. NONE means proceed to normal chat. Any non-NONE tier renders its UI treatment first. Err toward escalation on ambiguity."
+  },
+  "ai_judgment_fallback": {
+    "enabled": true,
+    "principle": "The rules above are examples that anchor judgment, not the boundary of it. If a message describes a symptom or situation that sounds medically dangerous and no listed rule applies, the classifier must still assign the appropriate tier using general clinical knowledge, and the same UI treatment fires.",
+    "instructions": [
+      "Never return NONE just because no listed rule matched. First ask: would a nurse hearing this message tell the person to seek care, and how fast?",
+      "Err toward escalation. Ambiguity between NONE and T3 resolves to T3. Ambiguity between T3 and T2 resolves to T2.",
+      "Consider symptom combinations, not just single symptoms. Mild items together can be urgent (e.g. dizziness plus dark stools suggests bleeding).",
+      "Apply the same context modifiers: active treatment raises borderline cases one tier.",
+      "Set rule_matched to false and name the closest category, or 'novel' if none is close, with a one-line rationale."
+    ],
+    "review_loop": "All rule_matched: false classifications are logged to a dedicated table and reviewed weekly. Recurring patterns are promoted into the rules list as named entries in the next version of this file. Physician review covers both the list and a sample of AI-judgment calls."
+  }
+}

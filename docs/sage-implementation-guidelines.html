@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sage · Implementation guidelines · mysage.chat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F6F7F2; --ink:#20261D; --muted:#67705F; --faint:#9AA292;
+  --sage:#5F7355; --sage-deep:#3D4A35; --sage-tint:#E7ECE1; --sage-line:#C9D2C0;
+  --danger:#A73D2C; --danger-tint:#F6E4DF;
+  --white:#FFFFFF; --line:#DDE1D6; --code-bg:#EDEFE7;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{background:var(--paper); color:var(--ink); font-family:'Inter',sans-serif; font-size:16px; line-height:1.7;}
+.wrap{max-width:880px; margin:0 auto; padding:0 32px 96px;}
+h1,h2,h3{font-family:'Fraunces',serif; font-weight:500; line-height:1.25;}
+h1{font-size:46px;}
+h2{font-size:28px; margin:0 0 12px;}
+h3{font-size:19px; margin:24px 0 6px; color:var(--sage-deep);}
+p{max-width:70ch;}
+.cover{padding:80px 0 52px; border-bottom:1px solid var(--line);}
+.cover .domain{display:inline-block; background:var(--sage-tint); color:var(--sage-deep); font-size:14px; font-weight:600; padding:4px 14px; border-radius:999px; margin-bottom:18px;}
+.cover .thesis{font-family:'Fraunces',serif; font-size:20px; color:var(--muted); max-width:48ch; margin-top:14px;}
+.cover .meta{margin-top:24px; font-size:13px; color:var(--faint);}
+.section{padding:48px 0; border-bottom:1px solid var(--line);}
+.eyebrow{font-size:12px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--sage); margin-bottom:10px;}
+.lead{font-size:17.5px; color:var(--muted); margin-bottom:8px;}
+.section p + p{margin-top:13px;}
+.rule{background:var(--white); border-left:3px solid var(--sage); border-radius:0 12px 12px 0; padding:16px 20px; margin:20px 0; max-width:74ch;}
+.rule .t{font-size:12.5px; font-weight:600; color:var(--sage-deep); letter-spacing:.06em; text-transform:uppercase; margin-bottom:5px;}
+.rule p{font-size:14.5px; color:var(--muted);}
+.warn{background:var(--danger-tint); border-left:3px solid var(--danger); border-radius:0 12px 12px 0; padding:16px 20px; margin:20px 0; max-width:74ch;}
+.warn .t{font-size:12.5px; font-weight:600; color:var(--danger); letter-spacing:.06em; text-transform:uppercase; margin-bottom:5px;}
+.warn p{font-size:14.5px; color:var(--danger);}
+code{font-family:ui-monospace,Menlo,monospace; font-size:.86em; background:var(--code-bg); padding:2px 6px; border-radius:5px;}
+pre{background:var(--code-bg); border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin:16px 0; overflow-x:auto; font-family:ui-monospace,Menlo,monospace; font-size:13px; line-height:1.6;}
+pre code{background:none; padding:0;}
+table.spec{width:100%; border-collapse:collapse; margin-top:18px; font-size:14px;}
+table.spec th{text-align:left; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--sage-deep); border-bottom:2px solid var(--sage-line); padding:8px 12px 8px 0;}
+table.spec td{border-bottom:1px solid var(--line); padding:10px 12px 10px 0; vertical-align:top; color:var(--muted);}
+table.spec td:first-child{color:var(--ink); font-weight:500; white-space:nowrap;}
+ol.steps{margin:16px 0 0 20px; max-width:72ch;}
+ol.steps li{margin-bottom:10px; color:var(--muted); font-size:15px;}
+ol.steps li strong{color:var(--ink);}
+footer{padding-top:36px; font-size:13px; color:var(--faint);}
+@media(max-width:720px){ h1{font-size:36px;} .wrap{padding:0 20px 64px;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="cover">
+  <span class="domain">mysage.chat</span>
+  <h1>Sage · Implementation guidelines</h1>
+  <p class="thesis">Technical companion to the product flow document. How to set up auth, Supabase, the edge function boundary, and the AI layer.</p>
+  <p class="meta">v1 · July 2026 · Read alongside the Sage product flow document</p>
+</div>
+
+<div class="section">
+  <div class="eyebrow">Stack at a glance</div>
+  <table class="spec">
+    <tr><th>Layer</th><th>Choice</th><th>Why</th></tr>
+    <tr><td>Client</td><td>Expo (React Native + expo-router)</td><td>One codebase serves iOS, Android, and web. We need both a web client and a mobile client, and a single Expo project covers all three.</td></tr>
+    <tr><td>Backend</td><td>Supabase</td><td>Auth (phone OTP), Postgres with row level security, Storage for uploads, Edge Functions for all server-side logic.</td></tr>
+    <tr><td>SMS verification</td><td>Supabase test numbers now, Twilio Verify at launch</td><td>See Auth section. The client never knows which one is behind Supabase.</td></tr>
+    <tr><td>AI</td><td>Provider-agnostic gateway inside edge functions</td><td>Claude, OpenAI, or Gemini behind one internal interface. See AI layer section.</td></tr>
+    <tr><td>Transcription</td><td>Streaming speech-to-text via edge function proxy</td><td>Provider choice open (Whisper API, Deepgram, or similar). Same boundary rule as AI calls.</td></tr>
+    <tr><td>Trials</td><td>ClinicalTrials.gov v2 API</td><td>Free public API, queried from an edge function, never from the client.</td></tr>
+  </table>
+</div>
+
+<div class="section">
+  <div class="eyebrow">Auth</div>
+  <h2>Phone OTP, with a clean swap path</h2>
+  <p class="lead">Login is a phone number and a six digit code. Supabase phone auth handles the whole flow, and the SMS provider behind it is invisible to the client.</p>
+  <h3>During dev: test phone numbers, no SMS provider</h3>
+  <p>Supabase has built-in support for test phone numbers with static OTPs. In the dashboard under Authentication, Phone provider settings, define a set of test numbers, each mapped to a fixed code. Use your numbers and mine, plus a few obvious fakes for demos. Example:</p>
+  <pre><code>+15550001111 = 123456
++15550002222 = 123456
+(add our real numbers here too)</code></pre>
+  <p>With test numbers configured, <code>signInWithOtp</code> and <code>verifyOtp</code> work end to end with no SMS being sent and no Twilio account needed. The full login screens can be built and demoed immediately.</p>
+  <div class="warn"><div class="t">Do not build a bypass</div><p>Do not implement "accept any 10 digit number with any code" anywhere in code, even behind a flag. A flag like that eventually ships to production. Supabase test numbers give the same convenience, scoped explicitly, with zero risk.</p></div>
+  <h3>At launch: plug in Twilio Verify</h3>
+  <p>When we are ready for real users, we add Twilio Verify credentials in the same Supabase Phone provider settings and remove the test numbers. Nothing in the client changes, because the client only ever calls Supabase auth.</p>
+  <div class="rule"><div class="t">Hard rule</div><p>The client talks only to Supabase auth methods. No code path in the app may reference Twilio, know the SMS provider, or implement its own OTP logic. The request-code and verify-code contract stays identical from dev through production.</p></div>
+  <h3>Sessions and accounts</h3>
+  <p>On first successful verification, create the account row keyed to <code>auth.uid()</code> and route the user into onboarding (screens 2, 2a or 2b in the flow document). On later logins, route straight to the chat home. Sessions should be long-lived on mobile; a cancer patient should not be re-entering codes weekly.</p>
+</div>
+
+<div class="section">
+  <div class="eyebrow">Supabase setup</div>
+  <h2>Two projects, versioned schema, RLS everywhere</h2>
+  <h3>Projects and environments</h3>
+  <ol class="steps">
+    <li><strong>Create two Supabase projects:</strong> <code>sage-dev</code> and <code>sage-prod</code>. All day-to-day work happens in dev. Prod stays empty until launch.</li>
+    <li><strong>Use the Supabase CLI with migrations from day one.</strong> Every schema change is a migration file in the repo (<code>supabase migration new ...</code>), applied to dev while developing and to prod at release. No manual table edits in the prod dashboard, ever. This keeps the two projects identical and the schema reviewable in git.</li>
+    <li><strong>Environment config:</strong> the app reads <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> from env (Expo public env vars). Dev builds point at dev, release builds at prod. The service role key exists only in edge function secrets, never in the client, never in the repo.</li>
+  </ol>
+  <h3>Row level security</h3>
+  <p>Enable RLS on every table before writing any client code against it. The baseline policy for every user-owned table: a row is visible and writable only when its <code>account_id</code> equals <code>auth.uid()</code>. This means patient data isolation is enforced by the database itself, not by application code, which is exactly the posture we want for health data.</p>
+  <pre><code>alter table patient_profiles enable row level security;
+
+create policy "own rows only"
+on patient_profiles for all
+using (account_id = auth.uid())
+with check (account_id = auth.uid());</code></pre>
+  <div class="rule"><div class="t">Hard rule</div><p>No table ships without RLS enabled and a policy written. If a table ever needs cross-user access later (it should not in v1), that is a deliberate policy change reviewed together, not a default.</p></div>
+  <h3>Storage</h3>
+  <p>One private bucket, <code>records</code>, for uploaded reports and photos. Paths are per-user: <code>records/{account_id}/{file_id}</code>. Storage policies mirror the table rule: users can read and write only under their own account folder. The client displays files through short-lived signed URLs requested at view time. Nothing in Storage is ever public.</p>
+  <h3>Secrets</h3>
+  <p>All third-party keys (AI providers, transcription, and later Twilio) live in edge function secrets via <code>supabase secrets set</code>. If a key would need to exist in the client for a feature to work, the feature is designed wrong; route it through an edge function instead.</p>
+</div>
+<div class="section">
+  <div class="eyebrow">The edge function boundary</div>
+  <h2>The client never calls a third party</h2>
+  <p class="lead">Every call that involves a secret, an AI model, or an external API goes through a Supabase Edge Function. The client talks to Supabase auth, the database, Storage, and our own edge functions. Nothing else.</p>
+  <p>This gives us three things: API keys never touch the browser or app, we can switch providers without shipping a client update, and every AI interaction passes through one place where the safety layer runs.</p>
+  <h3>Suggested functions</h3>
+  <table class="spec">
+    <tr><th>Function</th><th>Does</th></tr>
+    <tr><td>chat</td><td>The main conversation loop. Receives the message and conversation id, runs the safety check first, then calls the AI gateway with the system prompt, voice-layer context, and profile state. Streams the reply. Writes any profile updates the model extracts.</td></tr>
+    <tr><td>safety-check</td><td>Runs inside chat before the model responds. Classifies the inbound message against the clinician-authored red-flag list. On trigger, returns the escalation card payload instead of a chat reply.</td></tr>
+    <tr><td>extract-document</td><td>Takes an uploaded file id, pulls it from Storage, sends it to the AI gateway for extraction, returns plain-language findings for the patient to confirm. Writes to the profile only after confirmation.</td></tr>
+    <tr><td>summarize-visit</td><td>Takes a finished visit transcript and produces the three sections: what the doctor said, what you do next, ask next time. Saves to the health log.</td></tr>
+    <tr><td>match-trials</td><td>Builds a ClinicalTrials.gov v2 query from the profile (condition, biomarkers, extent, prior lines, ECOG, distance from stored lat and lng) and returns ranked candidates with plain-language framing.</td></tr>
+    <tr><td>transcribe</td><td>Proxies streaming audio to the transcription provider during visit recording.</td></tr>
+  </table>
+  <div class="rule"><div class="t">Hard rule</div><p>If a feature seems to need a third-party key in the client, stop and route it through an edge function. No exceptions in v1.</p></div>
+</div>
+
+<div class="section">
+  <div class="eyebrow">The AI layer</div>
+  <h2>One gateway, any provider</h2>
+  <p class="lead">Do not couple the codebase to a single AI vendor. All model calls go through one internal module with one interface, and providers plug in behind it as adapters.</p>
+  <p>The gateway lives inside the edge functions as a small shared module. Every function that needs a model calls the same interface:</p>
+  <pre><code>type AiTask = "chat" | "extract" | "summarize" | "classify";
+
+interface AiRequest {
+  task: AiTask;
+  messages: Msg[];        // provider-neutral: {role, content}
+  schema?: JsonSchema;    // when structured output is needed
+  stream?: boolean;
+}
+
+async function complete(req: AiRequest): Promise&lt;AiResult&gt;</code></pre>
+  <p>Behind <code>complete()</code>, an adapter per provider (Anthropic, OpenAI, Google to start) translates the neutral format into that vendor's API. Which provider and model handles which task is configuration, not code:</p>
+  <pre><code>// config, editable without touching call sites
+tasks:
+  chat:      { provider: anthropic, model: claude-sonnet-4-6 }
+  extract:   { provider: anthropic, model: claude-sonnet-4-6 }
+  summarize: { provider: openai,    model: gpt-5-mini }
+  classify:  { provider: google,    model: gemini-flash }</code></pre>
+  <p>Rules that keep this genuinely swappable:</p>
+  <ol class="steps">
+    <li><strong>Neutral message format everywhere.</strong> Call sites never construct provider-specific payloads. Only adapters know vendor APIs.</li>
+    <li><strong>Prompts are versioned files in the repo,</strong> not strings scattered through code. One folder, one file per task, with the voice-layer template variables (patient name, pronoun, relationship, perspective) interpolated at call time.</li>
+    <li><strong>Structured output through the schema field.</strong> Each adapter maps it to that vendor's mechanism (tool use, JSON mode, response schema). Call sites just receive parsed JSON.</li>
+    <li><strong>No provider-exclusive features in core paths.</strong> If a vendor-specific capability is genuinely worth it somewhere, isolate it in the adapter with a fallback, and flag it so we know where the coupling is.</li>
+    <li><strong>Log task, provider, model, latency, and token counts</strong> on every call, so we can compare quality and cost per task and reroute in config.</li>
+  </ol>
+</div>
+
+<div class="section">
+  <div class="eyebrow">Data model</div>
+  <h2>Accounts, profiles, and immediate saves</h2>
+  <p>The account (keyed to <code>auth.uid()</code>, owned by the phone number) is separate from the patient profile, because the account holder may be a caregiver. Core tables:</p>
+  <table class="spec">
+    <tr><th>Table</th><th>Key fields</th></tr>
+    <tr><td>accounts</td><td>id (auth.uid), holder_name, perspective (self or caregiver), relationship, created_at</td></tr>
+    <tr><td>patient_profiles</td><td>account_id, patient_name, birth_year, gender, location (lat, lng, display), cancer_type, cancer_subtype, extent, metastasis_sites[], biomarkers[], prior_treatments[], progressed_on_treatment, prior_lines, ecog, comorbidities[], labs jsonb, care_team jsonb</td></tr>
+    <tr><td>conversations / messages</td><td>Standard chat persistence, account scoped</td></tr>
+    <tr><td>visits</td><td>account_id, transcript, summary jsonb (said, next, ask), recorded_at</td></tr>
+    <tr><td>health_log</td><td>account_id, entry_type, payload jsonb, logged_at</td></tr>
+    <tr><td>uploads</td><td>account_id, storage_path, extraction jsonb, confirmed boolean</td></tr>
+  </table>
+  <p style="margin-top:18px;">Three behaviors from the flow document, restated as build requirements: every profile field is nullable and every feature degrades gracefully when a field is missing; every interview answer writes to the database the moment it is given, so the interview is pausable with zero loss; and extraction results enter the profile only after the patient taps confirmation (<code>confirmed = true</code>).</p>
+</div>
+
+<div class="section">
+  <div class="eyebrow">Build order</div>
+  <h2>Suggested milestones</h2>
+  <ol class="steps">
+    <li><strong>Shell and auth:</strong> Expo project, Supabase dev project, migrations, phone OTP with test numbers, onboarding screens 1 through 2b.</li>
+    <li><strong>Chat loop:</strong> chat edge function, AI gateway with one provider adapter, anchor question, personalized menu, message persistence.</li>
+    <li><strong>Safety layer:</strong> classify task wired in front of chat, escalation card, care team capture.</li>
+    <li><strong>Visit recorder:</strong> consent screen, streaming transcription, summarize-visit, health log.</li>
+    <li><strong>Interview and uploads:</strong> interview screens with immediate saves, extract-document with confirmation.</li>
+    <li><strong>Trials:</strong> match-trials function, results screens, plain-language explanations.</li>
+  </ol>
+  <p style="margin-top:16px;">Content rules apply from the first commit: no em dashes anywhere in patient-facing text, plain language at a sixth grade reading level, and "I'm not sure" as an option on every interview question.</p>
+</div>
+
+<div class="section">
+  <div class="eyebrow">Appendix</div>
+  <h2>Safety layer: the red-flag list, v0.9</h2>
+  <p class="lead">The full rule set ships as <code>sage-safety-rules-v0.9.json</code> alongside this document. Load it as data in the classify function; do not hardcode symptoms in prompt strings.</p>
+  <div class="warn"><div class="t">Status: draft pending physician review</div><p>This list is drawn from published patient guidance (NCI, ASCO, and major cancer center "when to call your doctor" materials). It is a working v0.9 so the build is never blocked, but a physician must review and sign off before Sage is used by real patients. Track the review as a launch blocker.</p></div>
+  <h3>How the tiers work</h3>
+  <table class="spec">
+    <tr><th>Tier</th><th>Meaning</th><th>UI treatment</th></tr>
+    <tr><td>T1 emergency</td><td>Life-threatening now: breathing failure, chest pain, stroke signs, seizures, uncontrolled bleeding, severe allergic reaction</td><td>Escalation card leading with Call 911. No chat reply before the card.</td></tr>
+    <tr><td>T2 urgent</td><td>Needs the care team within the hour: any fever on treatment, cord compression signs, clot signs, severe GI, bleeding, port infection</td><td>Escalation card leading with Call your care team right away, 911 second, then offer to log the symptom.</td></tr>
+    <tr><td>T3 same day</td><td>Worth a call today but not a siren: persistent nausea, mild new swelling, days of poor intake</td><td>Soft banner above the normal chat reply. Conversation continues.</td></tr>
+    <tr><td>MH crisis</td><td>Self-harm or suicidal content</td><td>Compassionate message with crisis resources (988 in the US), not the medical card. Never discuss methods. Keep the conversation open.</td></tr>
+  </table>
+  <h3>Classifier behavior</h3>
+  <p>The classify task runs on every inbound message before the chat model, receiving the message plus three context flags: on active treatment, perspective, patient name. It returns a tier, category, confidence, and one-line rationale. NONE proceeds to normal chat. Two rules govern edge cases: when in doubt between tiers, pick the higher one, and being on active treatment raises borderline fever, GI, and bleeding cases from T3 to T2. The single most important rule in the file: any fever at or above 100.4 F (38 C) during or within six weeks of chemo is T2, because it can be neutropenic fever.</p>
+  <p>Use the AI gateway classify task for this (a fast model is fine), with the JSON rules injected as reference data and the output constrained to the schema in the file. Log every non-NONE classification with the message, tier, and rationale so we can audit false positives and misses weekly during early testing.</p>
+  <h3>AI judgment beyond the list</h3>
+  <p>The rules are the floor, not the ceiling. The classifier is instructed to treat the list as examples that anchor its judgment: if a message sounds medically dangerous and no listed rule applies, it still assigns the appropriate tier from general clinical knowledge, and the same escalation card fires. The guiding question in the prompt: would a nurse hearing this tell the person to seek care, and how fast? These calls return <code>rule_matched: false</code>, are logged to a dedicated table, and are reviewed weekly. Recurring patterns get promoted into the rules file as named entries, so the list grows from real usage. Combinations matter too: the classifier weighs symptoms together, since mild items in combination (dizziness plus dark stools, for example) can signal something urgent that neither would alone.</p>
+  <p>The emergency number is a config value, 911 by default, so launching outside the US later is a settings change, not a code change.</p>
+</div>
+
+<footer>
+  Sage · mysage.chat · Implementation guidelines v1 · July 2026<br>
+  Companion to the Sage product flow document.
+</footer>
+
+</div>
+</body>
+</html>

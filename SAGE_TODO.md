@@ -2,7 +2,10 @@
 
 _Compiled 2026-07-18 from three sources: the supervisor email (2026-07-17), the product-flow
 redesign (`docs/sage-product-flow.html`, v1 — 14 screens, 5 phases, wireframes + stack
-notes), and meeting notes (2026-07-17). Decisions below were locked 2026-07-18._
+notes), and meeting notes (2026-07-17). Decisions below were locked 2026-07-18.
+UPDATED 2026-07-21: the supervisor's implementation guidelines
+(`docs/sage-implementation-guidelines.html`) + safety rules
+(`config/safety/sage-safety-rules-v0.9.json`) landed — see Workstreams S and I._
 
 **Global standard (applies to every workstream):** no em dashes and sixth-grade reading
 level in ALL patient-facing text — UI copy, backend-generated strings, AND AI output
@@ -19,7 +22,10 @@ level in ALL patient-facing text — UI copy, backend-generated strings, AND AI 
    `ANTHROPIC_API_KEY` re-enables it with no deploy). Extractor (gpt-oss-120b) and
    Modeler (DeepSeek-V4-Pro) unchanged; emergency fallback upgraded to Groq
    `llama-3.3-70b-versatile`. One variable per eval window.
-3. **Phone OTP auth now** (Supabase phone provider + Twilio) — auth-method swap; JWT /
+3. **Phone OTP auth now** — AMENDED 2026-07-21 per the implementation guidelines: the
+   client talks ONLY to Supabase auth (`signInWithOtp`/`verifyOtp` via supabase-js);
+   dashboard TEST phone numbers during dev, Twilio Verify at launch; the Flask
+   `/api/auth/phone/*` proxy endpoints get deprecated (Workstream I). JWT /
    `require_auth` / RLS plumbing survives.
 4. **First push: Onboarding + Home + Auth**, built INSIDE the current UI/UX template.
    The Sage doc's wireframes define **flow and content, not styling** — reuse theme
@@ -93,7 +99,7 @@ _Rule: current design system, new flow. No visual redesign._
       emergencies with no cancer keyword ("passing a lot of blood from my rectum",
       "12 bouts of diarrhea") are tier1-rejected → escalation missed
       (off_topic 88.89%/escalation 66.67%, identical before and after the swap).
-      Fix the tier-1 gate in its own eval window — safety-relevant.
+      → FIX LANDS IN WORKSTREAM S: any non-NONE safety tier bypasses the domain gate.
 - [ ] Sixth-grade + no-em-dash voice rules go into the system prompt as a SEPARATE
       follow-up eval window (Kimi currently emits em dashes)
 - [ ] Modernize `scripts/test_all_features.py` keyword checks for the Sage voice
@@ -103,6 +109,51 @@ _Rule: current design system, new flow. No visual redesign._
       Kimi didn't proactively surface the diabetes-dexamethasone interaction on a generic
       FOLFOX side-effects question (direct diabetes question passes). Recheck proactive
       comorbidity surfacing in the voice-rules eval window.)
+
+## Workstream S — Safety layer (supervisor mandate 2026-07-21; ONE eval window)
+_Source: `docs/sage-implementation-guidelines.html` appendix + `config/safety/
+sage-safety-rules-v0.9.json`. Classify-before-chat on EVERY inbound message; rules
+loaded as DATA, never hardcoded in prompt strings. Plan: `.claude/plans/` (phases 1–6)._
+- [ ] Rules loader + deterministic floor (`lib/safety_rules.py`; local-extensions file
+      absorbs the legacy `_CRISIS_PATTERNS`; single keyword source)
+- [ ] Classifier LLM (`classifier` registry segment, Groq 8b; `lib/safety_classifier.py`;
+      floor always runs, LLM merges via tier_max, fail-open to floor on outage;
+      kill switch `SAFETY_CLASSIFIER_ENABLED` default ON).
+      PHI deviation (documented): patient_name NEVER sent to the LLM — caregiver
+      patient_line renders server-side
+- [ ] `safety_classifications` audit table (RLS, in delete_all_user_data) + weekly
+      `scripts/safety_report.py` review ritual (rule_matched:false → promotion
+      candidates for the next rules version)
+- [ ] Wire into `/api/chat`: T1/T2/MH short-circuit card, T3 same-day banner alongside
+      the normal reply, domain-gate bypass for non-NONE tiers, `POST /api/safety/
+      log_symptom` (T2 "log this symptom" → patient_events)
+- [ ] Client rendering: `EscalationCard` (mobile) + SPA in-thread card; shared types;
+      T3 rides the existing UrgencyBanner channel
+- [ ] Eval gate: `tier_accuracy` metric + `safety_classifier.yaml` suites; colorectal
+      llm expects escalation_accuracy 66.67% → ~100%, ZERO under-escalations
+- [ ] **LAUNCH BLOCKER: physician review of the rules file before real patients**
+      (v0.9 is draft from NCI/ASCO materials; reviewer proposal: Dr. Csiki; promotion
+      loop feeds v1.0)
+- [ ] Emergency number is config (`EMERGENCY_NUMBER`, default 911) for later non-US launch
+
+## Workstream I — Implementation-guidelines adoption (2026-07-21 doc)
+- [ ] **Stack question SENT to supervisor 2026-07-21** (`docs/drafts/
+      2026-07-21-supervisor-stack-email.md`): Flask boundary vs edge-function port.
+      All work below is stack-portable either way. AWAITING ANSWER.
+- [ ] Phone auth rework: mobile `sendPhoneCode`/`verifyPhoneCode` → direct
+      `supabase.auth.signInWithOtp`/`verifyOtp`; deprecate then delete Flask
+      `/api/auth/phone/*`; USER OPS: dashboard test numbers now, Twilio at launch
+- [ ] `accounts` table split (id = auth.uid, holder_name, perspective, relationship;
+      RLS own-rows; backfill from patient_profiles; patient_profiles stays user_id-keyed)
+- [ ] RLS on every user-owned table (today only patient_events / consent_withdrawals /
+      pattern_records have in-repo policies; core tables get enable+policy migrations —
+      defense-in-depth; service-role backend unaffected)
+- [ ] Gateway instrumentation: `lib/ai_gateway.py` `AI_CALL` log line {task, provider,
+      model, latency_ms, tokens} across all 8 provider call sites (non-PHI scalars only)
+- [ ] Prompts-as-files: every inline prompt constant → `lib/prompts/files/` (SHA-pinned
+      pure relocation, NOT an eval variable)
+- [ ] `sage-dev` Supabase project (scoped seed: schema + colorectal corpus) + Supabase
+      CLI migration flow going forward; USER OPS: create project, enable phone provider
 
 ## Workstream D — Interview + report upload (doc Phases 4–5, screens 8–13)
 - [ ] Structured, pausable, resumable interview triggered by trial matching (and any
@@ -160,11 +211,9 @@ _Rule: current design system, new flow. No visual redesign._
       from the patient_events timeline (timeline + LLM + template — mostly free)
 - [ ] **Local cache**: React Query persistence / offline reads for chat history +
       profile (hospital Wi-Fi reality)
-- [ ] **Safety upgrades from the doc**: escalation card with big "Call my care team" /
-      "Call 911" buttons; red-flag symptom list AUTHORED BY A CLINICIAN (request from
-      Dr. Csiki — fever on treatment, uncontrolled bleeding, sudden confusion, chest
-      pain, suicidal distress → warm human resources); then the one useful non-medical
-      action (log the symptom with a timestamp)
+- [x] ~~Safety upgrades from the doc~~ — SUPERSEDED by **Workstream S** (the supervisor
+      shipped the red-flag list as `sage-safety-rules-v0.9.json`; escalation card +
+      symptom logging land there; physician sign-off tracked as the launch blocker)
 
 ## Process / accountability (self-imposed)
 - [ ] Per-build self-test checklist (smoke list run on every TestFlight build)
@@ -176,12 +225,14 @@ _Rule: current design system, new flow. No visual redesign._
 - `mysage.chat` DNS — who owns it, and when do we point it at the deployment?
 - ~~Claude Sonnet API cost sign-off~~ — superseded 2026-07-21: chat runs on Together
   (Kimi-K2.6) with existing credits; Anthropic path dormant, no new spend to approve
-- Clinician-authored red-flag list (Workstream G safety card)
+- ~~Clinician-authored red-flag list~~ — received as `sage-safety-rules-v0.9.json`
+  (2026-07-21); remaining ask = physician sign-off (Dr. Csiki?) → Workstream S blocker
+- **Flask boundary vs edge-function port** — email sent 2026-07-21, awaiting answer
 - Pilot recruiting timing vs. redesign landing — recruit now on the old UI or wait?
 - Confirm: the pending old-WondrChat-UI TestFlight build is superseded and will NOT ship
 
 ## Suggested sequence
-A+B together (rename + new entry flow) → C in parallel (model swap is registry + evals)
-→ D (interview + reports; biggest capability jump on our strongest backend) → E (visit
-recorder) → F (caregiver voice) → G (notifications, doctor's note, fallback, cache)
-— with the safety-card upgrade slotted as soon as Dr. Csiki's red-flag list arrives.
+A+B+C SHIPPED → **S (safety layer, active now — supervisor's top structural ask)** →
+I (guidelines adoption: auth, accounts, RLS, dev project, gateway discipline) → D
+(interview + reports) → E (visit recorder) → F (caregiver voice) → G (notifications,
+doctor's note, fallback, cache).
