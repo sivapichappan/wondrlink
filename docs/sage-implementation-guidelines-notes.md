@@ -4,14 +4,13 @@ Companion to `docs/sage-implementation-guidelines.html`. Every deviation from th
 supervisor's document is listed here with its reason. Everything not listed is adopted
 as written.
 
-## 1. Server boundary: Flask on Vercel, not Supabase Edge Functions (PENDING supervisor answer)
+## 1. Server boundary: Flask on Vercel, not Supabase Edge Functions (RESOLVED)
 The guidelines assume all server logic lives in Supabase Edge Functions. Our live
-production backend is a Flask API on Vercel that already satisfies every hard rule's
-intent (client never calls third parties, keys server-side only, one safety choke
-point). The question was emailed to the supervisor 2026-07-21
-(`docs/drafts/2026-07-21-supervisor-stack-email.md`); all new work is built
-stack-portable (rules as data, prompts as files, provider-neutral contracts) so either
-answer is cheap.
+production backend is a Flask API on Vercel that satisfies every hard rule's intent
+(client never calls third parties, keys server-side only, one safety choke point).
+Asked 2026-07-21 (`docs/drafts/2026-07-21-supervisor-stack-email.md`);
+**supervisor confirmed 2026-07-22 that Flask is fine** — the Flask boundary is
+permanent, no edge-function port.
 
 ## 2. Safety classifier input: patient_name is NEVER sent to the LLM
 The rules file's `classifier_contract.input` lists `patient_name`. Sending a patient

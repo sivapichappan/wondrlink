@@ -137,9 +137,10 @@ sage-safety-rules-v0.9.json`. Deployed to prod after the eval gate passed._
 - [x] Emergency number is config (`EMERGENCY_NUMBER`, default 911)
 
 ## Workstream I — Implementation-guidelines adoption (2026-07-21 doc)
-- [ ] **Stack question SENT to supervisor 2026-07-21** (`docs/drafts/
-      2026-07-21-supervisor-stack-email.md`): Flask boundary vs edge-function port.
-      All shipped work is stack-portable either way. AWAITING ANSWER.
+- [x] **Stack question RESOLVED 2026-07-22: supervisor confirmed Flask is fine.**
+      The Flask API on Vercel is the permanent server boundary (the doc's
+      edge-function prescription is satisfied by equivalence: client never calls
+      third parties, keys server-side, one safety choke point). No port.
 - [x] Phone auth rework SHIPPED 2026-07-22: mobile calls
       `supabase.auth.signInWithOtp`/`verifyOtp` directly; Flask `/api/auth/phone/*`
       deprecated (delete next release). USER OPS: dashboard test numbers now

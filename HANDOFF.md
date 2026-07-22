@@ -24,8 +24,9 @@ the GENERIC overlay stub, not the per-cancer prompts the evals validate. Fixed w
 negation patterns; `/api/health` now reports `prompt_files: 10, overlays: 10`.
 
 **Open on the safety layer:** physician review of the rules file = LAUNCH BLOCKER
-(Dr. Csiki proposed); supervisor's answer pending on the Flask-vs-edge-functions
-email; deviations documented in `docs/sage-implementation-guidelines-notes.md`.
+(Dr. Csiki proposed). Stack question RESOLVED 2026-07-22: supervisor confirmed
+Flask stays — no edge-function port. Deviations documented in
+`docs/sage-implementation-guidelines-notes.md`.
 
 ## Sage transition — Workstreams A+B+C SHIPPED; the one in-flight step is the iOS build
 
