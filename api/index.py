@@ -3269,8 +3269,26 @@ def api_delete_account():
 # -------------------------
 @app.route("/api/health", methods=["GET"])
 def api_health():
-    """Health check endpoint."""
-    return jsonify({"status": "ok", "service": "wondrlink-api"})
+    """Health check endpoint. `prompt_files` / `overlays` verify the
+    runtime .md files actually shipped in the deployment bundle (the
+    blanket *.md exclusion in .vercelignore silently dropped them once —
+    a missing overlay degrades every answer to the generic stub)."""
+    prompt_files = 0
+    overlays = 0
+    try:
+        from pathlib import Path as _Path
+        _lib = _Path(__file__).resolve().parent.parent / "lib"
+        prompt_files = len(list((_lib / "prompts" / "files").glob("*.md")))
+        _cfg = _Path(__file__).resolve().parent.parent / "config" / "cancers"
+        overlays = len(list(_cfg.glob("*/overlay.md")))
+    except Exception:
+        pass
+    return jsonify({
+        "status": "ok",
+        "service": "wondrlink-api",
+        "prompt_files": prompt_files,
+        "overlays": overlays,
+    })
 
 # -------------------------
 # CORS

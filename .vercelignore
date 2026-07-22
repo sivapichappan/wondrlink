@@ -19,5 +19,10 @@ supabase_migrations/
 test_profile.json
 test_profile_stage4.json
 *.md
+# RUNTIME markdown must ship despite the blanket *.md exclusion above:
+# per-cancer system-prompt overlays and the prompts-as-files task prompts
+# are read from disk at request time. Negations must come AFTER *.md.
+!config/cancers/**/*.md
+!lib/prompts/files/*.md
 Logo.png
 playwright.config.ts

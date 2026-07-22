@@ -1366,6 +1366,7 @@ def soften_tone(text: str) -> tuple[str, dict]:
 # =============================================================================
 
 import re as _re_citations
+from prompts.loader import load_prompt
 
 
 def postprocess_citations(response_text: str, retrieved_chunks: list, max_chunks: int = None):
@@ -1451,36 +1452,7 @@ def postprocess_citations(response_text: str, retrieved_chunks: list, max_chunks
 # FEATURE 2: PRE-VISIT QUESTION GENERATOR
 # =============================================================================
 
-PREVISIT_QUESTION_PROMPT = """You are helping a {cancer_kind} patient prepare for their next oncology visit. Generate a focused, profile-aware list of questions they can ask their care team.
-
-PATIENT PROFILE:
-{patient_summary}
-
-PATIENT'S CONTEXT FOR THIS VISIT:
-{user_context}
-
-Generate 10–12 questions, grouped under 3–4 topical headers. Each question should be:
-- Specific to this patient's diagnosis, treatment line, biomarkers, comorbidities, and stated context
-- Answerable by an oncology team member in 1–2 minutes
-- Phrased the way the patient would speak it (first person, plain language, no jargon)
-- Practical — focused on what the patient can act on or understand
-
-Avoid:
-- Yes/no questions ("Is FOLFOX safe?") — prefer open-ended ("What side effects from FOLFOX should I expect to feel first?")
-- Generic CRC questions that ignore this patient's profile
-- Questions that ask the AI to diagnose or predict outcomes
-
-OUTPUT FORMAT — strict JSON, no prose, no markdown:
-{{
-  "groups": [
-    {{"topic": "Treatment plan and timing", "questions": ["...", "..."]}},
-    {{"topic": "Side effects to expect", "questions": ["...", "..."]}},
-    {{"topic": "Daily life and self-care", "questions": ["...", "..."]}}
-  ]
-}}
-
-If the patient profile is empty or minimal, fall back to general CRC pre-visit questions but still group them.
-Output ONLY the JSON object. No preamble, no explanation."""
+PREVISIT_QUESTION_PROMPT = load_prompt("previsit")
 
 
 # Process-local cache: key = sha256(profile_id + context), value = (timestamp, result_dict)
@@ -1605,35 +1577,7 @@ _PREVISIT_FALLBACK_QUESTIONS = [
 # FEATURE 3: APPOINTMENT COMPANION (VISIT RECAP)
 # =============================================================================
 
-VISIT_RECAP_PROMPT = """You are helping a {cancer_kind} patient organize what happened at a recent oncology visit. The patient has provided their own notes (which may be informal, incomplete, or paraphrased). Your job is to extract a clean, structured recap.
-
-PATIENT PROFILE (use this to detect contradictions or fill in gaps):
-{patient_summary}
-
-PATIENT'S VISIT NOTES:
-{transcript}
-
-Extract a structured recap. Be faithful to what the patient said — do NOT invent details, drugs, dose changes, or scan results that are not in their notes.
-
-If the notes mention a treatment change that contradicts the patient's stored profile (e.g. they say "switching to FOLFIRI" but their profile shows FOLFOX), flag it under "flags".
-
-If something is unclear ("doctor mentioned a new medication but I don't remember the name"), include it in "action_items" as a follow-up — do NOT guess.
-
-OUTPUT FORMAT — strict JSON only:
-{{
-  "discussed": ["bullet 1", "bullet 2", "..."],
-  "treatment_changes": ["change 1", "..."],
-  "action_items": ["thing the patient should do", "..."],
-  "follow_up_questions": ["question to bring next time", "..."],
-  "flags": ["potential contradiction or thing worth confirming with the care team", "..."]
-}}
-
-Rules:
-- Each list can be empty if nothing applies. Use [] not null.
-- Each item should be 1 sentence, plain language, first-person where natural.
-- "flags" is for things the patient should confirm with their care team (contradictions with profile, ambiguous instructions, missed information).
-- Do NOT cite sources or use [N] markers in this output — this is a structured recap, not a generated medical answer.
-- Output ONLY the JSON object. No preamble, no markdown."""
+VISIT_RECAP_PROMPT = load_prompt("visit_recap")
 
 
 def generate_visit_recap(patient_summary: str, transcript: str, cancer_slug: str = None) -> Dict[str, Any]:
@@ -1714,34 +1658,7 @@ def generate_visit_recap(patient_summary: str, transcript: str, cancer_slug: str
 # FEATURE 4: INSURANCE APPEAL LETTER DRAFTING
 # =============================================================================
 
-INSURANCE_APPEAL_PROMPT = """You are helping a {cancer_kind} patient draft a formal appeal letter for an insurance denial. Your draft will be reviewed by the patient and their oncology team before being sent — it is a starting point, not a final document.
-
-PATIENT PROFILE (de-identified):
-{patient_summary}
-
-THE INSURANCE DENIAL (extracted from the patient's denial letter — may be incomplete):
-{denial_text}
-
-RELEVANT CLINICAL GUIDELINE EXCERPTS:
-{guidelines}
-
-Write a formal appeal letter the patient could send to their insurance company. Use this structure:
-
-1. Header: "To: [Insurance Company]", "Re: Appeal of [denial reference, if extracted]", and the date.
-2. Opening paragraph: state that the patient is formally appealing the denial, name the requested treatment/service, and reference the denial letter.
-3. Clinical rationale (1–2 paragraphs): explain why this treatment is medically appropriate for this patient's diagnosis, stage, biomarkers, and treatment line. Be specific to the profile.
-4. Guideline support (1–2 paragraphs): cite the provided guideline excerpts using inline numbered citations [1], [2], etc., per the SOURCE numbers in the guidelines section. Quote brief language from the excerpts where helpful.
-5. Closing: request reconsideration, request a peer-to-peer review with the treating oncologist, list any supporting documents the patient can provide.
-
-CRITICAL RULES:
-- Use [1], [2] inline citations ONLY for claims drawn from the guideline excerpts above. Source N corresponds to the [Source N: ...] excerpt.
-- DO NOT invent guideline language, statistics, or trial numbers not in the provided excerpts.
-- If the requested treatment is NOT supported by the guidelines provided, say so directly in the letter rather than fabricating support — e.g., "While the standard NCCN pathway differs from the requested approach, my treating oncologist's clinical judgment supports..."
-- Use the patient's de-identified profile only — do NOT include patient name, MRN, or DOB. Use placeholder "[Patient Name]" and "[Member ID]" the patient will fill in.
-- Tone: professional, factual, respectful. Avoid emotional appeals; lead with clinical evidence.
-- Length: 350–550 words.
-
-Output ONLY the letter text. No preamble, no explanation, no markdown headers — write it in standard business letter form."""
+INSURANCE_APPEAL_PROMPT = load_prompt("insurance_appeal")
 
 
 def generate_insurance_appeal(patient_summary: str, denial_text: str, retrieved_chunks: list, guidelines_formatted: str, cancer_slug: str = None) -> Dict[str, Any]:
@@ -1793,52 +1710,10 @@ def generate_insurance_appeal(patient_summary: str, denial_text: str, retrieved_
 # FEATURE 5: DEEP-DIVE RESEARCH MODE
 # =============================================================================
 
-DEEP_RESEARCH_PROMPT = """You are producing a deep-dive research report for a {cancer_kind} patient or caregiver. The report should be thorough, structured, and grounded — and should explicitly hedge or refuse where the source excerpts do not support a confident answer.
-
-PATIENT PROFILE (de-identified, may be empty):
-{patient_summary}
-
-THE QUESTION:
-{query}
-
-RELEVANT SOURCE EXCERPTS (NCCN/NCI/ASCO/CRC-specific):
-{guidelines}
-
-Write a structured report with these sections (use the exact section headers, in this order):
-
-## Background
-Brief framing of the question and why it matters for this patient (1 short paragraph).
-
-## Current Evidence
-What the provided source excerpts say about this question. Use inline numbered citations [1], [2] tied to the [Source N: ...] excerpts above. If sources conflict, present both. If sources are silent, say so explicitly.
-
-## Treatment Options or Approaches
-Each distinct approach as a sub-section header (### Option name) with: rationale, who it tends to fit, key trade-offs. Cite sources inline.
-
-## Caveats & Uncertainty
-What this report does NOT cover. Specific limitations of the evidence. Where individual factors (comorbidities, age, performance status) materially change the picture.
-
-## Questions for Your Oncology Team
-5–8 specific questions the patient should bring to their next visit, tailored to this question and their profile.
-
-CRITICAL RULES:
-- Use [N] inline citations ONLY where supported by the source excerpts.
-- DO NOT invent statistics, drug names, dose numbers, NCT trial numbers, or guideline language not in the excerpts.
-- If a section has insufficient source backing, write "The provided sources don't directly address this — please discuss with your care team."
-- Tone: thorough but accessible. Avoid jargon. Use "you" / "your" naturally.
-- Length: 800–1500 words.
-
-Output the report directly. No preamble, no meta-commentary."""
+DEEP_RESEARCH_PROMPT = load_prompt("deep_research")
 
 
-SUBQUERY_DERIVATION_PROMPT = """The user asked a complex medical question. Generate 2–3 related sub-queries that would surface different relevant sub-topics from a colorectal cancer guideline corpus. Sub-queries should be different angles on the question — not paraphrases.
-
-USER QUESTION: {query}
-
-Output as a JSON array of 2–3 short search queries:
-["sub-query 1", "sub-query 2", "sub-query 3"]
-
-Output ONLY the JSON array. No prose."""
+SUBQUERY_DERIVATION_PROMPT = load_prompt("subquery")
 
 
 def derive_subqueries(query: str) -> List[str]:
