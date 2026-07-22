@@ -1304,29 +1304,55 @@ def log_safety_classification(user_id: str, conversation_id: Optional[str],
 
 
 def get_account_basics(user_id: str) -> Dict[str, Any]:
-    """Account-level Sage fields + whether onboarding basics are done."""
+    """Account-level Sage fields + whether onboarding basics are done.
+
+    Reads the `accounts` table (2026-07-22 split); falls back to the legacy
+    patient_profiles columns until the migration has been applied
+    everywhere. Return shape is unchanged either way."""
     try:
         client = get_admin_client()
+        account_row: Optional[Dict[str, Any]] = None
+        try:
+            acct = client.table('accounts') \
+                .select('holder_name, perspective, relationship') \
+                .eq('id', user_id) \
+                .limit(1) \
+                .execute()
+            if acct.data:
+                account_row = acct.data[0]
+        except Exception:
+            account_row = None  # table missing pre-migration — legacy path
+
         result = client.table('patient_profiles') \
             .select('perspective, relationship, account_holder_name, raw_profile') \
             .eq('user_id', user_id) \
             .limit(1) \
             .execute()
-        if not result.data:
+        if not result.data and account_row is None:
             return {'exists': False, 'needs_basics': True}
-        row = result.data[0]
+        row = result.data[0] if result.data else {}
         patient = ((row.get('raw_profile') or {}).get('patient')) or {}
-        has_basics = bool(row.get('account_holder_name')) or bool(patient.get('firstName'))
+
+        if account_row is not None:
+            holder = account_row.get('holder_name')
+            perspective = account_row.get('perspective') or 'self'
+            relationship = account_row.get('relationship')
+        else:
+            holder = row.get('account_holder_name')
+            perspective = row.get('perspective') or 'self'
+            relationship = row.get('relationship')
+
+        has_basics = bool(holder) or bool(patient.get('firstName'))
         return {
             'exists': True,
-            'perspective': row.get('perspective') or 'self',
-            'relationship': row.get('relationship'),
-            'account_holder_name': row.get('account_holder_name'),
+            'perspective': perspective,
+            'relationship': relationship,
+            'account_holder_name': holder,
             'needs_basics': not has_basics,
         }
     except Exception as e:
-        # Column-missing (pre-migration) or transient failure: don't block the
-        # gate — treat basics as done so existing users aren't re-onboarded.
+        # Transient failure: don't block the gate — treat basics as done so
+        # existing users aren't re-onboarded.
         logger.warning(f"get_account_basics failed: {e}")
         return {'exists': True, 'needs_basics': False}
 
@@ -1336,12 +1362,27 @@ def save_account_basics(user_id: str, perspective: str,
                         patient_updates: Dict[str, Any],
                         relationship: Optional[str] = None) -> bool:
     """
-    Persist the Sage onboarding basics: account columns + patient fields
-    (merged into raw_profile.patient — never wholesale replacement).
-    Creates the profile row if this is a brand-new (phone-OTP) user.
+    Persist the Sage onboarding basics: the `accounts` row (2026-07-22
+    split) + patient fields (merged into raw_profile.patient — never
+    wholesale replacement). Creates rows for brand-new (phone-OTP) users.
+    The legacy patient_profiles columns are double-written for one release
+    as the rollback path.
     """
     try:
         client = get_admin_client()
+
+        # Account-level fields -> accounts table (upsert on id).
+        try:
+            client.table('accounts').upsert({
+                'id': user_id,
+                'holder_name': account_holder_name,
+                'perspective': perspective,
+                'relationship': relationship,
+            }, on_conflict='id').execute()
+        except Exception:
+            # Table missing pre-migration: legacy columns below still carry it.
+            logger.warning("accounts upsert failed (pre-migration?); legacy columns only")
+
         result = client.table('patient_profiles') \
             .select('raw_profile') \
             .eq('user_id', user_id) \
@@ -1355,6 +1396,7 @@ def save_account_basics(user_id: str, perspective: str,
 
         payload = {
             'raw_profile': profile,
+            # Legacy double-write, dropped with the follow-up migration.
             'perspective': perspective,
             'relationship': relationship,
             'account_holder_name': account_holder_name,
@@ -1572,6 +1614,7 @@ def delete_all_user_data(user_id: str) -> dict:
       - messages                — all rows for user
       - safety_classifications  — all rows for user (safety audit log)
       - rate_limits             — all rows for user_id (as identifier)
+      - accounts                — full row (keyed by id = auth.uid)
 
     Sub-processor data NOT under our direct control (documented in
     docs/compliance/subprocessor_chain.md — retention per their ToS):
@@ -1617,6 +1660,13 @@ def delete_all_user_data(user_id: str) -> dict:
             client.table('rate_limits').delete().eq('identifier', user_id).execute()
         except Exception:
             pass
+
+        # accounts is keyed by 'id' (= auth.uid), not 'user_id'.
+        try:
+            client.table('accounts').delete().eq('id', user_id).execute()
+            results['accounts'] = 'deleted'
+        except Exception as e:
+            results['accounts'] = f'error: {str(e)}'
 
         # Structured deletion-audit log line. user_hash (not user_id) so we have an
         # audit trail without retaining the user identifier in logs.
