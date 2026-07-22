@@ -1,97 +1,96 @@
 # HANDOFF — active work
 
 _Keep this for in-flight work only. Fold anything permanent into `.claude/CLAUDE.md`
-and prune the rest. Last updated: 2026-07-18._
+and prune the rest. Last updated: 2026-07-22._
 
-## PIVOT: WondrChat → Sage (supervisor meeting 2026-07-17) — THE active work
+## NEW: Safety layer (Workstream S) — SHIPPED + LIVE 2026-07-22
 
-The product is being renamed **Sage** with a flow redesign per the supervisor's doc
-(`docs/sage-product-flow.html` — 14 screens, 5 phases). **The full checklist, locked
-decisions, and sequencing live in `SAGE_TODO.md` (repo root) — start there.**
-Locked 2026-07-18: same repo rebrand+evolve (backend brain untouched, still live);
-rename the EXISTING App Store Connect app; chat model → `claude-sonnet-5` via the
-registry (evals gate); phone-OTP auth now; first push = onboarding+home+auth built
-inside the CURRENT design system (doc wireframes = flow/content, not styling).
-Global standard: no em dashes + sixth-grade language in ALL patient-facing text incl.
-AI output.
+The supervisor's implementation guidelines + `sage-safety-rules-v0.9.json` landed
+2026-07-21 and the full classify-before-chat safety layer shipped the next day
+(commits `66ae6c0`→`ce9fb32`, all pushed + deployed): tiered T1/T2/MH escalation
+cards / T3 banner, deterministic keyword floor + Groq-70B judgment layer (concurrent
+with retrieval, raise-only merge, fail-open), `safety_classifications` audit table,
+weekly `scripts/safety_report.py`, eval gate PASSED (tier_accuracy 100%,
+escalation_accuracy 66.67%→100% — the old domain-gate safety misses are FIXED).
+Also shipped from the guidelines: AI_CALL telemetry on all 9 LLM call sites,
+prompts-as-files (SHA-pinned), direct supabase-js phone OTP (Flask endpoints
+deprecated), accounts table split (applied to prod, 5/5 backfilled), sage-dev
+project created (`eizhshntrquvqwfsseeh`; bring-up steps in
+`supabase_migrations/README.md`).
 
-**SUPERSEDED: the pending old-WondrChat-UI eas build should NOT ship** (was: nav
-overhaul + lifecycle chips + trial reasons build). Those features ship inside the Sage
-first push instead. Confirm with supervisor (open question in SAGE_TODO.md).
+**CRITICAL FIX riding along:** `.vercelignore`'s blanket `*.md` had been silently
+excluding `config/cancers/*/overlay.md` from every deploy — prod chat was running
+the GENERIC overlay stub, not the per-cancer prompts the evals validate. Fixed with
+negation patterns; `/api/health` now reports `prompt_files: 10, overlays: 10`.
 
-## Push 3: Model-driven trial matching — SHIPPED + LIVE (2026-07-14 night)
+**Open on the safety layer:** physician review of the rules file = LAUNCH BLOCKER
+(Dr. Csiki proposed); supervisor's answer pending on the Flask-vs-edge-functions
+email; deviations documented in `docs/sage-implementation-guidelines-notes.md`.
 
-Commits `37e615d`→`cd6f140`, deployed. Trial ranking now consumes the connections graph
-when `modeler_active()` (TRUE): contraindication demotions (−25/−15 × strength, capped
-−30, warning always FIRST for mobile), supports_therapy boosts (+15/+8, capped +20),
-toxicity-history warnings (score-neutral by design), completed-regimen warnings,
-bidirectional `DRUG_CLASS_SYNONYMS` matching (word-boundary only). Verified pre-push
-against real prod graphs + live ClinicalTrials.gov (pembro patient: warning w/ zero
-score change; +6 boosts recorded). Telemetry live: `trials_shown` (excluded from Modeler
-timeline/debounce via `_EXCLUDED_EVENT_KINDS`) + `POST /api/trials/feedback` →
-`trial_feedback` (Modeler-ingested). Evals: `trials_ranking` suite 5/5 @1.00; pytest
-79/79. Mobile (rides the eas build): match-reasons row on TrialCard + save/remove
-feedback pings. Follow-ups logged in the plan: weight learning from feedback outcomes,
-ECOG/comorbidity vs sectioned eligibility text, synonyms→config, server-side watchlist.
-**The 3-phase product vision is now fully implemented end-to-end.**
+## Sage transition — Workstreams A+B+C SHIPPED; the one in-flight step is the iOS build
 
-## Push 2: Modeler / connections layer — FULLY LIVE (user skipped the bake, 2026-07-14)
+The product is **Sage** (renamed from WondrChat, supervisor meeting 2026-07-17). The
+full checklist, locked decisions, and follow-ups live in **`SAGE_TODO.md`** — start
+there. Backend is live on `wondrchat.vercel.app` with everything below deployed:
 
-All code phases committed + pushed (`13a03d1`→`ee3e7da`); **user decision 2026-07-14
-evening: skip both bake periods — `FEATURE_BELIEFS_WRITE`, `FEATURE_MODELER`, AND
-`FEATURE_MODELER_ACTIVE` are ALL `true` in production.** The belief store is the live
-writer, the Modeler runs (client trigger + nightly cron `0 7 * * *` UTC), and all three
-consumers are active. Runbook: `docs/modeler.md`.
-- Go-live verified end-to-end: graphs force-seeded for all 5 patients (20 edges — 3
-  corroborated, e.g. pembrolizumab→fatigue 0.83 — 7 expectations, 12 reflections,
-  **2 pending confirmation chips queued**); live cron run: 5 candidates / 5 debounce-skips /
-  0 errors. Seed pass surfaced + fixed two V4-Pro parsing failure modes (truncation at
-  2500 tokens, markdown fences) — hardened in `ee3e7da`.
-- **Dr. Csiki reports are now MONITORING, not gating**: run
-  `python3 scripts/modeler_report.py --all` weekly and forward (first batch generated
-  2026-07-14, in `scripts/eval/reports/modeler/`).
-- Watch in week one: pending-queue crowding (reflections share cap 3 with extraction),
-  `exp:` topic share of `question_asked` events, `modeler_run` reject/error rates,
-  calibration accrual (hit-rate becomes meaningful after ~10 resolutions).
-- Rollback for any layer = unset its flag (consumers vanish next request; graphs keep).
-- Known gap: chips render only on mobile (Phase 6 UI) — the web SPA ignores
-  `pending_confirmations`; web users simply never see the chips (no breakage).
+- **A — rename** (`1c8f8b0`): mobile + web SPA + backend strings → Sage; identifiers
+  (bundle ID, EAS slug, apiBase, storage keys, table names) untouched.
+- **B — onboarding/home/auth** (`1c8f8b0`, `8ac9cc2`): phone-OTP endpoints
+  (`/api/auth/phone/send|verify`), account-basics API + `needs_basics` gate,
+  who-for/basics screens, anchor-question home, capability menu. Migration
+  `2026_07_18_sage_account_fields.sql` applied to prod.
+- **C — chat voice** (`007926c`, `86971ff`): chat = **Kimi-K2.6 on Together**
+  (final decision 2026-07-21; supersedes claude-sonnet-5 — Anthropic path built but
+  DORMANT behind `MODEL_CHAT_PROVIDER=anthropic` + `ANTHROPIC_API_KEY`). Fallback
+  upgraded to Groq `llama-3.3-70b-versatile`. Eval gate passed: no regression vs
+  pre-swap baseline; all-10 dry sweep PASS; latency ~4s after reasoning suppression.
 
-## The one in-flight step: the iOS build
+**USER OPS before the build ships end-to-end:**
+1. Supabase dashboard → Authentication → Phone provider: add TEST phone numbers
+   (e.g. `+15550001111 = 123456` + your real numbers) — phone login then works
+   with NO SMS provider. Twilio Verify at launch, same dashboard setting.
+   Do the same on sage-dev.
+2. Rename the existing App Store Connect app record to Sage (display name only).
+3. `cd mobile && eas build --platform ios --profile production` → upload via
+   Transporter (`eas submit` blocked) → commit the `app.json` buildNumber bump.
+   This build now also ships the EscalationCard + direct supabase-js phone OTP.
+4. Optional: `ANTHROPIC_API_KEY` only if the Claude voice is ever wanted.
+5. sage-dev bring-up (needs prod DB password): `supabase_migrations/README.md`.
 
-Everything else is SHIPPED and verified (backend live on `wondrchat.vercel.app`, all
-migrations applied, beliefs backfilled, shadow extraction recording). One
-`eas build --platform ios --profile production` → Transporter ships FOUR bodies of committed
-mobile work at once:
-1. Nav overhaul — assistant-home + drawer, multi-conversation chat (`/chat/[id]`, Recents, search)
-2. Design-system polish (Screen/Card/ListRow primitives, FontSize scale, 20px gutter)
-3. R2 refinements — one-line "Let's talk" composer, decluttered top bar, swipe gestures, no em dashes
-4. Lifecycle UI — "is that right?" confirmation chips, stage cue, softened onboarding, trials just-in-time question
+On-device smoke after the build: phone/email login → consent → who-for → basics →
+anchor question (chips + "We're still finding out") → capability menu → chat;
+drawer/Recents; crisis modal on every send path; trials Matches/Saved.
 
-After the build: commit the `mobile/app.json` buildNumber bump. On-device smoke: drawer
-(button + swipe-open + drag-close), new chat creates/titles/persists across relaunch, Recents,
-crisis modal on every send path, trials Matches/Saved + "One quick question" → prefilled composer.
+## Next follow-up eval windows (one variable each — order per SAGE_TODO)
+1. **Voice rules into the system prompt** (no em dashes + sixth-grade language — Kimi
+   currently emits em dashes); recheck proactive comorbidity surfacing in the same look.
+   NOTE: prompt changes now also require bumping the SHA pin in
+   `tests/test_prompt_relocation.py` (deliberate-change guard).
+2. ~~Tier-1 domain-gate safety fix~~ — DONE 2026-07-22 via the safety layer
+   (escalation_accuracy 100%).
+3. Modernize `scripts/test_all_features.py` literal-substring checks for the Sage voice
+   (6 known artifacts, detailed in SAGE_TODO Workstream C).
 
-## Scheduled: the belief-write flip (~2026-07-21)
+## Then: Workstream D (interview + report upload)
+Biggest capability jump; model picks locked: vision = `meta-llama/Llama-4-Maverick`,
+new `vision` registry segment. Workstream E STT pick: `openai/whisper-large-v3`.
 
-Shadow bake started **2026-07-14** (`FEATURE_EXTRACTION_SHADOW=true` live). After ~1 week:
-run `python3 scripts/compare_shadow_extraction.py`, review high-stakes/negation stats, and if
-clean set `FEATURE_BELIEFS_WRITE=true` in Vercel (team project) — extraction v2 becomes the
-writer and confirmation chips go live. Gold evals already green (extraction 100/92/100;
-policy 100). Flag rules + deploy truths: `.claude/CLAUDE.md` + [memory] infra_vercel_deploy.
+## Standing operations
+- Weekly `python3 scripts/modeler_report.py --all` → forward to Dr. Csiki (monitoring).
+- Weekly `python3 scripts/safety_report.py` → review AI-judgment escalations
+  (`rule_matched: false`) + rules-fallback share; promotion candidates feed the next
+  physician-reviewed rules version.
+- All lifecycle flags live in prod since 2026-07-14 (beliefs write + Modeler + graph
+  trial ranking); rollback for any layer = unset its flag.
 
-## Open follow-ups (not started)
-- **Modeler / connections layer** — next major push; consumes `patient_events`;
-  `MODEL_MODELER` (DeepSeek-V4-Pro) reserved; needs vercel `crons` or client-trigger.
-- **Model-driven trial scoring** — blocked on the Modeler.
-- **Kimi-K2.6 chat swap** — env flip + full eval battery per `docs/model_registry.md`.
-- **Learning-loop activation** — attorney review checklist in
-  `docs/compliance/model_improvement_dormant.md` (consent copy → version bump → opt-in UI → flag).
-- **Web SPA parity** — softened nudges/wizard copy on web still form-first (server changes shared).
-- **Retire `chat_messages` double-write** + legacy `/api/save_message`/`/api/chat_history`
+## Open follow-ups (not started, still valid)
+- Learning-loop activation — attorney checklist in
+  `docs/compliance/model_improvement_dormant.md`.
+- Web SPA parity — softened nudges/wizard copy on web still form-first; web ignores
+  `pending_confirmations` (chips are mobile-only, no breakage).
+- Retire `chat_messages` double-write + legacy `/api/save_message`/`/api/chat_history`
   once old app builds age out.
-- **Delete the dead duplicate Vercel project** (`wondrchat` in the personal scope /
+- Delete the dead duplicate Vercel project (`wondrchat` in the personal scope /
   `wondrchat-nine.vercel.app`) to prevent wrong-project deploys.
-- Consent-management UI: verify withdraw/restore works end-to-end now that
-  `consent_withdrawals` exists in prod (it was missing until 2026-07-14).
-- 3 pre-existing LLM keyword flakes in `test_all_features.py` (items 1, 12, Emergency regression).
+- Consent-management UI: verify withdraw/restore end-to-end (prod has
+  `consent_withdrawals` since 2026-07-14).

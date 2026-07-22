@@ -110,50 +110,58 @@ _Rule: current design system, new flow. No visual redesign._
       FOLFOX side-effects question (direct diabetes question passes). Recheck proactive
       comorbidity surfacing in the voice-rules eval window.)
 
-## Workstream S — Safety layer (supervisor mandate 2026-07-21; ONE eval window)
+## Workstream S — Safety layer (supervisor mandate 2026-07-21) — SHIPPED + LIVE 2026-07-22
 _Source: `docs/sage-implementation-guidelines.html` appendix + `config/safety/
-sage-safety-rules-v0.9.json`. Classify-before-chat on EVERY inbound message; rules
-loaded as DATA, never hardcoded in prompt strings. Plan: `.claude/plans/` (phases 1–6)._
-- [ ] Rules loader + deterministic floor (`lib/safety_rules.py`; local-extensions file
-      absorbs the legacy `_CRISIS_PATTERNS`; single keyword source)
-- [ ] Classifier LLM (`classifier` registry segment, Groq 8b; `lib/safety_classifier.py`;
-      floor always runs, LLM merges via tier_max, fail-open to floor on outage;
-      kill switch `SAFETY_CLASSIFIER_ENABLED` default ON).
-      PHI deviation (documented): patient_name NEVER sent to the LLM — caregiver
-      patient_line renders server-side
-- [ ] `safety_classifications` audit table (RLS, in delete_all_user_data) + weekly
-      `scripts/safety_report.py` review ritual (rule_matched:false → promotion
-      candidates for the next rules version)
-- [ ] Wire into `/api/chat`: T1/T2/MH short-circuit card, T3 same-day banner alongside
-      the normal reply, domain-gate bypass for non-NONE tiers, `POST /api/safety/
-      log_symptom` (T2 "log this symptom" → patient_events)
-- [ ] Client rendering: `EscalationCard` (mobile) + SPA in-thread card; shared types;
-      T3 rides the existing UrgencyBanner channel
-- [ ] Eval gate: `tier_accuracy` metric + `safety_classifier.yaml` suites; colorectal
-      llm expects escalation_accuracy 66.67% → ~100%, ZERO under-escalations
+sage-safety-rules-v0.9.json`. Deployed to prod after the eval gate passed._
+- [x] Rules loader + deterministic floor (`lib/safety_rules.py`; local-extensions file
+      absorbed the legacy `_CRISIS_PATTERNS`; single keyword source; 13-test fence)
+- [x] Classifier LLM: registry segment `classifier` = **Groq llama-3.3-70b-versatile**
+      (bake-off 2026-07-21: 10/10 tiers @ p50 0.6s; per-model 12k-TPM bucket separate
+      from the 8B verifier; Together 70B-Turbo is the env-swap alternate). Floor always
+      runs, LLM merges via tier_max (raise-only), fail-open to floor, max_retries=0.
+      Kill switch `SAFETY_CLASSIFIER_ENABLED` default ON. PHI deviation (documented):
+      patient_name NEVER sent to the LLM — patient_line renders server-side
+- [x] `safety_classifications` audit table (RLS, in delete_all_user_data, applied to
+      prod) + weekly `scripts/safety_report.py` (add to the Dr. Csiki weekly ritual)
+- [x] Wired into `/api/chat` CONCURRENTLY with retrieval (~0 added wall-clock):
+      T1/T2/MH escalation card instead of a reply, T3 same-day banner, domain-gate
+      bypass for non-NONE tiers, `POST /api/safety/log_symptom`
+- [x] Client rendering: mobile `EscalationCard` (T1 911-first / T2 care-team-first +
+      log-symptom chip / MH warm 988) + SPA in-thread card; shared types
+- [x] Eval gate PASSED 2026-07-21: tier_accuracy 100% (18/18, zero under-escalations),
+      **escalation_accuracy 66.67% → 100%** (both domain-gate misses fixed),
+      off_topic 97.44%; all-10 dry sweep PASS
 - [ ] **LAUNCH BLOCKER: physician review of the rules file before real patients**
-      (v0.9 is draft from NCI/ASCO materials; reviewer proposal: Dr. Csiki; promotion
-      loop feeds v1.0)
-- [ ] Emergency number is config (`EMERGENCY_NUMBER`, default 911) for later non-US launch
+      (v0.9+ext1 is draft from NCI/ASCO materials; reviewer proposal: Dr. Csiki —
+      asked in the 2026-07-21 supervisor email; promotion loop feeds v1.0)
+- [x] Emergency number is config (`EMERGENCY_NUMBER`, default 911)
 
 ## Workstream I — Implementation-guidelines adoption (2026-07-21 doc)
 - [ ] **Stack question SENT to supervisor 2026-07-21** (`docs/drafts/
       2026-07-21-supervisor-stack-email.md`): Flask boundary vs edge-function port.
-      All work below is stack-portable either way. AWAITING ANSWER.
-- [ ] Phone auth rework: mobile `sendPhoneCode`/`verifyPhoneCode` → direct
-      `supabase.auth.signInWithOtp`/`verifyOtp`; deprecate then delete Flask
-      `/api/auth/phone/*`; USER OPS: dashboard test numbers now, Twilio at launch
-- [ ] `accounts` table split (id = auth.uid, holder_name, perspective, relationship;
-      RLS own-rows; backfill from patient_profiles; patient_profiles stays user_id-keyed)
-- [ ] RLS on every user-owned table (today only patient_events / consent_withdrawals /
-      pattern_records have in-repo policies; core tables get enable+policy migrations —
-      defense-in-depth; service-role backend unaffected)
-- [ ] Gateway instrumentation: `lib/ai_gateway.py` `AI_CALL` log line {task, provider,
-      model, latency_ms, tokens} across all 8 provider call sites (non-PHI scalars only)
-- [ ] Prompts-as-files: every inline prompt constant → `lib/prompts/files/` (SHA-pinned
-      pure relocation, NOT an eval variable)
-- [ ] `sage-dev` Supabase project (scoped seed: schema + colorectal corpus) + Supabase
-      CLI migration flow going forward; USER OPS: create project, enable phone provider
+      All shipped work is stack-portable either way. AWAITING ANSWER.
+- [x] Phone auth rework SHIPPED 2026-07-22: mobile calls
+      `supabase.auth.signInWithOtp`/`verifyOtp` directly; Flask `/api/auth/phone/*`
+      deprecated (delete next release). USER OPS: dashboard test numbers now
+      (works with NO SMS provider), Twilio Verify at launch
+- [x] `accounts` table split SHIPPED + applied to prod 2026-07-22 (RLS own-rows,
+      5/5 users backfilled; legacy patient_profiles columns double-written one
+      release, then a follow-up migration drops them)
+- [ ] RLS on every user-owned table (accounts/patient_events/consent_withdrawals/
+      pattern_records/safety_classifications have policies; core tables
+      patient_profiles/conversations/messages/etc still need enable+policy
+      migrations — defense-in-depth; service-role backend unaffected)
+- [x] Gateway instrumentation SHIPPED: `lib/ai_gateway.py` `AI_CALL` line {task,
+      provider, model, latency_ms, tokens} across all 9 provider call sites
+- [x] Prompts-as-files SHIPPED: 9 inline constants → `lib/prompts/files/`
+      (SHA-256-pinned byte-exact relocation). BONUS FIX: `.vercelignore`'s blanket
+      `*.md` had been silently dropping the per-cancer overlay.md files from prod —
+      prod chat was running on the GENERIC overlay stub. Fixed with negation
+      patterns; `/api/health` now reports `prompt_files`/`overlays` counts
+- [x] `sage-dev` Supabase project CREATED 2026-07-22 (ref `eizhshntrquvqwfsseeh`,
+      us-west-1, $10/mo). Remaining bring-up (schema dump needs the prod DB
+      password): `supabase_migrations/README.md` steps 1-5; USER OPS: dashboard
+      phone provider + test numbers on dev
 
 ## Workstream D — Interview + report upload (doc Phases 4–5, screens 8–13)
 - [ ] Structured, pausable, resumable interview triggered by trial matching (and any
