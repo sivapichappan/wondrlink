@@ -67,23 +67,61 @@ export async function login(email: string, password: string) {
   return plugIntoSupabase(body);
 }
 
-/** Sage phone sign-in step 1: text a one-time code to the number. */
+/**
+ * Best-effort E.164 normalization (US default for bare 10-digit numbers),
+ * mirroring the retired backend helper.
+ */
+function normalizePhone(phone: string): string | null {
+  let digits = phone.replace(/\D/g, '');
+  if (digits.length === 10) digits = `1${digits}`;
+  if (digits.length < 11 || digits.length > 15) return null;
+  return `+${digits}`;
+}
+
+function friendlyPhoneError(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes('not enabled') || m.includes('disabled') || m.includes('unsupported')) {
+    return 'Phone sign-in is not available yet. Please use email for now.';
+  }
+  if (m.includes('rate')) {
+    return 'Too many codes requested. Please wait a few minutes and try again.';
+  }
+  return message;
+}
+
+/**
+ * Sage phone sign-in step 1: text a one-time code to the number.
+ *
+ * Guidelines hard rule: the client talks ONLY to Supabase auth for OTP —
+ * no backend proxy, no provider knowledge. During dev, Supabase dashboard
+ * TEST phone numbers (static codes) make this work with no SMS provider;
+ * at launch Twilio Verify plugs into the same dashboard setting with zero
+ * client change.
+ */
 export async function sendPhoneCode(phone: string) {
-  return apiFetch<{ status: 'ok'; message: string }>(ENDPOINTS.authPhoneSend, {
-    method: 'POST',
-    skipAuth: true,
-    body: { phone: phone.trim() },
-  });
+  const normalized = normalizePhone(phone);
+  if (!normalized) throw new Error('Please enter a valid phone number.');
+  const { error } = await supabase.auth.signInWithOtp({ phone: normalized });
+  if (error) throw new Error(friendlyPhoneError(error.message));
+  return { status: 'ok' as const, message: 'Code sent.' };
 }
 
 /** Sage phone sign-in step 2: verify the code; first-time numbers become accounts. */
 export async function verifyPhoneCode(phone: string, code: string) {
-  const body = await apiFetch<AuthSuccessBody>(ENDPOINTS.authPhoneVerify, {
-    method: 'POST',
-    skipAuth: true,
-    body: { phone: phone.trim(), code: code.trim() },
+  const normalized = normalizePhone(phone);
+  if (!normalized) throw new Error('Please enter a valid phone number.');
+  const { data, error } = await supabase.auth.verifyOtp({
+    phone: normalized,
+    token: code.trim(),
+    type: 'sms',
   });
-  return plugIntoSupabase(body);
+  if (error) throw new Error(friendlyPhoneError(error.message));
+  if (!data.session || !data.user) {
+    throw new NoSessionError('Could not start a session. Please try again.');
+  }
+  // supabase-js stores the session itself (AsyncStorage + auto-refresh);
+  // no setSession plumbing needed on this path.
+  return { user_id: data.user.id, email: data.user.email ?? '' };
 }
 
 /**

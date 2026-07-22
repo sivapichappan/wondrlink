@@ -317,10 +317,16 @@ def api_login():
         return jsonify({"error": str(e)}), 500
 
 
+# DEPRECATED (2026-07-22): the mobile client now calls
+# supabase.auth.signInWithOtp/verifyOtp DIRECTLY per the implementation
+# guidelines' hard rule ("the client talks only to Supabase auth methods").
+# These proxy endpoints stay one release for TestFlight builds that predate
+# the switch, then get deleted along with lib/auth_helpers' phone helpers.
 @app.route("/api/auth/phone/send", methods=["POST"])
 def api_phone_send():
     """Sage phone sign-in step 1: text a one-time code to the number.
     First-time numbers are created automatically at verify time."""
+    logger.warning("DEPRECATED endpoint hit: /api/auth/phone/send (old client build)")
     try:
         # Same geofence as registration (a first-time phone number IS a signup).
         try:
@@ -352,6 +358,7 @@ def api_phone_send():
 def api_phone_verify():
     """Sage phone sign-in step 2: verify the code, return a session
     (same token shape as /api/auth/login so the client plumbing is shared)."""
+    logger.warning("DEPRECATED endpoint hit: /api/auth/phone/verify (old client build)")
     try:
         from rate_limit import check_rate_limit
         client_ip = request.headers.get('X-Forwarded-For', request.remote_addr or 'unknown').split(',')[0].strip()
