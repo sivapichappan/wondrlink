@@ -1454,6 +1454,38 @@ def postprocess_citations(response_text: str, retrieved_chunks: list, max_chunks
 
 PREVISIT_QUESTION_PROMPT = load_prompt("previsit")
 
+GLOSSARY_PROMPT = load_prompt("glossary")
+
+GLOSSARY_FALLBACK = (
+    "I couldn't come up with a good explanation for that. Try rewording it."
+)
+
+
+def generate_glossary_explanation(term: str, guidelines_formatted: str = "",
+                                  cancer_slug: Optional[str] = None) -> str:
+    """
+    One SHORT plain-words explanation of a medical term (the personal
+    glossary's "add new term" flow). Plain prose, no JSON. The term arrives
+    already sanitized (sanitize_query at the endpoint); only the term and a
+    generic cancer kind reach the LLM.
+    """
+    from lib import cancer_registry as _registry
+    cancer_kind = _registry.display_name(cancer_slug).lower() if cancer_slug else "cancer"
+
+    prompt = GLOSSARY_PROMPT.format(
+        term=term,
+        guidelines=guidelines_formatted or "(none)",
+        cancer_kind=cancer_kind,
+    )
+    try:
+        answer, _api = call_llm(prompt, response_length="brief",
+                                query_type="general", cancer_slug=cancer_slug)
+        answer = (answer or "").strip()
+        return answer if answer else GLOSSARY_FALLBACK
+    except Exception as e:
+        logger.warning(f"generate_glossary_explanation failed: {type(e).__name__}")
+        return GLOSSARY_FALLBACK
+
 
 # Process-local cache: key = sha256(profile_id + context), value = (timestamp, result_dict)
 # Survives within a single serverless invocation; not shared across cold starts.

@@ -7,6 +7,9 @@ import type {
   ChatClinicalTrialsBlock,
   ClinicalTrialsResponse,
   DeepResearchResponse,
+  GlossaryExplainResponse,
+  GlossaryListResponse,
+  GlossaryTerm,
   InsuranceAppealResponse,
   PreVisitRequest,
   PreVisitResponse,
@@ -76,6 +79,39 @@ export function deepResearch(query: string) {
   return apiFetch<DeepResearchResponse>(ENDPOINTS.deepResearch, {
     method: 'POST',
     body: { query },
+  });
+}
+
+// --- Glossary (personal term dictionary) ---
+
+export function explainTerm(term: string) {
+  return apiFetch<GlossaryExplainResponse>(ENDPOINTS.glossaryExplain, {
+    method: 'POST',
+    body: { term },
+  });
+}
+
+export function listGlossaryTerms() {
+  return apiFetch<GlossaryListResponse>(ENDPOINTS.glossary, { method: 'GET' });
+}
+
+export function saveGlossaryTerm(term: string, definition: string) {
+  return apiFetch<{ status: 'ok'; term: GlossaryTerm }>(ENDPOINTS.glossary, {
+    method: 'POST',
+    body: { term, definition },
+  });
+}
+
+export function updateGlossaryTerm(id: string, patch: { term?: string; definition?: string }) {
+  return apiFetch<{ status: 'ok'; term: GlossaryTerm }>(ENDPOINTS.glossaryTerm(id), {
+    method: 'PATCH',
+    body: patch,
+  });
+}
+
+export function deleteGlossaryTerm(id: string) {
+  return apiFetch<{ status: 'ok' }>(ENDPOINTS.glossaryTerm(id), {
+    method: 'DELETE',
   });
 }
 

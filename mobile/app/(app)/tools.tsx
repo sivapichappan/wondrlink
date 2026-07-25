@@ -7,7 +7,7 @@
  */
 
 import { router } from 'expo-router';
-import { Activity, CalendarClock, ClipboardList, FileText, Microscope, NotebookPen, Search, Sparkles } from 'lucide-react-native';
+import { Activity, BookOpen, CalendarClock, ClipboardList, FileText, Microscope, NotebookPen, Search, Sparkles } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { TopBar } from '@/components/common/TopBar';
@@ -28,6 +28,7 @@ const TOOLS: Tool[] = [
   { href: '/tools/screening', title: 'Wellness check-in', Icon: Activity },
   { href: '/tools/previsit', title: 'Pre-visit questions', Icon: ClipboardList },
   { href: '/tools/visit-recap', title: 'Visit recap', Icon: NotebookPen },
+  { href: '/tools/glossary', title: 'My terms', Icon: BookOpen },
   { href: '/tools/surveillance', title: 'Surveillance', Icon: CalendarClock },
   { href: '/tools/deep-research', title: 'Deep research', Icon: Search },
   { href: '/tools/insurance-appeal', title: 'Insurance appeal', Icon: FileText },

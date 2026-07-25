@@ -596,6 +596,33 @@ export interface VisitRecapResponse {
 }
 
 // =============================================================================
+// GLOSSARY  (personal term dictionary — /api/glossary + /api/glossary/explain)
+// =============================================================================
+
+export interface GlossaryTerm {
+  id: string;
+  term: string;
+  definition: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GlossaryExplainRequest {
+  term: string;
+}
+
+export interface GlossaryExplainResponse {
+  status: 'ok';
+  term: string;
+  definition: string;
+}
+
+export interface GlossaryListResponse {
+  status: 'ok';
+  terms: GlossaryTerm[];
+}
+
+// =============================================================================
 // INSURANCE APPEAL  (matches api/index.py:1327 /api/insurance_appeal)
 // =============================================================================
 

@@ -60,6 +60,8 @@ RATE_LIMIT_AUTH_REGISTER = (3, 60)
 RATE_LIMIT_AUTH_LOGIN    = (5, 15)
 RATE_LIMIT_CHAT          = (30, 60)
 RATE_LIMIT_PREVISIT      = (10, 60)
+RATE_LIMIT_GLOSSARY_EXPLAIN = (15, 60)  # AI term explanations
+RATE_LIMIT_GLOSSARY_CRUD    = (60, 60)  # saved-term list/save/edit/delete
 RATE_LIMIT_VISIT_RECAP   = (10, 60)
 RATE_LIMIT_APPEAL        = (5, 60)      # insurance appeal
 RATE_LIMIT_DEEP_RESEARCH = (3, 300)
@@ -2613,6 +2615,140 @@ def api_previsit_questions():
     except Exception as e:
         logger.exception("previsit_questions error")
         return jsonify({"error": "Could not generate questions right now."}), 500
+
+
+# -------------------------
+# Glossary — the personal term dictionary ("Ask about a term or phrase")
+# -------------------------
+@app.route("/api/glossary/explain", methods=["POST"])
+@require_auth
+def api_glossary_explain():
+    """One SHORT plain-words explanation of a medical term. Best-effort
+    guideline grounding; degrades to an ungrounded answer if retrieval is
+    unavailable. Only the sanitized term + generic cancer kind reach the LLM."""
+    try:
+        user_id = request.user["user_id"]
+
+        from rate_limit import check_rate_limit
+        allowed, _ = check_rate_limit(user_id, 'glossary_explain',
+                                      *RATE_LIMIT_GLOSSARY_EXPLAIN)
+        if not allowed:
+            return jsonify({"error": "Too many requests. Please wait a moment and try again."}), 429
+
+        data = request.get_json(silent=True) or {}
+        term = (data.get('term') or '').strip()
+        if not term:
+            return jsonify({"error": "Please enter a term or phrase."}), 400
+        if len(term) > 120:
+            return jsonify({"error": "Please keep it under 120 characters."}), 400
+
+        try:
+            term, _pii = sanitize_query(term)
+        except Exception:
+            pass
+
+        cancer_slug = None
+        try:
+            from supabase_storage import get_cancer_slug
+            cancer_slug = get_cancer_slug(user_id)
+        except Exception:
+            pass
+
+        # Best-effort RAG grounding (insurance_appeal pattern): any failure
+        # degrades to an ungrounded but still-valid explanation.
+        guidelines_formatted = ""
+        try:
+            chunks = load_all_chunks()
+            cancer_types = [cancer_slug, 'general'] if cancer_slug else None
+            retrieved = hybrid_search(term, chunks, top_k=4, cancer_types=cancer_types)
+            from llm_utils import select_chunks_within_budget
+            guidelines_formatted = select_chunks_within_budget(retrieved, 1200)
+        except Exception:
+            logger.warning("glossary grounding unavailable (continuing ungrounded)")
+
+        from llm_utils import generate_glossary_explanation
+        definition = generate_glossary_explanation(
+            term, guidelines_formatted, cancer_slug)
+
+        return jsonify({"status": "ok", "term": term, "definition": definition})
+    except Exception:
+        logger.exception("glossary explain error")
+        return jsonify({"error": "Could not explain that right now."}), 500
+
+
+@app.route("/api/glossary", methods=["GET", "POST"])
+@require_auth
+def api_glossary():
+    """List (GET) or save (POST) the user's glossary terms."""
+    try:
+        user_id = request.user["user_id"]
+
+        from rate_limit import check_rate_limit
+        allowed, _ = check_rate_limit(user_id, 'glossary_crud',
+                                      *RATE_LIMIT_GLOSSARY_CRUD)
+        if not allowed:
+            return jsonify({"error": "Too many requests. Please wait a moment and try again."}), 429
+
+        if request.method == "GET":
+            from supabase_storage import list_glossary_terms
+            return jsonify({"status": "ok", "terms": list_glossary_terms(user_id)})
+
+        data = request.get_json(silent=True) or {}
+        term = (data.get('term') or '').strip()
+        definition = (data.get('definition') or '').strip()
+        if not term or not definition:
+            return jsonify({"error": "Both a term and a definition are needed."}), 400
+        if len(term) > 120 or len(definition) > 2000:
+            return jsonify({"error": "That entry is too long to save."}), 400
+
+        from supabase_storage import create_glossary_term
+        row = create_glossary_term(user_id, term, definition)
+        if row is None:
+            return jsonify({"error": "Could not save that term. Please try again."}), 500
+        return jsonify({"status": "ok", "term": row})
+    except Exception:
+        logger.exception("glossary list/create error")
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
+
+
+@app.route("/api/glossary/<term_id>", methods=["PATCH", "DELETE"])
+@require_auth
+def api_glossary_term(term_id: str):
+    """Edit (PATCH) or remove (DELETE) one saved term. 404 when the row is
+    missing or not owned (invalid ids surface as caught storage errors)."""
+    try:
+        user_id = request.user["user_id"]
+
+        from rate_limit import check_rate_limit
+        allowed, _ = check_rate_limit(user_id, 'glossary_crud',
+                                      *RATE_LIMIT_GLOSSARY_CRUD)
+        if not allowed:
+            return jsonify({"error": "Too many requests. Please wait a moment and try again."}), 429
+
+        if request.method == "DELETE":
+            from supabase_storage import delete_glossary_term
+            if not delete_glossary_term(user_id, term_id):
+                return jsonify({"error": "Term not found."}), 404
+            return jsonify({"status": "ok"})
+
+        data = request.get_json(silent=True) or {}
+        term = (data.get('term') or '').strip() if 'term' in data else None
+        definition = (data.get('definition') or '').strip() if 'definition' in data else None
+        if term is None and definition is None:
+            return jsonify({"error": "Nothing to update."}), 400
+        if term is not None and (not term or len(term) > 120):
+            return jsonify({"error": "That term is empty or too long."}), 400
+        if definition is not None and (not definition or len(definition) > 2000):
+            return jsonify({"error": "That definition is empty or too long."}), 400
+
+        from supabase_storage import update_glossary_term
+        row = update_glossary_term(user_id, term_id, term=term, definition=definition)
+        if row is None:
+            return jsonify({"error": "Term not found."}), 404
+        return jsonify({"status": "ok", "term": row})
+    except Exception:
+        logger.exception("glossary update/delete error")
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @app.route("/api/visit_recap", methods=["POST"])

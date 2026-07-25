@@ -38,6 +38,11 @@ export const ENDPOINTS = {
   // --- Safety (escalation card actions) ---
   safetyLogSymptom: '/api/safety/log_symptom',
 
+  // --- Glossary (personal term dictionary) ---
+  glossaryExplain: '/api/glossary/explain',
+  glossary: '/api/glossary',
+  glossaryTerm: (id: string) => `/api/glossary/${id}`,
+
   // --- Conversations (multi-conversation drawer: New chat / Recents / Search) ---
   // list (GET) + create (POST) share the base path. `conversation(id)` builds
   // the per-conversation paths: GET `${...}/messages`, PATCH rename, DELETE.

@@ -971,6 +971,75 @@ def delete_conversation(user_id: str, conversation_id: str) -> bool:
         return False
 
 
+# ---------------------------------------------------------------------------
+# Glossary — the personal term dictionary ("Ask about a term or phrase")
+# ---------------------------------------------------------------------------
+
+def list_glossary_terms(user_id: str) -> List[Dict[str, Any]]:
+    """The user's saved terms, newest first. [] on error / pre-migration."""
+    try:
+        client = get_admin_client()
+        result = client.table('glossary_terms') \
+            .select('id, term, definition, created_at, updated_at') \
+            .eq('user_id', user_id) \
+            .order('created_at', desc=True) \
+            .limit(500) \
+            .execute()
+        return result.data or []
+    except Exception as e:
+        logger.warning(f"list_glossary_terms failed: {e}")
+        return []
+
+
+def create_glossary_term(user_id: str, term: str, definition: str) -> Optional[Dict[str, Any]]:
+    """Save one term to the user's library. Returns the new row or None."""
+    try:
+        client = get_admin_client()
+        result = client.table('glossary_terms').insert({
+            'user_id': user_id,
+            'term': term,
+            'definition': definition,
+        }).execute()
+        return result.data[0] if result.data else None
+    except Exception as e:
+        logger.warning(f"create_glossary_term failed: {e}")
+        return None
+
+
+def update_glossary_term(user_id: str, term_id: str,
+                         term: Optional[str] = None,
+                         definition: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Edit a saved term (either field). Returns the updated row or None."""
+    payload: Dict[str, Any] = {'updated_at': datetime.now().isoformat()}
+    if term is not None:
+        payload['term'] = term
+    if definition is not None:
+        payload['definition'] = definition
+    try:
+        client = get_admin_client()
+        result = client.table('glossary_terms') \
+            .update(payload) \
+            .eq('id', term_id).eq('user_id', user_id) \
+            .execute()
+        return result.data[0] if result.data else None
+    except Exception as e:
+        logger.warning(f"update_glossary_term failed: {e}")
+        return None
+
+
+def delete_glossary_term(user_id: str, term_id: str) -> bool:
+    """Remove a saved term. False when nothing was deleted (missing/not owned)."""
+    try:
+        client = get_admin_client()
+        result = client.table('glossary_terms').delete() \
+            .eq('id', term_id).eq('user_id', user_id) \
+            .execute()
+        return bool(result.data)
+    except Exception as e:
+        logger.warning(f"delete_glossary_term failed: {e}")
+        return False
+
+
 def search_conversations(user_id: str, query: str, limit: int = 50) -> List[Dict[str, Any]]:
     """
     Search a user's conversations by title and by message content.
@@ -1619,6 +1688,7 @@ def delete_all_user_data(user_id: str) -> dict:
       - conversations           — all rows for user
       - messages                — all rows for user
       - safety_classifications  — all rows for user (safety audit log)
+      - glossary_terms          — all rows for user (personal term dictionary)
       - rate_limits             — all rows for user_id (as identifier)
       - accounts                — full row (keyed by id = auth.uid)
 
@@ -1651,6 +1721,7 @@ def delete_all_user_data(user_id: str) -> dict:
             'conversations',
             'messages',
             'safety_classifications',
+            'glossary_terms',
             'rate_limits',
         ]
 

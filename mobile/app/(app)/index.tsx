@@ -19,9 +19,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import {
   Activity,
+  BookOpen,
   CalendarClock,
   FileText,
-  MessageCircleQuestion,
   Microscope,
   NotebookPen,
 } from 'lucide-react-native';
@@ -108,9 +108,6 @@ export default function HomeScreen() {
 
   const startThread = (text: string) => {
     router.push(`/chat/${NEW_CONVERSATION}?q=${encodeURIComponent(text)}` as never);
-  };
-  const prefillThread = (text: string) => {
-    router.push(`/chat/${NEW_CONVERSATION}?prefill=${encodeURIComponent(text)}` as never);
   };
 
   const openEdge = Gesture.Pan()
@@ -257,10 +254,10 @@ export default function HomeScreen() {
                 />
               )}
               <MenuRow
-                Icon={MessageCircleQuestion}
-                title="Ask about a report or term"
-                subtitle="Paste any medical words you want explained"
-                onPress={() => prefillThread('Can you explain what this means: ')}
+                Icon={BookOpen}
+                title="Ask about a term or phrase"
+                subtitle="Understand technical terms"
+                onPress={() => router.push('/tools/glossary' as never)}
               />
               <MenuRow
                 Icon={FileText}
