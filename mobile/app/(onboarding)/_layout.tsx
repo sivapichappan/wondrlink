@@ -11,6 +11,9 @@ export default function OnboardingLayout() {
         headerShadowVisible: false,
         contentStyle: { backgroundColor: Colors.surface },
         gestureEnabled: false,
+        // iOS falls back to the previous ROUTE NAME ("who-for") as the back
+        // label when that screen has no title — always say Back instead.
+        headerBackTitle: 'Back',
       }}>
       <Stack.Screen name="consent" options={{ title: 'Before you start', headerBackVisible: false }} />
       <Stack.Screen name="disclaimer" options={{ title: 'Privacy Notice' }} />

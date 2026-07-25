@@ -128,15 +128,27 @@ export default function HomeScreen() {
         header={<TopBar leading="menu" />}
         footer={<ChatInput onSend={startThread} disabled={chatDisabled} />}
         keyboardAvoiding
+        grow
         gap={Spacing.lg}>
-        {/* Greeting */}
-        <View style={{ paddingTop: Spacing.xs }}>
-          <Text style={{ fontFamily: Fonts.serifBold, fontSize: FontSize.h1, lineHeight: 36, color: Colors.textPrimary }}>
-            {firstName ? `Hi ${firstName},` : 'Hi there,'}
-          </Text>
-          <Text style={{ fontFamily: Fonts.serif, fontSize: FontSize.h1, lineHeight: 36, color: Colors.textSecondary }}>
-            {anchorMode ? "I'm glad you're here." : 'how are you feeling today?'}
-          </Text>
+        {/* Greeting. Menu mode centers vertically: this marginTop auto pairs
+            with the AI note's marginTop auto below, splitting the free space. */}
+        <View style={{ paddingTop: Spacing.xs, marginTop: anchorMode ? 0 : 'auto' }}>
+          {anchorMode ? (
+            <>
+              <Text style={{ fontFamily: Fonts.serifBold, fontSize: FontSize.h1, lineHeight: 36, color: Colors.textPrimary }}>
+                {firstName ? `Hi ${firstName},` : 'Hi there,'}
+              </Text>
+              <Text style={{ fontFamily: Fonts.serif, fontSize: FontSize.h1, lineHeight: 36, color: Colors.textSecondary }}>
+                I&apos;m glad you&apos;re here.
+              </Text>
+            </>
+          ) : (
+            <Text style={{ fontFamily: Fonts.serifBold, fontSize: FontSize.h1, lineHeight: 36, color: Colors.textPrimary }}>
+              {firstName
+                ? `Tell me how you're feeling, ${firstName}`
+                : "Tell me how you're feeling"}
+            </Text>
+          )}
         </View>
 
         {anchorMode ? (
@@ -222,9 +234,6 @@ export default function HomeScreen() {
               </View>
             )}
 
-            <Text style={{ fontSize: FontSize.md, color: Colors.textSecondary }}>
-              Here is how I can help:
-            </Text>
             <View style={{ gap: Spacing.sm }}>
               <MenuRow
                 Icon={NotebookPen}
@@ -260,9 +269,6 @@ export default function HomeScreen() {
                 onPress={() => router.push('/profile/build')}
               />
             </View>
-            <Text style={{ fontSize: FontSize.sm, color: Colors.textMuted }}>
-              Or just talk to me. Ask anything, anytime.
-            </Text>
           </View>
         )}
 

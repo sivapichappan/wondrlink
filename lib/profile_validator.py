@@ -88,7 +88,11 @@ def derive_universal_core(profile: Dict[str, Any]) -> Dict[str, Any]:
     raw_stage = diagnosis.get("stage") or profile.get("cancer_stage") or ""
     role = "caregiver" if profile.get("role") == "caregiver" else "patient"
 
-    cancer_slug = registry.resolve_slug(raw_site)
+    # No site signal at all -> None, NOT the registry fallback. A fresh
+    # signup has no diagnosis; stamping the fallback slug here silently
+    # skipped the anchor question ("what type of cancer?") and could
+    # clobber an explicitly picked slug on later profile saves.
+    cancer_slug = registry.resolve_slug(raw_site) if raw_site else None
     stage_group = normalize_stage(raw_stage)
     intent = derive_treatment_intent(profile, stage_group)
 

@@ -63,13 +63,19 @@ def save_profile(user_id: str, profile_data: dict) -> bool:
             )
             core = derive_universal_core(profile_data)
             clinical_payload = derive_clinical_payload(profile_data)
-            ok, errors = validate_clinical(core['cancer_slug'], clinical_payload)
-            if not ok:
-                logger.warning(
-                    "Clinical payload validation failed for user %s (cancer=%s): %s",
-                    user_id, core['cancer_slug'], '; '.join(errors[:3])
-                )
-                clinical_payload = {}
+            if core.get('cancer_slug'):
+                ok, errors = validate_clinical(core['cancer_slug'], clinical_payload)
+                if not ok:
+                    logger.warning(
+                        "Clinical payload validation failed for user %s (cancer=%s): %s",
+                        user_id, core['cancer_slug'], '; '.join(errors[:3])
+                    )
+                    clinical_payload = {}
+            else:
+                # Underivable (no diagnosis site): OMIT the column entirely so
+                # the upsert can neither stamp the fallback on a fresh signup
+                # nor null out a slug the user picked via the anchor question.
+                core.pop('cancer_slug', None)
             v2_row = {
                 **profile_row,
                 **core,

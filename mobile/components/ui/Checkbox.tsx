@@ -19,11 +19,12 @@ export function Checkbox({ checked, onChange, label, description, disabled }: Pr
       accessibilityRole="checkbox"
       accessibilityState={{ checked, disabled: !!disabled }}
       style={({ pressed }) => ({
-        flexDirection: 'row',
-        gap: 12,
-        paddingVertical: 10,
         opacity: pressed && !disabled ? 0.85 : 1,
       })}>
+      {/* Layout lives on a static inner View — NativeWind strips
+          flexDirection/gap from Pressable style FUNCTIONS, which rendered
+          the box and its label on separate lines. */}
+      <View style={{ flexDirection: 'row', gap: 12, paddingVertical: 10 }}>
       <View
         style={{
           width: 22,
@@ -66,6 +67,7 @@ export function Checkbox({ checked, onChange, label, description, disabled }: Pr
             {description}
           </Text>
         )}
+      </View>
       </View>
     </Pressable>
   );

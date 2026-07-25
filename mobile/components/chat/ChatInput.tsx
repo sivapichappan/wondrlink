@@ -136,7 +136,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Let's talk", prefil
   };
 
   return (
-    <View style={[styles.bar, { marginBottom: insets.bottom + Spacing.sm }]}>
+    <View style={[styles.bar, { marginBottom: insets.bottom }]}>
       <View style={styles.row}>
         {/* + / quick actions */}
         <Pressable onPress={() => setActionsOpen(true)} disabled={disabled} accessibilityRole="button" accessibilityLabel="Quick actions" hitSlop={8}>

@@ -55,6 +55,28 @@ export default function WhoFor() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.surface }}>
       <View style={{ flex: 1, padding: Spacing.xl, justifyContent: 'center', gap: Spacing.lg }}>
+        {/* Short what-is-this intro: the first screen after consent is where
+            a new person learns what the app actually does. */}
+        <View style={{ gap: 6, marginBottom: Spacing.lg }}>
+          <Text
+            style={{
+              fontFamily: Fonts.serifBold,
+              fontSize: FontSize.h2,
+              color: Colors.textPrimary,
+              textAlign: 'center',
+            }}>
+            {`Welcome to ${APP_NAME}`}
+          </Text>
+          <Text
+            style={{
+              fontSize: FontSize.md,
+              lineHeight: 21,
+              color: Colors.textSecondary,
+              textAlign: 'center',
+            }}>
+            {`${APP_NAME} helps you make sense of cancer care. It answers your questions in plain words, sums up doctor visits, and finds clinical trials that may fit.`}
+          </Text>
+        </View>
         <View style={{ gap: 6, marginBottom: Spacing.md }}>
           <Text
             style={{

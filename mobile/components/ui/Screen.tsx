@@ -23,6 +23,9 @@ interface ScreenProps {
   padded?: boolean;
   keyboardAvoiding?: boolean;
   keyboardShouldPersistTaps?: boolean;
+  /** Let the scroll content fill the viewport so children can use auto
+   *  margins for vertical centering (e.g. the home menu). */
+  grow?: boolean;
 }
 
 export function Screen({
@@ -34,6 +37,7 @@ export function Screen({
   padded = true,
   keyboardAvoiding = false,
   keyboardShouldPersistTaps = false,
+  grow = false,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const pad = padded ? Spacing.xl : 0;
@@ -41,7 +45,7 @@ export function Screen({
   const body = scroll ? (
     <ScrollView
       style={{ flex: 1 }}
-      contentContainerStyle={{ padding: pad, gap, paddingBottom: footer ? Spacing.md : insets.bottom + Spacing.xl }}
+      contentContainerStyle={{ padding: pad, gap, paddingBottom: footer ? Spacing.md : insets.bottom + Spacing.xl, ...(grow ? { flexGrow: 1 } : null) }}
       keyboardShouldPersistTaps={keyboardShouldPersistTaps ? 'handled' : 'never'}
       showsVerticalScrollIndicator={false}>
       {children}
