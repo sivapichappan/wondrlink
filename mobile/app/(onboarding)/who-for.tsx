@@ -5,13 +5,24 @@
  */
 
 import { router } from 'expo-router';
-import { HeartHandshake, User } from 'lucide-react-native';
-import { Pressable, Text, View } from 'react-native';
+import { Activity, HeartHandshake, MessageCircle, Microscope, NotebookPen, User } from 'lucide-react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { IconCircle } from '@/components/ui/IconCircle';
 import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 import { APP_NAME } from '@shared/branding';
+
+function Tip({ Icon, text }: { Icon: typeof Activity; text: string }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm }}>
+      <Icon size={16} color={Colors.primary} style={{ marginTop: 2 }} />
+      <Text style={{ flex: 1, fontSize: FontSize.sm, lineHeight: 19, color: Colors.textSecondary }}>
+        {text}
+      </Text>
+    </View>
+  );
+}
 
 function Choice({
   title,
@@ -54,10 +65,14 @@ function Choice({
 export default function WhoFor() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.surface }}>
-      <View style={{ flex: 1, padding: Spacing.xl, justifyContent: 'center', gap: Spacing.lg }}>
-        {/* Short what-is-this intro: the first screen after consent is where
-            a new person learns what the app actually does. */}
-        <View style={{ gap: 6, marginBottom: Spacing.lg }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1, padding: Spacing.xl, justifyContent: 'center', gap: Spacing.lg }}
+        showsVerticalScrollIndicator={false}>
+        {/* What-is-this intro + how to use it well: the first screen after
+            consent is where a new person learns what the app does and the
+            habits that make it useful (check-ins, visit recaps, details). */}
+        <View style={{ gap: 6 }}>
           <Text
             style={{
               fontFamily: Fonts.serifBold,
@@ -74,8 +89,22 @@ export default function WhoFor() {
               color: Colors.textSecondary,
               textAlign: 'center',
             }}>
-            {`${APP_NAME} helps you make sense of cancer care. It answers your questions in plain words, sums up doctor visits, and finds clinical trials that may fit.`}
+            {`${APP_NAME} helps you make sense of cancer care, in plain words. Here is how to get the most from it:`}
           </Text>
+        </View>
+
+        <View
+          style={{
+            gap: Spacing.sm,
+            backgroundColor: Colors.surfaceMuted,
+            borderRadius: Radius.lg,
+            padding: Spacing.lg,
+            marginBottom: Spacing.md,
+          }}>
+          <Tip Icon={MessageCircle} text="Just talk. Ask anything, anytime, like you would ask a nurse." />
+          <Tip Icon={Activity} text="Do the wellness check-in when it appears. It tracks how you feel from week to week, so changes get noticed." />
+          <Tip Icon={NotebookPen} text="After appointments, use Sum up a doctor visit to turn notes into plain words and next steps." />
+          <Tip Icon={Microscope} text={`Share details when you're ready. The more ${APP_NAME} knows, the better it can match clinical trials to you.`} />
         </View>
         <View style={{ gap: 6, marginBottom: Spacing.md }}>
           <Text
@@ -114,7 +143,7 @@ export default function WhoFor() {
         <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, textAlign: 'center', marginTop: Spacing.md }}>
           You can change this later in Settings.
         </Text>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
