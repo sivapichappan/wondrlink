@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { Colors, Fonts, Radius } from '@/constants/theme';
+import { APP_NAME } from '@shared/branding';
 import { CONTACT } from '@shared/disclaimers';
 import { CURRENT_CONSENT_VERSION } from '@shared/consent-version';
 
@@ -14,12 +15,10 @@ export default function About() {
       <Stack.Screen options={{ title: 'About' }} />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
         <Text style={{ fontFamily: Fonts.serifBold, fontSize: 22, color: Colors.textPrimary }}>
-          Sage
+          {APP_NAME}
         </Text>
         <Text style={{ color: Colors.textSecondary, fontSize: 14, lineHeight: 21 }}>
-          A colon cancer informational guide built by the WondrLink Foundation. Sage is
-          designed to help patients and caregivers understand diagnosis, treatment options,
-          screenings, and resources, in plain language.
+          {`A colon cancer informational guide built by the WondrLink Foundation. ${APP_NAME} is designed to help patients and caregivers understand diagnosis, treatment options, screenings, and resources, in plain language.`}
         </Text>
 
         <View

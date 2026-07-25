@@ -31,6 +31,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useCareSnapshot } from '@/hooks/useCare';
+import { APP_NAME } from '@shared/branding';
 
 const MAX_CHARS = 2000;
 
@@ -82,7 +83,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Let's talk", prefil
     if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
       Alert.alert(
         'Microphone access needed',
-        'Enable Microphone and Speech Recognition for Sage in Settings to use voice input.',
+        `Enable Microphone and Speech Recognition for ${APP_NAME} in Settings to use voice input.`,
       );
       return;
     }
@@ -95,7 +96,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Let's talk", prefil
       if (!perm.granted) {
         Alert.alert(
           'Microphone access needed',
-          'Enable Microphone and Speech Recognition for Sage in Settings to use voice input.',
+          `Enable Microphone and Speech Recognition for ${APP_NAME} in Settings to use voice input.`,
         );
         return;
       }

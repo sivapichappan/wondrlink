@@ -9,6 +9,7 @@ import { TextField } from '@/components/ui/TextField';
 import { Colors, Fonts } from '@/constants/theme';
 import { login } from '@/lib/api/auth';
 import { ApiError, extractErrorMessage } from '@/lib/api/client';
+import { APP_NAME } from '@shared/branding';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -53,7 +54,7 @@ export default function Login() {
             Welcome back
           </Text>
           <Text style={{ color: Colors.textSecondary, fontSize: 14, lineHeight: 20 }}>
-            Sign in to continue your Sage conversations.
+            {`Sign in to continue your ${APP_NAME} conversations.`}
           </Text>
 
           <TextField

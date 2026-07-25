@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { IconCircle } from '@/components/ui/IconCircle';
 import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
+import { APP_NAME } from '@shared/branding';
 
 function Choice({
   title,
@@ -71,7 +72,7 @@ export default function WhoFor() {
               color: Colors.textSecondary,
               textAlign: 'center',
             }}>
-            This shapes how Sage talks with you. You can not get it wrong.
+            {`This shapes how ${APP_NAME} talks with you. You can not get it wrong.`}
           </Text>
         </View>
 

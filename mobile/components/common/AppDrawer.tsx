@@ -25,6 +25,7 @@ import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { useCareSnapshot, useProfile } from '@/hooks/useCare';
 import { useConversations } from '@/hooks/useConversations';
 import { useWatchlist } from '@/hooks/useWatchlist';
+import { APP_NAME } from '@shared/branding';
 import { LifecycleStageLine } from './LifecycleStageLine';
 import { useNavOverlay } from './NavOverlay';
 
@@ -131,7 +132,7 @@ export function AppDrawer() {
           {/* Brand */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 8, paddingVertical: 10 }}>
             <Image source={LOGO} style={{ width: 24, height: 24, borderRadius: 6 }} />
-            <Text style={{ fontFamily: Fonts.serifBold, fontSize: FontSize.h3, color: Colors.textPrimary }}>Sage</Text>
+            <Text style={{ fontFamily: Fonts.serifBold, fontSize: FontSize.h3, color: Colors.textPrimary }}>{APP_NAME}</Text>
           </View>
 
           <DrawerRow icon={<SquarePen size={17} color={Colors.primary} />} label="New chat" tint onPress={() => go('/chat/new')} />

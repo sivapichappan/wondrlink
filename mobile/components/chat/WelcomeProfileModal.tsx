@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { Button } from '@/components/ui/Button';
 import { Colors, Fonts, Radius } from '@/constants/theme';
+import { APP_NAME } from '@shared/branding';
 
 interface Props {
   visible: boolean;
@@ -14,7 +15,7 @@ const VALUE_BULLETS: { Icon: typeof Sparkles; title: string; body: string }[] = 
   {
     Icon: HeartPulse,
     title: 'Answers tuned to you',
-    body: 'Sage uses your diagnosis, stage, and treatments to give responses that actually match your situation, not generic info.',
+    body: `${APP_NAME} uses your diagnosis, stage, and treatments to give responses that actually match your situation, not generic info.`,
   },
   {
     Icon: Microscope,
@@ -51,7 +52,7 @@ export function WelcomeProfileModal({ visible, onBuildProfile, onSkip }: Props) 
           </View>
 
           <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-            <Text style={styles.title}>Welcome to Sage</Text>
+            <Text style={styles.title}>{`Welcome to ${APP_NAME}`}</Text>
             <Text style={styles.subtitle}>
               An AI assistant that helps you understand your diagnosis, treatments, and trial
               options in everyday language, paired with a human Navigator when you need one.
@@ -60,9 +61,7 @@ export function WelcomeProfileModal({ visible, onBuildProfile, onSkip }: Props) 
             <View style={styles.calloutCard}>
               <Text style={styles.calloutHeader}>Just start chatting</Text>
               <Text style={styles.calloutBody}>
-                No forms needed. Sage learns about you naturally as you talk, and may
-                occasionally ask a gentle question. The more you chat, the more personal
-                every answer gets.
+                {`No forms needed. ${APP_NAME} learns about you naturally as you talk, and may occasionally ask a gentle question. The more you chat, the more personal every answer gets.`}
               </Text>
             </View>
 

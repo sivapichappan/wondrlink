@@ -21,6 +21,7 @@ import {
 } from '@shared/disclaimers';
 import { US_STATES, type StateChoice } from '@shared/consent-version';
 import type { AgeBand } from '@shared/types';
+import { APP_NAME } from '@shared/branding';
 
 const stateOptions = [
   ...US_STATES.map((code) => ({ value: code, label: code })),
@@ -247,7 +248,7 @@ export default function Consent() {
               color: Colors.textMuted,
               lineHeight: 17,
             }}>
-            WondrLink is for adults (18+). We use your date of birth only to verify age — the raw
+            {APP_NAME} is for adults (18+). We use your date of birth only to verify age — the raw
             date is not stored.
           </Text>
           {dob && !isAdult && (

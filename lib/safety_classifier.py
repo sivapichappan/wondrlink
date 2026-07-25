@@ -107,8 +107,11 @@ def _build_system_prompt(on_active_treatment: bool, perspective: str) -> str:
         cat = r.get("category")
         if tier and cat and cat not in rules_ref.setdefault(tier, []):
             rules_ref[tier].append(cat)
+    from branding import APP_NAME
+
     return (
         _prompt_template()
+        .replace("<<APP_NAME>>", APP_NAME)
         .replace("<<RULES_JSON>>", json.dumps(rules_ref, separators=(",", ":")))
         .replace("<<EMERGENCY_NUMBER>>", emergency_number())
         .replace("<<ON_ACTIVE_TREATMENT>>", "true" if on_active_treatment else "false")

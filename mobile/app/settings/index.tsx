@@ -23,6 +23,7 @@ import { HeaderBack } from '@/components/common/HeaderBack';
 import { Colors, Fonts, Radius } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 import { logout } from '@/lib/api/auth';
+import { APP_NAME } from '@shared/branding';
 
 interface Row {
   href?: string;
@@ -59,13 +60,13 @@ export default function SettingsScreen() {
           href: '/profile',
           Icon: UserCog,
           title: 'Profile',
-          blurb: 'View and reset the personalization data Sage uses',
+          blurb: `View and reset the personalization data ${APP_NAME} uses`,
         },
         {
           href: '/profile/cancer-switcher',
           Icon: Tag,
           title: 'Cancer focus',
-          blurb: 'Switch which cancer Sage is tailored to',
+          blurb: `Switch which cancer ${APP_NAME} is tailored to`,
         },
         {
           href: '/settings/detail-level',
@@ -117,7 +118,7 @@ export default function SettingsScreen() {
       ],
     },
     {
-      title: 'Help Sage improve',
+      title: `Help ${APP_NAME} improve`,
       rows: [
         {
           href: '/settings/feedback',
@@ -144,7 +145,7 @@ export default function SettingsScreen() {
         {
           href: '/settings/about',
           Icon: Info,
-          title: 'About Sage',
+          title: `About ${APP_NAME}`,
           blurb: `Version ${Constants.expoConfig?.version ?? '—'}`,
         },
       ],

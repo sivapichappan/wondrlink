@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { Colors, Fonts } from '@/constants/theme';
+import { APP_NAME } from '@shared/branding';
 
 /**
  * Top-aligned banner that appears whenever NetInfo reports the device is
@@ -35,7 +36,7 @@ export function OfflineBanner() {
       }}>
       <WifiOff size={14} color={Colors.warning} />
       <Text style={{ color: Colors.warning, fontSize: 12, fontFamily: Fonts.sansMedium }}>
-        You're offline. Sage needs a connection to answer new questions.
+        {`You're offline. ${APP_NAME} needs a connection to answer new questions.`}
       </Text>
     </View>
   );

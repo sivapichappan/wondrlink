@@ -19,6 +19,7 @@ import { Colors, Fonts, Radius } from '@/constants/theme';
 import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { useProfile } from '@/hooks/useCare';
 import { clearProfile } from '@/lib/api/care';
+import { APP_NAME } from '@shared/branding';
 
 interface PatientObj {
   firstName?: string;
@@ -53,7 +54,7 @@ export default function ProfileViewScreen() {
   const reset = () => {
     Alert.alert(
       'Reset your profile?',
-      'This removes the personalized profile Sage uses. Your chat history is unaffected.',
+      `This removes the personalized profile ${APP_NAME} uses. Your chat history is unaffected.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -90,9 +91,7 @@ export default function ProfileViewScreen() {
             Build your profile
           </Text>
           <Text style={{ color: Colors.textSecondary, fontSize: 14, lineHeight: 21 }}>
-            Adding your diagnosis, biomarkers, and treatments lets Sage give answers that are
-            specific to your situation instead of generic. It only takes a few minutes and you can
-            edit it any time.
+            {`Adding your diagnosis, biomarkers, and treatments lets ${APP_NAME} give answers that are specific to your situation instead of generic. It only takes a few minutes and you can edit it any time.`}
           </Text>
           <Button
             label="Start"

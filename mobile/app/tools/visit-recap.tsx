@@ -12,6 +12,7 @@ import { useProfile } from '@/hooks/useCare';
 import { useSpeechDictation } from '@/hooks/useSpeechDictation';
 import { ApiError } from '@/lib/api/client';
 import { generateVisitRecap } from '@/lib/api/tools';
+import { APP_NAME } from '@shared/branding';
 import type { VisitRecapEntry, VisitRecapStructured } from '@shared/types';
 
 function formatTimer(s: number): string {
@@ -84,9 +85,7 @@ export default function VisitRecapScreen() {
         style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }} keyboardShouldPersistTaps="handled">
           <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 19 }}>
-            Record your appointment as it happens, or type notes from what you remember. Sage
-            organizes it into discussion points, treatment changes, and action items, and keeps a
-            history so you can look back.
+            {`Record your appointment as it happens, or type notes from what you remember. ${APP_NAME} organizes it into discussion points, treatment changes, and action items, and keeps a history so you can look back.`}
           </Text>
 
           {/* Record control */}

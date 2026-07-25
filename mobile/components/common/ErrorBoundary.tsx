@@ -5,6 +5,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Colors, Fonts, Radius } from '@/constants/theme';
 import { Sentry } from '@/lib/sentry';
+import { APP_NAME } from '@shared/branding';
 
 interface Props {
   children: ReactNode;
@@ -67,8 +68,7 @@ export class ErrorBoundary extends Component<Props, State> {
             lineHeight: 21,
             textAlign: 'center',
           }}>
-          Sage hit an unexpected error. The team has been notified. You can try again, your
-          chat history is safe.
+          {`${APP_NAME} hit an unexpected error. The team has been notified. You can try again, your chat history is safe.`}
         </Text>
         <View
           style={{

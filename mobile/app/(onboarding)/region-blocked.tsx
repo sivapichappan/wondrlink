@@ -21,10 +21,11 @@ import { Colors, Fonts } from '@/constants/theme';
 import { logout } from '@/lib/api/auth';
 import { apiFetch } from '@/lib/api/client';
 import { ENDPOINTS } from '@shared/api-contracts';
+import { APP_NAME } from '@shared/branding';
 
 const REGION_BLOCKED_TITLE = 'Not available in your region';
 const REGION_BLOCKED_MESSAGE =
-  "WondrLink is not currently available to residents of the EU, EEA, UK, or Switzerland. " +
+  `${APP_NAME} is not currently available to residents of the EU, EEA, UK, or Switzerland. ` +
   "We're working on compliance with the applicable regulations (GDPR, EU AI Act) and hope " +
   "to offer service in the future.";
 const CONTACT_EMAIL = 'info@wondrlinkfoundation.org';
@@ -40,7 +41,7 @@ export default function RegionBlocked() {
   const deleteAccount = () => {
     Alert.alert(
       'Delete your account',
-      'This permanently removes your WondrLink account and all associated data. This cannot be undone.',
+      `This permanently removes your ${APP_NAME} account and all associated data. This cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {

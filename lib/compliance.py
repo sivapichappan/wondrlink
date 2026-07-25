@@ -10,6 +10,7 @@ DRAFT — ATTORNEY REVIEW REQUIRED for the legal positions encoded here.
 """
 
 from typing import Dict, Any, Tuple
+from branding import APP_NAME
 
 
 # =============================================================================
@@ -168,7 +169,7 @@ def validate_country(headers) -> Tuple[bool, str, int]:
     if is_blocked_country(cc):
         return (
             False,
-            "Sage is not currently available to residents of the EU, EEA, "
+            f"{APP_NAME} is not currently available to residents of the EU, EEA, "
             "UK, or Switzerland. We're working on compliance with the applicable "
             "regulations (GDPR, EU AI Act) and hope to offer service in the "
             "future. Contact us at info@wondrlinkfoundation.org for updates.",
@@ -336,7 +337,7 @@ def validate_state(state: str) -> Tuple[bool, str, int]:
         block_list = " or ".join(labels) if labels else "your state"
         return (
             False,
-            f"Sage is not currently available to residents of {block_list} "
+            f"{APP_NAME} is not currently available to residents of {block_list} "
             "due to state regulations governing AI in mental and behavioral health. "
             "We're working to expand access — thank you for your patience.",
             422,

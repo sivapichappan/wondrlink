@@ -8,6 +8,7 @@ import { TextField } from '@/components/ui/TextField';
 import { Colors, Fonts, Radius } from '@/constants/theme';
 import { ApiError } from '@/lib/api/client';
 import { generatePreVisitQuestions } from '@/lib/api/tools';
+import { APP_NAME } from '@shared/branding';
 import type { PreVisitGroup } from '@shared/types';
 
 export default function PreVisitScreen() {
@@ -37,8 +38,7 @@ export default function PreVisitScreen() {
         style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
           <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 19 }}>
-            Optional: share anything specific you want to discuss at your next visit (symptoms,
-            decisions, side effects). Sage will tailor the question list.
+            {`Optional: share anything specific you want to discuss at your next visit (symptoms, decisions, side effects). ${APP_NAME} will tailor the question list.`}
           </Text>
 
           <TextField

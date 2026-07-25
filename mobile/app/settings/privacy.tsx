@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { Colors, Fonts, Radius } from '@/constants/theme';
+import { APP_NAME } from '@shared/branding';
 import { CONTACT } from '@shared/disclaimers';
 import { CURRENT_CONSENT_VERSION } from '@shared/consent-version';
 
@@ -29,10 +30,7 @@ export default function PrivacyPolicy() {
         </Text>
 
         <Section title="Service availability">
-          Sage is available to adults (18+) in the United States. It is not currently
-          available to residents of Illinois or Nevada due to state regulations that govern
-          AI-delivered mental and behavioral health services, nor to residents of the EU, EEA,
-          UK, or Switzerland while we complete the compliance work required to serve those regions.
+          {`${APP_NAME} is available to adults (18+) in the United States. It is not currently available to residents of Illinois or Nevada due to state regulations that govern AI-delivered mental and behavioral health services, nor to residents of the EU, EEA, UK, or Switzerland while we complete the compliance work required to serve those regions.`}
         </Section>
 
         <Section title="What we collect">

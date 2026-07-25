@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { Colors, Fonts, Radius } from '@/constants/theme';
+import { APP_NAME } from '@shared/branding';
 import { CONTACT } from '@shared/disclaimers';
 
 export default function Terms() {
@@ -24,29 +25,19 @@ export default function Terms() {
         </View>
 
         <Section title="Not medical advice">
-          Sage provides general educational information about colon cancer. It is not a
-          substitute for professional medical advice, diagnosis, or treatment. Always consult your
-          oncologist or qualified healthcare provider with questions about your medical condition.
+          {`${APP_NAME} provides general educational information about colon cancer. It is not a substitute for professional medical advice, diagnosis, or treatment. Always consult your oncologist or qualified healthcare provider with questions about your medical condition.`}
         </Section>
 
         <Section title="No diagnoses, no prescriptions">
-          Sage does not provide diagnoses, prescriptions, or treatment plans. AI-generated
-          responses may contain errors — verify all information with your care team before acting
-          on it.
+          {`${APP_NAME} does not provide diagnoses, prescriptions, or treatment plans. AI-generated responses may contain errors — verify all information with your care team before acting on it.`}
         </Section>
 
         <Section title="Emergencies">
-          If you are experiencing a medical emergency, call 911 immediately. Sage is not
-          equipped to handle emergencies.
+          {`If you are experiencing a medical emergency, call 911 immediately. ${APP_NAME} is not equipped to handle emergencies.`}
         </Section>
 
         <Section title="Eligible users">
-          To use Sage you must be at least 18 years of age. We verify your age via date of
-          birth at signup; we do not store the raw date, only the derived age band (e.g. 35–44).
-          Sage is not currently available to residents of Illinois or Nevada due to state
-          regulations governing AI in mental and behavioral health, nor to residents of the EU,
-          EEA, UK, or Switzerland while we complete the compliance work required to serve those
-          regions. By creating an account you confirm you meet these eligibility requirements.
+          {`To use ${APP_NAME} you must be at least 18 years of age. We verify your age via date of birth at signup; we do not store the raw date, only the derived age band (e.g. 35–44). ${APP_NAME} is not currently available to residents of Illinois or Nevada due to state regulations governing AI in mental and behavioral health, nor to residents of the EU, EEA, UK, or Switzerland while we complete the compliance work required to serve those regions. By creating an account you confirm you meet these eligibility requirements.`}
         </Section>
 
         <Section title="Acceptable use">

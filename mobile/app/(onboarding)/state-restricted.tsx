@@ -9,6 +9,7 @@ import { logout } from '@/lib/api/auth';
 import { apiFetch } from '@/lib/api/client';
 import { ENDPOINTS } from '@shared/api-contracts';
 import { STATE_BLOCKED_MESSAGE, STATE_BLOCKED_TITLE } from '@shared/disclaimers';
+import { APP_NAME } from '@shared/branding';
 
 export default function StateRestricted() {
   const qc = useQueryClient();
@@ -21,7 +22,7 @@ export default function StateRestricted() {
   const deleteAccount = () => {
     Alert.alert(
       'Delete your account',
-      'This permanently removes your WondrLink account and all associated data. This cannot be undone.',
+      `This permanently removes your ${APP_NAME} account and all associated data. This cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {

@@ -16,6 +16,7 @@ import { TextField } from '@/components/ui/TextField';
 import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 import { saveAccountBasics } from '@/lib/api/account';
 import { ApiError, extractErrorMessage } from '@/lib/api/client';
+import { APP_NAME } from '@shared/branding';
 
 const RELATIONSHIPS = ['Mom', 'Dad', 'Spouse', 'Child', 'Friend', 'Other'] as const;
 const GENDERS = ['Female', 'Male', 'Other'] as const;
@@ -107,7 +108,7 @@ export default function Basics() {
               {caregiver ? 'About you and them' : 'Just four things'}
             </Text>
             <Text style={{ fontSize: FontSize.md, lineHeight: 21, color: Colors.textSecondary }}>
-              Everything else, Sage learns as you chat.
+              {`Everything else, ${APP_NAME} learns as you chat.`}
             </Text>
           </View>
 
@@ -157,7 +158,7 @@ export default function Basics() {
               placeholder="City or ZIP code"
             />
             <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>
-              Helps Sage find trials and care nearby. You can skip this for now.
+              {`Helps ${APP_NAME} find trials and care nearby. You can skip this for now.`}
             </Text>
           </View>
 

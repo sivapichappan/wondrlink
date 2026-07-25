@@ -10,6 +10,8 @@
  * cancer-helpline list. Search by constant name in those files to find them.
  */
 
+import { APP_NAME } from './branding';
+
 // =============================================================================
 // PERSISTENT BANNERS
 // =============================================================================
@@ -140,6 +142,6 @@ export const CONTACT = {
 export const CRISIS_MODAL = {
   title: 'It sounds like you may need urgent help',
   body:
-    'Sage is not equipped to help in an emergency. If you are in danger or in crisis, please reach out to one of the resources below now.',
+    `${APP_NAME} is not equipped to help in an emergency. If you are in danger or in crisis, please reach out to one of the resources below now.`,
   continueButton: 'I understand — continue anyway',
 } as const;

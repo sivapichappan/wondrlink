@@ -20,6 +20,7 @@ import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { useProfile } from '@/hooks/useCare';
 import { fetchCancerOptions, updateCancerSlug } from '@/lib/api/care';
 import { ApiError, extractErrorMessage } from '@/lib/api/client';
+import { APP_NAME } from '@shared/branding';
 import type { CancerOption, PatientRole } from '@shared/types';
 
 const ROLES: { value: PatientRole; label: string; desc: string }[] = [
@@ -148,12 +149,11 @@ export default function CancerSwitcherScreen() {
               Cancer focus
             </Text>
             <Text style={{ color: Colors.textSecondary, fontSize: 14, lineHeight: 20 }}>
-              Sage tailors retrievals, treatment context, and trial matches to whichever
-              cancer you select here. You can change this any time.
+              {`${APP_NAME} tailors retrievals, treatment context, and trial matches to whichever cancer you select here. You can change this any time.`}
             </Text>
           </View>
 
-          <FieldLabel>Which cancer should Sage focus on?</FieldLabel>
+          <FieldLabel>{`Which cancer should ${APP_NAME} focus on?`}</FieldLabel>
           <View style={{ gap: 8 }}>
             {cancers.map((c) => (
               <CancerCard

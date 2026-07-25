@@ -283,8 +283,10 @@ def compute_retrieval_confidence(retrieved_chunks: List[Any]) -> Dict[str, Any]:
 # when the user has a selected cancer, or
 #   "cancer education, treatment, screening, and wellness"
 # when no selected cancer (fallback).
+# {app_name} interpolates lib/branding.APP_NAME at render time (single
+# source of the product name; a rename never touches these templates).
 OFF_TOPIC_RESPONSE_TEMPLATE = (
-    "That seems outside what Sage can reliably help with. Sage "
+    "That seems outside what {app_name} can reliably help with. {app_name} "
     "focuses on {cancer_phrase} for patients and caregivers.\n\n"
     "If you have a question I can help with — your treatment, side effects, "
     "screening, mental wellness, or how to support a loved one — please ask.\n\n"
@@ -295,7 +297,7 @@ OFF_TOPIC_RESPONSE_TEMPLATE = (
 # "We noticed you're asking about a different cancer — want to switch?"
 CROSS_CANCER_PROMPT_TEMPLATE = (
     "It sounds like you're asking about {other_cancer_kind}, which is "
-    "different from your current Sage focus ({selected_cancer_kind}). "
+    "different from your current {app_name} focus ({selected_cancer_kind}). "
     "I can help you switch your focus in Settings → Profile, or I can keep "
     "answering general questions in the meantime.\n\n"
     "If you'd like a Personal Navigator to walk you through this, you can "
@@ -305,16 +307,20 @@ CROSS_CANCER_PROMPT_TEMPLATE = (
 
 def render_off_topic_response(selected_cancer: Optional[str] = None) -> str:
     """Compose the off-topic refusal message for the user's selected cancer."""
+    from branding import APP_NAME
+
     if selected_cancer:
         try:
             from lib import cancer_registry as _registry
             name = (_registry.display_name(selected_cancer) or "").lower()
             if name:
                 cancer_phrase = f"{name} education, treatment, screening, and wellness"
-                return OFF_TOPIC_RESPONSE_TEMPLATE.format(cancer_phrase=cancer_phrase)
+                return OFF_TOPIC_RESPONSE_TEMPLATE.format(
+                    app_name=APP_NAME, cancer_phrase=cancer_phrase)
         except Exception:
             pass
     return OFF_TOPIC_RESPONSE_TEMPLATE.format(
+        app_name=APP_NAME,
         cancer_phrase="cancer education, treatment, screening, and wellness"
     )
 

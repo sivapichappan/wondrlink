@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { Colors, Fonts } from '@/constants/theme';
+import { APP_NAME } from '@shared/branding';
 import { WELCOME_INTRO } from '@shared/disclaimers';
 
 export default function Welcome() {
@@ -21,7 +22,7 @@ export default function Welcome() {
               color: Colors.textPrimary,
               lineHeight: 36,
             }}>
-            Sage
+            {APP_NAME}
           </Text>
           <Text style={{ fontSize: 15, lineHeight: 22, color: Colors.textSecondary }}>
             {WELCOME_INTRO}

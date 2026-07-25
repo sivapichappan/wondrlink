@@ -18,6 +18,7 @@ import { TextField } from '@/components/ui/TextField';
 import { Colors, Fonts, Radius } from '@/constants/theme';
 import { ApiError } from '@/lib/api/client';
 import { submitInsuranceAppeal } from '@/lib/api/tools';
+import { APP_NAME } from '@shared/branding';
 import type { InsuranceAppealResponse } from '@shared/types';
 
 interface PickedPdf {
@@ -72,8 +73,7 @@ export default function InsuranceAppealScreen() {
         style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
           <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 19 }}>
-            Paste the denial reason or attach the denial letter PDF. Sage will draft an
-            appeal grounded in NCCN/ASCO guidelines for your situation.
+            {`Paste the denial reason or attach the denial letter PDF. ${APP_NAME} will draft an appeal grounded in NCCN/ASCO guidelines for your situation.`}
           </Text>
 
           <TextField

@@ -50,9 +50,12 @@ def assemble_system_prompt(slug: Optional[str]) -> str:
     Unknown slugs fall back to the registry default (currently colorectal),
     so existing callers that pass nothing keep working unchanged.
     """
+    from branding import APP_NAME
+
     cfg = registry.get_or_fallback(slug)
     display = cfg.get("display_name") or "Cancer"
     return BASE_SYSTEM_PROMPT_TEMPLATE.format(
+        app_name=APP_NAME,
         cancer_display_name=display,
         cancer_display_name_lower=display.lower(),
         cancer_overlay=compile_overlay(cfg.get("slug")),

@@ -22,6 +22,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Colors, FontSize, Fonts, Spacing } from '@/constants/theme';
 import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { useCareSnapshot, useProfile } from '@/hooks/useCare';
+import { APP_NAME } from '@shared/branding';
 
 /** Fraction of the well-known profile sections that carry data (0–1). */
 function completenessOf(profileData: unknown): number {
@@ -59,13 +60,13 @@ export default function MyCareScreen() {
   const summary =
     profile.data?.patient_summary ||
     [stage ? `Stage ${stage}` : null, cancerDisplay].filter(Boolean).join(' · ') ||
-    'Chat with Sage and it learns as you go';
+    `Chat with ${APP_NAME} and it learns as you go`;
   // "What WondrChat knows": server coverage when available (lifecycle model),
   // client-derived completeness as a fallback against older servers.
   const coverage = profile.data?.coverage;
   const pct = Math.round((coverage?.score ?? completenessOf(profile.data?.profile)) * 100);
   const knowsLabel = coverage
-    ? `Sage knows ${coverage.known_count} thing${coverage.known_count === 1 ? '' : 's'} about your care`
+    ? `${APP_NAME} knows ${coverage.known_count} thing${coverage.known_count === 1 ? '' : 's'} about your care`
     : `Profile ${pct}% complete`;
   const stageLabel = LIFECYCLE_LABELS[profile.data?.lifecycle_stage ?? 'getting_to_know_you'];
 

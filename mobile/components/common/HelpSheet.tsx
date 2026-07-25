@@ -21,6 +21,7 @@ import { Linking, Modal, Pressable, ScrollView, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors, FontSize, Fonts, Radius } from '@/constants/theme';
+import { APP_NAME } from '@shared/branding';
 import { CANCER_HELPLINES, CONTACT, CRISIS_HELPLINES, type Helpline } from '@shared/disclaimers';
 import { useNavOverlay } from './NavOverlay';
 
@@ -72,8 +73,7 @@ export function HelpSheet() {
             }}>
             <AlertOctagon size={18} color={Colors.danger} style={{ marginTop: 1 }} />
             <Text style={{ flex: 1, color: Colors.textPrimary, fontSize: FontSize.base, lineHeight: 19 }}>
-              <Text style={{ fontFamily: Fonts.sansSemiBold }}>Medical emergency?</Text> Call 911 immediately. Sage is
-              not built to handle emergencies.
+              <Text style={{ fontFamily: Fonts.sansSemiBold }}>Medical emergency?</Text>{` Call 911 immediately. ${APP_NAME} is not built to handle emergencies.`}
             </Text>
           </View>
 

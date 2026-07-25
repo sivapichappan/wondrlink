@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 
 import { Colors } from '@/constants/theme';
+import { APP_NAME } from '@shared/branding';
 
 const DOT_COUNT = 3;
 const DOT_DELAY = 180;
@@ -41,8 +42,8 @@ export function TypingIndicator() {
     <View
       style={styles.row}
       accessibilityRole="text"
-      accessibilityLabel="Sage is typing">
-      <Text style={styles.label}>Sage is typing</Text>
+      accessibilityLabel={`${APP_NAME} is typing`}>
+      <Text style={styles.label}>{`${APP_NAME} is typing`}</Text>
       <View style={styles.dots}>
         {dots.map((dot, i) => (
           <Animated.View

@@ -17,7 +17,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
 from prompts.loader import load_prompt  # noqa: E402
 
 PINS = {
-    "chat_base": "e38b88334ee4a8788ea5935c2f304bc443acf9f2bdd3f7a2377a9d6d84a05955",
+    # chat_base re-pinned 2026-07-25: the literal product name became the
+    # {app_name} slot (branding constant). The ASSEMBLED prompt was proven
+    # byte-identical to the pre-change fingerprints across all 10 cancers,
+    # so this is not a prompt-text change for eval purposes.
+    "chat_base": "2442138d3a8ddd189ade1fffb38568045738535dcf7b3625375b5a067647254a",
     "extractor": "0908762406493729a240c8ed052dc5dadfaf1a7d6c87fc267a72ace8a77870ec",
     "verifier": "e4b2cda11fff718ffed4f69c1bf79d6fe6a558753d100fe1db45d7978b5e7be0",
     "subquery": "d2e50e16c8893d31b864972334223fc631fe97dc51176aed4326e22a46674b38",
@@ -45,6 +49,6 @@ def test_classify_prompt_exists_and_has_markers():
     # classify.md predates this relocation and changes with the safety
     # rules — not pinned, but its template markers must survive edits.
     text = load_prompt("classify")
-    for marker in ("<<RULES_JSON>>", "<<EMERGENCY_NUMBER>>",
+    for marker in ("<<APP_NAME>>", "<<RULES_JSON>>", "<<EMERGENCY_NUMBER>>",
                    "<<ON_ACTIVE_TREATMENT>>", "<<PERSPECTIVE>>"):
         assert marker in text, f"classify.md lost marker {marker}"

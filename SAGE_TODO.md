@@ -46,8 +46,13 @@ level in ALL patient-facing text — UI copy, backend-generated strings, AND AI 
 - [x] Mobile: app.json display name → Sage (KEEP bundle identifier; keep EAS
       slug/projectId internals so the EAS project isn't orphaned); all UI strings,
       drawer, welcome copy, HelpSheet header
-- [ ] App Store Connect: rename the existing app record to Sage (display-name change
-      only — testers + history preserved)
+- [x] App Store Connect: renamed to **MySage** 2026-07-25 ("Sage" was taken; store
+      listing names only need uniqueness — supervisor 2026-07-25). The PRODUCT stays
+      Sage everywhere in-app. App name now lives in ONE constant per surface:
+      `shared/branding.ts` (mobile), `lib/branding.py` (backend), the `APP_NAME`
+      const in `public/index.html` (SPA boot pass fills `[data-app-name]` spans).
+      A future rename = those three constants + `mobile/app.json` (display name +
+      permission prompts; build config can't import TS).
 - [x] Web SPA branding sweep DONE; `mysage.chat` domain still open (DNS access → open question)
 - [x] Backend patient-facing strings: chat lead-ins ("Here are clinical trials…"),
       just-in-time questions, confirmation prompts, trial warnings

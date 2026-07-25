@@ -2,6 +2,7 @@ import { ChevronRight, Sparkles } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Colors, Fonts, Radius } from '@/constants/theme';
+import { APP_NAME } from '@shared/branding';
 
 interface Props {
   onPress: () => void;
@@ -27,7 +28,7 @@ export function ProfileNudgeBanner({ onPress }: Props) {
           <Sparkles size={16} color={Colors.surface} />
         </View>
         <View style={styles.text}>
-          <Text style={styles.title}>Sage learns about you as you chat</Text>
+          <Text style={styles.title}>{`${APP_NAME} learns about you as you chat`}</Text>
           <Text style={styles.subtitle} numberOfLines={2} ellipsizeMode="tail">
             Just start talking. Want a head start? An optional 2-minute setup is here.
           </Text>

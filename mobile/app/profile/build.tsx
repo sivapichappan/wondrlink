@@ -20,6 +20,7 @@ import { Colors, Fonts, Radius } from '@/constants/theme';
 import { uploadProfile } from '@/lib/api/care';
 import { ApiError, extractErrorMessage } from '@/lib/api/client';
 import { useProfile } from '@/hooks/useCare';
+import { APP_NAME } from '@shared/branding';
 
 type Sex = 'Male' | 'Female' | 'Other';
 
@@ -411,7 +412,7 @@ interface StepProps {
 function StepBasics({ state, update }: StepProps) {
   return (
     <>
-      <Hint title="Basics" body="A few details so Sage can address you and gauge fit for trials." />
+      <Hint title="Basics" body={`A few details so ${APP_NAME} can address you and gauge fit for trials.`} />
       <Field label="First name">
         <Input
           value={state.firstName}
@@ -692,7 +693,7 @@ function StepSymptoms({ state, update }: StepProps) {
     <>
       <Hint
         title="Current symptoms"
-        body="What you're feeling right now. Sage uses this to know when to flag something worth raising with your care team."
+        body={`What you're feeling right now. ${APP_NAME} uses this to know when to flag something worth raising with your care team.`}
       />
       <ChipMultiSelect
         options={SYMPTOMS}

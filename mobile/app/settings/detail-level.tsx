@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors, Fonts, Radius } from '@/constants/theme';
 import { useResponseLength } from '@/hooks/useResponseLength';
+import { APP_NAME } from '@shared/branding';
 import type { ResponseLength } from '@shared/types';
 
 interface Option {
@@ -40,8 +41,7 @@ export default function DetailLevelScreen() {
       <Stack.Screen options={{ title: 'Detail level' }} />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 14, paddingBottom: 40 }}>
         <Text style={{ color: Colors.textSecondary, fontSize: 14, lineHeight: 21 }}>
-          Controls how long Sage's answers tend to be. Applies to every new chat message;
-          you can change it any time.
+          {`Controls how long ${APP_NAME}'s answers tend to be. Applies to every new chat message; you can change it any time.`}
         </Text>
 
         {OPTIONS.map((opt) => {

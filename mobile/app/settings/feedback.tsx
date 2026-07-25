@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { Colors, Fonts, Radius } from '@/constants/theme';
 import { submitFeedback } from '@/lib/api/account';
+import { APP_NAME } from '@shared/branding';
 
 export default function Feedback() {
   const [rating, setRating] = useState<'up' | 'down' | null>(null);
@@ -50,7 +51,7 @@ export default function Feedback() {
               lineHeight: 21,
               textAlign: 'center',
             }}>
-            It helps us tune Sage for people in your situation.
+            {`It helps us tune ${APP_NAME} for people in your situation.`}
           </Text>
           <Button label="Back to Settings" fullWidth size="lg" onPress={() => router.back()} />
         </View>
@@ -66,7 +67,7 @@ export default function Feedback() {
         style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
           <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 19 }}>
-            How has Sage been overall?
+            {`How has ${APP_NAME} been overall?`}
           </Text>
 
           <View style={{ flexDirection: 'row', gap: 10 }}>
