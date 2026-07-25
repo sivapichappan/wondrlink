@@ -21,7 +21,7 @@ Strips HIPAA identifiers:
 
 import re
 import logging
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Optional, Tuple
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -130,6 +130,57 @@ def deidentify_raw_profile(patient: dict) -> dict:
         safe.pop(key, None)
 
     return safe
+
+
+# Whole-line identifier labels found on printed medical reports. Any line
+# containing one of these is dropped entirely — the value beside the label
+# (name, DOB, MRN, account number) is exactly what must never reach an LLM.
+_REPORT_IDENTIFIER_LINE = re.compile(
+    r'(?:patient\s*(?:name)?|name|dob|date\s+of\s+birth|birth\s*date|'
+    r'mrn|medical\s+record|account\s*(?:#|no|number)|acct\s*#|'
+    r'ssn|social\s+security|address|phone|encounter\s*(?:#|no|number)|'
+    r'specimen\s+id|accession\s*(?:#|no|number))\s*[:#]',
+    re.IGNORECASE,
+)
+
+
+def deidentify_report_text(text: str, profile: Optional[dict] = None) -> str:
+    """
+    De-identify OCR'd / PDF-extracted REPORT text before any external LLM call
+    (the report-scan pipeline). Three passes:
+
+      1. Drop whole lines that carry identifier labels (Patient:/DOB:/MRN:...)
+         — printed reports put the value beside the label on the same line.
+      2. Strip the user's own known identifiers from their profile
+         (first name / name, dob, zip, phone), regex-escaped.
+      3. The shared regex scrub (SSNs, phones, emails, dates, addresses).
+
+    The endpoint runs detect_pii_leaks SEPARATELY afterwards and aborts on any
+    residual hit — this function is the scrubber, the guard is the gate.
+    """
+    if not text:
+        return text
+
+    # Pass 1 — labeled identifier lines vanish entirely.
+    kept_lines = [
+        line for line in text.splitlines()
+        if not _REPORT_IDENTIFIER_LINE.search(line)
+    ]
+    sanitized = "\n".join(kept_lines)
+
+    # Pass 2 — the patient's own known identifiers.
+    patient = (profile or {}).get('patient') or {}
+    known_values = [
+        patient.get('firstName'), patient.get('name'), patient.get('lastName'),
+        patient.get('dob'), patient.get('zipCode'), patient.get('phone'),
+    ]
+    for value in known_values:
+        value = str(value or '').strip()
+        if len(value) >= 2 and value.lower() not in ('unknown', 'unspecified', 'none'):
+            sanitized = re.sub(re.escape(value), '[REMOVED]', sanitized, flags=re.IGNORECASE)
+
+    # Pass 3 — the shared pattern scrub.
+    return deidentify_conversation_context(sanitized)
 
 
 def deidentify_conversation_context(conversation: str) -> str:

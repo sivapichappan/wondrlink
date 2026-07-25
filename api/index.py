@@ -62,6 +62,8 @@ RATE_LIMIT_CHAT          = (30, 60)
 RATE_LIMIT_PREVISIT      = (10, 60)
 RATE_LIMIT_GLOSSARY_EXPLAIN = (15, 60)  # AI term explanations
 RATE_LIMIT_GLOSSARY_CRUD    = (60, 60)  # saved-term list/save/edit/delete
+RATE_LIMIT_REPORT_EXTRACT   = (10, 60)  # report-scan extraction
+RATE_LIMIT_REPORT_APPLY     = (30, 60)  # report-scan confirmed-facts writes
 RATE_LIMIT_VISIT_RECAP   = (10, 60)
 RATE_LIMIT_APPEAL        = (5, 60)      # insurance appeal
 RATE_LIMIT_DEEP_RESEARCH = (3, 300)
@@ -2615,6 +2617,163 @@ def api_previsit_questions():
     except Exception as e:
         logger.exception("previsit_questions error")
         return jsonify({"error": "Could not generate questions right now."}), 500
+
+
+# -------------------------
+# Report scan — de-identified extraction from report text + confirmed apply
+# -------------------------
+@app.route("/api/report/extract", methods=["POST"])
+@require_auth
+def api_report_extract():
+    """Extract structured facts from a report. Input is EITHER JSON
+    {text, source_type:'image'} (on-device OCR — the image never left the
+    phone) OR a multipart PDF (text-layer extraction, file discarded).
+    The text is de-identified and PII-guard checked BEFORE the LLM sees it;
+    nothing is written to the profile here — the client's review screen
+    confirms, then /api/report/apply writes."""
+    tmp_path = None
+    try:
+        user_id = request.user["user_id"]
+
+        from rate_limit import check_rate_limit
+        allowed, _ = check_rate_limit(user_id, 'report_extract',
+                                      *RATE_LIMIT_REPORT_EXTRACT)
+        if not allowed:
+            return jsonify({"error": "Too many requests. Please wait a moment and try again."}), 429
+
+        source_type = "image"
+        text = ""
+        pdf = request.files.get('report_pdf') if request.files else None
+        if pdf is not None:
+            source_type = "pdf"
+            filename = (pdf.filename or '').lower()
+            if not filename.endswith('.pdf') or pdf.mimetype not in (
+                    'application/pdf', 'application/x-pdf', 'application/octet-stream'):
+                return jsonify({"error": "invalid_file",
+                                "message": "Please attach a PDF, or photograph the pages instead."}), 400
+            import tempfile
+            with tempfile.NamedTemporaryFile(dir='/tmp', suffix='.pdf', delete=False) as tmp:
+                pdf.save(tmp.name)
+                tmp_path = tmp.name
+            from pdf_utils import extract_text
+            text = extract_text(tmp_path) or ""
+            if len(text.strip()) < 100:
+                return jsonify({
+                    "error": "scanned_pdf",
+                    "message": "That PDF looks like a scan with no readable text. Please photograph the pages instead.",
+                }), 422
+        else:
+            data = request.get_json(silent=True) or {}
+            text = (data.get('text') or '').strip()
+            if len(text) < 40:
+                return jsonify({"error": "empty_text",
+                                "message": "Not enough readable text. Try retaking the photo in better light."}), 422
+
+        text = text[:8000]
+
+        profile = None
+        try:
+            profile = load_profile(user_id)
+        except Exception:
+            pass
+
+        from deidentify import deidentify_report_text, detect_pii_leaks
+        deid_text = deidentify_report_text(text, profile)
+
+        # The gate after the scrubber: any residual identifier aborts the LLM
+        # call. Date patterns are exempt (report dates are ubiquitous and the
+        # scrubber already removed labeled DOB lines).
+        leaks = [(name, s) for name, s in detect_pii_leaks(deid_text)
+                 if not name.startswith("full_date")]
+        if leaks:
+            logger.warning(f"report_extract PII guard hit: {sorted({n for n, _ in leaks})}")
+            return jsonify({
+                "error": "pii_guard",
+                "message": "We couldn't safely read this report. Try typing the values instead.",
+            }), 422
+
+        cancer_kind = "cancer"
+        try:
+            from supabase_storage import get_cancer_slug
+            from cancer_registry import display_name
+            slug = get_cancer_slug(user_id)
+            if slug:
+                cancer_kind = display_name(slug).lower()
+        except Exception:
+            pass
+
+        from patient_model import extract_report_findings
+        result = extract_report_findings(deid_text, cancer_kind)
+
+        try:
+            from supabase_storage import append_patient_event
+            append_patient_event(user_id, "report_scanned", payload={
+                "n_findings": len(result["findings"]),
+                "n_display_only": len(result["display_only"]),
+                "source_type": source_type,
+            }, source="report")
+        except Exception:
+            pass
+
+        return jsonify({"status": "ok", **result})
+    except Exception:
+        logger.exception("report extract error")
+        return jsonify({"error": "server_error",
+                        "message": "Could not read that report right now."}), 500
+    finally:
+        if tmp_path:
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
+
+
+@app.route("/api/report/apply", methods=["POST"])
+@require_auth
+def api_report_apply():
+    """Write the facts the patient CONFIRMED on the review screen as
+    confirmed beliefs. All-or-nothing validation: any unknown path or
+    invalid value rejects the whole batch (never silently drop a
+    confirmed fact)."""
+    try:
+        user_id = request.user["user_id"]
+
+        from rate_limit import check_rate_limit
+        allowed, _ = check_rate_limit(user_id, 'report_apply',
+                                      *RATE_LIMIT_REPORT_APPLY)
+        if not allowed:
+            return jsonify({"error": "Too many requests. Please wait a moment and try again."}), 429
+
+        data = request.get_json(silent=True) or {}
+        raw_facts = data.get('facts')
+        if not isinstance(raw_facts, list) or not raw_facts or len(raw_facts) > 25:
+            return jsonify({"error": "Please confirm at least one fact (up to 25)."}), 400
+
+        from patient_model import validate_report_fact, apply_confirmed_facts
+        validated = []
+        rejected = []
+        for raw in raw_facts:
+            if not isinstance(raw, dict):
+                rejected.append(str(raw)[:60])
+                continue
+            result = validate_report_fact(raw.get('path'), raw.get('value'))
+            if result is None:
+                rejected.append(str(raw.get('path'))[:80])
+            else:
+                validated.append({"path": result[0], "value": result[1]})
+        if rejected:
+            return jsonify({"error": "Some facts could not be saved.",
+                            "rejected_paths": rejected}), 400
+
+        profile = load_profile(user_id) or {}
+        applied = apply_confirmed_facts(user_id, profile, validated)
+        if not save_profile(user_id, profile):
+            return jsonify({"error": "Could not save. Please try again."}), 500
+
+        return jsonify({"status": "ok", "applied": applied["applied"]})
+    except Exception:
+        logger.exception("report apply error")
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 # -------------------------

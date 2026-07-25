@@ -307,6 +307,152 @@ def extract_facts(message: str, current_profile: dict) -> List[CandidateFact]:
     return candidates
 
 
+# ---------------------------------------------------------------------------
+# Report scan — extraction from de-identified report text + confirmed apply
+# ---------------------------------------------------------------------------
+
+REPORT_EXTRACT_PROMPT = load_prompt("report_extract")
+
+_REPORT_SCALAR_PATHS = ("primaryDiagnosis.stage", "primaryDiagnosis.site",
+                        "primaryDiagnosis.histology")
+_REPORT_BIOMARKERS = ("KRAS", "NRAS", "BRAF", "HER2", "MSI", "MMR", "NTRK", "PIK3CA")
+_REPORT_STAGE_RE = re.compile(r"^Stage (I|II|III|IV)$")
+
+
+def validate_report_fact(path: str, value: Any) -> Optional[Tuple[str, Any]]:
+    """
+    Validate + normalize one report-extracted fact against the belief-path
+    vocabulary. Returns (path, normalized_value) or None when off-vocabulary.
+    Shared by extraction (drops bad LLM output) and apply (rejects bad input).
+    """
+    from lib.profile_validator import _normalize_biomarker
+
+    path = str(path or "").strip()
+    if path in _REPORT_SCALAR_PATHS:
+        if not isinstance(value, str) or not value.strip():
+            return None
+        value = value.strip()
+        if path == "primaryDiagnosis.stage" and not _REPORT_STAGE_RE.match(value):
+            return None
+        return path, value
+    if path.startswith("primaryDiagnosis.biomarkers."):
+        marker = path.rsplit(".", 1)[-1].upper()
+        if marker not in _REPORT_BIOMARKERS or not isinstance(value, str) or not value.strip():
+            return None
+        return f"primaryDiagnosis.biomarkers.{marker}", _normalize_biomarker(marker, value.strip())
+    if path.startswith("treatments."):
+        if not isinstance(value, dict) or not value.get("regimen"):
+            return None
+        cleaned = {k: v for k, v in value.items()
+                   if k in ("regimen", "status", "category") and v}
+        if cleaned.get("status") not in (None, "active", "completed", "planned"):
+            cleaned.pop("status", None)
+        return f"treatments.{_slug(cleaned['regimen'])}", cleaned
+    if path.startswith("patient.comorbidities."):
+        if not isinstance(value, str) or not value.strip():
+            return None
+        return f"patient.comorbidities.{_slug(value)}", value.strip()
+    return None
+
+
+def extract_report_findings(deid_text: str, cancer_kind: str) -> Dict[str, Any]:
+    """
+    One JSON-mode extractor call over DE-IDENTIFIED report text. Returns
+    {"findings": [{path, label, value, confidence, evidence}], "display_only":
+    [{label, value}]}. Off-vocabulary paths are dropped; labs only ever appear
+    in display_only (no labs.* namespace exists). Never raises.
+    """
+    from llm_utils import get_together_client, get_groq_client
+
+    empty: Dict[str, Any] = {"findings": [], "display_only": []}
+    client = get_together_client() or get_groq_client()
+    if client is None:
+        return empty
+    try:
+        from model_registry import get_model
+        model = get_model("extractor") if get_together_client() else get_model("fallback")
+        prompt = REPORT_EXTRACT_PROMPT.format(
+            report_text=deid_text, cancer_kind=cancer_kind or "cancer")
+        import time as _time
+        from ai_gateway import log_llm_call
+        _t0 = _time.perf_counter()
+        kwargs = dict(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.1,
+        )
+        try:
+            response = client.chat.completions.create(timeout=EXTRACTOR_TIMEOUT_S, **kwargs)
+        except TypeError:
+            response = client.chat.completions.create(**kwargs)
+        log_llm_call("extract",
+                     "together" if get_together_client() else "groq",
+                     model, int((_time.perf_counter() - _t0) * 1000),
+                     usage=getattr(response, "usage", None))
+        if not (response and response.choices):
+            return empty
+        parsed = json.loads(response.choices[0].message.content or "{}")
+
+        findings: List[Dict[str, Any]] = []
+        for raw in (parsed.get("findings") or [])[:25]:
+            if not isinstance(raw, dict):
+                continue
+            validated = validate_report_fact(raw.get("path"), raw.get("value"))
+            if validated is None:
+                continue
+            vpath, vvalue = validated
+            try:
+                confidence = max(0.0, min(1.0, float(raw.get("confidence", 0.7))))
+            except (TypeError, ValueError):
+                confidence = 0.7
+            findings.append({
+                "path": vpath,
+                "label": path_label(vpath),
+                "value": vvalue,
+                "confidence": confidence,
+                "evidence": str(raw.get("evidence") or "")[:120],
+            })
+
+        display_only = [
+            {"label": str(d.get("label") or "")[:60], "value": str(d.get("value") or "")[:80]}
+            for d in (parsed.get("display_only") or [])[:15]
+            if isinstance(d, dict) and d.get("label")
+        ]
+        return {"findings": findings, "display_only": display_only}
+    except Exception as e:
+        logger.warning(f"report extraction failed ({type(e).__name__})")
+        return empty
+
+
+def apply_confirmed_facts(user_id: str, profile: dict, facts: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Write PATIENT-CONFIRMED report facts as confirmed beliefs (the report-scan
+    review screen is the confirmation surface, so these deliberately bypass the
+    pending queue). Mirrors confirm_belief's write path: confirmed status,
+    materialized field, belief event per fact. Caller must save_profile after.
+    """
+    beliefs = ensure_beliefs(profile)
+    applied = 0
+    for fact in facts:
+        path, value = fact["path"], fact["value"]
+        decision = ReconcileDecision(
+            path=path, action="ADD", new_value=value, old_value=None,
+            confidence=1.0, source="report", reason="report_confirmed",
+            high_stakes=is_high_stakes(path),
+        )
+        _write_belief(beliefs, decision, session_id=None, status="confirmed")
+        _materialize(profile, path, value)
+        try:
+            from supabase_storage import append_patient_event
+            append_patient_event(user_id, "belief_confirm", path=path,
+                                 payload={"via": "report_scan"}, source="report")
+        except Exception:
+            pass
+        applied += 1
+    return {"applied": applied}
+
+
 def candidates_to_v1_updates(candidates: List[CandidateFact]) -> dict:
     """
     Convert candidate facts back into the legacy nested-updates dict so the v1

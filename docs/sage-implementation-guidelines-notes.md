@@ -57,3 +57,20 @@ The guidelines' `patient_profiles.account_id` and our `patient_profiles.user_id`
 the same value (`auth.uid`). Renaming the key column would ripple through ~17 call
 sites for zero behavior change; the `accounts` table is real, the FK relationship is
 documented, the column name stays.
+
+## 8. Report scan: on-device OCR instead of image-to-gateway (IMPROVES on the doc)
+The guidelines' extract-document design uploads the file to Storage and "sends it
+to the AI gateway for extraction." We deviate in the privacy-strengthening
+direction: the photo is OCR'd ON THE PHONE (Google ML Kit, no network) and never
+leaves the device; only the OCR text reaches our backend, where
+`deidentify_report_text` scrubs identifier lines + the user's known identifiers
+and `detect_pii_leaks` gates the LLM call (aborts on any residual hit). The
+attorney consent copy ("de-identified queries to AI providers") stays literally
+true, so no consent revision or re-consent was needed. Consequences: no vision
+model, no `records` bucket, no `uploads` table in v1 — only patient-confirmed
+beliefs and non-PHI count events persist. The bucket/uploads design can be added
+later if re-viewing uploaded reports becomes a product need. The doc's
+confirm-before-write rule is honored via the review screen +
+`/api/report/apply` (facts enter the profile only after the patient taps
+confirmation; the pending queue is deliberately bypassed — its cap of 3 would
+drop report batches).
