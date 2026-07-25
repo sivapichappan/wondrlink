@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { Check, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react-native';
+import { BookOpen, Check, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -476,14 +476,17 @@ function StepDiagnosis({ state, update }: StepProps) {
 function StepHealth({ state, update }: StepProps) {
   return (
     <>
-      <Hint title="Your overall health" body="ECOG and comorbidities help match trial eligibility and flag interactions." />
-      <Field label="ECOG performance status">
+      <Hint title="Your overall health" body="How you're doing day to day helps match trials and spot medicine interactions." />
+      <Field label="On most days, which sounds most like you?">
         <View style={{ gap: 8 }}>
+          {/* Plain descriptions only — the stored value still maps to the
+              ECOG scale the backend and trial matching use; the term itself
+              never appears in the UI (supervisor plain-language rule). */}
           {ECOG.map((e) => (
             <ChoiceCard
               key={e.value}
               selected={state.ecog === e.value}
-              title={`ECOG ${e.value} · ${e.title}`}
+              title={e.title}
               desc={e.desc}
               onPress={() => update('ecog', e.value)}
             />
@@ -524,9 +527,32 @@ function StepBiomarkers({ state, update }: StepProps) {
   return (
     <>
       <Hint
-        title="Biomarkers"
-        body="Find these on your pathology or molecular-testing report, or ask your oncologist. Leave any blank if you're not sure."
+        title="Test results from your reports"
+        body="These names come from your pathology or testing report. Most people don't know them by heart, and that's completely fine. Fill in what you know and skip the rest."
       />
+      <Pressable
+        onPress={() => router.push('/tools/glossary' as never)}
+        accessibilityRole="button"
+        accessibilityLabel="Get any of these explained in plain words"
+        style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
+        {/* Visuals on the static inner View (NativeWind rule). */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            alignSelf: 'flex-start',
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: Radius.md,
+            backgroundColor: Colors.sidebarBg,
+          }}>
+          <BookOpen size={14} color={Colors.primary} />
+          <Text style={{ color: Colors.primary, fontFamily: Fonts.sansSemiBold, fontSize: 13 }}>
+            Curious what these mean? Get plain-words explanations
+          </Text>
+        </View>
+      </Pressable>
       {ESSENTIAL_BIOMARKERS.map((b) => (
         <Field key={b.key} label={b.label}>
           <SegmentedChoice
