@@ -8,8 +8,9 @@
  * NativeWind rule: Pressable rows carry no visual style in a style-function;
  * their surfaces are plain Views.
  *
- * NOTE (Phase 1b interim): New chat + Recents currently route to Home ('/').
- * Phase 2 wires them to create a conversation and open /chat/[id].
+ * New chat routes to a fresh Home by design (2026-07-26): Home's composer IS
+ * the new-chat surface. The open conversation is already persisted per-send
+ * and remains in Recents. Recents rows open /chat/[id].
  */
 
 import { router } from 'expo-router';
@@ -99,6 +100,15 @@ export function AppDrawer() {
     closeDrawer();
   };
 
+  // New chat = a fresh Home. Home's composer starts the new thread; whatever
+  // conversation was open is already saved (every message persists on send)
+  // and stays reachable in Recents. navigate() pops back to the existing '/'
+  // instead of stacking a duplicate.
+  const newChat = () => {
+    router.navigate('/' as never);
+    closeDrawer();
+  };
+
   return (
     <View
       pointerEvents={drawerOpen ? 'auto' : 'none'}
@@ -135,7 +145,7 @@ export function AppDrawer() {
             <Text style={{ fontFamily: Fonts.serifBold, fontSize: FontSize.h3, color: Colors.textPrimary }}>{APP_NAME}</Text>
           </View>
 
-          <DrawerRow icon={<SquarePen size={17} color={Colors.primary} />} label="New chat" tint onPress={() => go('/chat/new')} />
+          <DrawerRow icon={<SquarePen size={17} color={Colors.primary} />} label="New chat" tint onPress={newChat} />
 
           <View
             style={{

@@ -105,7 +105,9 @@ export default function ChatThreadScreen() {
         subtitle={ack.data?.cancer_display ?? undefined}
         trailing={
           <Pressable
-            onPress={() => router.replace(`/chat/${NEW_CONVERSATION}` as never)}
+            // New chat = back to a fresh Home (its composer starts the next
+            // thread). This conversation is already saved; it lives in Recents.
+            onPress={() => router.navigate('/' as never)}
             accessibilityRole="button"
             accessibilityLabel="New chat"
             hitSlop={8}
