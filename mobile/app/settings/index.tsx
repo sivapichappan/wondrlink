@@ -210,12 +210,15 @@ function SettingsRow({ row, showDivider }: { row: Row; showDivider: boolean }) {
       disabled={!onPress}
       accessibilityRole="button"
       style={({ pressed }) => ({
-        backgroundColor: pressed ? Colors.sidebarBg : Colors.surface,
-        borderBottomWidth: showDivider ? 1 : 0,
-        borderBottomColor: Colors.border,
+        opacity: pressed ? 0.85 : 1,
       })}>
+      {/* Visuals live on a static inner View — NativeWind strips visual styles
+          from Pressable style FUNCTIONS (see .claude/rules/mobile-ui.md). */}
       <View
         style={{
+          backgroundColor: Colors.surface,
+          borderBottomWidth: showDivider ? 1 : 0,
+          borderBottomColor: Colors.border,
           flexDirection: 'row',
           alignItems: 'center',
           paddingVertical: 12,

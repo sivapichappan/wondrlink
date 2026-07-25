@@ -76,19 +76,26 @@ export function HeroCard({ hero, onAskSuggestion }: Props) {
                 accessibilityLabel={q}
                 accessibilityHint="Send this question to chat"
                 style={({ pressed }) => ({
-                  paddingHorizontal: 12,
-                  paddingVertical: 10,
-                  borderRadius: Radius.md,
-                  backgroundColor: pressed ? Colors.surfaceMuted : Colors.sidebarBg,
-                  borderWidth: 1,
-                  borderColor: Colors.border,
+                  opacity: pressed ? 0.85 : 1,
                 })}>
-                <Text
-                  numberOfLines={2}
-                  ellipsizeMode="tail"
-                  style={{ color: Colors.textPrimary, fontSize: 13, lineHeight: 18 }}>
-                  {q}
-                </Text>
+                {/* Visuals live on a static inner View — NativeWind strips
+                    visual styles from Pressable style FUNCTIONS. */}
+                <View
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    borderRadius: Radius.md,
+                    backgroundColor: Colors.sidebarBg,
+                    borderWidth: 1,
+                    borderColor: Colors.border,
+                  }}>
+                  <Text
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
+                    style={{ color: Colors.textPrimary, fontSize: 13, lineHeight: 18 }}>
+                    {q}
+                  </Text>
+                </View>
               </Pressable>
             ))}
           </View>

@@ -34,24 +34,31 @@ export function FollowupChips({ followups, onPick }: Props) {
             accessibilityLabel={q}
             accessibilityHint="Send this follow-up question"
             style={({ pressed }) => ({
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              borderRadius: 8,
-              backgroundColor: pressed ? Colors.primaryLight : Colors.sidebarBg,
-              borderWidth: 1,
-              borderColor: pressed ? Colors.primary : Colors.border,
+              opacity: pressed ? 0.85 : 1,
             })}>
-            <Text
-              numberOfLines={1}
-              ellipsizeMode="tail"
+            {/* Visuals live on a static inner View — NativeWind strips
+                visual styles from Pressable style FUNCTIONS. */}
+            <View
               style={{
-                color: Colors.textPrimary,
-                fontFamily: Fonts.sansMedium,
-                fontSize: 12,
-                lineHeight: 16,
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 8,
+                backgroundColor: Colors.sidebarBg,
+                borderWidth: 1,
+                borderColor: Colors.border,
               }}>
-              {q}
-            </Text>
+              <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={{
+                  color: Colors.textPrimary,
+                  fontFamily: Fonts.sansMedium,
+                  fontSize: 12,
+                  lineHeight: 16,
+                }}>
+                {q}
+              </Text>
+            </View>
           </Pressable>
         ))}
       </View>

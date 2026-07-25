@@ -127,29 +127,32 @@ function RatingChip({
       accessibilityState={{ selected }}
       style={({ pressed }) => ({
         flex: 1,
-        flexDirection: 'row',
-        gap: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 14,
-        borderRadius: Radius.pill,
-        borderWidth: selected ? 2 : 1,
-        borderColor: selected ? Colors.primary : Colors.border,
-        backgroundColor: selected
-          ? Colors.primarySoft
-          : pressed
-            ? Colors.sidebarBg
-            : Colors.surfaceMuted,
+        opacity: pressed ? 0.85 : 1,
       })}>
-      <Icon size={18} color={selected ? Colors.primary : Colors.textMuted} />
-      <Text
+      {/* Visuals live on a static inner View — NativeWind strips visual styles
+          from Pressable style FUNCTIONS (see .claude/rules/mobile-ui.md). */}
+      <View
         style={{
-          color: selected ? Colors.primary : Colors.textPrimary,
-          fontFamily: Fonts.sansSemiBold,
-          fontSize: 13,
+          flexDirection: 'row',
+          gap: 8,
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 14,
+          borderRadius: Radius.pill,
+          borderWidth: selected ? 2 : 1,
+          borderColor: selected ? Colors.primary : Colors.border,
+          backgroundColor: selected ? Colors.primarySoft : Colors.surfaceMuted,
         }}>
-        {label}
-      </Text>
+        <Icon size={18} color={selected ? Colors.primary : Colors.textMuted} />
+        <Text
+          style={{
+            color: selected ? Colors.primary : Colors.textPrimary,
+            fontFamily: Fonts.sansSemiBold,
+            fontSize: 13,
+          }}>
+          {label}
+        </Text>
+      </View>
     </Pressable>
   );
 }

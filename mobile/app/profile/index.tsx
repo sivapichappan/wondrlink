@@ -137,13 +137,15 @@ export default function ProfileViewScreen() {
           accessibilityRole="button"
           accessibilityLabel="Change cancer focus"
           style={({ pressed }) => ({
-            borderRadius: Radius.lg,
-            borderWidth: 1,
-            borderColor: pressed ? Colors.primary : Colors.border,
-            backgroundColor: pressed ? Colors.primarySoft : Colors.surfaceMuted,
+            opacity: pressed ? 0.85 : 1,
           })}>
+          {/* Visuals live on the static inner View — NativeWind strips them from Pressable style functions */}
           <View
             style={{
+              borderRadius: Radius.lg,
+              borderWidth: 1,
+              borderColor: Colors.border,
+              backgroundColor: Colors.surfaceMuted,
               flexDirection: 'row',
               alignItems: 'center',
               padding: 14,

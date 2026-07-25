@@ -1,5 +1,5 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import { Check, ChevronLeft, ChevronRight, Phone } from 'lucide-react-native';
+import { Activity, Bed, Brain, Check, ChevronLeft, ChevronRight, Dna, HeartPulse, Phone, Smile } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Linking,
@@ -12,7 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
-import { Colors, Fonts, Radius } from '@/constants/theme';
+import { IconCircle } from '@/components/ui/IconCircle';
+import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { saveScreening } from '@/lib/api/tools';
 import type { ScreeningCrisisResources, ScreeningInstrument } from '@shared/types';
 
@@ -255,13 +256,13 @@ export default function ScreeningScreen() {
 }
 
 function InstrumentPicker({ onPick }: { onPick: (i: ScreeningInstrument) => void }) {
-  const items: { key: ScreeningInstrument; blurb: string }[] = [
-    { key: 'SYMPTOM', blurb: 'How you’ve felt physically the last 7 days' },
-    { key: 'PHQ9', blurb: 'How your mood has been over 2 weeks' },
-    { key: 'GAD7', blurb: 'How anxious you’ve felt over 2 weeks' },
-    { key: 'PSS10', blurb: 'How stressed you’ve felt this month' },
-    { key: 'ISI', blurb: 'How well you’ve been sleeping' },
-    { key: 'PREMM5', blurb: 'Hereditary cancer risk (Lynch syndrome)' },
+  const items: { key: ScreeningInstrument; blurb: string; Icon: typeof Activity }[] = [
+    { key: 'SYMPTOM', blurb: 'How you’ve felt physically the last 7 days', Icon: Activity },
+    { key: 'PHQ9', blurb: 'How your mood has been over 2 weeks', Icon: Smile },
+    { key: 'GAD7', blurb: 'How anxious you’ve felt over 2 weeks', Icon: Brain },
+    { key: 'PSS10', blurb: 'How stressed you’ve felt this month', Icon: HeartPulse },
+    { key: 'ISI', blurb: 'How well you’ve been sleeping', Icon: Bed },
+    { key: 'PREMM5', blurb: 'Hereditary cancer risk (Lynch syndrome)', Icon: Dna },
   ];
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.surface }} edges={['bottom']}>
@@ -278,14 +279,25 @@ function InstrumentPicker({ onPick }: { onPick: (i: ScreeningInstrument) => void
               onPress={() => onPick(it.key)}
               accessibilityRole="button"
               accessibilityLabel={`Start ${def.title}`}
-              style={({ pressed }) => ({
-                padding: 16,
-                borderRadius: Radius.lg,
-                borderWidth: 1,
-                borderColor: pressed ? Colors.primary : Colors.border,
-                backgroundColor: pressed ? Colors.primarySoft : Colors.surfaceMuted,
-              })}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
+              {/* Card visuals live on a static View — NativeWind strips them
+                  from Pressable style FUNCTIONS (this screen rendered as bare
+                  text with no tap affordance). Same card language as the
+                  onboarding choice cards. */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: Spacing.md,
+                  borderWidth: 1.5,
+                  borderColor: Colors.border,
+                  borderRadius: Radius.lg,
+                  padding: Spacing.lg,
+                  backgroundColor: Colors.surface,
+                }}>
+                <IconCircle size={44} bg={Colors.primarySoft}>
+                  <it.Icon size={20} color={Colors.primaryPressed} />
+                </IconCircle>
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text
                     style={{
@@ -295,11 +307,11 @@ function InstrumentPicker({ onPick }: { onPick: (i: ScreeningInstrument) => void
                     }}>
                     {def.title}
                   </Text>
-                  <Text style={{ color: Colors.textMuted, fontSize: 13, marginTop: 4 }}>
+                  <Text style={{ color: Colors.textMuted, fontSize: 13, marginTop: 4, lineHeight: 18 }}>
                     {it.blurb} · {def.questions.length} questions
                   </Text>
                 </View>
-                <ChevronRight size={18} color={Colors.primary} />
+                <ChevronRight size={20} color={Colors.primary} />
               </View>
             </Pressable>
           );
@@ -466,18 +478,21 @@ function QuestionPanel({
               accessibilityRole="radio"
               accessibilityState={{ selected: isSel }}
               style={({ pressed }) => ({
-                paddingHorizontal: 16,
-                paddingVertical: 16,
-                borderRadius: Radius.md,
-                borderWidth: isSel ? 2 : 1,
-                borderColor: isSel ? Colors.primary : Colors.border,
-                backgroundColor: isSel
-                  ? Colors.primarySoft
-                  : pressed
-                    ? Colors.sidebarBg
-                    : Colors.surfaceMuted,
+                opacity: pressed ? 0.85 : 1,
               })}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              {/* Visuals live on a static inner View — NativeWind strips them
+                  from Pressable style FUNCTIONS. */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 16,
+                  paddingVertical: 16,
+                  borderRadius: Radius.md,
+                  borderWidth: isSel ? 2 : 1,
+                  borderColor: isSel ? Colors.primary : Colors.border,
+                  backgroundColor: isSel ? Colors.primarySoft : Colors.surfaceMuted,
+                }}>
                 <Text
                   style={{
                     flex: 1,
@@ -501,20 +516,27 @@ function QuestionPanel({
           hitSlop={8}
           style={({ pressed }) => ({
             alignSelf: 'flex-start',
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            paddingVertical: 10,
-            paddingHorizontal: 16,
-            borderRadius: Radius.pill,
-            borderWidth: 1,
-            borderColor: Colors.border,
-            backgroundColor: pressed ? Colors.primarySoft : Colors.surfaceMuted,
+            opacity: pressed ? 0.85 : 1,
           })}>
-          <ChevronLeft size={16} color={Colors.primary} />
-          <Text style={{ color: Colors.primary, fontFamily: Fonts.sansSemiBold, fontSize: 14 }}>
-            Back
-          </Text>
+          {/* Visuals live on a static inner View — NativeWind strips them
+              from Pressable style FUNCTIONS. */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingVertical: 10,
+              paddingHorizontal: 16,
+              borderRadius: Radius.pill,
+              borderWidth: 1,
+              borderColor: Colors.border,
+              backgroundColor: Colors.surfaceMuted,
+            }}>
+            <ChevronLeft size={16} color={Colors.primary} />
+            <Text style={{ color: Colors.primary, fontFamily: Fonts.sansSemiBold, fontSize: 14 }}>
+              Back
+            </Text>
+          </View>
         </Pressable>
       )}
     </View>
@@ -664,24 +686,31 @@ function CrisisModal({
                   onPress={() => phone && Linking.openURL(`tel:${phone}`).catch(() => {})}
                   accessibilityRole={phone ? 'button' : undefined}
                   style={({ pressed }) => ({
-                    flexDirection: 'row',
-                    gap: 10,
-                    alignItems: 'center',
-                    padding: 12,
-                    borderRadius: Radius.md,
-                    backgroundColor: pressed ? Colors.sidebarBg : Colors.surfaceMuted,
+                    opacity: pressed ? 0.85 : 1,
                   })}>
-                  {phone && <Phone size={16} color={Colors.primary} />}
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={{
-                        color: Colors.textPrimary,
-                        fontFamily: Fonts.sansSemiBold,
-                        fontSize: 13,
-                      }}>
-                      {r.name}
-                    </Text>
-                    <Text style={{ color: Colors.textSecondary, fontSize: 12 }}>{r.contact}</Text>
+                  {/* Visuals live on a static inner View — NativeWind strips them
+                      from Pressable style FUNCTIONS. */}
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      gap: 10,
+                      alignItems: 'center',
+                      padding: 12,
+                      borderRadius: Radius.md,
+                      backgroundColor: Colors.surfaceMuted,
+                    }}>
+                    {phone && <Phone size={16} color={Colors.primary} />}
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          color: Colors.textPrimary,
+                          fontFamily: Fonts.sansSemiBold,
+                          fontSize: 13,
+                        }}>
+                        {r.name}
+                      </Text>
+                      <Text style={{ color: Colors.textSecondary, fontSize: 12 }}>{r.contact}</Text>
+                    </View>
                   </View>
                 </Pressable>
               );

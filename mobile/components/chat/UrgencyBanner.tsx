@@ -39,19 +39,26 @@ export function UrgencyBanner({ urgency }: Props) {
             onPress={() => Linking.openURL('tel:911').catch(() => {})}
             accessibilityRole="button"
             style={({ pressed }) => ({
-              flexDirection: 'row',
-              gap: 6,
-              alignItems: 'center',
               alignSelf: 'flex-start',
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 999,
-              backgroundColor: pressed ? Colors.dangerPressed : Colors.danger,
+              opacity: pressed ? 0.85 : 1,
             })}>
-            <Phone size={14} color={Colors.surface} />
-            <Text style={{ color: Colors.surface, fontFamily: Fonts.sansSemiBold, fontSize: 12 }}>
-              Call 911
-            </Text>
+            {/* Visuals live on a static inner View — NativeWind strips
+                visual styles from Pressable style FUNCTIONS. */}
+            <View
+              style={{
+                flexDirection: 'row',
+                gap: 6,
+                alignItems: 'center',
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 999,
+                backgroundColor: Colors.danger,
+              }}>
+              <Phone size={14} color={Colors.surface} />
+              <Text style={{ color: Colors.surface, fontFamily: Fonts.sansSemiBold, fontSize: 12 }}>
+                Call 911
+              </Text>
+            </View>
           </Pressable>
         )}
       </View>

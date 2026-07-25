@@ -186,18 +186,15 @@ export default function Consent() {
             accessibilityLabel="Open date-of-birth picker"
             onPress={() => setShowPicker(true)}
             style={({ pressed }) => ({
-              borderRadius: 10,
-              borderWidth: dob ? 1 : 2,
-              borderColor: dob ? Colors.border : Colors.primary,
-              backgroundColor: pressed
-                ? Colors.surfaceMuted
-                : dob
-                  ? Colors.sidebarBg
-                  : Colors.surface,
+              opacity: pressed ? 0.85 : 1,
             })}>
-            {/* Inner row View — NativeWind drops flexDirection on Pressable's style function */}
+            {/* Visuals live on the static inner View — NativeWind strips them from Pressable style functions */}
             <View
               style={{
+                borderRadius: 10,
+                borderWidth: dob ? 1 : 2,
+                borderColor: dob ? Colors.border : Colors.primary,
+                backgroundColor: dob ? Colors.sidebarBg : Colors.surface,
                 flexDirection: 'row',
                 alignItems: 'center',
                 padding: 14,

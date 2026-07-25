@@ -91,26 +91,34 @@ export function CrisisModal({ category, onContinue, onClose }: Props) {
                 accessibilityRole="button"
                 accessibilityLabel={`${h.name}, ${h.number}`}
                 style={({ pressed }) => ({
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: 14,
-                  borderRadius: Radius.md,
-                  backgroundColor: pressed ? Colors.dangerPressed : Colors.danger,
+                  opacity: pressed ? 0.85 : 1,
                 })}>
-                <Phone size={18} color={Colors.surface} />
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      color: Colors.surface,
-                      fontFamily: Fonts.sansSemiBold,
-                      fontSize: 14,
-                    }}>
-                    {h.name}
-                  </Text>
-                  <Text style={{ color: Colors.surface, fontSize: 12, opacity: 0.9 }}>
-                    {h.number}
-                  </Text>
+                {/* Visuals live on a static inner View — NativeWind strips
+                    visual styles from Pressable style FUNCTIONS. These are
+                    the tap-to-call crisis buttons; they must stay visible. */}
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: 14,
+                    borderRadius: Radius.md,
+                    backgroundColor: Colors.danger,
+                  }}>
+                  <Phone size={18} color={Colors.surface} />
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        color: Colors.surface,
+                        fontFamily: Fonts.sansSemiBold,
+                        fontSize: 14,
+                      }}>
+                      {h.name}
+                    </Text>
+                    <Text style={{ color: Colors.surface, fontSize: 12, opacity: 0.9 }}>
+                      {h.number}
+                    </Text>
+                  </View>
                 </View>
               </Pressable>
             ))}

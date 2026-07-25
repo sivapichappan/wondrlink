@@ -84,26 +84,33 @@ export function BotResponseCard({ message, onPickFollowup }: Props) {
           accessibilityState={{ expanded }}
           style={({ pressed }) => ({
             alignSelf: 'flex-start',
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
             marginTop: 4,
-            paddingVertical: 6,
-            paddingHorizontal: 12,
-            borderRadius: Radius.pill,
-            borderWidth: 1,
-            borderColor: Colors.border,
-            backgroundColor: pressed ? Colors.primarySoft : Colors.surfaceMuted,
+            opacity: pressed ? 0.85 : 1,
           })}>
-          <Text
-            style={{ color: Colors.primary, fontFamily: Fonts.sansSemiBold, fontSize: 12 }}>
-            {expanded ? 'Hide details' : `Show details · ${counts.join(', ')}`}
-          </Text>
-          {expanded ? (
-            <ChevronUp size={14} color={Colors.primary} strokeWidth={2.4} />
-          ) : (
-            <ChevronDown size={14} color={Colors.primary} strokeWidth={2.4} />
-          )}
+          {/* Visuals live on a static inner View — NativeWind strips
+              visual styles from Pressable style FUNCTIONS. */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingVertical: 6,
+              paddingHorizontal: 12,
+              borderRadius: Radius.pill,
+              borderWidth: 1,
+              borderColor: Colors.border,
+              backgroundColor: Colors.surfaceMuted,
+            }}>
+            <Text
+              style={{ color: Colors.primary, fontFamily: Fonts.sansSemiBold, fontSize: 12 }}>
+              {expanded ? 'Hide details' : `Show details · ${counts.join(', ')}`}
+            </Text>
+            {expanded ? (
+              <ChevronUp size={14} color={Colors.primary} strokeWidth={2.4} />
+            ) : (
+              <ChevronDown size={14} color={Colors.primary} strokeWidth={2.4} />
+            )}
+          </View>
         </Pressable>
       )}
 

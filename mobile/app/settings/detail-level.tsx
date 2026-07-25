@@ -53,20 +53,19 @@ export default function DetailLevelScreen() {
               accessibilityRole="radio"
               accessibilityState={{ selected }}
               style={({ pressed }) => ({
-                borderRadius: Radius.lg,
-                borderWidth: selected ? 2 : 1,
-                borderColor: selected ? Colors.primary : Colors.border,
-                backgroundColor: selected
-                  ? Colors.primarySoft
-                  : pressed
-                    ? Colors.sidebarBg
-                    : Colors.surfaceMuted,
+                opacity: pressed ? 0.85 : 1,
               })}>
+              {/* Visuals live on a static inner View — NativeWind strips visual
+                  styles from Pressable style FUNCTIONS (see .claude/rules/mobile-ui.md). */}
               <View
                 style={{
                   flexDirection: 'row',
                   alignItems: 'flex-start',
                   padding: 16,
+                  borderRadius: Radius.lg,
+                  borderWidth: selected ? 2 : 1,
+                  borderColor: selected ? Colors.primary : Colors.border,
+                  backgroundColor: selected ? Colors.primarySoft : Colors.surfaceMuted,
                 }}>
                 <View style={{ flex: 1 }}>
                   <Text

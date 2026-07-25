@@ -541,15 +541,21 @@ function StepBiomarkers({ state, update }: StepProps) {
         onPress={() => setShowMore((v) => !v)}
         accessibilityRole="button"
         style={({ pressed }) => ({
-          paddingVertical: 10,
-          paddingHorizontal: 12,
-          borderRadius: Radius.md,
-          backgroundColor: pressed ? Colors.surfaceMuted : Colors.sidebarBg,
           alignSelf: 'flex-start',
+          opacity: pressed ? 0.85 : 1,
         })}>
-        <Text style={{ color: Colors.primary, fontFamily: Fonts.sansSemiBold, fontSize: 13 }}>
-          {showMore ? 'Hide additional biomarkers' : 'Add more biomarkers (DPYD, NTRK, TMB…)'}
-        </Text>
+        {/* Visuals live on the static inner View — NativeWind strips them from Pressable style functions */}
+        <View
+          style={{
+            paddingVertical: 10,
+            paddingHorizontal: 12,
+            borderRadius: Radius.md,
+            backgroundColor: Colors.sidebarBg,
+          }}>
+          <Text style={{ color: Colors.primary, fontFamily: Fonts.sansSemiBold, fontSize: 13 }}>
+            {showMore ? 'Hide additional biomarkers' : 'Add more biomarkers (DPYD, NTRK, TMB…)'}
+          </Text>
+        </View>
       </Pressable>
       {showMore &&
         EXTENDED_BIOMARKERS.map((b) => (
@@ -638,11 +644,12 @@ function TreatmentCard({
           accessibilityLabel="Remove this treatment"
           hitSlop={8}
           style={({ pressed }) => ({
-            padding: 6,
-            borderRadius: 8,
-            backgroundColor: pressed ? Colors.surfaceMuted : 'transparent',
+            opacity: pressed ? 0.85 : 1,
           })}>
-          <X size={18} color={Colors.textMuted} />
+          {/* Visuals live on the static inner View — NativeWind strips them from Pressable style functions */}
+          <View style={{ padding: 6, borderRadius: 8, backgroundColor: 'transparent' }}>
+            <X size={18} color={Colors.textMuted} />
+          </View>
         </Pressable>
       </View>
       <Field label="Type">
@@ -767,18 +774,21 @@ function ChoiceCard({
       accessibilityRole="radio"
       accessibilityState={{ selected }}
       style={({ pressed }) => ({
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        borderRadius: Radius.lg,
-        borderWidth: selected ? 2 : 1,
-        borderColor: selected ? Colors.primary : Colors.border,
-        backgroundColor: selected
-          ? Colors.primarySoft
-          : pressed
-            ? Colors.sidebarBg
-            : Colors.surfaceMuted,
+        opacity: pressed ? 0.85 : 1,
       })}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      {/* Visuals live on the static inner View — NativeWind strips them from Pressable style functions */}
+      <View
+        style={{
+          paddingHorizontal: 14,
+          paddingVertical: 12,
+          borderRadius: Radius.lg,
+          borderWidth: selected ? 2 : 1,
+          borderColor: selected ? Colors.primary : Colors.border,
+          backgroundColor: selected ? Colors.primarySoft : Colors.surfaceMuted,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+        }}>
         <View
           style={{
             width: 22,

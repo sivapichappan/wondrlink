@@ -95,17 +95,20 @@ export default function PrivacyAppeal() {
                   accessibilityRole="radio"
                   accessibilityState={{ selected }}
                   style={({ pressed }) => ({
-                    padding: 12,
-                    borderRadius: Radius.md,
-                    borderWidth: selected ? 2 : 1,
-                    borderColor: selected ? Colors.primary : Colors.border,
-                    backgroundColor: selected
-                      ? Colors.primarySoft
-                      : pressed
-                        ? Colors.sidebarBg
-                        : Colors.surfaceMuted,
+                    opacity: pressed ? 0.85 : 1,
                   })}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {/* Visuals live on a static inner View — NativeWind strips visual
+                      styles from Pressable style FUNCTIONS (see .claude/rules/mobile-ui.md). */}
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      padding: 12,
+                      borderRadius: Radius.md,
+                      borderWidth: selected ? 2 : 1,
+                      borderColor: selected ? Colors.primary : Colors.border,
+                      backgroundColor: selected ? Colors.primarySoft : Colors.surfaceMuted,
+                    }}>
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Text
                         style={{

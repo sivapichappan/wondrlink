@@ -171,9 +171,17 @@ export default function VisitRecapScreen() {
                       accessibilityRole="button"
                       accessibilityLabel={`Visit from ${formatStamp(entry.timestamp)}`}
                       style={({ pressed }) => ({
-                        backgroundColor: pressed ? Colors.sidebarBg : Colors.surface,
+                        opacity: pressed ? 0.85 : 1,
                       })}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12 }}>
+                      {/* Visuals live on a static inner View — NativeWind strips them
+                          from Pressable style FUNCTIONS. */}
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          padding: 12,
+                          backgroundColor: Colors.surface,
+                        }}>
                         <View style={{ flex: 1, minWidth: 0 }}>
                           <Text
                             style={{

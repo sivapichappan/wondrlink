@@ -180,16 +180,19 @@ export default function CancerSwitcherScreen() {
                   accessibilityState={{ selected }}
                   style={({ pressed }) => ({
                     flex: 1,
-                    borderRadius: Radius.md,
-                    borderWidth: selected ? 2 : 1,
-                    borderColor: selected ? Colors.primary : Colors.border,
-                    backgroundColor: selected
-                      ? Colors.primarySoft
-                      : pressed
-                        ? Colors.sidebarBg
-                        : Colors.surfaceMuted,
+                    opacity: pressed ? 0.85 : 1,
                   })}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12 }}>
+                  {/* Visuals live on the static inner View — NativeWind strips them from Pressable style functions */}
+                  <View
+                    style={{
+                      borderRadius: Radius.md,
+                      borderWidth: selected ? 2 : 1,
+                      borderColor: selected ? Colors.primary : Colors.border,
+                      backgroundColor: selected ? Colors.primarySoft : Colors.surfaceMuted,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      padding: 12,
+                    }}>
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Text
                         style={{
@@ -271,16 +274,19 @@ function CancerCard({
       accessibilityRole="radio"
       accessibilityState={{ selected }}
       style={({ pressed }) => ({
-        borderRadius: Radius.lg,
-        borderWidth: selected ? 2 : 1,
-        borderColor: selected ? accent : Colors.border,
-        backgroundColor: selected
-          ? Colors.primarySoft
-          : pressed
-            ? Colors.sidebarBg
-            : Colors.surfaceMuted,
+        opacity: pressed ? 0.85 : 1,
       })}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', padding: 14 }}>
+      {/* Visuals live on the static inner View — NativeWind strips them from Pressable style functions */}
+      <View
+        style={{
+          borderRadius: Radius.lg,
+          borderWidth: selected ? 2 : 1,
+          borderColor: selected ? accent : Colors.border,
+          backgroundColor: selected ? Colors.primarySoft : Colors.surfaceMuted,
+          flexDirection: 'row',
+          alignItems: 'center',
+          padding: 14,
+        }}>
         <View
           style={{
             width: 38,
