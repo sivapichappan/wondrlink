@@ -43,6 +43,10 @@ export const ENDPOINTS = {
   glossary: '/api/glossary',
   glossaryTerm: (id: string) => `/api/glossary/${id}`,
 
+  // --- Report scan (on-device OCR -> de-identified extraction -> confirm) ---
+  reportExtract: '/api/report/extract',
+  reportApply: '/api/report/apply',
+
   // --- Conversations (multi-conversation drawer: New chat / Recents / Search) ---
   // list (GET) + create (POST) share the base path. `conversation(id)` builds
   // the per-conversation paths: GET `${...}/messages`, PATCH rename, DELETE.

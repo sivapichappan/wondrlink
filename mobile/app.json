@@ -11,10 +11,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "org.wondrlink.wondrchat",
-      "buildNumber": "29",
+      "buildNumber": "30",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSPhotoLibraryUsageDescription": "Sage needs photo library access if you choose to attach a document or photo, such as an insurance denial letter."
+        "NSPhotoLibraryUsageDescription": "Sage needs photo library access if you choose to attach a document or photo, such as an insurance denial letter.",
+        "NSCameraUsageDescription": "Photograph a medical report so it can be read on your phone. Photos are never uploaded."
       }
     },
     "android": {

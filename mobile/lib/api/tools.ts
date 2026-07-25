@@ -13,6 +13,8 @@ import type {
   InsuranceAppealResponse,
   PreVisitRequest,
   PreVisitResponse,
+  ReportApplyResponse,
+  ReportExtractResponse,
   ScreeningSaveRequest,
   ScreeningSaveResponse,
   SurveillanceResponse,
@@ -79,6 +81,37 @@ export function deepResearch(query: string) {
   return apiFetch<DeepResearchResponse>(ENDPOINTS.deepResearch, {
     method: 'POST',
     body: { query },
+  });
+}
+
+// --- Report scan (on-device OCR -> de-identified extraction -> confirm) ---
+
+/** OCR text from the phone; the image itself never leaves the device. */
+export function extractReportText(text: string) {
+  return apiFetch<ReportExtractResponse>(ENDPOINTS.reportExtract, {
+    method: 'POST',
+    body: { text, source_type: 'image' },
+  });
+}
+
+export function extractReportPdf(file: { uri: string; name: string; mimeType: string }) {
+  const form = new FormData();
+  form.append('report_pdf', {
+    uri: file.uri,
+    name: file.name,
+    type: file.mimeType || 'application/pdf',
+  } as unknown as Blob);
+  return apiFetch<ReportExtractResponse>(ENDPOINTS.reportExtract, {
+    method: 'POST',
+    body: form,
+  });
+}
+
+/** Only the facts the patient explicitly confirmed on the review screen. */
+export function applyReportFacts(facts: { path: string; value: unknown }[]) {
+  return apiFetch<ReportApplyResponse>(ENDPOINTS.reportApply, {
+    method: 'POST',
+    body: { facts },
   });
 }
 

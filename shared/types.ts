@@ -623,6 +623,34 @@ export interface GlossaryListResponse {
 }
 
 // =============================================================================
+// REPORT SCAN  (/api/report/extract + /api/report/apply)
+// =============================================================================
+
+/** One extracted fact awaiting the patient's confirmation on the review screen. */
+export interface ReportFinding {
+  /** Belief path, e.g. "primaryDiagnosis.biomarkers.KRAS". */
+  path: string;
+  /** Plain-language name for the card, e.g. "KRAS biomarker result". */
+  label: string;
+  value: unknown;
+  confidence: number;
+  /** Short verbatim fragment from the de-identified text. */
+  evidence: string;
+}
+
+export interface ReportExtractResponse {
+  status: 'ok';
+  findings: ReportFinding[];
+  /** Shown for reference, never saved (e.g. lab values). */
+  display_only: { label: string; value: string }[];
+}
+
+export interface ReportApplyResponse {
+  status: 'ok';
+  applied: number;
+}
+
+// =============================================================================
 // INSURANCE APPEAL  (matches api/index.py:1327 /api/insurance_appeal)
 // =============================================================================
 

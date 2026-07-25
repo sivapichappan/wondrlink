@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { BookOpen, Check, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react-native';
+import { BookOpen, Check, ChevronLeft, ChevronRight, Plus, ScanLine, X } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -530,6 +530,29 @@ function StepBiomarkers({ state, update }: StepProps) {
         title="Test results from your reports"
         body="These names come from your pathology or testing report. Most people don't know them by heart, and that's completely fine. Fill in what you know and skip the rest."
       />
+      <Pressable
+        onPress={() => router.push('/tools/report-scan' as never)}
+        accessibilityRole="button"
+        accessibilityLabel="Scan a report instead"
+        style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
+        {/* Visuals on the static inner View (NativeWind rule). */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            alignSelf: 'flex-start',
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: Radius.md,
+            backgroundColor: Colors.primarySoft,
+          }}>
+          <ScanLine size={14} color={Colors.primaryPressed} />
+          <Text style={{ color: Colors.primaryPressed, fontFamily: Fonts.sansSemiBold, fontSize: 13 }}>
+            Scan a report instead — no typing needed
+          </Text>
+        </View>
+      </Pressable>
       <Pressable
         onPress={() => router.push('/tools/glossary' as never)}
         accessibilityRole="button"
