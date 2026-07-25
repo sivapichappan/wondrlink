@@ -180,12 +180,16 @@ sage-safety-rules-v0.9.json`. Deployed to prod after the eval gate passed._
       - Treatments checklist + "did it come back or grow?" → prior lines (never say "lines")
       - "On most days, which sounds most like you?" (4 options) → ECOG 0–3
       - Comorbidity chips (heart, diabetes, hepatitis/HIV, autoimmune) → exclusions
-- [ ] **Report/photo upload**: pathology + labs via camera/file → vision extraction
-      (model pick 2026-07-21: `meta-llama/Llama-4-Maverick` on Together, new `vision`
-      registry segment when built) →
-      ALWAYS patient-confirmed through the existing pending-chips machinery ("Looks
-      right" / "What does this mean?"). Never silently written. Biomarkers + labs are
-      NOT asked as questions — reports do the hard part
+- [x] **Report/photo upload — SHIPPED 2026-07-26** (backend live; screen rides eas
+      build #3): built with ON-DEVICE OCR instead of a vision model (deviation #8 —
+      the image never leaves the phone; only de-identified, PII-gated text reaches
+      the extractor, so the attorney consent copy stays literally true). Review
+      screen confirms every fact ("Looks right"/"Not right") before
+      `/api/report/apply` writes confirmed beliefs (pending queue deliberately
+      bypassed — its cap of 3 drops batches). Labs = display-only (no labs.*
+      namespace; add in v1.1 if needed). Vision segment (Llama-4-Maverick) NOT
+      needed — pick stays on file if image-quality ever demands it. Report-eval
+      suite deferred to v1.1 (pytest fixtures + live smoke cover v1).
 - [ ] **Dual-language profile** (screen 13): "In your words" / "For your medical team"
       side by side — verification + vocabulary learning + a shareable document for the
       oncologist. A product feature in its own right
