@@ -13,19 +13,25 @@ and prune the rest. Last updated: 2026-07-26._
    `requireNativeModule('ExpoMlkitOcr')` throws when the route loads → crash.
    Proven from build #32 logs: zero ExpoMlkitOcr/GoogleMLKit lines; every
    other Expo pod installed.
-   - **OTA guard PUBLISHED** (update group `fdf79cd3`, runtime 1.1.0, iOS):
-     report-scan now lazy-requires expo-mlkit-ocr AND expo-image-picker behind
-     try/catch — tile never crashes; photo paths show "not in this version
-     yet", PDF + type-instead still work on #32 today. (Publish OTA with
-     `--platform ios`; `--platform all` fails in the web export — supabase-js
-     hits AsyncStorage in Node.)
-   - **Build #33 makes photos work**: app.json now has
-     `expo-build-properties` (ios.deploymentTarget **16.0** — app becomes
-     iOS 16+ only) + `expo-mlkit-ocr` plugin (`iosEngine: "auto"` = Apple
-     Vision engine on iOS; no Google pods; module has a full Vision fallback).
-     → **GATE for #33: grep the EAS Xcode log for "Installing ExpoMlkitOcr"**
-     before uploading to Transporter; then on-device: photograph a printed
-     report end-to-end.
+   - **OTA guard PUBLISHED — two rounds.** Round 1 (`fdf79cd3`) moved the
+     imports into lazy try/catch'd require()s: screen opened, but photo
+     buttons STILL crashed — Metro's `guardedLoadModule` routes a module
+     factory throw from an event handler to `ErrorUtils.reportFatalError`
+     (fatal in release), bypassing try/catch. Round 2 (`fe4e5423`, LIVE)
+     probes `requireOptionalNativeModule('ExpoMlkitOcr'/'ExponentImagePicker')`
+     BEFORE require() — see the new rule in `.claude/rules/mobile-ui.md`.
+     On #32 today: photo buttons show "not in this version yet"; PDF +
+     type-instead work. (Publish OTA with `--platform ios`; `--platform all`
+     fails in the web export — supabase-js hits AsyncStorage in Node.)
+   - **Build #33 FINISHED + GATE PASSED (2026-07-26)**: built from `83fc4e1`
+     with `expo-build-properties` (ios.deploymentTarget **16.0** — app is
+     iOS 16+ only now) + `expo-mlkit-ocr` plugin (`iosEngine: "auto"` =
+     Apple Vision engine; no Google pods). Gate verified ON THE .ipa BINARY
+     (EAS log downloads were flaky): `strings Payload/Sage.app/Sage` contains
+     `ExpoMlkitOcrModule`, MinimumOSVersion 16.0. → USER OPS: upload #33 via
+     Transporter → TestFlight → photograph a printed report end-to-end.
+     (Binary-gate recipe for future native-module builds: download the ipa
+     artifact, `strings` the executable for the module class name.)
 2. **Build #32 smoke list still stands** (after the OTA lands, ~2 launches):
    fresh phone login (test numbers, code 123456) → consent → welcome/tips →
    anchor question (NOT colorectal-assumed) → home greeting → glossary

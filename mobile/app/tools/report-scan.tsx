@@ -14,6 +14,7 @@
  * functions are opacity-only.
  */
 
+import { requireOptionalNativeModule } from 'expo';
 import * as DocumentPicker from 'expo-document-picker';
 import type * as ImagePickerTypes from 'expo-image-picker';
 import type * as MlkitOcrTypes from 'expo-mlkit-ocr';
@@ -45,9 +46,14 @@ const PHOTO_UNAVAILABLE_MSG =
 
 // expo-image-picker and expo-mlkit-ocr are native modules that a given install
 // may not contain (their pods only link on builds with the iOS 16 deployment
-// target). requireNativeModule throws at import time when the binary lacks
-// them, so they load lazily behind a guard instead of at module top.
+// target). Their JS entry calls requireNativeModule at module scope, which
+// throws when the binary lacks the pod — and Metro routes a module factory
+// throw from an event handler to ErrorUtils.reportFatalError (app crash), so
+// a try/catch around require() can NOT contain it. Probe the native registry
+// with requireOptionalNativeModule FIRST; only require() the package once the
+// probe proves its factory cannot throw.
 function loadImagePicker(): typeof ImagePickerTypes | null {
+  if (!requireOptionalNativeModule('ExponentImagePicker')) return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     return require('expo-image-picker');
@@ -57,6 +63,7 @@ function loadImagePicker(): typeof ImagePickerTypes | null {
 }
 
 function loadOcr(): typeof MlkitOcrTypes | null {
+  if (!requireOptionalNativeModule('ExpoMlkitOcr')) return null;
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     return require('expo-mlkit-ocr');
