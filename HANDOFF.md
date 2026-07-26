@@ -5,32 +5,41 @@ and prune the rest. Last updated: 2026-07-26._
 
 ## IN FLIGHT RIGHT NOW
 
-1. **eas build #2 is RUNNING** (user started it 2026-07-26). It carries: the
-   TestFlight feedback round (no assumed cancer focus, consent checkbox layout,
-   Back labels, centered "Tell me how you're feeling, {name}" home, welcome +
-   usage-tips onboarding intro), the 21-surface NativeWind Pressable repair
-   (incl. CrisisModal 911/988 buttons), New-chat→fresh-Home navigation, the
-   branding-constant refactor (store listing = **MySage**, product = Sage),
-   the **My terms glossary** page, and the profile-builder plain-language pass
-   (no ECOG, biomarkers reframed).
-   → When the user reports it done: **commit the `mobile/app.json` buildNumber
-   bump** and walk the on-device smoke: fresh phone login (test numbers work,
-   e.g. code 123456) → consent (checkboxes inline) → welcome/tips → basics →
+1. **Scan-report crash on build #32 — ROOT-CAUSED + fixed 2026-07-26.**
+   Build #32 shipped WITHOUT the ExpoMlkitOcr native module: Expo autolinking
+   **silently skips** any pod whose podspec needs a higher iOS deployment
+   target than the app (ExpoMlkitOcr.podspec pins iOS **16.0**; SDK 54 default
+   is 15.1) — pod install "succeeds", JS bundles, then
+   `requireNativeModule('ExpoMlkitOcr')` throws when the route loads → crash.
+   Proven from build #32 logs: zero ExpoMlkitOcr/GoogleMLKit lines; every
+   other Expo pod installed.
+   - **OTA guard PUBLISHED** (update group `fdf79cd3`, runtime 1.1.0, iOS):
+     report-scan now lazy-requires expo-mlkit-ocr AND expo-image-picker behind
+     try/catch — tile never crashes; photo paths show "not in this version
+     yet", PDF + type-instead still work on #32 today. (Publish OTA with
+     `--platform ios`; `--platform all` fails in the web export — supabase-js
+     hits AsyncStorage in Node.)
+   - **Build #33 makes photos work**: app.json now has
+     `expo-build-properties` (ios.deploymentTarget **16.0** — app becomes
+     iOS 16+ only) + `expo-mlkit-ocr` plugin (`iosEngine: "auto"` = Apple
+     Vision engine on iOS; no Google pods; module has a full Vision fallback).
+     → **GATE for #33: grep the EAS Xcode log for "Installing ExpoMlkitOcr"**
+     before uploading to Transporter; then on-device: photograph a printed
+     report end-to-end.
+2. **Build #32 smoke list still stands** (after the OTA lands, ~2 launches):
+   fresh phone login (test numbers, code 123456) → consent → welcome/tips →
    anchor question (NOT colorectal-assumed) → home greeting → glossary
-   round-trip → a T2 message shows the escalation card.
-2. **Report-scan SHIPPED 2026-07-26** (`976119e` backend + `d640611` mobile).
-   Backend LIVE and prod-smoked end-to-end (identifier-laden fixture → 6
-   correct findings, CEA → display_only, apply wrote confirmed beliefs; test
-   account restored after). Architecture: images never leave the phone
-   (on-device OCR via `expo-mlkit-ocr 0.2.7`, alternate `expo-ocr-kit`) →
-   `deidentify_report_text` + PII guard → extractor → review-screen
-   confirmation → `/api/report/apply` writes confirmed beliefs (pending queue
-   bypassed by design). The SCREEN + native modules (expo-image-picker,
-   expo-mlkit-ocr, NSCameraUsageDescription) need **eas build #3** — the
-   currently running build #2 does NOT include them. Deferred to v1.1:
-   report-extraction eval suite; labs.* namespace. USER OPS on build #3:
-   photograph a real printed report (OCR quality is manual-only
-   verification), PDF path, pii_guard fallback, save round-trip.
+   round-trip (~1-2s) → T2 escalation card → report-scan via **PDF path** +
+   pii_guard fallback (photo OCR waits for #33).
+3. **Report-scan backend LIVE + prod-smoked** (`976119e`): identifier-laden
+   fixture → 6/6 correct findings, CEA → display_only, apply wrote confirmed
+   beliefs; test account restored after. Deferred to v1.1: report-extraction
+   eval suite; labs.* namespace.
+4. **PENDING USER DECISION — "My terms" further speed** (options given
+   2026-07-26): (1) drop per-call get_cancer_slug lookup (~0.25s, free);
+   (2) streaming = perceived-instant (~half day, OTA-shippable); (3) Groq
+   8b-instant + anti-filler prompt (needs quality audit). Gemini Flash-Lite
+   parked (≈tie vs current + needs consent-copy revision naming Google).
 
 ## Standing operations
 - Weekly `python3 scripts/modeler_report.py --all` AND

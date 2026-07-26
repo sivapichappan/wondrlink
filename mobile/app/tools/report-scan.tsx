@@ -15,8 +15,8 @@
  */
 
 import * as DocumentPicker from 'expo-document-picker';
-import * as ImagePicker from 'expo-image-picker';
-import { recognizeText } from 'expo-mlkit-ocr';
+import type * as ImagePickerTypes from 'expo-image-picker';
+import type * as MlkitOcrTypes from 'expo-mlkit-ocr';
 import { Stack, router } from 'expo-router';
 import { Camera, Check, FileText, Images, ShieldCheck, X } from 'lucide-react-native';
 import { useState } from 'react';
@@ -39,6 +39,31 @@ import type { ReportExtractResponse, ReportFinding } from '@shared/types';
 
 const MAX_PAGES = 3;
 const MAX_CHARS = 8000;
+
+const PHOTO_UNAVAILABLE_MSG =
+  'Photo scanning is not in this version of the app yet. Attach a PDF or type the values instead.';
+
+// expo-image-picker and expo-mlkit-ocr are native modules that a given install
+// may not contain (their pods only link on builds with the iOS 16 deployment
+// target). requireNativeModule throws at import time when the binary lacks
+// them, so they load lazily behind a guard instead of at module top.
+function loadImagePicker(): typeof ImagePickerTypes | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('expo-image-picker');
+  } catch {
+    return null;
+  }
+}
+
+function loadOcr(): typeof MlkitOcrTypes | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('expo-mlkit-ocr');
+  } catch {
+    return null;
+  }
+}
 
 type Phase = 'capture' | 'processing' | 'review' | 'success';
 
@@ -96,11 +121,11 @@ export default function ReportScanScreen() {
     fail('Could not read that report right now.');
   };
 
-  const ocrPage = async (uri: string) => {
+  const ocrPage = async (ocr: typeof MlkitOcrTypes, uri: string) => {
     setPhase('processing');
     setProcessingLabel('Reading on your phone…');
     try {
-      const recognized = await recognizeText(uri);
+      const recognized = await ocr.recognizeText(uri);
       const text = (recognized?.text ?? '').trim();
       // The image URI is dropped here; only text continues.
       if (text.length < 40) {
@@ -121,21 +146,33 @@ export default function ReportScanScreen() {
   };
 
   const takePhoto = async () => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    const picker = loadImagePicker();
+    const ocr = loadOcr();
+    if (!picker || !ocr) {
+      fail(PHOTO_UNAVAILABLE_MSG, true);
+      return;
+    }
+    const perm = await picker.requestCameraPermissionsAsync();
     if (!perm.granted) {
       fail('Camera access is off. You can allow it in Settings, pick from your photos, or type the values.', true);
       return;
     }
-    const res = await ImagePicker.launchCameraAsync({ quality: 0.9 });
-    if (!res.canceled && res.assets?.[0]?.uri) await ocrPage(res.assets[0].uri);
+    const res = await picker.launchCameraAsync({ quality: 0.9 });
+    if (!res.canceled && res.assets?.[0]?.uri) await ocrPage(ocr, res.assets[0].uri);
   };
 
   const pickPhoto = async () => {
-    const res = await ImagePicker.launchImageLibraryAsync({
+    const picker = loadImagePicker();
+    const ocr = loadOcr();
+    if (!picker || !ocr) {
+      fail(PHOTO_UNAVAILABLE_MSG, true);
+      return;
+    }
+    const res = await picker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.9,
     });
-    if (!res.canceled && res.assets?.[0]?.uri) await ocrPage(res.assets[0].uri);
+    if (!res.canceled && res.assets?.[0]?.uri) await ocrPage(ocr, res.assets[0].uri);
   };
 
   const pickPdf = async () => {
