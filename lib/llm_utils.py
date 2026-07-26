@@ -1468,6 +1468,10 @@ def generate_glossary_explanation(term: str, guidelines_formatted: str = "",
     glossary's "add new term" flow). Plain prose, no JSON. The term arrives
     already sanitized (sanitize_query at the endpoint); only the term and a
     generic cancer kind reach the LLM.
+
+    Runs on the dedicated `glossary` registry segment (Groq 70B, ~0.7s —
+    raced 2026-07-26 against the Kimi chat path at ~1.5s with equal
+    quality); falls back to the chat voice if Groq is unavailable.
     """
     from lib import cancer_registry as _registry
     cancer_kind = _registry.display_name(cancer_slug).lower() if cancer_slug else "cancer"
@@ -1477,6 +1481,33 @@ def generate_glossary_explanation(term: str, guidelines_formatted: str = "",
         guidelines=guidelines_formatted or "(none)",
         cancer_kind=cancer_kind,
     )
+
+    from model_registry import get_model
+    client = get_groq_client()
+    if client is not None:
+        try:
+            import time as _time
+            from ai_gateway import log_llm_call
+            model = get_model("glossary")
+            _t0 = _time.perf_counter()
+            response = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=200,
+                temperature=0.3,
+                timeout=10,
+            )
+            log_llm_call("glossary", "groq", model,
+                         int((_time.perf_counter() - _t0) * 1000),
+                         usage=getattr(response, "usage", None))
+            answer = ""
+            if response and response.choices:
+                answer = (response.choices[0].message.content or "").strip()
+            if answer:
+                return answer
+        except Exception as e:
+            logger.warning(f"glossary Groq call failed ({type(e).__name__}); chat-voice fallback")
+
     try:
         answer, _api = call_llm(prompt, response_length="brief",
                                 query_type="general", cancer_slug=cancer_slug)

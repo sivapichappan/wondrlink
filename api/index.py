@@ -2813,17 +2813,20 @@ def api_glossary_explain():
         except Exception:
             pass
 
-        # Best-effort RAG grounding (insurance_appeal pattern): any failure
-        # degrades to an ungrounded but still-valid explanation.
+        # No corpus grounding by design (2026-07-26): loading + searching the
+        # 9k-chunk corpus added ~11s per explain while the quality praise came
+        # from UNGROUNDED answers; definitions are general knowledge and the
+        # user edits before saving. GLOSSARY_GROUNDING=true re-enables it.
         guidelines_formatted = ""
-        try:
-            chunks = load_all_chunks()
-            cancer_types = [cancer_slug, 'general'] if cancer_slug else None
-            retrieved = hybrid_search(term, chunks, top_k=4, cancer_types=cancer_types)
-            from llm_utils import select_chunks_within_budget
-            guidelines_formatted = select_chunks_within_budget(retrieved, 1200)
-        except Exception:
-            logger.warning("glossary grounding unavailable (continuing ungrounded)")
+        if os.getenv("GLOSSARY_GROUNDING", "false").lower() == "true":
+            try:
+                chunks = load_all_chunks()
+                cancer_types = [cancer_slug, 'general'] if cancer_slug else None
+                retrieved = hybrid_search(term, chunks, top_k=4, cancer_types=cancer_types)
+                from llm_utils import select_chunks_within_budget
+                guidelines_formatted = select_chunks_within_budget(retrieved, 1200)
+            except Exception:
+                logger.warning("glossary grounding unavailable (continuing ungrounded)")
 
         from llm_utils import generate_glossary_explanation
         definition = generate_glossary_explanation(

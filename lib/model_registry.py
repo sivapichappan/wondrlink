@@ -74,6 +74,15 @@ _SEGMENTS: Dict[str, Dict[str, str]] = {
         "default": "llama-3.3-70b-versatile",
         "env": "MODEL_CLASSIFIER",
     },
+    # Glossary term explanations ("My terms"): quality parity with the chat
+    # voice at ~0.7s vs Kimi's ~1.5s (raced 2026-07-26; 8b-instant was faster
+    # still but chatty). Rides the same per-model Groq bucket as the
+    # classifier (12k TPM).
+    "glossary": {
+        "provider": "groq",
+        "default": "llama-3.3-70b-versatile",
+        "env": "MODEL_GLOSSARY",
+    },
     # Emergency chat backup when Together is down. 70B on Groq is still
     # near-instant, so the backup is no longer a quality cliff (2026-07-18).
     "fallback": {
