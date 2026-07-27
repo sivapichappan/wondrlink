@@ -23,15 +23,21 @@ and prune the rest. Last updated: 2026-07-26._
      On #32 today: photo buttons show "not in this version yet"; PDF +
      type-instead work. (Publish OTA with `--platform ios`; `--platform all`
      fails in the web export — supabase-js hits AsyncStorage in Node.)
-   - **Build #33 FINISHED + GATE PASSED (2026-07-26)**: built from `83fc4e1`
-     with `expo-build-properties` (ios.deploymentTarget **16.0** — app is
-     iOS 16+ only now) + `expo-mlkit-ocr` plugin (`iosEngine: "auto"` =
-     Apple Vision engine; no Google pods). Gate verified ON THE .ipa BINARY
-     (EAS log downloads were flaky): `strings Payload/Sage.app/Sage` contains
-     `ExpoMlkitOcrModule`, MinimumOSVersion 16.0. → USER OPS: upload #33 via
+   - **Build #34 is THE build to upload** (FINISHED 2026-07-26, from
+     `060f575` — embeds the probe-first fix natively AND the linked
+     ExpoMlkitOcr pod). Build #33 (from `83fc4e1`) also has the pod but only
+     the round-1 guard embedded — superseded, do not upload. Full 4-way
+     verification PASSED 2026-07-26 (workflow): OTA chain correct
+     (`fe4e5423` newest for runtime 1.1.0), build pipeline correct, code
+     surface clean (report-scan is the only native-probe site, probe-first
+     order verified), and EVERY expo native module confirmed present in the
+     #33 binary (MinimumOSVersion 16.0; camera + photo plist keys present;
+     ML Kit intentionally absent — `iosEngine:"auto"` uses Apple Vision on
+     ALL builds, not just simulators). → USER OPS: upload **#34** via
      Transporter → TestFlight → photograph a printed report end-to-end.
-     (Binary-gate recipe for future native-module builds: download the ipa
-     artifact, `strings` the executable for the module class name.)
+     (Binary-gate recipe for native-module builds: download the ipa artifact,
+     `strings` the executable for the module class name — EAS log downloads
+     are flaky.)
 2. **Build #32 smoke list still stands** (after the OTA lands, ~2 launches):
    fresh phone login (test numbers, code 123456) → consent → welcome/tips →
    anchor question (NOT colorectal-assumed) → home greeting → glossary
