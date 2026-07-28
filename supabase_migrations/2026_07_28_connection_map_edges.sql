@@ -86,7 +86,9 @@ CREATE TABLE IF NOT EXISTS master_edge (
   -- Acceptance #26: every rejected edge carries a structured reason. Stated
   -- both ways so a reason cannot linger on an edge that is no longer rejected
   -- (the rejection mix is the extractor's only real eval signal, §13.1).
-  CONSTRAINT master_edge_rejection_reason_check
+  -- NOT named *_rejection_reason_check: Postgres auto-names the inline column
+  -- CHECK above exactly that, and the two would collide.
+  CONSTRAINT master_edge_rejected_needs_reason_check
     CHECK ((status = 'rejected') = (rejection_reason IS NOT NULL)),
   CONSTRAINT master_edge_prevalence_band_check
     CHECK (expected_prevalence_low IS NULL
@@ -133,6 +135,11 @@ CREATE INDEX IF NOT EXISTS master_edge_evidence_section_idx ON master_edge_evide
 CREATE OR REPLACE FUNCTION connection_map_verify_evidence()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+-- search_path is pinned (pg_temp LAST, so a temp table cannot shadow a real
+-- one). Without this the unqualified source_section lookup below resolves
+-- through the caller's search_path, and anyone able to set it could point the
+-- verification at a decoy table and have a fabricated quote pass.
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_text        TEXT;
@@ -186,6 +193,7 @@ CREATE TRIGGER master_edge_evidence_verify
 CREATE OR REPLACE FUNCTION connection_map_edge_has_evidence()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_edge_id UUID;
@@ -242,6 +250,7 @@ CREATE OR REPLACE FUNCTION insert_master_edge_with_evidence(p_edge JSONB, p_evid
 RETURNS UUID
 LANGUAGE plpgsql
 SECURITY INVOKER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_edge_id UUID;

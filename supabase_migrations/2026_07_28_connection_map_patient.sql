@@ -69,6 +69,7 @@ CREATE INDEX IF NOT EXISTS patient_edge_event_patient_idx
 CREATE OR REPLACE FUNCTION connection_map_block_update()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = public, pg_temp
 AS $$
 BEGIN
   RAISE EXCEPTION 'connection_map: % is append-only', TG_TABLE_NAME;

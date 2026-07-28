@@ -128,6 +128,35 @@ class TestHouseStyle:
         assert created, "expected at least one function"
         assert all(c.strip() for c in created), "every function must be CREATE OR REPLACE"
 
+    def test_every_function_pins_search_path(self):
+        # The verification trigger looks up source_section unqualified. With a
+        # mutable search_path a caller could resolve that to a decoy table and
+        # have a fabricated quotation verify successfully. pg_temp must come
+        # LAST so a temp table cannot shadow a real one.
+        text = all_sql()
+        names = re.findall(r"CREATE OR REPLACE FUNCTION (\w+)", text)
+        assert names
+        for name in names:
+            body = text[text.index(f"CREATE OR REPLACE FUNCTION {name}"):]
+            head = body[:body.index("AS $$")]
+            assert "SET search_path = public, pg_temp" in head, name
+
+    def test_no_explicit_constraint_shadows_a_postgres_generated_name(self):
+        # Postgres auto-names a column-level CHECK `<table>_<column>_check`.
+        # Reusing that name for an explicit table-level constraint fails with
+        # "constraint already exists" at CREATE TABLE (hit while applying this
+        # very migration).
+        for key, tables in TABLES.items():
+            text = sql(key)
+            explicit = set(re.findall(r"CONSTRAINT (\w+)", text))
+            inline_cols = set(re.findall(r"^\s+(\w+)\s+[A-Z]+.*?CHECK \(\1\b", text, re.MULTILINE))
+            for table in tables:
+                for col in inline_cols:
+                    generated = f"{table}_{col}_check"
+                    assert generated not in explicit, (
+                        f"{generated} collides with the name Postgres generates "
+                        f"for the inline CHECK on {table}.{col}")
+
 
 class TestEnumsMatchPython:
     """lib/connection_map/concepts.py is the Python source of truth; these
