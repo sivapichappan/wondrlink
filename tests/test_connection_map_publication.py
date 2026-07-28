@@ -221,3 +221,76 @@ class TestHouseStyle:
         for f in (ATTEST_SQL, PUBLISH_SQL):
             assert names.index(f.name) > names.index(
                 "2026_07_28_connection_map_sage_review_role.sql")
+
+
+class TestTierCEvidence:
+    """Owner decision D2: tier C exists, but inference may never masquerade as
+    a quotation. All four behaviours below were probed on sage-dev."""
+
+    def tier_c_sql(self) -> str:
+        return (MIGRATIONS / "2026_07_30_connection_map_tier_c.sql").read_text(encoding="utf-8")
+
+    def test_tier_c_is_storable(self):
+        assert "CHECK (tier IN ('A','B','C'))" in self.tier_c_sql()
+
+    def test_inferred_evidence_cannot_carry_a_quotation(self):
+        # The property that protects patients: never fabricate a citation.
+        text = self.tier_c_sql()
+        assert "evidence_kind = 'inferred'" in text
+        assert "AND quoted_sentence IS NULL" in text
+        assert "reasoning IS NOT NULL" in text
+
+    def test_verbatim_evidence_still_requires_a_quotation(self):
+        assert re.search(
+            r"evidence_kind = 'verbatim'\s*\n\s*AND quoted_sentence IS NOT NULL",
+            self.tier_c_sql())
+
+    def test_tier_a_and_b_reject_inferred_evidence(self):
+        text = self.tier_c_sql()
+        assert "requires verbatim evidence" in text
+        assert "v_tier IN ('A','B')" in text
+
+    def test_exact_matching_is_unchanged_for_verbatim_rows(self):
+        # §16: never relax the citation check. Skipping applies only to rows
+        # that make no quotation claim.
+        text = self.tier_c_sql()
+        assert re.search(
+            r"substr\(v_text, NEW\.char_offset \+ 1, char_length\(NEW\.quoted_sentence\)\)",
+            text)
+
+    def test_hash_covers_the_new_fields(self):
+        # Otherwise editing an inference's reasoning after signing would not
+        # void the signature (acceptance #10).
+        text = self.tier_c_sql()
+        assert "ev.evidence_kind" in text and "ev.reasoning" in text
+
+    def test_publication_gate_skips_inferred_rows_in_the_quote_recheck(self):
+        text = self.tier_c_sql()
+        assert "WHERE ev.evidence_kind = 'verbatim'" in text
+        assert "has inferred evidence" in text
+
+    def test_rpc_can_write_the_new_fields(self):
+        # Without this, extraction could never create a tier C edge: its
+        # evidence would default to verbatim with no quotation and be refused.
+        text = self.tier_c_sql()
+        assert "COALESCE(v_row->>'evidence_kind', 'verbatim')" in text
+        assert "v_row->>'reasoning'" in text
+
+    def test_tier_c_still_has_no_attestation_wording(self):
+        # D2's remaining gate: signing tier C is refused until legal approves
+        # a variant, because the v1 sentence ("consistent with the cited
+        # sources") overclaims for an inference. Parsed, not string-matched:
+        # the file's own comment explains the absence and mentions the name.
+        import yaml
+        cfg = yaml.safe_load(
+            (_REPO / "config" / "connection_map" / "attestation_text.yaml")
+            .read_text(encoding="utf-8"))
+        covered = {t for v in cfg["versions"].values()
+                   for t in (v.get("applies_to_tiers") or [])}
+        assert covered == {"A", "B"}, f"tier C must have no signable wording yet: {covered}"
+
+    def test_the_api_refuses_a_tier_without_wording(self):
+        sys.path.insert(0, str(_REPO / "lib"))
+        from connection_map.review.api import attestation_text_for_tier
+        assert attestation_text_for_tier("A") is not None
+        assert attestation_text_for_tier("C") is None

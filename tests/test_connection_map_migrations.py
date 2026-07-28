@@ -189,11 +189,14 @@ class TestEnumsMatchPython:
     def test_map_version_status(self):
         assert check_values(sql("map_versions"), "status") == set(MAP_VERSION_STATUSES)
 
-    def test_tier_cannot_store_c(self):
-        # §4.4: tier C has no verifiable quotation and is "discarded, never
-        # queued" (PLAN.md decision #2).
-        tiers = check_values(sql("edges"), "tier")
-        assert tiers == set(EDGE_TIERS) == {"A", "B"}
+    def test_tier_c_widening_is_a_separate_migration(self):
+        # The Phase 1 file still says A|B — published migrations are history.
+        # D2's widening lands in 2026_07_30_connection_map_tier_c.sql, and the
+        # Python enum now matches that later state.
+        assert check_values(sql("edges"), "tier") == {"A", "B"}
+        assert set(EDGE_TIERS) == {"A", "B", "C"}
+        later = (MIGRATIONS / "2026_07_30_connection_map_tier_c.sql").read_text(encoding="utf-8")
+        assert "CHECK (tier IN ('A','B','C'))" in later
 
 
 class TestCitationInvariants:

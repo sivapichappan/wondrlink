@@ -19,6 +19,8 @@ from connection_map.concepts import (  # noqa: E402
     CONCEPT_DOMAINS,
     CONCEPT_INSTRUMENTS,
     EDGE_TIERS,
+    EVIDENCE_KINDS,
+    VERBATIM_ONLY_TIERS,
     concept_rows,
     load_concepts,
     validate_concepts,
@@ -238,7 +240,15 @@ class TestEnums:
     def test_domains_cover_the_spec(self):
         assert set(CONCEPT_DOMAINS) == set(SPEC_10_1)
 
-    def test_tier_c_is_not_storable(self):
-        # §4.4: tier C is "discarded, never queued" (PLAN.md decision #2).
-        assert "C" not in EDGE_TIERS
-        assert set(EDGE_TIERS) == {"A", "B"}
+    def test_tier_c_is_storable_since_d2(self):
+        # DELIBERATE FLIP of the Phase 1 guardrail. §4.4 discarded tier C;
+        # owner decision D2 keeps it as a low-priority physician queue, and an
+        # approved one may reach a patient through the same attestation gate.
+        assert set(EDGE_TIERS) == {"A", "B", "C"}
+
+    def test_what_tier_c_did_not_change(self):
+        # The property that protects patients is "never fabricates a
+        # citation", not "every row is verbatim". Tier C evidence is inferred
+        # (real section + reasoning, no quotation), and A/B stay verbatim-only.
+        assert set(EVIDENCE_KINDS) == {"verbatim", "inferred"}
+        assert set(VERBATIM_ONLY_TIERS) == {"A", "B"}

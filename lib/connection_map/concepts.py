@@ -47,10 +47,23 @@ RELATIONSHIP_TYPES = (
 
 EDGE_URGENCIES = ("routine", "urgent")
 
-# Spec §4.4 defines tiers A|B|C but tier C is "discarded, never queued" —
-# nothing may legitimately persist a C, so the stored enum is A|B only
-# (approved deviation, PLAN.md open decision #2).
-EDGE_TIERS = ("A", "B")
+# Spec §4.4 defines tier C as "no verifiable quotation. Discarded, never
+# queued", and Phase 1 enforced that. Owner decision D2 (PLAN.md) REDEFINED it:
+# a tier C connection is a far-fetched, non-verbatim relationship kept in a
+# low-priority queue for a physician to look at when they have time, and an
+# approved one may reach a patient through the same attestation gate as A/B.
+#
+# What did NOT change: the system never fabricates a citation. Tier C evidence
+# is `inferred` — a real source section plus reasoning, with quoted_sentence
+# NULL — so there is nothing that could be mistaken for a quotation. Tier A
+# and B still accept `verbatim` evidence only.
+EDGE_TIERS = ("A", "B", "C")
+
+# How an evidence row relates to its source section.
+EVIDENCE_KINDS = ("verbatim", "inferred")
+
+# Tiers whose evidence must be verified character for character.
+VERBATIM_ONLY_TIERS = ("A", "B")
 
 EDGE_STATUSES = ("candidate", "in_review", "approved", "rejected")
 
