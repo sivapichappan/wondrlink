@@ -94,6 +94,32 @@ export const REJECTION_REASON_LABELS: Record<RejectionReason, string> = {
   chain_does_not_hold: 'Chained quotes do not combine',
 };
 
+/** One §5.7 reason a version cannot publish. edge_id is null for
+ *  version-level problems (missing governance note, no edges). */
+export interface PublicationBlocker {
+  edge_id: string | null;
+  problem: string;
+}
+
+export interface BlockersResponse {
+  status: 'ok';
+  blockers: PublicationBlocker[];
+  publishable: boolean;
+}
+
+export function fetchVersionBlockers(versionId: string) {
+  return apiFetch<BlockersResponse>(ENDPOINTS.reviewVersionBlockers(versionId), {
+    method: 'GET',
+  });
+}
+
+export function publishVersion(versionId: string) {
+  return apiFetch<{ status: 'ok'; version_id: string }>(
+    ENDPOINTS.reviewVersionPublish(versionId),
+    { method: 'POST' },
+  );
+}
+
 export function fetchReviewMeta() {
   return apiFetch<ReviewMetaResponse>(ENDPOINTS.reviewMeta, { method: 'GET' });
 }

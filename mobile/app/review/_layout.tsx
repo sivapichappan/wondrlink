@@ -30,6 +30,7 @@ export default function ReviewLayout() {
         contentStyle: { backgroundColor: Colors.surface },
       }}>
       <Stack.Screen name="index" options={{ title: 'Review queue' }} />
+      <Stack.Screen name="publish" options={{ title: 'Publish version' }} />
     </Stack>
   );
 }
