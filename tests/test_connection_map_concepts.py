@@ -19,6 +19,7 @@ from connection_map.concepts import (  # noqa: E402
     CONCEPT_DOMAINS,
     CONCEPT_INSTRUMENTS,
     EDGE_TIERS,
+    concept_rows,
     load_concepts,
     validate_concepts,
 )
@@ -207,6 +208,30 @@ class TestValidator:
         doc = self._base()
         doc["concepts"][0]["spec_addition"] = False
         assert any("spec_addition" in e for e in validate_concepts(doc))
+
+
+class TestSeedRows:
+    def test_row_columns_match_the_table(self, doc):
+        rows = concept_rows(doc)
+        expected = {"slug", "domain", "display_clinical", "display_patient",
+                    "terminology_system", "terminology_code", "instrument",
+                    "cancer_scopes"}
+        assert rows and all(set(r) == expected for r in rows)
+
+    def test_authoring_metadata_stays_out_of_the_database(self, doc):
+        # notes / spec_addition explain the YAML to a reader; they are not
+        # columns and must not be sent as ones.
+        for row in concept_rows(doc):
+            assert "notes" not in row and "spec_addition" not in row
+
+    def test_optional_columns_are_explicit_nulls(self, doc):
+        # Written explicitly so a re-seed cannot leave a stale value behind.
+        rows = {r["slug"]: r for r in concept_rows(doc)}
+        assert rows["fatigue"]["terminology_system"] is None
+        assert rows["fatigue"]["display_patient"] is None
+
+    def test_row_count_matches_the_seed(self, doc):
+        assert len(concept_rows(doc)) == len(doc["concepts"]) == 60
 
 
 class TestEnums:

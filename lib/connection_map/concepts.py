@@ -167,3 +167,22 @@ def validate_concepts(doc: Dict[str, Any]) -> List[str]:
             errors.append(f"{label}: spec_addition, when present, must be true")
 
     return errors
+
+
+def concept_rows(doc: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Concept entries as insert-ready rows for the concept table.
+
+    Optional columns are written explicitly as None so an upsert cannot leave
+    a stale value behind from an earlier seed. `notes` and `spec_addition` are
+    authoring metadata and stay in the YAML.
+    """
+    return [{
+        "slug": c["slug"],
+        "domain": c["domain"],
+        "display_clinical": c["display_clinical"],
+        "display_patient": c.get("display_patient"),
+        "terminology_system": c.get("terminology_system"),
+        "terminology_code": c.get("terminology_code"),
+        "instrument": c.get("instrument"),
+        "cancer_scopes": c["cancer_scopes"],
+    } for c in doc["concepts"]]
