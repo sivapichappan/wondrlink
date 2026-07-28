@@ -26,12 +26,20 @@ REVIEW_PKG = _REPO / "lib" / "connection_map" / "review"
 ROLE_SQL = _REPO / "supabase_migrations" / "2026_07_28_connection_map_sage_review_role.sql"
 REVIEWER_SQL = _REPO / "supabase_migrations" / "2026_07_28_connection_map_reviewers.sql"
 
-# Anything that reads patient data. A review module importing any of these is
-# the failure §5.8 exists to prevent.
+# Anything that reads patient data, or that hands out something which can. A
+# review module importing any of these is the failure §5.8 exists to prevent.
+#
+# supabase_client is FIRST for a reason: it exposes get_admin_client(), the
+# service-role client that bypasses RLS and reads every patient table. It is
+# also the way every other module in this repo talks to the database, so it is
+# the import a Phase 3 handler is most likely to reach for out of habit. An
+# earlier version of this list omitted it, and a review module importing it
+# passed CI.
 PATIENT_MODULES = {
-    "patient_model", "supabase_storage", "modeler", "question_policy",
-    "profile_utils", "learning_loop", "safety_classifier", "llm_utils",
-    "clinical_trials", "vector_search", "pdf_utils", "index",
+    "supabase_client", "supabase_storage", "patient_model", "modeler",
+    "question_policy", "profile_utils", "learning_loop", "safety_classifier",
+    "safety_rules", "llm_utils", "clinical_trials", "vector_search",
+    "pdf_utils", "auth_helpers", "rate_limit", "index",
 }
 
 # Tables sage_review must hold no privilege on.
@@ -52,8 +60,13 @@ REVIEW_GRANTS = {
     "master_edge": {"SELECT", "UPDATE"},
     "master_edge_evidence": {"SELECT"},
     "master_map_version": {"SELECT", "INSERT", "UPDATE"},
-    "reviewer": {"SELECT", "INSERT", "UPDATE"},
-    "reviewer_assignment": {"SELECT", "INSERT", "UPDATE"},
+    # Read-only on purpose: writing reviewer.auth_user_id fires the
+    # mutual-exclusion trigger, which reads patient_profiles. As sage_review
+    # that both fails and, if it were permitted, would turn the trigger's error
+    # message into a patient-existence oracle. Provisioning is a service-role
+    # operation behind an admin endpoint.
+    "reviewer": {"SELECT"},
+    "reviewer_assignment": {"SELECT"},
     "audit_log": {"SELECT", "INSERT"},
 }
 
@@ -63,19 +76,51 @@ def role_sql() -> str:
 
 
 def imported_names(path: Path) -> set:
-    """Top-level module names imported by a Python file."""
+    """EVERY dotted segment of every module a file imports.
+
+    Segments, not just the first one: `import lib.supabase_storage` has the
+    top-level name `lib`, which looks innocent, so matching only the first
+    segment misses it entirely. Returning all segments means the patient-module
+    list catches the import however it is spelled.
+    """
     tree = ast.parse(path.read_text(encoding="utf-8"))
-    names = set()
+    names: set = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for a in node.names:
-                names.add(a.name.split(".")[0])
+                names.update(a.name.split("."))
         elif isinstance(node, ast.ImportFrom):
-            if node.level:  # relative import, stays inside the package
-                continue
             if node.module:
-                names.add(node.module.split(".")[0])
+                names.update(node.module.split("."))
+            # `from x import y` may import a MODULE named y, so count those too.
+            for a in node.names:
+                names.add(a.name)
     return names
+
+
+def relative_targets(path: Path, pkg_root: Path) -> set:
+    """Files reached by relative imports, so the walk can follow them.
+
+    Skipping relative imports (as an earlier version did) leaves a review
+    module free to reach anything through a sibling.
+    """
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    out: set = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.level:
+            base = path.parent
+            for _ in range(node.level - 1):
+                base = base.parent
+            target = base / (node.module.replace(".", "/") if node.module else "")
+            for candidate in (Path(str(target) + ".py"), target / "__init__.py"):
+                if candidate.exists() and pkg_root in candidate.parents:
+                    out.add(candidate.resolve())
+    return out
+
+
+def review_modules() -> list:
+    """Every Python file in the review package, including subpackages."""
+    return sorted(REVIEW_PKG.rglob("*.py"))
 
 
 class TestImportGraph:
@@ -83,31 +128,61 @@ class TestImportGraph:
 
     def test_package_exists(self):
         assert REVIEW_PKG.is_dir()
-        assert list(REVIEW_PKG.glob("*.py"))
+        assert review_modules()
 
-    @pytest.mark.parametrize("path", sorted(REVIEW_PKG.glob("*.py")), ids=lambda p: p.name)
+    @pytest.mark.parametrize("path", review_modules(), ids=lambda p: p.name)
     def test_no_patient_imports(self, path):
         offending = imported_names(path) & PATIENT_MODULES
         assert not offending, f"{path.name} imports patient module(s): {sorted(offending)}"
 
     def test_transitively_clean(self):
-        """A review module may import another connection_map module, so follow
-        those one level down too: a clean direct import list is worthless if
-        the thing it imports reads patient data."""
-        seen, queue = set(), list(REVIEW_PKG.glob("*.py"))
-        cm_root = _REPO / "lib" / "connection_map"
+        """Follow what review code actually reaches.
+
+        A clean direct import list is worthless if the thing it imports reads
+        patient data, so this walks connection_map modules and relative
+        imports transitively rather than stopping at depth one.
+        """
+        cm_root = (_REPO / "lib" / "connection_map").resolve()
+        seen: set = set()
+        queue = [p.resolve() for p in review_modules()]
         while queue:
             path = queue.pop()
             if path in seen:
                 continue
             seen.add(path)
             names = imported_names(path)
-            assert not (names & PATIENT_MODULES), f"{path.name} reaches a patient module"
-            for name in names:
-                if name == "connection_map":
-                    for sibling in cm_root.glob("*.py"):
-                        if sibling not in seen:
-                            queue.append(sibling)
+            offending = names & PATIENT_MODULES
+            assert not offending, f"{path.name} reaches patient module(s): {sorted(offending)}"
+
+            queue.extend(t for t in relative_targets(path, cm_root) if t not in seen)
+            if "connection_map" in names:
+                for sibling in cm_root.rglob("*.py"):
+                    if sibling.resolve() not in seen:
+                        queue.append(sibling.resolve())
+
+    def test_the_walk_actually_covers_every_review_module(self):
+        # Guards the guard: if review_modules() ever stopped globbing
+        # subdirectories, the parametrized test above would silently cover
+        # fewer files while still reporting green.
+        assert set(review_modules()) >= set(REVIEW_PKG.glob("*.py"))
+        assert (REVIEW_PKG / "db.py") in review_modules()
+
+    def test_detects_a_planted_service_role_import(self, tmp_path):
+        # Proves this gate fails when it should. An earlier version of the
+        # patient-module list omitted supabase_client, so a file exactly like
+        # this one passed CI while holding a client that reads every patient
+        # table.
+        planted = tmp_path / "planted.py"
+        planted.write_text("from supabase_client import get_admin_client\n")
+        assert imported_names(planted) & PATIENT_MODULES == {"supabase_client"}
+
+        dotted = tmp_path / "dotted.py"
+        dotted.write_text("import lib.supabase_storage\n")
+        assert "supabase_storage" in imported_names(dotted) & PATIENT_MODULES
+
+        from_pkg = tmp_path / "from_pkg.py"
+        from_pkg.write_text("from lib import supabase_storage\n")
+        assert imported_names(from_pkg) & PATIENT_MODULES
 
 
 class TestClientFailsClosed:
@@ -120,9 +195,11 @@ class TestClientFailsClosed:
         code = "\n".join(l for l in text.splitlines() if not l.strip().startswith("#"))
         assert "SUPABASE_SERVICE_ROLE_KEY" not in code
 
-    def test_does_not_import_the_shared_admin_client(self):
-        names = imported_names(REVIEW_PKG / "db.py")
-        assert "supabase_client" not in names, "would expose get_admin_client()"
+    @pytest.mark.parametrize("path", review_modules(), ids=lambda p: p.name)
+    def test_does_not_import_the_shared_admin_client(self, path):
+        # Parametrized over the whole package, not just db.py: the danger is a
+        # Phase 3 handler reaching for get_admin_client() out of habit.
+        assert "supabase_client" not in imported_names(path), "would expose get_admin_client()"
 
     def test_raises_without_a_secret(self, monkeypatch):
         from connection_map.review import db
@@ -284,6 +361,35 @@ class TestReviewerSchema:
         # sage-dev has no patient_profiles yet; the migration must still apply.
         text = REVIEWER_SQL.read_text(encoding="utf-8")
         assert "to_regclass('public.patient_profiles') IS NOT NULL" in text
+
+    def test_reviewer_trigger_defers_the_relation_to_run_time(self):
+        # A static EXISTS(SELECT ... FROM patient_profiles) is parsed when the
+        # statement is prepared, so the to_regclass guard above never gets to
+        # skip it and the trigger raises "relation does not exist" wherever the
+        # table is absent. Dynamic EXECUTE is what makes the guard real.
+        text = REVIEWER_SQL.read_text(encoding="utf-8")
+        body = text[text.index("connection_map_reviewer_not_a_patient()"):]
+        body = body[:body.index("$$;")]
+        assert "EXECUTE 'SELECT EXISTS" in body
+        assert "FROM patient_profiles p WHERE" not in body, \
+            "static relation reference reintroduces the parse-time failure"
+
+    def test_empty_tiers_array_is_rejected(self):
+        # array_length of an empty array is NULL, and a CHECK passes on NULL,
+        # so the obvious spelling admits an assignment covering no tiers.
+        text = REVIEWER_SQL.read_text(encoding="utf-8")
+        assert "cardinality(tiers) > 0" in text
+        assert "array_length(tiers" not in text
+
+    def test_provisioning_writes_are_not_available_to_the_review_role(self):
+        # Both halves must agree: the grant list is read-only for these tables
+        # and the migration explicitly withdraws any earlier write grant.
+        assert REVIEW_GRANTS["reviewer"] == {"SELECT"}
+        assert REVIEW_GRANTS["reviewer_assignment"] == {"SELECT"}
+        text = role_sql()
+        assert "REVOKE INSERT, UPDATE ON reviewer FROM sage_review" in text
+        assert "REVOKE INSERT, UPDATE ON reviewer_assignment FROM sage_review" in text
+        assert "DROP POLICY IF EXISTS reviewer_sage_review_insert ON reviewer" in text
 
     def test_functions_pin_search_path(self):
         text = REVIEWER_SQL.read_text(encoding="utf-8")

@@ -74,10 +74,28 @@ GRANT USAGE ON SCHEMA public TO sage_review;
 --                                              it voids attestations (§5.6) and
 --                                              is verbatim-verified
 --   master_map_version   SELECT INSERT UPDATE  drafting and publication (Phase 3)
---   reviewer             SELECT INSERT UPDATE  admin manages reviewers (§5.2)
---   reviewer_assignment  SELECT INSERT UPDATE  admin manages scope (§5.3)
+--   reviewer             SELECT                see below
+--   reviewer_assignment  SELECT                see below
 --   audit_log            SELECT INSERT         append-only; UPDATE withheld so
 --                                              the grant agrees with the trigger
+--
+-- WHY reviewer AND reviewer_assignment ARE READ-ONLY HERE, against §5.8's
+-- blanket INSERT/UPDATE. Account provisioning is not review work; it is a
+-- privileged server operation, and running it as sage_review is actively
+-- harmful in two ways:
+--
+--   1. It breaks. Writing reviewer.auth_user_id fires the mutual-exclusion
+--      trigger, which reads patient_profiles — a table sage_review holds no
+--      privilege on — so §5.2 activation would fail every time with
+--      "permission denied for table patient_profiles".
+--   2. It leaks. Were that permission granted, the trigger becomes a patient
+--      existence oracle: submit a candidate UUID as auth_user_id and the
+--      distinct error message confirms whether that person is a patient. That
+--      is patient data escaping through an error string, which is exactly what
+--      §5.8 exists to prevent.
+--
+-- So provisioning runs through the service-role path behind an admin endpoint,
+-- and the review client only ever reads these two tables.
 -- ---------------------------------------------------------------------------
 DO $$
 DECLARE
@@ -89,8 +107,8 @@ DECLARE
     ['master_edge',          'SELECT,UPDATE'],
     ['master_edge_evidence', 'SELECT'],
     ['master_map_version',   'SELECT,INSERT,UPDATE'],
-    ['reviewer',             'SELECT,INSERT,UPDATE'],
-    ['reviewer_assignment',  'SELECT,INSERT,UPDATE'],
+    ['reviewer',             'SELECT'],
+    ['reviewer_assignment',  'SELECT'],
     ['audit_log',            'SELECT,INSERT']
   ];
   tbl    TEXT;
@@ -129,6 +147,17 @@ END $$;
 
 -- audit_log is BIGSERIAL; INSERT needs its sequence.
 GRANT USAGE, SELECT ON SEQUENCE audit_log_id_seq TO sage_review;
+
+-- Withdraw write access this migration granted in an earlier revision, so
+-- re-applying converges instead of leaving the wider grant in place. Policies
+-- go too: a leftover INSERT policy plus a re-added grant would silently
+-- restore the oracle described above.
+REVOKE INSERT, UPDATE ON reviewer FROM sage_review;
+REVOKE INSERT, UPDATE ON reviewer_assignment FROM sage_review;
+DROP POLICY IF EXISTS reviewer_sage_review_insert ON reviewer;
+DROP POLICY IF EXISTS reviewer_sage_review_update ON reviewer;
+DROP POLICY IF EXISTS reviewer_assignment_sage_review_insert ON reviewer_assignment;
+DROP POLICY IF EXISTS reviewer_assignment_sage_review_update ON reviewer_assignment;
 
 -- ---------------------------------------------------------------------------
 -- Patient tables: explicitly stripped.

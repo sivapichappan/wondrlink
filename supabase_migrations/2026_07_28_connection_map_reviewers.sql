@@ -67,9 +67,21 @@ CREATE TABLE IF NOT EXISTS reviewer_assignment (
   granted_by   UUID REFERENCES reviewer(id),
   granted_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   revoked_at   TIMESTAMPTZ,
+  -- cardinality(), NOT array_length(): array_length of an empty array is NULL,
+  -- NULL >= 1 is NULL, and a CHECK passes on NULL. The obvious spelling would
+  -- have silently admitted an assignment granting review rights over no tiers
+  -- at all. cardinality() returns 0.
   CONSTRAINT reviewer_assignment_tiers_check
-    CHECK (tiers <@ ARRAY['A','B','C']::TEXT[] AND array_length(tiers, 1) >= 1)
+    CHECK (tiers <@ ARRAY['A','B','C']::TEXT[] AND cardinality(tiers) > 0)
 );
+
+-- Idempotent re-add, per the repo rule on changing a CHECK: drop every
+-- historical name first. This constraint shipped once with array_length().
+ALTER TABLE reviewer_assignment
+  DROP CONSTRAINT IF EXISTS reviewer_assignment_tiers_check;
+ALTER TABLE reviewer_assignment
+  ADD CONSTRAINT reviewer_assignment_tiers_check
+  CHECK (tiers <@ ARRAY['A','B','C']::TEXT[] AND cardinality(tiers) > 0);
 
 CREATE INDEX IF NOT EXISTS reviewer_assignment_reviewer_idx
   ON reviewer_assignment (reviewer_id, cancer);
@@ -126,12 +138,28 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 SET search_path = public, pg_temp
 AS $$
+DECLARE
+  v_is_patient BOOLEAN;
 BEGIN
   IF NEW.auth_user_id IS NULL THEN
     RETURN NEW;
   END IF;
-  IF to_regclass('public.patient_profiles') IS NOT NULL
-     AND EXISTS (SELECT 1 FROM patient_profiles p WHERE p.user_id = NEW.auth_user_id) THEN
+
+  IF to_regclass('public.patient_profiles') IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  -- Dynamic EXECUTE, not a plain EXISTS. PL/pgSQL prepares a static SQL
+  -- expression as one statement and parse analysis resolves every relation in
+  -- it BEFORE any of it runs, so a static reference to patient_profiles fails
+  -- with "relation does not exist" on an environment that has not been through
+  -- bring-up, even though the to_regclass guard above was meant to skip it.
+  -- Deferring the reference to run time is what makes the guard real.
+  EXECUTE 'SELECT EXISTS (SELECT 1 FROM patient_profiles WHERE user_id = $1)'
+     INTO v_is_patient
+    USING NEW.auth_user_id;
+
+  IF v_is_patient THEN
     RAISE EXCEPTION
       'connection_map: this account already holds a patient profile; a clinician who is also a patient needs a second account';
   END IF;

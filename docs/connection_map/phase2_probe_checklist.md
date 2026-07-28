@@ -105,9 +105,39 @@ migrations were written: `permission denied for table patient_edge` /
 as `postgres`, all three reviewer constraints firing, privilege matrix exactly
 as intended, role attributes exactly as intended.
 
-**Not yet proven, and honest about it:** probe 4 and the reviewer/patient
-mutual-exclusion triggers could not run, because `patient_profiles` does not
-exist on unseeded sage-dev. The migration attaches that trigger conditionally
-and must be **re-run after sage-dev bring-up, or verified on prod at release**,
-before acceptance #5 can be called proven. One `audit_log` row from probe 6
-remains on sage-dev by design.
+**Not yet proven, and honest about it:** probe 4 (`patient_profiles` denial)
+and the *patient-side* half of the mutual-exclusion pair could not run, because
+`patient_profiles` does not exist on unseeded sage-dev. That trigger attaches
+conditionally and must be **re-run after sage-dev bring-up, or verified on prod
+at release**, before acceptance #5 is fully proven. One `audit_log` row from
+probe 6 remains on sage-dev by design.
+
+### Second pass, 2026-07-28 — three defects found by adversarial review, fixed and re-probed
+
+An earlier framing in this file claimed the reviewer-side trigger "could not be
+tested". That was wrong, and worth recording: the guard was inline rather than
+conditional, so it was exercisable all along, and it was broken.
+
+1. **Reviewer activation failed 100% of the time.** The trigger's
+   `to_regclass(...) IS NOT NULL AND EXISTS (SELECT ... FROM patient_profiles)`
+   guard does not gate anything: PL/pgSQL prepares that expression as one
+   statement and parse analysis resolves the relation before `to_regclass` ever
+   runs. Any reviewer write carrying `auth_user_id` died with *relation
+   "patient_profiles" does not exist*. Probes 10-12 missed it because they all
+   used a NULL `auth_user_id`, which takes the early return. **Fixed** with a
+   dynamic `EXECUTE`; re-probed — the write now succeeds.
+2. **Granting the review role write access to `reviewer` would have made that
+   same trigger a patient-existence oracle**: submit a candidate UUID as
+   `auth_user_id`, and the distinct error message confirms whether that person
+   is a patient. **Fixed** by making `reviewer` and `reviewer_assignment`
+   read-only for `sage_review`; provisioning is a service-role operation.
+   Re-probed: read returns 1 row, `UPDATE` gives *permission denied for table
+   reviewer*.
+3. **`reviewer_assignment` accepted an empty `tiers` array.**
+   `array_length(ARRAY[]::text[], 1)` is NULL, `NULL >= 1` is NULL, and a CHECK
+   passes on NULL. **Fixed** with `cardinality(tiers) > 0`; re-probed, now
+   rejected.
+
+Post-fix privilege matrix re-verified: patient tables all false, DELETE false
+everywhere, `reviewer`/`reviewer_assignment` now SELECT-only, `master_edge`
+update-not-insert, `audit_log` insert-not-update.
