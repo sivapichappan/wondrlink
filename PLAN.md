@@ -267,3 +267,97 @@ Cleanup to zero probe rows; `get_advisors` shows no new security findings.
    owns its semantics); interim CHECK only.
 6. **Re-ingesting a cited document is FK-blocked** — citation integrity; unblocking is
    a governance action in a later phase, not a `--force` flag.
+
+---
+
+# Owner decisions after Phase 1 (2026-07-28)
+
+Four directions from the product owner. All three spec changes are recorded here
+because they modify SPEC-connection-map.md; the spec file itself is left as the
+original v3 so the delta stays visible. Implement at the phase named, not before.
+
+## D1. Loose re-check of physician edits (Phase 3)
+
+**Direction:** when a physician edits a connection during review, re-check it
+loosely against the guidelines. Anything clearly wrong goes back for approval
+with a note. Most edits pass, because a qualified doctor made them.
+
+**Scope boundary that must hold.** Two different things are editable and they
+get opposite treatment:
+
+- `patient_phrasing`, urgency, concept mapping, prevalence — the physician's own
+  wording and metadata. **These get the loose check.** It runs the deterministic
+  §8 copy lint (grade level, no em dashes, no causal verbs, no confidence
+  numerals) plus a soft semantic check that the reworded question still reflects
+  the cited quotation.
+- `quoted_sentence`, `char_offset`, `source_section_id` — the citation itself.
+  **These stay exact-match forever** (§16). The loose check never touches them
+  and never becomes an alternative path to storing an unverified quote.
+
+**Behaviour:** warn, never block; never auto-reject a physician's edit; the flag
+is advisory and the physician decides. Same warn-never-block posture as the
+report-scan name-mismatch warning already shipped. The checker can only flag —
+it can never approve, and it is not an authority on clinical correctness.
+
+**Note:** §5.6 already voids an attestation when an edge or its evidence changes
+after signing. D1 sits BEFORE signing (during review), so the two do not
+conflict; keep it that way.
+
+## D2. Tier C redefined — kept, not discarded (Phase 1 schema + Phase 4)
+
+**Direction:** "Nothing should have no verification. Redefine C tier to:
+far-fetched non-word-for-word connection. Could hold major innovation, or be
+useless. When a physician has ample time they will look at them."
+
+**Supersedes** §4.4's "C — no verifiable quotation. Discarded, never queued" and
+narrows §6.3's blanket rejection of unconstrained discovery.
+
+**Design constraints that make this safe** (the spec's core guarantee must
+survive the change):
+
+1. A tier C edge MUST still reference real `source_section` rows — the passages
+   it was inferred from. Traceability is not optional just because the wording
+   is not verbatim.
+2. A tier C edge MUST NOT carry a fabricated sentence presented as a quotation.
+   Introduce `evidence_kind` ('verbatim' | 'inferred'); the exact-match trigger
+   runs on 'verbatim' rows only, and 'inferred' rows carry the model's reasoning
+   in a field that is never rendered as a quote. Tier A/B accept 'verbatim'
+   only. This keeps "no fabricated citations" true, which is the property that
+   actually matters — not "every row is verbatim".
+3. Tier C is a separate, lower-priority review queue. It must never gate or
+   delay the A/B launch queue.
+4. **OPEN QUESTION for the owner:** may an attested tier C edge reach a patient?
+   Recommendation for v1: no — treat C as a research/innovation queue only, kept
+   out of the published map, revisited once the A/B loop has run with real
+   patients. Needs an explicit answer before Phase 4 ships C candidates.
+
+**Schema impact:** widens the `master_edge` tier CHECK to ('A','B','C') and adds
+`evidence_kind`. `tests/test_connection_map_migrations.py::test_tier_cannot_store_c`
+and `EDGE_TIERS` in `lib/connection_map/concepts.py` currently assert the
+opposite and must flip WITH this change, deliberately and in the same commit.
+
+## D3. Physicians extend the vocabulary (Phase 3)
+
+**Direction:** physicians approve connections today; should they also add their
+own concepts and/or approve AI-proposed ones?
+
+**Answer: yes for concepts, no for relationship types.** See the response to the
+owner for reasoning. Concretely:
+
+- Review workspace gains "propose a concept", writing a `concept` row tagged
+  with its physician author. Low risk: a concept is a noun and asserts nothing.
+- AI-proposed concepts are allowed as PROPOSALS a physician approves, never
+  auto-added — same posture as edges.
+- The six relationship types stay a closed enum (§3 hard prohibition). Each type
+  carries distinct semantics, patient-facing rendering, and validation rules
+  (`acts_through` is never patient-facing at all), so adding one is a code and
+  copy change with its own review, not data entry. A physician can REQUEST one;
+  that becomes a change request, not a runtime insert.
+- `display_patient` still requires physician wording before publication (§5.7).
+
+## D4. Corpus acquisition (before Phase 4)
+
+General survivorship sources are the owner's ask to the CEO, who is also the
+attesting physician. Email drafted 2026-07-28. Targets: ASCO/ACS survivorship
+care guidelines, late-effects, exercise/nutrition. Without them the §10.3
+symptom-cluster half of extraction has no citable source and will underproduce.
