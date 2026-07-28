@@ -36,13 +36,15 @@ PAGES = ["TREATMENT\n" + BODY, "MANAGEMENT\n" + BODY]
 
 
 class FakeStore(CorpusStore):
-    """Same five methods as the real adapter, backed by dicts."""
+    """Same methods as the real adapter, backed by dicts."""
 
-    def __init__(self, existing=None, sections=0):
+    def __init__(self, existing=None, sections=0, citations=0):
         self._existing = existing
         self._section_count = sections
+        self._citations = citations
         self.rows = []
         self.calls = []
+        self.sha = (existing or {}).get("content_sha256")
 
     def find_document(self, file_path):
         self.calls.append(("find", file_path))
@@ -52,8 +54,17 @@ class FakeStore(CorpusStore):
         self.calls.append(("count", document_id))
         return self._section_count
 
+    def count_citations(self, document_id):
+        self.calls.append(("citations", document_id))
+        return self._citations
+
+    def set_content_sha(self, document_id, sha):
+        self.calls.append(("set_sha", sha))
+        self.sha = sha
+
     def upsert_document(self, row):
         self.calls.append(("upsert", row["file_path"]))
+        self.sha = row["content_sha256"]
         return "doc-1"
 
     def delete_sections(self, document_id):
@@ -222,6 +233,70 @@ class TestIngestDocument:
 
         with pytest.raises(IngestError, match="does not match source"):
             ingest_document(Corrupting(), ENTRY, PAGES)
+
+
+class TestFailureIsNotSilentlyMasked:
+    """Each PostgREST call is its own transaction. If the content hash were
+    written before the sections it describes, a failure in between would leave
+    a document row advertising text the section rows do not hold — and the
+    skip-if-unchanged check would then report it as unchanged forever, so the
+    corpus would drift from data/ with no signal."""
+
+    def test_hash_is_written_only_after_verification(self):
+        store = FakeStore()
+        ingest_document(store, ENTRY, PAGES)
+        kinds = [c[0] for c in store.calls]
+        assert kinds.index("set_sha") > kinds.index("fetch")
+        assert store.sha == canonical_sha256(build_canonical_text(PAGES))
+
+    def test_upsert_does_not_carry_the_hash(self):
+        store = FakeStore()
+        ingest_document(store, ENTRY, PAGES)
+        assert document_row(ENTRY, None)["content_sha256"] is None
+        # The hash the row ends with came from set_content_sha, not the upsert.
+        assert [c for c in store.calls if c[0] == "set_sha"]
+
+    def test_failed_write_leaves_no_hash_so_the_next_run_retries(self):
+        class FailsOnInsert(FakeStore):
+            def insert_sections(self, rows):
+                raise RuntimeError("network died mid-batch")
+
+        store = FailsOnInsert()
+        with pytest.raises(RuntimeError):
+            ingest_document(store, ENTRY, PAGES)
+        assert store.sha is None, "a failed ingest must not leave a hash behind"
+
+    def test_failed_verification_leaves_no_hash(self):
+        class Corrupting(FakeStore):
+            def fetch_sections(self, document_id):
+                rows = super().fetch_sections(document_id)
+                rows[0]["text"] = rows[0]["text"].strip()
+                return rows
+
+        store = Corrupting()
+        with pytest.raises(IngestError):
+            ingest_document(store, ENTRY, PAGES)
+        assert store.sha is None
+
+    def test_document_with_no_hash_is_never_skipped(self):
+        store = FakeStore(existing={"id": "doc-1", "content_sha256": None}, sections=5)
+        assert ingest_document(store, ENTRY, PAGES)["status"] == "ingested"
+
+    def test_cited_document_refuses_before_touching_anything(self):
+        sha = canonical_sha256(build_canonical_text(PAGES))
+        store = FakeStore(existing={"id": "doc-1", "content_sha256": "stale"},
+                          sections=5, citations=3)
+        with pytest.raises(IngestError, match="citation"):
+            ingest_document(store, ENTRY, PAGES)
+        # Nothing was written, so the existing row keeps describing what it holds.
+        assert store.sha == "stale" != sha
+        assert not any(c[0] in ("upsert", "delete", "insert") for c in store.calls)
+
+    def test_force_does_not_override_citations(self):
+        store = FakeStore(existing={"id": "doc-1", "content_sha256": "stale"},
+                          sections=5, citations=1)
+        with pytest.raises(IngestError, match="governance"):
+            ingest_document(store, ENTRY, PAGES, force=True)
 
     def test_multi_section_document_writes_every_section(self):
         store = FakeStore()

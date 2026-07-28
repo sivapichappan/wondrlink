@@ -147,6 +147,19 @@ class CorpusStore:
                .execute())
         return (res.data or [{}])[0].get("id")
 
+    def count_citations(self, document_id: str) -> int:
+        res = (self._client.table("master_edge_evidence")
+               .select("id", count="exact")
+               .eq("source_document_id", document_id)
+               .execute())
+        return res.count or 0
+
+    def set_content_sha(self, document_id: str, sha: str) -> None:
+        (self._client.table("source_document")
+         .update({"content_sha256": sha})
+         .eq("id", document_id)
+         .execute())
+
     def delete_sections(self, document_id: str) -> None:
         (self._client.table("source_section")
          .delete()
@@ -199,15 +212,28 @@ def ingest_document(
     if errors:
         raise IngestError(f"sectioning failed verification: {errors[0]}")
 
-    document_id = store.upsert_document(document_row(entry, sha)) or (
+    # Refuse before touching anything if this document is already cited. The
+    # evidence FK (ON DELETE RESTRICT) would block the section delete anyway,
+    # but failing here leaves the existing row completely untouched. Re-ingesting
+    # a cited document is a governance action, not something --force papers over.
+    if existing:
+        cited = store.count_citations(existing["id"])
+        if cited:
+            raise IngestError(
+                f"{cited} citation(s) reference this document; re-ingesting would "
+                "invalidate them (governance action, not a --force flag)")
+
+    # The hash is written LAST, and cleared first. Each PostgREST call is its
+    # own transaction, so a hash committed up front would still be there if the
+    # section write failed afterwards — and the skip-if-unchanged check above
+    # would then report the document as "unchanged" on every later run, turning
+    # a loud failure into permanent silent drift from data/. A null hash means
+    # "sections not verified", which re-ingests instead.
+    document_id = store.upsert_document(document_row(entry, None)) or (
         existing or {}).get("id")
     if not document_id:
         raise IngestError("could not resolve document id after upsert")
 
-    # Delete-and-reinsert, like the RAG seeder. If this document already has
-    # citations, the evidence FK (ON DELETE RESTRICT) makes the delete fail —
-    # deliberately. Re-ingesting a cited document is a governance action, not
-    # something a --force flag should paper over.
     store.delete_sections(document_id)
     store.insert_sections(section_rows(document_id, sections))
 
@@ -216,6 +242,7 @@ def ingest_document(
     if round_trip:
         raise IngestError(f"stored text does not match source: {round_trip[0]}")
 
+    store.set_content_sha(document_id, sha)
     return {"file": entry["file"], "status": "ingested", "sections": len(sections)}
 
 

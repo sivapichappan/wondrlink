@@ -70,12 +70,12 @@ failed gate, not a curiosity.
 | 8 | Repeat probe 2 (same src, dst, relationship) | **ERROR**: unique violation on `master_edge_triple_key` |
 | 9 | RPC with `tier` = `'C'` | **ERROR**: check violation (`tier`) |
 | 10 | RPC with empty evidence array `'[]'::jsonb` | **ERROR**: `at least one evidence row is required` |
-| 11 | `UPDATE master_edge SET status='rejected'` (reason still NULL) | **ERROR**: `master_edge_rejection_reason_check` |
+| 11 | `UPDATE master_edge SET status='rejected'` (reason still NULL) | **ERROR**: `master_edge_rejected_needs_reason_check` |
 | 12 | `UPDATE master_edge SET status='rejected', rejection_reason='too_general'` | **succeeds** |
 | 13 | `UPDATE master_edge SET status='approved'` (reason still set) | **ERROR**: same check, the other direction |
 | 14 | `DELETE FROM master_edge_evidence WHERE master_edge_id = <edge>` (edge survives) | **ERROR** at commit: has no evidence |
 | 15 | `DELETE FROM source_section WHERE id = <cited section>` | **ERROR**: FK `ON DELETE RESTRICT` from evidence |
-| 16 | `INSERT INTO master_edge_evidence` directly with a correct quote/offset for an existing edge | **succeeds** (adding evidence never needs the RPC) |
+| 16 | `INSERT INTO master_edge_evidence` directly for probe 2's edge, quote `'Joint pain'` at offset `0`, **`ordinal = 1`** | **succeeds** (adding evidence never needs the RPC) |
 | 17 | `UPDATE master_edge_evidence SET quoted_sentence='nonsense'` | **ERROR**: verify trigger |
 | 18 | Insert `master_map_version` with `status='published'`, `frozen_hash` NULL | **ERROR**: `master_map_version_published_fields_check` |
 | 19 | Insert a draft `master_map_version`, then a `patient_edge` for a sage-dev test user, then a `patient_edge_event`; `UPDATE patient_edge_event SET actor='x'` | **ERROR**: `patient_edge_event is append-only` |
@@ -87,6 +87,10 @@ failed gate, not a curiosity.
 | 25 | `INSERT INTO source_section` with `char_end - char_start <> char_length(text)` | **ERROR**: `source_section_span_check` |
 | 26 | `INSERT INTO master_edge` (via RPC) with `src_concept_id = dst_concept_id` | **ERROR**: `master_edge_no_self_loop_check` |
 | 27 | `INSERT INTO master_edge` (via RPC) with `candidate_origin='literature_scan'` and NULL `extraction_run_id` | **ERROR**: `master_edge_scan_run_check` |
+
+`ordinal` is `INT NOT NULL DEFAULT 0` under `UNIQUE (master_edge_id, ordinal)`,
+and only the RPC auto-assigns it. Probe 2 already used ordinal 0 for that edge,
+so probe 16 must pass an explicit `ordinal = 1` or it collides.
 
 ### Probe 2 template
 
@@ -111,6 +115,20 @@ SELECT insert_master_edge_with_evidence(
   ))
 );
 ```
+
+### Function hardening probe (29)
+
+```sql
+SELECT proname, proconfig
+  FROM pg_proc
+ WHERE proname IN ('connection_map_verify_evidence','connection_map_edge_has_evidence',
+                   'insert_master_edge_with_evidence','connection_map_block_update');
+-- expect every row: proconfig = {"search_path=public, pg_temp"}
+```
+
+A mutable `search_path` would let a caller resolve the trigger's unqualified
+`source_section` lookup to a decoy table, so a fabricated quotation could pass
+verification. `pg_temp` last stops a temp table shadowing a real one.
 
 ### Execute-permission probe (28)
 
@@ -167,3 +185,21 @@ above behaving as stated, and `python3 -m pytest tests/` green. Note the date
 and the project the probes ran against in `HANDOFF.md` when done — a probe run
 against sage-dev says nothing about prod until the migrations are applied
 there too.
+
+### Run log
+
+**2026-07-28, sage-dev (`eizhshntrquvqwfsseeh`) — ALL PROBES PASS.** All eight
+tables created; every expected failure failed with the expected message and
+every expected success succeeded; probe rows cleaned to zero and the throwaway
+auth user removed. Two defects were found and fixed during this run:
+
+1. `master_edge_rejection_reason_check` as an explicit constraint name collided
+   with the name Postgres auto-generates for the inline `rejection_reason`
+   CHECK, so `CREATE TABLE master_edge` failed outright. Renamed to
+   `master_edge_rejected_needs_reason_check`.
+2. The Supabase linter flagged all four functions as having a mutable
+   `search_path` (WARN). Pinned to `public, pg_temp`.
+
+Both are now locked by static tests. Remaining advisor output is INFO-level
+`rls_enabled_no_policy` on the seven master-side tables, which is the intended
+deny-all posture. **Prod has NOT been touched.**
