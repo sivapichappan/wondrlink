@@ -306,6 +306,95 @@ class TestReviewerFlagInAcknowledgement:
         assert resp.get_json()["is_reviewer"] is False
 
 
+class TestRoleAuthorization:
+    """Being an ACTIVE reviewer is authentication, not authorization (§5.1).
+
+    An earlier version checked only `status == 'active'` on mutating routes,
+    so an observer could edit, and status/rejection_reason were PATCH-able —
+    letting an edge be marked approved with no signature behind it.
+    """
+
+    OBSERVER = dict(REVIEWER, id="r-obs", role="observer", credential="other")
+    CLINICAL = dict(REVIEWER, id="r-cli", role="reviewer_clinical", credential="NP")
+
+    def test_status_is_not_patchable(self):
+        # §0 rule 1 must not depend on the publication gate noticing later.
+        assert "status" not in review_api.EDITABLE_EDGE_FIELDS
+        assert "rejection_reason" not in review_api.EDITABLE_EDGE_FIELDS
+
+    def test_patch_rejects_status_with_400(self, client, authed):
+        with patch.object(review_api, "get_review_client", return_value=make_client()):
+            resp = client.patch("/api/review/edge/e-1", headers=AUTH,
+                                data=json.dumps({"status": "approved"}))
+        assert resp.status_code == 400
+        assert resp.get_json()["error"] == "FIELD_NOT_EDITABLE"
+
+    def test_observer_cannot_edit(self, client, authed):
+        with patch.object(review_api, "get_review_client",
+                          return_value=make_client(reviewer=self.OBSERVER)):
+            resp = client.patch("/api/review/edge/e-1", headers=AUTH,
+                                data=json.dumps({"patient_phrasing": "Some people notice this. True?"}))
+        assert resp.status_code == 403
+
+    def test_observer_cannot_attest(self, client, authed):
+        fake = make_client(reviewer=self.OBSERVER,
+                           tables={"master_edge": [{"tier": "A", "status": "candidate",
+                                                    "rejection_reason": None}]})
+        with patch.object(review_api, "get_review_client", return_value=fake):
+            resp = client.post("/api/review/edge/e-1/attest", headers=AUTH,
+                               data=json.dumps({"decision": "approve"}))
+        assert resp.status_code == 403
+        assert fake.rpc_calls == [], "no signature, and no status change either"
+
+    def test_clinical_reviewer_may_reword_but_not_sign(self, client, authed):
+        # §5.11: reviewer_clinical reviews; only a physician attests.
+        fake = make_client(reviewer=self.CLINICAL,
+                           tables={"master_edge": [{"id": "e-1", "patient_phrasing": "old"}],
+                                   "master_edge_evidence": []})
+        with patch.object(review_api, "get_review_client", return_value=fake):
+            ok = client.patch("/api/review/edge/e-1", headers=AUTH,
+                              data=json.dumps({"patient_phrasing":
+                                               "Some people notice joint aches. Has that been true for you?"}))
+        assert ok.status_code == 200
+
+        fake2 = make_client(reviewer=self.CLINICAL,
+                            tables={"master_edge": [{"tier": "A", "status": "candidate",
+                                                     "rejection_reason": None}]})
+        with patch.object(review_api, "get_review_client", return_value=fake2):
+            denied = client.post("/api/review/edge/e-1/attest", headers=AUTH,
+                                 data=json.dumps({"decision": "approve"}))
+        assert denied.status_code == 403
+
+    def test_attesting_physician_cannot_publish(self, client, authed):
+        # §5.1: the person cutting the release is not the person vouching.
+        with patch.object(review_api, "get_review_client",
+                          return_value=make_client(reviewer=REVIEWER)):
+            resp = client.post("/api/review/version/v-1/publish", headers=AUTH)
+        assert resp.status_code == 403
+
+    def test_observer_cannot_add_concepts(self, client, authed):
+        with patch.object(review_api, "get_review_client",
+                          return_value=make_client(reviewer=self.OBSERVER)):
+            resp = client.post("/api/review/concept", headers=AUTH,
+                               data=json.dumps({"slug": "x", "domain": "symptom",
+                                                "display_clinical": "X"}))
+        assert resp.status_code == 403
+
+    def test_role_denials_are_uniform(self, client, authed):
+        # Same body as the not-a-reviewer refusal: no capability disclosure.
+        with patch.object(review_api, "get_review_client",
+                          return_value=make_client(reviewer=self.OBSERVER)):
+            resp = client.post("/api/review/version/v-1/publish", headers=AUTH)
+        assert resp.get_json() == {"error": "FORBIDDEN"}
+
+    def test_observer_can_still_read_the_queue(self, client, authed):
+        # Read-only is the point of the role, not a lockout.
+        with patch.object(review_api, "get_review_client",
+                          return_value=make_client(reviewer=self.OBSERVER)):
+            resp = client.get("/api/review/queue", headers=AUTH)
+        assert resp.status_code == 200
+
+
 class TestEditEndpoint:
     def test_evidence_fields_are_not_editable(self, client, authed):
         with patch.object(review_api, "get_review_client", return_value=make_client()):

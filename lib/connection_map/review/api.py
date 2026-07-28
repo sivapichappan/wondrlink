@@ -42,13 +42,28 @@ ATTESTATION_TEXT_PATH = (
 )
 
 # Fields a reviewer may change on an edge (§5.4: Reword edits patient_phrasing;
-# prevalence band and urgency are review inputs). Everything else — above all
-# the evidence — is not editable from review at all.
+# prevalence band and urgency are review inputs). Everything else is not
+# editable from review at all.
+#
+# status and rejection_reason are DELIBERATELY ABSENT. They move only through
+# the attest route, which mints a signature in the same call. Allowing a plain
+# PATCH to set status='approved' would let an edge be marked approved with no
+# signature behind it — the publication gate would still catch it, but "no
+# connection reaches a patient without a physician attestation" (§0 rule 1)
+# should not depend on one downstream check noticing.
 EDITABLE_EDGE_FIELDS = {
     "patient_phrasing", "urgency",
     "expected_prevalence_low", "expected_prevalence_high",
-    "status", "rejection_reason",
 }
+
+# §5.1 capability table. observer is read-only; reviewer_clinical may review
+# and reword but not sign; only reviewer_attesting signs; only admin publishes
+# (and an admin cannot attest — the person cutting the release is not the
+# person vouching for the content).
+ROLES_MAY_EDIT = {"reviewer_clinical", "reviewer_attesting"}
+ROLES_MAY_ATTEST = {"reviewer_attesting"}
+ROLES_MAY_PUBLISH = {"admin"}
+ROLES_MAY_ADD_CONCEPT = {"reviewer_clinical", "reviewer_attesting", "admin"}
 
 QUEUE_PAGE_LIMIT = 50
 
@@ -114,6 +129,13 @@ def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]
             return jsonify({"error": "FORBIDDEN"}), 403
 
         g.reviewer = rows[0]
+        return None
+
+    def _require_role(allowed: set):
+        """Uniform 403 when the reviewer's role does not permit the action.
+        Being an active reviewer is authentication here, not authorization."""
+        if (g.reviewer or {}).get("role") not in allowed:
+            return jsonify({"error": "FORBIDDEN"}), 403
         return None
 
     # ------------------------------------------------------------------
@@ -197,6 +219,9 @@ def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]
     # ------------------------------------------------------------------
     @bp.patch("/edge/<edge_id>")
     def edit_edge(edge_id: str):
+        denied = _require_role(ROLES_MAY_EDIT)
+        if denied:
+            return denied
         payload = request.get_json(silent=True) or {}
         unknown = set(payload) - EDITABLE_EDGE_FIELDS
         if unknown:
@@ -249,6 +274,12 @@ def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]
     # ------------------------------------------------------------------
     @bp.post("/edge/<edge_id>/attest")
     def attest_edge(edge_id: str):
+        # Only a physician signs. The database function enforces this too; the
+        # check here means a wrong role never reaches the point of mutating
+        # edge status.
+        denied = _require_role(ROLES_MAY_ATTEST)
+        if denied:
+            return denied
         payload = request.get_json(silent=True) or {}
         decision = payload.get("decision")
         if decision not in ("approve", "reject"):
@@ -306,10 +337,11 @@ def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]
 
     @bp.post("/version/<version_id>/publish")
     def publish_version(version_id: str):
-        if g.reviewer.get("role") != "admin":
-            # §5.1: an admin publishes; an attesting physician cannot (the
-            # person cutting the release is not the person vouching for it).
-            return jsonify({"error": "FORBIDDEN"}), 403
+        # §5.1: an admin publishes; an attesting physician cannot (the person
+        # cutting the release is not the person vouching for the content).
+        denied = _require_role(ROLES_MAY_PUBLISH)
+        if denied:
+            return denied
         client = get_review_client()
         published = client.rpc("connection_map_publish", {
             "p_version_id": version_id,
@@ -322,6 +354,9 @@ def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]
     # ------------------------------------------------------------------
     @bp.post("/concept")
     def propose_concept():
+        denied = _require_role(ROLES_MAY_ADD_CONCEPT)
+        if denied:
+            return denied
         payload = request.get_json(silent=True) or {}
         slug = (payload.get("slug") or "").strip()
         domain = payload.get("domain")
