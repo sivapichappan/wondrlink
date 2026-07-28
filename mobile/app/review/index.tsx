@@ -117,8 +117,18 @@ function QueueCard({ item }: { item: ReviewQueueItem }) {
   const attest = useMutation({
     mutationFn: (args: { decision: 'approve' | 'reject'; reason?: RejectionReason }) =>
       attestEdge(item.id, args.decision, args.reason),
-    onSuccess: done,
+    // Leave the sign/reject panel immediately. The card stays mounted while
+    // the queue refetches, so keeping live buttons on screen invites a second
+    // signature on an edge that was just signed.
+    onSuccess: () => {
+      setMode('view');
+      done();
+    },
   });
+
+  // Belt and braces on the same window: once a decision has been submitted,
+  // this card takes no further action regardless of what is still rendered.
+  const decided = attest.isPending || attest.isSuccess;
 
   const relationship = RELATIONSHIP_LABELS[item.relationship] ?? item.relationship;
   const busy = reword.isPending || attest.isPending;
@@ -240,6 +250,7 @@ function QueueCard({ item }: { item: ReviewQueueItem }) {
               label="Sign and approve"
               onPress={() => attest.mutate({ decision: 'approve' })}
               loading={attest.isPending}
+              disabled={decided}
             />
             <Button label="Back" variant="ghost" onPress={() => setMode('view')} />
           </View>
@@ -258,7 +269,7 @@ function QueueCard({ item }: { item: ReviewQueueItem }) {
               size="sm"
               fullWidth
               onPress={() => attest.mutate({ decision: 'reject', reason })}
-              disabled={attest.isPending}
+              disabled={decided}
             />
           ))}
           <Button label="Back" variant="ghost" size="sm" onPress={() => setMode('view')} />

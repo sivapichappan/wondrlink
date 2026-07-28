@@ -32,8 +32,8 @@ from typing import Any, Callable, Dict, List, Optional
 import yaml
 from flask import Blueprint, g, jsonify, request
 
-from connection_map.concepts import RELATIONSHIP_TYPES
-from connection_map.review.copy_lint import review_edit_concerns
+from connection_map.concepts import RELATIONSHIP_TYPES, validate_concepts
+from connection_map.review.copy_lint import lint_patient_copy, review_edit_concerns
 from connection_map.review.db import ReviewBoundaryError, get_review_client
 
 ATTESTATION_TEXT_PATH = (
@@ -52,9 +52,16 @@ ATTESTATION_TEXT_PATH = (
 # connection reaches a patient without a physician attestation" (§0 rule 1)
 # should not depend on one downstream check noticing.
 EDITABLE_EDGE_FIELDS = {
-    "patient_phrasing", "urgency",
+    "patient_phrasing",
     "expected_prevalence_low", "expected_prevalence_high",
 }
+
+# §5.4, last bullet: "Only a reviewer_attesting may clear an urgent flag once
+# set." urgency is therefore NOT in the set above. It also feeds the edge hash,
+# so a downgrade slipped in before signing would be covered by the signature
+# and leave no trace — an urgent connection reaching patients as routine with a
+# physician's name on it.
+ATTESTING_ONLY_EDGE_FIELDS = {"urgency"}
 
 # §5.1 capability table. observer is read-only; reviewer_clinical may review
 # and reword but not sign; only reviewer_attesting signs; only admin publishes
@@ -129,6 +136,9 @@ def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]
             return jsonify({"error": "FORBIDDEN"}), 403
 
         g.reviewer = rows[0]
+        # The signing function takes the AUTH user id, not a reviewer id, so
+        # the credited signer is the one this request's token proved.
+        g.auth_user_id = user["user_id"]
         return None
 
     def _require_role(allowed: set):
@@ -223,8 +233,13 @@ def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]
         if denied:
             return denied
         payload = request.get_json(silent=True) or {}
-        unknown = set(payload) - EDITABLE_EDGE_FIELDS
+        allowed = set(EDITABLE_EDGE_FIELDS)
+        if g.reviewer.get("role") in ROLES_MAY_ATTEST:
+            allowed |= ATTESTING_ONLY_EDGE_FIELDS
+        unknown = set(payload) - allowed
         if unknown:
+            # Includes urgency for a non-attesting reviewer: §5.4 reserves
+            # clearing an urgent flag to a physician.
             return jsonify({"error": "FIELD_NOT_EDITABLE",
                             "fields": sorted(unknown)}), 400
         if not payload:
@@ -300,27 +315,22 @@ def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]
             return jsonify({"error": "NO_ATTESTATION_TEXT_FOR_TIER",
                             "tier": edge["tier"]}), 409
 
-        if decision == "reject":
-            reason = payload.get("rejection_reason")
-            if not reason:
-                # §5.4: reject requires a structured reason.
-                return jsonify({"error": "REJECTION_REASON_REQUIRED"}), 400
-            update: Dict[str, Any] = {"status": "rejected", "rejection_reason": reason}
-        else:
-            update = {"status": "approved", "rejection_reason": None}
+        if decision == "reject" and not payload.get("rejection_reason"):
+            # §5.4: reject requires a structured reason (§13.1 vocabulary).
+            return jsonify({"error": "REJECTION_REASON_REQUIRED"}), 400
 
-        updated = (client.table("master_edge")
-                   .update(update).eq("id", edge_id).execute()).data or []
-        if not updated:
-            return jsonify({"error": "NOT_FOUND"}), 404
-
+        # The status change happens INSIDE the signing function, in one
+        # transaction with the signature. It used to be a separate PostgREST
+        # request made first, so a failure in between left an edge marked
+        # approved with nothing signed — while the UI said "nothing was signed".
         signed = client.rpc("connection_map_attest", {
             "p_edge_id": edge_id,
-            "p_reviewer_id": g.reviewer["id"],
+            "p_auth_user_id": g.auth_user_id,
             "p_decision": decision,
             "p_text_version": text["version"],
             "p_text": text["text"],
             "p_ip_hash": _ip_hash(),
+            "p_rejection_reason": payload.get("rejection_reason"),
         }).execute()
         return jsonify({"status": "ok", "attestation_id": signed.data,
                         "decision": decision})
@@ -358,31 +368,81 @@ def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]
         if denied:
             return denied
         payload = request.get_json(silent=True) or {}
-        slug = (payload.get("slug") or "").strip()
-        domain = payload.get("domain")
-        display = (payload.get("display_clinical") or "").strip()
-        if not slug or not display or domain is None:
-            return jsonify({"error": "MISSING_FIELDS"}), 400
 
-        client = get_review_client()
-        inserted = (client.table("concept").insert({
-            "slug": slug,
-            "domain": domain,
-            "display_clinical": display,
+        # Validated with the SAME validator the seed file uses, rather than
+        # relying on the database CHECK to reject it with an opaque error.
+        candidate = {
+            "slug": (payload.get("slug") or "").strip(),
+            "domain": payload.get("domain"),
+            "display_clinical": (payload.get("display_clinical") or "").strip(),
             "display_patient": payload.get("display_patient"),
             "instrument": payload.get("instrument"),
             "cancer_scopes": payload.get("cancer_scopes") or ["breast"],
-        }).execute()).data or []
+        }
+        problems = validate_concepts({"cancer": (candidate["cancer_scopes"] or ["breast"])[0],
+                                      "concepts": [candidate]})
+        if problems:
+            return jsonify({"error": "INVALID_CONCEPT", "problems": problems}), 400
+
+        # display_patient is patient-facing copy, so §8 applies to it here just
+        # as it applies at publication.
+        if candidate["display_patient"]:
+            copy_problems = lint_patient_copy(candidate["display_patient"])
+            if copy_problems:
+                return jsonify({"error": "COPY_RULES", "problems": copy_problems}), 422
+
+        client = get_review_client()
+        inserted = (client.table("concept").insert(candidate).execute()).data or []
 
         client.table("audit_log").insert({
             "actor_id": g.reviewer["id"],
             "actor_role": g.reviewer["role"],
             "action": "propose_concept",
             "target_table": "concept",
-            "target_id": slug,
-            "metadata": {"domain": domain},
+            "target_id": candidate["slug"],
+            "metadata": {"domain": candidate["domain"]},
         }).execute()
         return jsonify({"status": "ok", "concept": inserted[0] if inserted else None})
+
+    @bp.patch("/concept/<concept_id>")
+    def edit_concept(concept_id: str):
+        """Author the plain-language wording a concept shows to patients.
+
+        Without this there was no way to set display_patient at all, and the
+        publication gate requires it on every concept in a version — so no
+        version the workspace could produce was publishable. The seed file
+        ships it null on purpose (§5.4: the wording is the physician's job).
+        """
+        denied = _require_role(ROLES_MAY_EDIT)
+        if denied:
+            return denied
+        payload = request.get_json(silent=True) or {}
+        unknown = set(payload) - {"display_patient"}
+        if unknown:
+            return jsonify({"error": "FIELD_NOT_EDITABLE", "fields": sorted(unknown)}), 400
+
+        wording = payload.get("display_patient")
+        problems = lint_patient_copy(wording)
+        if problems:
+            return jsonify({"error": "COPY_RULES", "problems": problems}), 422
+
+        client = get_review_client()
+        updated = (client.table("concept")
+                   .update({"display_patient": wording})
+                   .eq("id", concept_id)
+                   .execute()).data or []
+        if not updated:
+            return jsonify({"error": "NOT_FOUND"}), 404
+
+        client.table("audit_log").insert({
+            "actor_id": g.reviewer["id"],
+            "actor_role": g.reviewer["role"],
+            "action": "edit_concept_wording",
+            "target_table": "concept",
+            "target_id": concept_id,
+            "metadata": {},
+        }).execute()
+        return jsonify({"status": "ok"})
 
     @bp.get("/meta")
     def review_meta():

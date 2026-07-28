@@ -211,7 +211,8 @@ class TestAcceptance2:
                     "/api/review/edge/<edge_id>/attest",
                     "/api/review/version/<version_id>/blockers",
                     "/api/review/version/<version_id>/publish",
-                    "/api/review/concept", "/api/review/meta"}
+                    "/api/review/concept", "/api/review/concept/<concept_id>",
+                    "/api/review/meta"}
         assert set(rules) == expected
 
     def test_queue_uses_only_the_restricted_client(self, client, authed):
@@ -236,8 +237,26 @@ class TestAcceptance2:
         names = [n for n, _ in fake.rpc_calls]
         assert names == ["connection_map_attest"]
         _, params = fake.rpc_calls[0]
-        assert params["p_reviewer_id"] == REVIEWER["id"]
+        # The AUTH user id, not a reviewer id: the signing function resolves
+        # the reviewer itself, so the credited signer is the one the token
+        # proved rather than whatever the caller passed.
+        assert params["p_auth_user_id"] == TEST_USER["user_id"]
+        assert "p_reviewer_id" not in params
         assert params["p_text_version"] == "v1"
+
+    def test_status_change_is_atomic_with_the_signature(self, client, authed):
+        # It used to be a separate PostgREST update made BEFORE the signing
+        # call, so a failure in between left an edge marked approved with
+        # nothing signed while the UI reported "nothing was signed".
+        fake = make_client(tables={
+            "master_edge": [{"tier": "A", "status": "candidate", "rejection_reason": None}],
+        }, rpc_results={"connection_map_attest": "att-1"})
+        with patch.object(review_api, "get_review_client", return_value=fake):
+            client.post("/api/review/edge/e-1/attest", headers=AUTH,
+                        data=json.dumps({"decision": "approve"}))
+        assert "master_edge" not in fake.inserted
+        # Exactly one write path: the function that signs.
+        assert [n for n, _ in fake.rpc_calls] == ["connection_map_attest"]
 
     def test_tier_c_attestation_is_refused_never_fallback(self, client, authed):
         fake = make_client(tables={
@@ -427,3 +446,85 @@ class TestEditEndpoint:
         body = resp.get_json()
         assert body["status"] == "ok"
         assert any("shares no term" in c for c in body.get("concerns", []))
+
+
+class TestPhase3ReviewFixes:
+    """Regression tests for the defects the Phase 3 adversarial review found.
+
+    The severe one — signing was impossible for the role the app runs as —
+    was invisible to the probe checklist because those probes ran as postgres.
+    Its regression test is the SQL assertion below plus the sage-dev probe.
+    """
+
+    CLINICAL = dict(REVIEWER, id="r-cli", role="reviewer_clinical", credential="NP")
+
+    def test_signing_function_is_security_definer(self):
+        # SECURITY INVOKER meant it inserted as sage_review, which holds no
+        # INSERT on attestation: every approval failed with permission denied.
+        sql = (_REPO / "supabase_migrations"
+               / "2026_07_31_connection_map_phase3_fixes.sql").read_text(encoding="utf-8")
+        assert "SECURITY DEFINER" in sql
+        assert "SET search_path = public, pg_temp" in sql
+        # Definer rights make search_path pinning mandatory, not optional.
+
+    def test_review_role_still_cannot_write_attestations_directly(self):
+        sql = (_REPO / "supabase_migrations"
+               / "2026_07_31_connection_map_phase3_fixes.sql").read_text(encoding="utf-8")
+        assert "GRANT INSERT ON attestation TO sage_review" not in sql
+
+    def test_published_content_is_frozen_at_the_database(self):
+        sql = (_REPO / "supabase_migrations"
+               / "2026_07_31_connection_map_phase3_fixes.sql").read_text(encoding="utf-8")
+        assert "master_edge_published_is_frozen" in sql
+        assert "master_edge_evidence_published_is_frozen" in sql
+        assert "part of a published version and cannot be changed" in sql
+
+    def test_only_a_draft_can_be_published(self):
+        sql = (_REPO / "supabase_migrations"
+               / "2026_07_31_connection_map_phase3_fixes.sql").read_text(encoding="utf-8")
+        assert "only a draft can be published" in sql
+
+    def test_urgency_is_not_editable_by_a_clinical_reviewer(self, client, authed):
+        # §5.4: only a reviewer_attesting may clear an urgent flag. urgency
+        # also feeds the edge hash, so a downgrade before signing would be
+        # covered by the signature and leave no trace.
+        with patch.object(review_api, "get_review_client",
+                          return_value=make_client(reviewer=self.CLINICAL)):
+            resp = client.patch("/api/review/edge/e-1", headers=AUTH,
+                                data=json.dumps({"urgency": "routine"}))
+        assert resp.status_code == 400
+        assert "urgency" in resp.get_json()["fields"]
+
+    def test_urgency_is_editable_by_the_attesting_physician(self, client, authed):
+        fake = make_client(tables={"master_edge": [{"id": "e-1"}]})
+        with patch.object(review_api, "get_review_client", return_value=fake):
+            resp = client.patch("/api/review/edge/e-1", headers=AUTH,
+                                data=json.dumps({"urgency": "routine"}))
+        assert resp.status_code == 200
+
+    def test_concept_wording_can_be_authored(self, client, authed):
+        # Without this route nothing could set display_patient, which the
+        # publication gate requires on every concept — so no version the
+        # workspace produced was publishable.
+        fake = make_client(tables={"concept": [{"id": "c-1"}]})
+        with patch.object(review_api, "get_review_client", return_value=fake):
+            resp = client.patch("/api/review/concept/c-1", headers=AUTH,
+                                data=json.dumps({"display_patient": "the hormone pill"}))
+        assert resp.status_code == 200
+
+    def test_concept_wording_obeys_the_copy_rules(self, client, authed):
+        fake = make_client(tables={"concept": [{"id": "c-1"}]})
+        with patch.object(review_api, "get_review_client", return_value=fake):
+            resp = client.patch("/api/review/concept/c-1", headers=AUTH,
+                                data=json.dumps({"display_patient": "the pill that causes aches"}))
+        assert resp.status_code == 422
+        assert resp.get_json()["error"] == "COPY_RULES"
+
+    def test_proposed_concepts_are_validated(self, client, authed):
+        fake = make_client()
+        with patch.object(review_api, "get_review_client", return_value=fake):
+            resp = client.post("/api/review/concept", headers=AUTH,
+                               data=json.dumps({"slug": "Not A Slug", "domain": "vibes",
+                                                "display_clinical": "x"}))
+        assert resp.status_code == 400
+        assert resp.get_json()["error"] == "INVALID_CONCEPT"
