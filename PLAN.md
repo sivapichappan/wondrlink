@@ -326,10 +326,23 @@ survive the change):
    actually matters — not "every row is verbatim".
 3. Tier C is a separate, lower-priority review queue. It must never gate or
    delay the A/B launch queue.
-4. **OPEN QUESTION for the owner:** may an attested tier C edge reach a patient?
-   Recommendation for v1: no — treat C as a research/innovation queue only, kept
-   out of the published map, revisited once the A/B loop has run with real
-   patients. Needs an explicit answer before Phase 4 ships C candidates.
+4. **ANSWERED 2026-07-28: yes — an APPROVED tier C edge may reach a patient.**
+   It goes through the identical gate as A/B: physician attestation, no
+   exceptions, no separate path. C changes what may be *proposed* for review,
+   never what may bypass review.
+
+   **Consequence that lands in Phase 3 and needs legal input.** The §5.6
+   attestation sentence reads "I attest that this statement is consistent with
+   the cited sources." For tier A/B that is a verbatim quotation, so the
+   physician is confirming something checkable. For tier C the sources do NOT
+   say it word for word, so signing that same sentence claims more than the
+   evidence supports. Either the attestation text gains a tier C variant naming
+   the inference explicitly, or the reviewer is signing an overclaim. §5.6 says
+   the text must not be altered without legal review, and this project already
+   treats attorney-reviewed copy as a hard gate (consent copy). So: draft a
+   tier C attestation variant, route it to the attorney with the consent-copy
+   revisions, and do not ship C to patients until it is signed off. Not a
+   Phase 2 blocker.
 
 **Schema impact:** widens the `master_edge` tier CHECK to ('A','B','C') and adds
 `evidence_kind`. `tests/test_connection_map_migrations.py::test_tier_cannot_store_c`
