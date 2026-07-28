@@ -528,3 +528,52 @@ class TestPhase3ReviewFixes:
                                                 "display_clinical": "x"}))
         assert resp.status_code == 400
         assert resp.get_json()["error"] == "INVALID_CONCEPT"
+
+
+class TestCopyLintHardening:
+    """Gaps the Phase 3 review found in the §8 checker."""
+
+    def test_multi_word_phrases_tolerate_real_whitespace(self):
+        # Copy wraps, gets double-spaced, and picks up non-breaking spaces.
+        # "leads  to" asserts cause exactly as much as "leads to".
+        for text in ("This pill leads  to aches. True for you?",
+                     "Aches due\nto the pill. True for you?"):
+            assert copy_lint.lint_patient_copy(text), text
+
+    def test_inflections_are_caught(self):
+        for text in ("This pill causing aches. True for you?",
+                     "Aches resulting in trouble. True for you?",
+                     "This pill triggering aches. True for you?"):
+            assert copy_lint.lint_patient_copy(text), text
+
+    def test_confidence_in_words_is_caught(self):
+        # §3 forbids rendering confidence "in any form", not just in digits.
+        assert copy_lint.lint_patient_copy("Nine in ten people notice this. True for you?")
+        assert copy_lint.lint_patient_copy("Most patients notice this. True for you?")
+
+    def test_clinician_register_is_now_caught(self):
+        # Short, no long word, no banned phrase — the old proxy passed it.
+        text = "Patients receiving endocrine therapy frequently experience arthralgia."
+        assert copy_lint.reading_grade(text) > copy_lint.MAX_GRADE
+        assert copy_lint.lint_patient_copy(text)
+
+    def test_the_spec_example_still_passes(self):
+        # §5.4's own wording must not be blocked by our own lint.
+        text = "Some people taking this pill notice new joint aches. Has that been true for you?"
+        assert copy_lint.reading_grade(text) <= copy_lint.TARGET_GRADE
+        assert copy_lint.lint_patient_copy(text) == []
+
+    def test_between_target_and_block_is_a_concern_not_a_block(self):
+        # Blocking a physician's valid wording is worse than letting grade 7
+        # through with a note, so that band warns instead.
+        borderline = "Some people notice discomfort in their joints and shoulders. Is that true for you?"
+        grade = copy_lint.reading_grade(borderline)
+        out = copy_lint.review_edit_concerns(borderline)
+        if copy_lint.TARGET_GRADE < grade <= copy_lint.MAX_GRADE:
+            assert out["blocking"] == []
+            assert any("grade" in c for c in out["concerns"])
+
+    def test_syllable_counter_is_sane(self):
+        assert copy_lint._syllables("pain") == 1
+        assert copy_lint._syllables("people") == 2
+        assert copy_lint._syllables("") == 0

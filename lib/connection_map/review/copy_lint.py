@@ -21,23 +21,40 @@ from typing import Dict, List, Optional
 
 # §8: no causal verbs. A connection is something noticed together, never
 # something asserted to cause something else.
+#
+# Every multi-word pattern uses \s+ rather than a literal space: real copy
+# contains double spaces, line breaks after a wrap, and non-breaking spaces,
+# and "leads  to" is exactly as much a causal claim as "leads to". Inflections
+# are listed too — "causing" and "resulting in" assert cause just as plainly as
+# "causes", and an earlier version matched neither.
 CAUSAL_PATTERNS = (
-    (r"\bcauses?\b", "causes"),
-    (r"\bcaused by\b", "caused by"),
-    (r"\bleads? to\b", "leads to"),
-    (r"\bresults? in\b", "results in"),
-    (r"\bbecause of\b", "because of"),
-    (r"\bdue to\b", "due to"),
-    (r"\btriggers?\b", "triggers"),
-    (r"\bmakes? you\b", "makes you"),
+    (r"\bcaus(?:e|es|ed|ing)\b", "causes"),
+    (r"\bcaus(?:e|es|ed|ing)\s+by\b", "caused by"),
+    (r"\blead(?:s|ing)?\s+to\b", "leads to"),
+    (r"\bresult(?:s|ed|ing)?\s+in\b", "results in"),
+    (r"\bbecause\s+of\b", "because of"),
+    (r"\bdue\s+to\b", "due to"),
+    (r"\btrigger(?:s|ed|ing)?\b", "triggers"),
+    (r"\bmake(?:s|ing)?\s+you\b", "makes you"),
+    (r"\bbrings?\s+on\b", "brings on"),
+    (r"\bgives?\s+you\b", "gives you"),
+    (r"\bresponsible\s+for\b", "responsible for"),
+    (r"\bstems?\s+from\b", "stems from"),
+    (r"\bcomes?\s+from\b", "comes from"),
 )
 
-# §8: no numerals expressing confidence or probability.
+# §8: no numerals expressing confidence or probability. Spelled-out numbers
+# count too — "nine in ten" is a probability claim in words, and §3 forbids
+# rendering confidence "in any form", not merely in digits.
+_NUMBER_WORD = (r"(?:one|two|three|four|five|six|seven|eight|nine|ten|"
+                r"twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|half)")
 CONFIDENCE_PATTERNS = (
     r"\b\d+\s*%",
-    r"\b\d+\s*(?:in|out of)\s*\d+\b",
-    r"\b(?:probability|likelihood|confidence)\b",
+    r"\b\d+\s*(?:in|out\s+of)\s+\d+\b",
+    rf"\b{_NUMBER_WORD}\s+(?:in|out\s+of)\s+{_NUMBER_WORD}\b",
+    r"\b(?:percent|percentage|probability|likelihood|confidence)\b",
     r"\bodds\b",
+    r"\b(?:most|nearly all|almost all|the majority)\s+(?:people|patients|women)\b",
 )
 
 # §8 permits these framings; used only to explain a finding, never to gate.
@@ -49,9 +66,20 @@ PERMITTED_FRAMINGS = (
 EM_DASH = "—"
 EN_DASH = "–"
 
-# Grade-6 proxy. A full readability score needs syllable counting that varies
-# by implementation; these two thresholds catch what actually goes wrong in
-# clinician-written copy, which is long sentences and long words.
+# Readability. §8 asks for grade 6 or below. The earlier version only counted
+# sentence length and long words, which let clinician-written copy several
+# grades above target pass — "Patients receiving endocrine therapy frequently
+# experience arthralgia" is short, has no 13-character word, and is nowhere
+# near grade 6.
+#
+# Flesch-Kincaid is used instead, with a deliberate two-grade margin on the
+# HARD block: the formula is noisy on strings this short, and blocking a
+# physician's valid wording is a worse failure than letting grade 7 through.
+# Between the target and the block it produces a soft concern instead, so the
+# reviewer sees it and decides.
+TARGET_GRADE = 6.0
+MAX_GRADE = 8.0
+
 MAX_WORDS_PER_SENTENCE = 22
 MAX_LONG_WORDS = 3
 LONG_WORD_CHARS = 13
@@ -59,6 +87,31 @@ LONG_WORD_CHARS = 13
 
 def _sentences(text: str) -> List[str]:
     return [s.strip() for s in re.split(r"[.!?]+", text) if s.strip()]
+
+
+def _syllables(word: str) -> int:
+    """Rough syllable count. Approximate by design — it feeds a readability
+    estimate that already carries a margin, not a hard fact."""
+    w = re.sub(r"[^a-z]", "", word.lower())
+    if not w:
+        return 0
+    if len(w) <= 3:
+        return 1
+    w = re.sub(r"(?:[^laeiouy]es|ed|[^laeiouy]e)$", "", w)
+    groups = re.findall(r"[aeiouy]+", w)
+    return max(1, len(groups))
+
+
+def reading_grade(text: str) -> float:
+    """Flesch-Kincaid grade level. Returns 0.0 for text with no words."""
+    sentences = _sentences(text)
+    words = re.findall(r"[A-Za-z']+", text)
+    if not words or not sentences:
+        return 0.0
+    syllables = sum(_syllables(w) for w in words)
+    return (0.39 * (len(words) / len(sentences))
+            + 11.8 * (syllables / len(words))
+            - 15.59)
 
 
 def lint_patient_copy(text: Optional[str]) -> List[str]:
@@ -92,6 +145,11 @@ def lint_patient_copy(text: Optional[str]) -> List[str]:
     if len(long_words) > MAX_LONG_WORDS:
         problems.append(f"too many long words for a grade 6 reading level: {sorted(set(long_words))[:5]}")
 
+    grade = reading_grade(text)
+    if grade > MAX_GRADE:
+        problems.append(
+            f"reads at about grade {grade:.0f}; §8 asks for grade {TARGET_GRADE:.0f} or below")
+
     return problems
 
 
@@ -120,6 +178,12 @@ def review_edit_concerns(
 
     if "?" not in text:
         concerns.append("This is not phrased as a question, so it may be hard to answer yes, no, or not sure.")
+
+    grade = reading_grade(text)
+    if TARGET_GRADE < grade <= MAX_GRADE:
+        concerns.append(
+            f"This reads at about grade {grade:.0f}. The target is grade "
+            f"{TARGET_GRADE:.0f}; shorter sentences or plainer words would help.")
 
     # A reworded question that no longer shares any substantive word with the
     # evidence is worth flagging. Deliberately crude: it should nudge, not judge.
