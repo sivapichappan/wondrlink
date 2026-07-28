@@ -1,0 +1,420 @@
+# Connection-map concept vocabulary — breast pilot (SPEC-connection-map.md §10.1).
+#
+# Reviewable clinical config, following the safety-rules precedent. Nothing here
+# reaches a patient: display_patient is null on every row and is filled in by the
+# attesting physician during review (§5.4 "Reword"), because plain-language
+# wording is a clinical judgment, not something this pipeline invents.
+#
+# Two kinds of row:
+#   - the 53 concepts listed verbatim in spec §10.1
+#   - 7 rows marked `spec_addition: true` — concepts the spec's own extraction
+#     targets (§10.2-§10.4) reference but omitted from §10.1. Without them those
+#     targets are inexpressible, since pass 1 rejects any concept absent from
+#     this table. Marked so the reviewer sees exactly what was added and why.
+#     (§10.2's separate "hair loss" and "hair thinning" rows need no addition:
+#     both map to §10.1's single "hair loss or thinning".)
+#
+# instrument reflects how the value is actually captured in Sage today:
+# report_scan = pathology/report OCR, ehr_field = structured profile field,
+# lab = numeric result, pro_instrument = a validated screener already in the
+# app (PHQ-9, GAD-7, ISI), self_report_chat = the patient says so in chat.
+
+version: 1
+cancer: breast
+
+concepts:
+
+  # --- biomarker (§10.1) ---
+  - slug: er_status
+    domain: biomarker
+    display_clinical: "ER status"
+    display_patient: null
+    instrument: report_scan
+    cancer_scopes: [breast]
+  - slug: pr_status
+    domain: biomarker
+    display_clinical: "PR status"
+    display_patient: null
+    instrument: report_scan
+    cancer_scopes: [breast]
+  - slug: her2_status
+    domain: biomarker
+    display_clinical: "HER2 status"
+    display_patient: null
+    instrument: report_scan
+    cancer_scopes: [breast]
+  - slug: ki67
+    domain: biomarker
+    display_clinical: "Ki-67"
+    display_patient: null
+    instrument: report_scan
+    cancer_scopes: [breast]
+  - slug: menopausal_status
+    domain: biomarker
+    display_clinical: "menopausal status"
+    display_patient: null
+    instrument: ehr_field
+    cancer_scopes: [breast]
+
+  # --- treatment (§10.1) ---
+  - slug: aromatase_inhibitor
+    domain: treatment
+    display_clinical: "aromatase inhibitor"
+    display_patient: null
+    instrument: ehr_field
+    cancer_scopes: [breast]
+  - slug: tamoxifen
+    domain: treatment
+    display_clinical: "tamoxifen"
+    display_patient: null
+    instrument: ehr_field
+    cancer_scopes: [breast]
+  - slug: ovarian_suppression
+    domain: treatment
+    display_clinical: "ovarian suppression"
+    display_patient: null
+    instrument: ehr_field
+    cancer_scopes: [breast]
+  - slug: anthracycline_chemotherapy
+    domain: treatment
+    display_clinical: "anthracycline chemotherapy"
+    display_patient: null
+    instrument: ehr_field
+    cancer_scopes: [breast]
+  - slug: taxane_chemotherapy
+    domain: treatment
+    display_clinical: "taxane chemotherapy"
+    display_patient: null
+    instrument: ehr_field
+    cancer_scopes: [breast]
+  - slug: trastuzumab
+    domain: treatment
+    display_clinical: "trastuzumab"
+    display_patient: null
+    instrument: ehr_field
+    cancer_scopes: [breast]
+  - slug: radiation_therapy
+    domain: treatment
+    display_clinical: "radiation therapy"
+    display_patient: null
+    instrument: ehr_field
+    cancer_scopes: [breast]
+  - slug: bisphosphonate_or_denosumab
+    domain: treatment
+    display_clinical: "bisphosphonate or denosumab"
+    display_patient: null
+    instrument: ehr_field
+    cancer_scopes: [breast]
+
+  # --- procedure (§10.1) ---
+  - slug: lumpectomy
+    domain: procedure
+    display_clinical: "lumpectomy"
+    display_patient: null
+    instrument: ehr_field
+    cancer_scopes: [breast]
+  - slug: mastectomy
+    domain: procedure
+    display_clinical: "mastectomy"
+    display_patient: null
+    instrument: ehr_field
+    cancer_scopes: [breast]
+  - slug: sentinel_node_biopsy
+    domain: procedure
+    display_clinical: "sentinel node biopsy"
+    display_patient: null
+    instrument: ehr_field
+    cancer_scopes: [breast]
+  - slug: axillary_node_dissection
+    domain: procedure
+    display_clinical: "axillary node dissection"
+    display_patient: null
+    instrument: ehr_field
+    cancer_scopes: [breast]
+  - slug: breast_reconstruction
+    domain: procedure
+    display_clinical: "breast reconstruction"
+    display_patient: null
+    instrument: ehr_field
+    cancer_scopes: [breast]
+
+  # --- symptom (§10.1) ---
+  - slug: joint_pain
+    domain: symptom
+    display_clinical: "joint pain"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: muscle_pain
+    domain: symptom
+    display_clinical: "muscle pain"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: hot_flashes
+    domain: symptom
+    display_clinical: "hot flashes"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: night_sweats
+    domain: symptom
+    display_clinical: "night sweats"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: fatigue
+    domain: symptom
+    display_clinical: "fatigue"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: peripheral_neuropathy
+    domain: symptom
+    display_clinical: "peripheral neuropathy (numbness or tingling in hands and feet)"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: balance_problems
+    domain: symptom
+    display_clinical: "balance problems"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: falls
+    domain: symptom
+    display_clinical: "falls"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: nausea
+    domain: symptom
+    display_clinical: "nausea"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: hair_loss_or_thinning
+    domain: symptom
+    display_clinical: "hair loss or thinning"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: lymphedema
+    domain: symptom
+    display_clinical: "lymphedema (arm swelling or heaviness)"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: vaginal_dryness
+    domain: symptom
+    display_clinical: "vaginal dryness"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: painful_intercourse
+    domain: symptom
+    display_clinical: "painful intercourse"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: low_libido
+    domain: symptom
+    display_clinical: "low libido"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: cognitive_complaints
+    domain: symptom
+    display_clinical: "cognitive complaints (memory, concentration, word finding)"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: cardiac_symptoms
+    domain: symptom
+    display_clinical: "cardiac symptoms (breathlessness, swelling, palpitations)"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: fever
+    domain: symptom
+    display_clinical: "fever"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: vaginal_bleeding
+    domain: symptom
+    display_clinical: "vaginal bleeding"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: leg_pain_or_swelling
+    domain: symptom
+    display_clinical: "leg pain or swelling"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: arm_redness_or_warmth
+    domain: symptom
+    display_clinical: "arm redness or warmth"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: weight_gain
+    domain: symptom
+    display_clinical: "weight gain"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: general_pain
+    domain: symptom
+    display_clinical: "general pain"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+
+  # --- lab_or_measure (§10.1) ---
+  - slug: lvef
+    domain: lab_or_measure
+    display_clinical: "LVEF"
+    display_patient: null
+    instrument: lab
+    cancer_scopes: [breast]
+  - slug: bone_mineral_density
+    domain: lab_or_measure
+    display_clinical: "bone mineral density"
+    display_patient: null
+    instrument: lab
+    cancer_scopes: [breast]
+  - slug: neutrophil_count
+    domain: lab_or_measure
+    display_clinical: "neutrophil count"
+    display_patient: null
+    instrument: lab
+    cancer_scopes: [breast]
+  - slug: vitamin_d
+    domain: lab_or_measure
+    display_clinical: "vitamin D"
+    display_patient: null
+    instrument: lab
+    cancer_scopes: [breast]
+  - slug: body_weight
+    domain: lab_or_measure
+    display_clinical: "body weight"
+    display_patient: null
+    instrument: lab
+    cancer_scopes: [breast]
+
+  # --- daily_life (§10.1) ---
+  - slug: sleep_quality
+    domain: daily_life
+    display_clinical: "sleep quality"
+    display_patient: null
+    instrument: pro_instrument
+    cancer_scopes: [breast]
+  - slug: mood
+    domain: daily_life
+    display_clinical: "mood"
+    display_patient: null
+    instrument: pro_instrument
+    cancer_scopes: [breast]
+  - slug: anxiety
+    domain: daily_life
+    display_clinical: "anxiety"
+    display_patient: null
+    instrument: pro_instrument
+    cancer_scopes: [breast]
+  - slug: physical_activity
+    domain: daily_life
+    display_clinical: "physical activity"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: appetite
+    domain: daily_life
+    display_clinical: "appetite"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: sexual_health
+    domain: daily_life
+    display_clinical: "sexual health"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: work_status
+    domain: daily_life
+    display_clinical: "work status"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+  - slug: medication_adherence
+    domain: daily_life
+    display_clinical: "taking the pill as prescribed"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+
+  # --- additions: referenced by §10.2-§10.4, absent from §10.1 ---
+  - slug: skin_changes
+    domain: symptom
+    display_clinical: "skin changes"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+    spec_addition: true
+    notes: "§10.2 target 'skin changes / radiation therapy'."
+  - slug: scar_numbness
+    domain: symptom
+    display_clinical: "numbness near the scar"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+    spec_addition: true
+    notes: "§10.2 targets pairing it with axillary node dissection and mastectomy."
+  - slug: lvef_decline
+    domain: lab_or_measure
+    display_clinical: "LVEF decline"
+    display_patient: null
+    instrument: lab
+    cancer_scopes: [breast]
+    spec_addition: true
+    notes: >-
+      §10.2 targets it against anthracycline chemotherapy and trastuzumab. Distinct
+      from the lvef measure: a decline is the finding, not the value. §10.2 calls it
+      lab-side and not patient-visible.
+  - slug: bone_mineral_density_loss
+    domain: lab_or_measure
+    display_clinical: "bone mineral density loss"
+    display_patient: null
+    instrument: lab
+    cancer_scopes: [breast]
+    spec_addition: true
+    notes: >-
+      §10.2 targets it against aromatase inhibitor and ovarian suppression. Distinct
+      from the bone_mineral_density measure for the same reason as lvef_decline.
+  - slug: annual_gynecologic_assessment
+    domain: procedure
+    display_clinical: "annual gynecologic assessment"
+    display_patient: null
+    instrument: ehr_field
+    cancer_scopes: [breast]
+    spec_addition: true
+    notes: "§10.4 monitored_with target 'tamoxifen / annual gynecologic assessment'."
+  - slug: arm_exercise_and_skin_care
+    domain: daily_life
+    display_clinical: "arm exercise and skin care"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+    spec_addition: true
+    notes: "§10.4 mitigated_by target 'lymphedema / arm exercise and skin care'."
+  - slug: sleep_routine
+    domain: daily_life
+    display_clinical: "sleep routine"
+    display_patient: null
+    instrument: self_report_chat
+    cancer_scopes: [breast]
+    spec_addition: true
+    notes: >-
+      §10.4 mitigated_by target 'sleep quality / sleep routine'. Distinct from
+      sleep_quality: the routine is the behavior, the quality is the outcome.
