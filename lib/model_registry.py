@@ -97,6 +97,18 @@ _SEGMENTS: Dict[str, Dict[str, str]] = {
         "default": "deepseek-ai/DeepSeek-V4-Pro",
         "env": "MODEL_MODELER",
     },
+    # Connection-map literature extraction (SPEC-connection-map.md §6). Runs
+    # OFFLINE from scripts/, never in a request, so latency does not matter and
+    # reasoning quality does: this model proposes clinical relationships a
+    # physician then reviews one by one. Its characteristic failure — a
+    # plausible relationship with an invented citation — is caught by exact
+    # substring verification rather than by model choice, so the model is
+    # chosen for recall and structure, not for trustworthiness.
+    "connection_extractor": {
+        "provider": "together",
+        "default": "deepseek-ai/DeepSeek-V4-Pro",
+        "env": "MODEL_CONNECTION_EXTRACTOR",
+    },
 }
 
 
