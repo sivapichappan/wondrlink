@@ -1691,6 +1691,8 @@ def delete_all_user_data(user_id: str) -> dict:
       - glossary_terms          — all rows for user (personal term dictionary)
       - rate_limits             — all rows for user_id (as identifier)
       - accounts                — full row (keyed by id = auth.uid)
+      - patient_edge_event      — all rows for user (keyed by patient_id)
+      - patient_edge            — all rows for user (keyed by patient_id)
 
     Sub-processor data NOT under our direct control (documented in
     docs/compliance/subprocessor_chain.md — retention per their ToS):
@@ -1744,6 +1746,17 @@ def delete_all_user_data(user_id: str) -> dict:
             results['accounts'] = 'deleted'
         except Exception as e:
             results['accounts'] = f'error: {str(e)}'
+
+        # Connection-map patient tables are keyed by 'patient_id'. Events go
+        # first so the log is gone even if the edge delete fails; the event
+        # table blocks UPDATE but deliberately allows DELETE for exactly this.
+        # Tolerates the tables not existing yet (migration lands separately).
+        for table in ('patient_edge_event', 'patient_edge'):
+            try:
+                client.table(table).delete().eq('patient_id', user_id).execute()
+                results[table] = 'deleted'
+            except Exception as e:
+                results[table] = f'error: {str(e)}'
 
         # Structured deletion-audit log line. user_hash (not user_id) so we have an
         # audit trail without retaining the user identifier in logs.

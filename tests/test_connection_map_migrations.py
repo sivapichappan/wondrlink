@@ -27,6 +27,7 @@ from connection_map.concepts import (  # noqa: E402
     EDGE_TIERS,
     EDGE_URGENCIES,
     MAP_VERSION_STATUSES,
+    PATIENT_EDGE_STATUSES,
     REJECTION_REASONS,
     RELATIONSHIP_TYPES,
     SOURCE_SCOPES,
@@ -39,6 +40,7 @@ FILES = {
     "corpus": MIGRATIONS / "2026_07_28_connection_map_corpus.sql",
     "edges": MIGRATIONS / "2026_07_28_connection_map_edges.sql",
     "map_versions": MIGRATIONS / "2026_07_28_connection_map_map_versions.sql",
+    "patient": MIGRATIONS / "2026_07_28_connection_map_patient.sql",
 }
 
 TABLES = {
@@ -46,7 +48,10 @@ TABLES = {
     "corpus": ["source_document", "source_section"],
     "edges": ["extraction_run", "master_edge", "master_edge_evidence"],
     "map_versions": ["master_map_version"],
+    "patient": ["patient_edge", "patient_edge_event"],
 }
+
+PATIENT_TABLES = TABLES["patient"]
 
 
 def sql(key: str) -> str:
@@ -301,6 +306,66 @@ class TestMapVersionInvariants:
     def test_published_by_is_not_an_auth_user(self):
         # §5.1: a reviewer account and a patient account are distinct.
         assert not re.search(r"published_by\s+UUID[^,]*REFERENCES auth\.users", sql("map_versions"))
+
+
+class TestPatientTables:
+    def test_patient_status_enum_matches_python(self):
+        assert check_values(sql("patient"), "status") == set(PATIENT_EDGE_STATUSES)
+
+    def test_owner_fk_cascades_from_auth_users(self):
+        text = sql("patient")
+        assert text.count(
+            "patient_id      UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE") == 1
+        assert "patient_id           UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE" in text
+
+    def test_master_side_fks_restrict(self):
+        # A master edge or version with live patient instantiations must not be
+        # deletable out from under them.
+        text = sql("patient")
+        assert "REFERENCES master_edge(id) ON DELETE RESTRICT" in text
+        assert "REFERENCES master_map_version(id) ON DELETE RESTRICT" in text
+
+    def test_one_patient_edge_per_master_edge(self):
+        assert "UNIQUE (patient_id, master_edge_id)" in sql("patient")
+
+    def test_beta_counts_are_positive_integers(self):
+        text = sql("patient")
+        assert "alpha           INT NOT NULL CHECK (alpha > 0)" in text
+        assert "beta            INT NOT NULL CHECK (beta > 0)" in text
+
+    def test_event_log_blocks_update(self):
+        text = sql("patient")
+        assert "CREATE OR REPLACE FUNCTION connection_map_block_update" in text
+        assert re.search(
+            r"CREATE TRIGGER patient_edge_event_append_only\s+BEFORE UPDATE ON patient_edge_event",
+            text)
+
+    def test_event_log_still_allows_delete(self):
+        # Right-to-delete carve-out: blocking DELETE here would strand patient
+        # rows that delete_all_user_data has to be able to remove.
+        text = sql("patient")
+        assert "BEFORE UPDATE OR DELETE ON patient_edge_event" not in text
+        assert "BEFORE DELETE ON patient_edge_event" not in text
+
+    def test_own_rows_select_policies(self):
+        text = sql("patient")
+        for table, policy in (("patient_edge", "patient_edge_select"),
+                              ("patient_edge_event", "patient_edge_event_select")):
+            assert re.search(
+                rf"CREATE POLICY {policy} ON {table}\s+FOR SELECT USING \(patient_id = auth\.uid\(\)\)",
+                text), table
+
+    def test_right_to_delete_parity(self):
+        # Repo rule: every new user-data table joins delete_all_user_data in
+        # the same change (MHMDA/GDPR).
+        storage = (_REPO / "lib" / "supabase_storage.py").read_text(encoding="utf-8")
+        start = storage.index("def delete_all_user_data")
+        end = storage.index("\ndef ", start + 1)
+        body = storage[start:end]
+        for table in PATIENT_TABLES:
+            assert table in body, f"{table} missing from delete_all_user_data"
+        assert "'patient_id', user_id" in body.replace('"', "'") or \
+               "eq('patient_id', user_id)" in body
 
 
 class TestNoLearningLoopContact:
