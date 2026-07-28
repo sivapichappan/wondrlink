@@ -8,3 +8,9 @@ PyPDF2==3.0.1
 tiktoken==0.8.0
 PyYAML==6.0.2
 jsonschema==4.23.0
+# Declared explicitly even though supabase-auth pulls it in transitively: the
+# connection-map review client mints the sage_review token with it, and that
+# token IS the PHI boundary. A transitive dependency that silently stops
+# resolving would take the boundary down with it (same failure mode as the
+# babel-preset-expo hoisting incident on the mobile side).
+PyJWT==2.10.1
