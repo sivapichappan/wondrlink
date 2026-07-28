@@ -188,10 +188,17 @@ there too.
 
 ### Run log
 
-**2026-07-28, sage-dev (`eizhshntrquvqwfsseeh`) — ALL PROBES PASS.** All eight
-tables created; every expected failure failed with the expected message and
-every expected success succeeded; probe rows cleaned to zero and the throwaway
-auth user removed. Two defects were found and fixed during this run:
+**2026-07-28, sage-dev (`eizhshntrquvqwfsseeh`) — ALL PROBES PASS.** All nine
+tables and four functions created; every expected failure failed with the
+expected message and every expected success succeeded; probe rows cleaned to
+zero and the throwaway auth user removed.
+
+The schema was then dropped and the five committed migration files re-applied
+verbatim in filename order, since the first pass had been hand-split while
+debugging. They apply clean from an empty database, and the citation probes
+were re-run against that rebuild. Ended at zero rows.
+
+Two defects were found and fixed during this run:
 
 1. `master_edge_rejection_reason_check` as an explicit constraint name collided
    with the name Postgres auto-generates for the inline `rejection_reason`
