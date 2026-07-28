@@ -21,7 +21,7 @@ Strips HIPAA identifiers:
 
 import re
 import logging
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Set, Tuple
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -181,6 +181,82 @@ def deidentify_report_text(text: str, profile: Optional[dict] = None) -> str:
 
     # Pass 3 — the shared pattern scrub.
     return deidentify_conversation_context(sanitized)
+
+
+# --- Report patient-name mismatch (warn-never-block) ------------------------
+# MUST run on the RAW report text BEFORE deidentify_report_text: pass 1 of the
+# scrubber deletes the very identifier lines this reads. Output is a single
+# boolean; names are never returned, logged, or stored.
+
+# Line-start anchored so "Physician Name:" / "Inpatient:" / "Patient DOB:"
+# never match. Bare "Name:" stays — LabCorp/Quest-style headers label the
+# patient as just "Name: MARTINEZ, ROSA".
+_PATIENT_NAME_LINE = re.compile(
+    r"^\s*(?:patient(?:'?s)?(?:\s*name)?|pt\.?\s*name|name\s+of\s+patient|name)"
+    r"\s*[:#]\s*(?P<value>.+)$",
+    re.IGNORECASE,
+)
+
+# A candidate line containing any of these is a provider / third-party line,
+# not the patient — skip it. A vetoed candidate means silence, and silence is
+# the safe failure mode for a warn-only feature.
+_PROVIDER_MARKERS = re.compile(
+    r"\b(?:dr|m\.?d|d\.?o|physician|provider|ordering|referring|signed|"
+    r"guarantor|insured|subscriber)\b",
+    re.IGNORECASE,
+)
+
+_NAME_TOKEN_STOPLIST = frozenset(
+    {"jr", "sr", "ii", "iii", "iv", "mr", "mrs", "ms", "miss", "dr", "md", "do"})
+
+
+def _name_tokens(value: str) -> Set[str]:
+    return {t for t in re.findall(r"[a-z]+", (value or "").lower())
+            if len(t) >= 2 and t not in _NAME_TOKEN_STOPLIST}
+
+
+def _tokens_match(a: str, b: str) -> bool:
+    if a == b:
+        return True
+    # Prefix either direction covers nicknames (rob/robert); 2-char tokens
+    # must match exactly.
+    return min(len(a), len(b)) >= 3 and (a.startswith(b) or b.startswith(a))
+
+
+def report_name_mismatch(text: str, profile: Optional[dict] = None) -> bool:
+    """
+    True only when the report prints a patient name AND it shares no token with
+    the profile's patient name. Compares against patient.firstName/name/lastName
+    ONLY — for caregiver accounts patient.* is the care recipient (the person
+    whose report it should be); the account holder's name must never be
+    consulted. Any doubt -> False. Never raises, never logs.
+    """
+    try:
+        report_tokens: Set[str] = set()
+        for line in (text or "").splitlines():
+            match = _PATIENT_NAME_LINE.match(line)
+            if not match or _PROVIDER_MARKERS.search(line):
+                continue
+            # Truncate at a tab or 2+ spaces to shed merged table columns.
+            value = re.split(r"\s{2,}|\t", match.group("value"))[0][:80]
+            report_tokens |= _name_tokens(value)
+        if not report_tokens:
+            return False
+
+        patient = (profile or {}).get('patient') or {}
+        profile_tokens: Set[str] = set()
+        for raw in (patient.get('firstName'), patient.get('name'), patient.get('lastName')):
+            value = str(raw or '').strip()
+            if len(value) >= 2 and value.lower() not in ('unknown', 'unspecified', 'none'):
+                profile_tokens |= _name_tokens(value)
+        if not profile_tokens:
+            return False
+
+        return not any(
+            _tokens_match(r, p) for r in report_tokens for p in profile_tokens
+        )
+    except Exception:
+        return False
 
 
 def deidentify_conversation_context(conversation: str) -> str:

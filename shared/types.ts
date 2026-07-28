@@ -643,6 +643,11 @@ export interface ReportExtractResponse {
   findings: ReportFinding[];
   /** Shown for reference, never saved (e.g. lab values). */
   display_only: { label: string; value: string }[];
+  /**
+   * The report's printed patient name did not match this profile's patient
+   * name. Soft warning only; never blocks. Treat undefined as false.
+   */
+  name_mismatch?: boolean;
 }
 
 export interface ReportApplyResponse {

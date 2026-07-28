@@ -2677,7 +2677,16 @@ def api_report_extract():
         except Exception:
             pass
 
-        from deidentify import deidentify_report_text, detect_pii_leaks
+        from deidentify import deidentify_report_text, detect_pii_leaks, report_name_mismatch
+
+        # Warn-never-block identity check on the RAW text (the scrubber deletes
+        # the identifier lines it reads). Only this boolean survives the request.
+        name_mismatch = False
+        try:
+            name_mismatch = report_name_mismatch(text, profile)
+        except Exception:
+            pass
+
         deid_text = deidentify_report_text(text, profile)
 
         # The gate after the scrubber: any residual identifier aborts the LLM
@@ -2711,11 +2720,12 @@ def api_report_extract():
                 "n_findings": len(result["findings"]),
                 "n_display_only": len(result["display_only"]),
                 "source_type": source_type,
+                "name_mismatch": name_mismatch,
             }, source="report")
         except Exception:
             pass
 
-        return jsonify({"status": "ok", **result})
+        return jsonify({"status": "ok", **result, "name_mismatch": name_mismatch})
     except Exception:
         logger.exception("report extract error")
         return jsonify({"error": "server_error",

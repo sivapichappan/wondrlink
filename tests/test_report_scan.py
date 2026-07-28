@@ -22,7 +22,9 @@ from dotenv import load_dotenv  # noqa: E402
 load_dotenv(_REPO / ".env")
 
 import index  # noqa: E402
-from deidentify import deidentify_report_text, detect_pii_leaks  # noqa: E402
+from deidentify import (  # noqa: E402
+    deidentify_report_text, detect_pii_leaks, report_name_mismatch,
+)
 from patient_model import validate_report_fact, apply_confirmed_facts  # noqa: E402
 
 TEST_USER = {"user_id": "00000000-0000-4000-8000-000000000003"}
@@ -77,6 +79,67 @@ class TestDeidentifyReportText:
 
     def test_empty_text(self):
         assert deidentify_report_text("") == ""
+
+
+class TestReportNameMismatch:
+    """Warn-never-block: True only on a clear mismatch; every doubt is False."""
+
+    def test_exact_match_false(self):
+        assert report_name_mismatch(
+            REPORT_FIXTURE, {"patient": {"firstName": "Rosa"}}) is False
+
+    def test_last_first_ordering_false(self):
+        assert report_name_mismatch(
+            "Patient: MARTINEZ, ROSA\nDIAGNOSIS: colon adenocarcinoma",
+            {"patient": {"firstName": "Rosa"}}) is False
+
+    def test_middle_initial_false(self):
+        assert report_name_mismatch(
+            "Name: Rosa M. Martinez\nDIAGNOSIS follows.",
+            {"patient": {"firstName": "Rosa"}}) is False
+
+    def test_nickname_prefix_false(self):
+        assert report_name_mismatch(
+            "Patient Name: Rob Smith\nDIAGNOSIS follows.",
+            {"patient": {"firstName": "Robert"}}) is False
+
+    def test_true_mismatch(self):
+        assert report_name_mismatch(
+            REPORT_FIXTURE, {"patient": {"firstName": "Amara"}}) is True
+
+    def test_legacy_full_name_key(self):
+        assert report_name_mismatch(
+            "Name: MARTINEZ, ROSA\nDIAGNOSIS follows.",
+            {"patient": {"name": "Rosa Martinez"}}) is False
+
+    def test_no_profile_name_never_warns(self):
+        for profile in (None, {}, {"patient": {}},
+                        {"patient": {"firstName": "unknown"}}):
+            assert report_name_mismatch(REPORT_FIXTURE, profile) is False
+
+    def test_no_name_line_never_warns(self):
+        text = "DIAGNOSIS:\nAdenocarcinoma of the colon. Stage III.\nKRAS G12C."
+        assert report_name_mismatch(
+            text, {"patient": {"firstName": "Rosa"}}) is False
+
+    def test_provider_lines_ignored(self):
+        text = ("Ordering Physician: Dr. A. Placeholder, MD\n"
+                "Electronically signed: Dr. B. Sample\n"
+                "Inpatient: yes\n"
+                "DIAGNOSIS: colon adenocarcinoma.")
+        assert report_name_mismatch(
+            text, {"patient": {"firstName": "Rosa"}}) is False
+
+    def test_caregiver_holder_name_ignored(self):
+        # patient.* is the care recipient; the account holder's own name must
+        # not create overlap — a caregiver scanning THEIR report should warn.
+        profile = {"patient": {"firstName": "Rosa"},
+                   "account_holder_name": "John"}
+        assert report_name_mismatch(
+            "Patient Name: John Doe\nDIAGNOSIS follows.", profile) is True
+
+    def test_empty_text_false(self):
+        assert report_name_mismatch("", {"patient": {"firstName": "Rosa"}}) is False
 
 
 class TestValidateReportFact:
@@ -160,6 +223,82 @@ class TestExtractEndpoint:
                            data=json.dumps({"text": "too short", "source_type": "image"}))
         assert resp.status_code == 422
         assert resp.get_json()["error"] == "empty_text"
+
+    def test_name_mismatch_flag_and_no_echo(self, client, authed):
+        with patch.object(index, "load_profile",
+                          return_value={"patient": {"firstName": "Amara"}}), \
+             patch("patient_model.extract_report_findings", return_value=FINDINGS):
+            resp = client.post("/api/report/extract", headers=AUTH,
+                               data=json.dumps({"text": REPORT_FIXTURE,
+                                                "source_type": "image"}))
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert body["name_mismatch"] is True
+        # Warn-never-block: findings are intact.
+        assert body["findings"][0]["path"] == "primaryDiagnosis.biomarkers.KRAS"
+        # The boolean is the ONLY output — no name ever echoes back.
+        raw = resp.get_data(as_text=True)
+        for name in ("Rosa", "Martinez", "Amara"):
+            assert name not in raw
+
+    def test_name_match_flag_false(self, client, authed):
+        captured = {}
+
+        def _mock_extract(deid_text, cancer_kind):
+            captured["text"] = deid_text
+            return FINDINGS
+
+        with patch.object(index, "load_profile",
+                          return_value={"patient": {"firstName": "Rosa"}}), \
+             patch("patient_model.extract_report_findings", side_effect=_mock_extract):
+            resp = client.post("/api/report/extract", headers=AUTH,
+                               data=json.dumps({"text": REPORT_FIXTURE,
+                                                "source_type": "image"}))
+        assert resp.status_code == 200
+        assert resp.get_json()["name_mismatch"] is False
+        # The pre-deid read must not weaken the release gate.
+        assert "Rosa" not in captured["text"]
+
+    def test_no_profile_no_flag(self, client, authed):
+        with patch("patient_model.extract_report_findings", return_value=FINDINGS):
+            resp = client.post("/api/report/extract", headers=AUTH,
+                               data=json.dumps({"text": REPORT_FIXTURE,
+                                                "source_type": "image"}))
+        assert resp.status_code == 200
+        assert resp.get_json()["name_mismatch"] is False
+
+        # A broken profile load must never break a scan.
+        with patch.object(index, "load_profile", side_effect=Exception("boom")), \
+             patch("patient_model.extract_report_findings", return_value=FINDINGS):
+            resp = client.post("/api/report/extract", headers=AUTH,
+                               data=json.dumps({"text": REPORT_FIXTURE,
+                                                "source_type": "image"}))
+        assert resp.status_code == 200
+        assert resp.get_json()["name_mismatch"] is False
+
+    def test_event_payload_has_flag(self, client, authed):
+        events = []
+
+        def _capture_event(user_id, kind, payload=None, source=None):
+            events.append(payload or {})
+            return True
+
+        with patch.object(index, "load_profile",
+                          return_value={"patient": {"firstName": "Amara"}}), \
+             patch("supabase_storage.append_patient_event",
+                   side_effect=_capture_event), \
+             patch("patient_model.extract_report_findings", return_value=FINDINGS):
+            resp = client.post("/api/report/extract", headers=AUTH,
+                               data=json.dumps({"text": REPORT_FIXTURE,
+                                                "source_type": "image"}))
+        assert resp.status_code == 200
+        assert len(events) == 1
+        assert events[0]["name_mismatch"] is True
+        # Counts and booleans only — nothing name-like in the event payload.
+        assert all(isinstance(v, (int, bool, str)) for v in events[0].values())
+        joined = json.dumps(events[0])
+        for name in ("Rosa", "Martinez", "Amara"):
+            assert name not in joined
 
     def test_requires_auth(self, client):
         resp = client.post("/api/report/extract",
