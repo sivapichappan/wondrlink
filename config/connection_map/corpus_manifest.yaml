@@ -1,0 +1,149 @@
+# Connection-map source corpus — breast pilot (SPEC-connection-map.md §4.2).
+#
+# Ingested by scripts/ingest_connection_map_corpus.py into source_document /
+# source_section, VERBATIM. This is a separate corpus from the RAG one
+# (pdf_documents/pdf_chunks): the same PDFs, stored unmodified, because every
+# citation is verified character for character.
+#
+# scope is load-bearing. §4.2: "Symptom-cluster relationships live mostly in
+# general survivorship sources. A breast-only corpus will underproduce
+# candidates. Ingest both." The review workspace labels each quotation with
+# its scope so the physician can see which corpus a claim came from.
+#
+# KNOWN GAP, worth naming before extraction runs: the general survivorship set
+# below is caregiver, stress, and sleep material. There is no survivorship
+# care plan, late-effects, or exercise/nutrition guideline in data/ that is not
+# colorectal-specific. §10.3's co-occurrence targets (the psychoneurological
+# symptom cluster) will underproduce until such a source is added. That is a
+# corpus acquisition task, not a code change.
+#
+# file paths are relative to data/. Titles and publishers come from
+# data/_filename_to_metadata.yaml plus each document's cover page.
+
+version: 1
+
+documents:
+
+  # --- breast, cancer-specific (13) ---
+  - file: breast-invasive-patient.pdf
+    title: "NCCN Guidelines for Patients: Invasive Breast Cancer"
+    publisher: NCCN
+    edition: null
+    scope: cancer_specific
+    cancer: breast
+  - file: stage_0_breast-patient.pdf
+    title: "NCCN Guidelines for Patients: Stage 0 Breast Cancer"
+    publisher: NCCN
+    edition: null
+    scope: cancer_specific
+    cancer: breast
+  - file: stage_iv_breast-patient.pdf
+    title: "NCCN Guidelines for Patients: Stage IV Breast Cancer"
+    publisher: NCCN
+    edition: null
+    scope: cancer_specific
+    cancer: breast
+  - file: inflammatory-breast-patient.pdf
+    title: "NCCN Guidelines for Patients: Inflammatory Breast Cancer"
+    publisher: NCCN
+    edition: null
+    scope: cancer_specific
+    cancer: breast
+  - file: breastcancerscreening-patient.pdf
+    title: "NCCN Guidelines for Patients: Breast Cancer Screening"
+    publisher: NCCN
+    edition: null
+    scope: cancer_specific
+    cancer: breast
+  - file: "Breast Cancer Treatment (PDQ®) - NCI.pdf"
+    title: "Breast Cancer Treatment (PDQ) — Health Professional Version"
+    publisher: NCI
+    edition: null
+    scope: cancer_specific
+    cancer: breast
+  - file: breast-cancer-fact-sheet-patient-version.pdf
+    title: "Breast Cancer Fact Sheet (patient version)"
+    publisher: ACS
+    edition: null
+    scope: cancer_specific
+    cancer: breast
+  - file: breast-cancer-facts-and-figures-2024.pdf
+    title: "Breast Cancer Facts and Figures 2024"
+    publisher: ACS
+    edition: "2024"
+    scope: cancer_specific
+    cancer: breast
+  - file: 9671.00.pdf
+    title: "American Cancer Society Breast Cancer Screening Resource"
+    publisher: ACS
+    edition: null
+    scope: cancer_specific
+    cancer: breast
+  - file: breast-cancer-screening-clinician-summary.pdf
+    title: "Breast Cancer Screening: Clinician Summary"
+    publisher: USPSTF
+    edition: null
+    scope: cancer_specific
+    cancer: breast
+  - file: breast-cancer-screening-final-rec.pdf
+    title: "Breast Cancer Screening: Final Recommendation Statement"
+    publisher: USPSTF
+    edition: null
+    scope: cancer_specific
+    cancer: breast
+  - file: her2_breast_update_algorithms_2023.pdf
+    title: "HER2 Testing in Breast Cancer: ASCO/CAP Guideline Update Algorithms"
+    publisher: ASCO
+    edition: "2023"
+    scope: cancer_specific
+    cancer: breast
+  - file: park-et-al-2025-sentinel-lymph-node-biopsy-in-early-stage-breast-cancer-asco-guideline-update.pdf
+    title: "Sentinel Lymph Node Biopsy in Early-Stage Breast Cancer: ASCO Guideline Update"
+    publisher: ASCO
+    edition: "2025"
+    scope: cancer_specific
+    cancer: breast
+
+  # --- general survivorship (7) ---
+  - file: ACS_Caregiver_Support.pdf
+    title: "Caregiver Support"
+    publisher: ACS
+    edition: null
+    scope: general_survivorship
+    cancer: null
+  - file: NCI_Caring_for_Caregiver_2024.pdf
+    title: "Caring for the Caregiver"
+    publisher: NCI
+    edition: "2024"
+    scope: general_survivorship
+    cancer: null
+  - file: NCI_Stress_Cancer_Fact_Sheet.pdf
+    title: "Psychological Stress and Cancer Fact Sheet"
+    publisher: NCI
+    edition: null
+    scope: general_survivorship
+    cancer: null
+  - file: Cancer_Stress_DAndre_2024.pdf
+    title: "Stress and Cancer"
+    publisher: null
+    edition: "2024"
+    scope: general_survivorship
+    cancer: null
+  - file: Cancer_Sleep_Disorders.pdf
+    title: "Sleep Disorders in Cancer"
+    publisher: null
+    edition: null
+    scope: general_survivorship
+    cancer: null
+  - file: PSS10_Clinical_Reference.pdf
+    title: "Perceived Stress Scale (PSS-10) Clinical Reference"
+    publisher: null
+    edition: null
+    scope: general_survivorship
+    cancer: null
+  - file: Perceived_Stress_Scale_Reference.pdf
+    title: "Perceived Stress Scale Reference"
+    publisher: null
+    edition: null
+    scope: general_survivorship
+    cancer: null
