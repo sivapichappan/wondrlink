@@ -1898,3 +1898,30 @@ def get_consent_status(user_id: str) -> Dict[str, Any]:
         state['consent_collection']['granted'] and state['consent_sharing']['granted']
     )
     return state
+
+
+def is_active_reviewer(user_id: str) -> bool:
+    """True when this auth user holds an ACTIVE connection-map reviewer row.
+
+    Drives the mobile RootGate: a reviewer account must never be routed into
+    patient onboarding, because completing it would create a patient profile
+    and trip the reviewer/patient mutual-exclusion trigger. Read with the
+    service role (this is the patient-side app asking about its own caller,
+    not review code reaching outward). Any failure — including the reviewer
+    table not existing yet — means False: the patient flow must never depend
+    on the review schema being present.
+    """
+    if not user_id:
+        return False
+    try:
+        client = get_admin_client()
+        result = (client.table('reviewer')
+                  .select('id')
+                  .eq('auth_user_id', user_id)
+                  .eq('status', 'active')
+                  .limit(1)
+                  .execute())
+        return bool(result.data)
+    except Exception as e:
+        logger.debug("is_active_reviewer check failed (treating as False): %s", e)
+        return False

@@ -272,6 +272,40 @@ class TestAcceptance2:
         assert [n for n, _ in fake.rpc_calls] == ["connection_map_publish"]
 
 
+class TestReviewerFlagInAcknowledgement:
+    """RootGate branches on is_reviewer FIRST: a reviewer routed into patient
+    onboarding would end by creating a patient profile and tripping the
+    exclusivity trigger. The flag must exist, and must fail to False."""
+
+    def _call(self, client, reviewer_result):
+        kwargs = ({"side_effect": reviewer_result}
+                  if isinstance(reviewer_result, Exception)
+                  else {"return_value": reviewer_result})
+        with patch.object(index, "check_acknowledgement",
+                          return_value={"acknowledged": False}), \
+             patch("supabase_storage.get_cancer_slug", return_value=None), \
+             patch("supabase_storage.get_account_basics",
+                   return_value={"needs_basics": True}), \
+             patch("supabase_storage.is_active_reviewer", **kwargs):
+            return client.get("/api/check_acknowledgement", headers=AUTH)
+
+    def test_reviewer_account_is_flagged(self, client, authed):
+        resp = self._call(client, True)
+        assert resp.status_code == 200
+        assert resp.get_json()["is_reviewer"] is True
+
+    def test_patient_account_is_not(self, client, authed):
+        resp = self._call(client, False)
+        assert resp.status_code == 200
+        assert resp.get_json()["is_reviewer"] is False
+
+    def test_lookup_failure_means_false_never_500(self, client, authed):
+        # The patient flow must not depend on the review schema existing.
+        resp = self._call(client, RuntimeError("reviewer table missing"))
+        assert resp.status_code == 200
+        assert resp.get_json()["is_reviewer"] is False
+
+
 class TestEditEndpoint:
     def test_evidence_fields_are_not_editable(self, client, authed):
         with patch.object(review_api, "get_review_client", return_value=make_client()):

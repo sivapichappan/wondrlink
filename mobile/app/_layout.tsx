@@ -60,6 +60,15 @@ function RootGate() {
     const data = ack.data;
     if (!data) return;
 
+    // Reviewer accounts come FIRST. A reviewer is never a patient (the
+    // database enforces the exclusivity), so they must not fall through into
+    // patient onboarding — completing it would try to create a patient
+    // profile and be rejected. They get the review workspace and nothing else.
+    if (data.is_reviewer) {
+      if (top !== 'review') router.replace('/review' as never);
+      return;
+    }
+
     if (data.state_restricted) {
       if (top !== '(onboarding)' || second !== 'state-restricted') {
         router.replace('/(onboarding)/state-restricted');
@@ -120,6 +129,7 @@ function RootGate() {
       <Stack.Screen name="profile" options={{ headerShown: false }} />
       <Stack.Screen name="tools" options={{ headerShown: false }} />
       <Stack.Screen name="settings" options={{ headerShown: false }} />
+      <Stack.Screen name="review" options={{ headerShown: false }} />
     </Stack>
   );
 }

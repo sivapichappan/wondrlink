@@ -37,6 +37,12 @@ export interface AuthResponse {
 // =============================================================================
 
 export interface CheckAcknowledgementResponse {
+  /**
+   * Connection-map reviewer account. Mutually exclusive with being a patient;
+   * RootGate branches on this FIRST so a reviewer is never routed into
+   * patient onboarding. Absent on older servers — treat undefined as false.
+   */
+  is_reviewer?: boolean;
   acknowledged: boolean;
   consent_version: string | null;
   current_version: string;

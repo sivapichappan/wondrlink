@@ -859,7 +859,19 @@ def api_check_acknowledgement():
         except Exception as _e:
             logger.warning("account basics lookup failed: %s", _e)
 
+        # Connection-map reviewer accounts are mutually exclusive with patient
+        # accounts and must never be routed into patient onboarding (finishing
+        # it would create a patient profile and trip the exclusivity trigger).
+        # RootGate branches on this FIRST. Failure-safe: any error means False.
+        is_reviewer = False
+        try:
+            from supabase_storage import is_active_reviewer
+            is_reviewer = is_active_reviewer(user_id)
+        except Exception as _e:
+            logger.debug("reviewer lookup failed: %s", _e)
+
         return jsonify({
+            "is_reviewer": is_reviewer,
             "acknowledged": acknowledged,
             "consent_version": version,
             "current_version": CURRENT_CONSENT_VERSION,

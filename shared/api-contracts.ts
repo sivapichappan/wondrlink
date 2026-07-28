@@ -58,6 +58,16 @@ export const ENDPOINTS = {
   // --- Patient lifecycle (belief store) ---
   confirmBelief: '/api/confirm_belief',
 
+  // --- Connection-map review workspace (reviewer accounts only; every route
+  // executes on the restricted sage_review database role server-side) ---
+  reviewMeta: '/api/review/meta',
+  reviewQueue: '/api/review/queue',
+  reviewEdge: (id: string) => `/api/review/edge/${id}`,
+  reviewAttest: (id: string) => `/api/review/edge/${id}/attest`,
+  reviewVersionBlockers: (id: string) => `/api/review/version/${id}/blockers`,
+  reviewVersionPublish: (id: string) => `/api/review/version/${id}/publish`,
+  reviewConcept: '/api/review/concept',
+
   // --- Profile (clearProfile is POST per api/index.py:307) ---
   uploadProfile: '/api/upload_profile',
   getPatient: '/api/get_patient',
