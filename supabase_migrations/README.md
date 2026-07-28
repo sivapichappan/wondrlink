@@ -35,3 +35,18 @@ See `docs/sage-implementation-guidelines-notes.md` and the individual
 migration files. New user-owned tables MUST ship with RLS enabled + an
 own-rows policy, and be added to `delete_all_user_data` in
 `lib/supabase_storage.py` in the same change.
+
+## Connection map (2026_07_28_connection_map_*.sql)
+Five files, apply in filename order: concepts → corpus → edges →
+map_versions → patient. They depend only on `auth.users`, so they apply to
+an unseeded sage-dev without the bring-up above.
+
+These are the only migrations in this repo that create plpgsql functions and
+triggers. That is deliberate: the backend connects as the service role, which
+bypasses RLS, so a trigger is the only thing that can actually enforce the
+citation invariants (SPEC-connection-map.md §16 requires database-level
+enforcement). `master_edge` rows must be created through the
+`insert_master_edge_with_evidence` RPC — a bare insert fails at COMMIT.
+
+After applying, run `docs/connection_map/phase1_probe_checklist.md`: static
+tests assert the SQL contains each constraint, the probes prove they fire.
