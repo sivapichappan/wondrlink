@@ -19,7 +19,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import type * as ImagePickerTypes from 'expo-image-picker';
 import type * as MlkitOcrTypes from 'expo-mlkit-ocr';
 import { Stack, router } from 'expo-router';
-import { Camera, Check, FileText, Images, ShieldCheck, X } from 'lucide-react-native';
+import { AlertCircle, Camera, Check, FileText, Images, ShieldCheck, X } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -99,6 +99,8 @@ export default function ReportScanScreen() {
     try {
       const res = await extractReportText(joined);
       if (!res.findings.length && !res.display_only.length) {
+        // name_mismatch is deliberately dropped here: with nothing to
+        // confirm, there is nothing the warning would protect.
         fail('No medical facts found in that text. Try a clearer photo of the results section.');
         return;
       }
@@ -319,6 +321,26 @@ export default function ReportScanScreen() {
 
         {phase === 'review' && result && (
           <>
+            {result.name_mismatch === true && (
+              <View
+                accessibilityRole="alert"
+                style={{
+                  flexDirection: 'row',
+                  gap: Spacing.sm,
+                  alignItems: 'flex-start',
+                  padding: Spacing.md,
+                  borderRadius: Radius.md,
+                  backgroundColor: Colors.warningBg,
+                  borderWidth: 1,
+                  borderColor: Colors.warning,
+                }}>
+                <AlertCircle size={18} color={Colors.warning} style={{ marginTop: 1 }} />
+                <Text style={{ flex: 1, color: Colors.textPrimary, fontSize: FontSize.sm, lineHeight: 19 }}>
+                  The name on this report does not seem to match the name in this profile.
+                  Please make sure this is the right report before you confirm anything.
+                </Text>
+              </View>
+            )}
             <Text style={{ color: Colors.textSecondary, fontSize: FontSize.sm, lineHeight: 19 }}>
               Here is what the report says. Confirm each item that looks right. Nothing is saved
               until you tap Save.

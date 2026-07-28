@@ -5,6 +5,16 @@ and prune the rest. Last updated: 2026-07-26._
 
 ## IN FLIGHT RIGHT NOW
 
+0. **Report-scan name-mismatch warning SHIPPED 2026-07-27** (`a038899` backend
+   + OTA): `report_name_mismatch(text, profile)` in lib/deidentify.py runs on
+   the RAW text before the scrubber (which deletes the lines it reads);
+   boolean-only output (response `name_mismatch`, report_scanned event field
+   for false-positive base rate); warn-never-block amber banner on the review
+   screen. Compares patient.firstName/name/lastName ONLY (caregiver: patient.*
+   is the care recipient). Prod-smoked: mismatch→true, match→false, zero name
+   echo. USER OPS: rescan the Downloads sample PDF (name Jane Sampleton ≠
+   account) → amber banner should appear after ~2 app relaunches (OTA).
+
 1. **Scan-report crash on build #32 — ROOT-CAUSED + fixed 2026-07-26.**
    Build #32 shipped WITHOUT the ExpoMlkitOcr native module: Expo autolinking
    **silently skips** any pod whose podspec needs a higher iOS deployment
