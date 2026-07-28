@@ -158,6 +158,22 @@ app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB — allows PDF uploads
 # (bool) for downstream endpoints that store optional/non-essential data.
 app.before_request(_detect_gpc)
 
+# Connection-map review workspace (/api/review/*). Auth verification is
+# INJECTED here because the review package may not import auth/patient modules
+# (SPEC-connection-map.md §5.8; enforced by the import-graph test). Every
+# database call inside runs on the restricted sage_review client — a reviewer
+# session provably cannot reach patient data, and registration failing must
+# never take the patient app down with it: reviewers just get 404s until fixed.
+try:
+    from connection_map.review.api import build_review_blueprint
+    # Late-bound on purpose: resolves verify_token from this module at call
+    # time, so tests patching index.verify_token reach review routes too.
+    app.register_blueprint(build_review_blueprint(
+        verify_token=lambda token: verify_token(token)))
+except Exception as _review_err:  # noqa: BLE001 - patient app must not depend on review
+    logging.getLogger(__name__).error(
+        "connection_map review blueprint not registered: %s", _review_err)
+
 # -------------------------
 # Auth Decorator
 # -------------------------

@@ -1,0 +1,24 @@
+# Attestation wording (SPEC-connection-map.md §5.6).
+#
+# ATTORNEY-GATED COPY. §5.6: "That second sentence is what makes it signable.
+# Do not alter without legal review." Treat this file the way consent copy is
+# treated: a change means a version bump and legal sign-off BEFORE it is used,
+# and every attestation records which version was signed.
+#
+# tier_c is NOT YET APPROVED and is deliberately absent. Owner decision D2
+# allows an approved tier C connection to reach a patient, but a tier C
+# statement is inferred rather than quoted, so signing the v1 sentence would
+# claim more than the evidence supports. A tier C variant must be drafted and
+# signed off by the attorney before tier C ships. Code must refuse to attest a
+# tier C edge while no tier_c entry exists here, rather than falling back to v1.
+
+current_version: v1
+
+versions:
+  v1:
+    applies_to_tiers: [A, B]
+    text: >-
+      I attest that this statement is consistent with the cited sources, and
+      that it is appropriate to raise with a patient as a topic to discuss with
+      their care team. I am not attesting that this relationship is true for any
+      individual patient.
