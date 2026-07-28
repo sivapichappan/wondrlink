@@ -1,63 +1,85 @@
 # HANDOFF — active work
 
 _Keep this for in-flight work only. Fold anything permanent into `.claude/CLAUDE.md`
-and prune the rest. Last updated: 2026-07-26._
+and prune the rest. Last updated: 2026-07-27._
 
 ## IN FLIGHT RIGHT NOW
 
-0. **Report-scan name-mismatch warning SHIPPED 2026-07-27** (`a038899` backend
-   + OTA): `report_name_mismatch(text, profile)` in lib/deidentify.py runs on
-   the RAW text before the scrubber (which deletes the lines it reads);
-   boolean-only output (response `name_mismatch`, report_scanned event field
-   for false-positive base rate); warn-never-block amber banner on the review
-   screen. Compares patient.firstName/name/lastName ONLY (caregiver: patient.*
-   is the care recipient). Prod-smoked: mismatch→true, match→false, zero name
-   echo. USER OPS: rescan the Downloads sample PDF (name Jane Sampleton ≠
-   account) → amber banner should appear after ~2 app relaunches (OTA).
+0. **Connection map Phase 1 (schema/migrations/concept seed/corpus ingest) —
+   DONE, gate met 2026-07-28.** Spec at `SPEC-connection-map.md`, plan +
+   integration-point map + the 12 spec-vs-repo divergences at `PLAN.md`.
+   Commits `8ac9993`..`2bd9caf`. 350 tests green. The five
+   `supabase_migrations/2026_07_28_connection_map_*.sql` files are applied to
+   **sage-dev only** (`eizhshntrquvqwfsseeh`); **prod is untouched** and stays
+   that way until you say otherwise. All 29 probes in
+   `docs/connection_map/phase1_probe_checklist.md` pass, re-verified against a
+   from-scratch re-apply of the committed files; sage-dev left at zero rows.
+   NOT DONE by design: seeder/ingester have not been RUN against sage-dev
+   (needs its service key, or seed via MCP); no extraction, no runtime, no
+   patient-facing surface exists yet.
 
-1. **Scan-report crash on build #32 — ROOT-CAUSED + fixed 2026-07-26.**
-   Build #32 shipped WITHOUT the ExpoMlkitOcr native module: Expo autolinking
-   **silently skips** any pod whose podspec needs a higher iOS deployment
-   target than the app (ExpoMlkitOcr.podspec pins iOS **16.0**; SDK 54 default
-   is 15.1) — pod install "succeeds", JS bundles, then
-   `requireNativeModule('ExpoMlkitOcr')` throws when the route loads → crash.
-   Proven from build #32 logs: zero ExpoMlkitOcr/GoogleMLKit lines; every
-   other Expo pod installed.
-   - **OTA guard PUBLISHED — two rounds.** Round 1 (`fdf79cd3`) moved the
-     imports into lazy try/catch'd require()s: screen opened, but photo
-     buttons STILL crashed — Metro's `guardedLoadModule` routes a module
-     factory throw from an event handler to `ErrorUtils.reportFatalError`
-     (fatal in release), bypassing try/catch. Round 2 (`fe4e5423`, LIVE)
-     probes `requireOptionalNativeModule('ExpoMlkitOcr'/'ExponentImagePicker')`
-     BEFORE require() — see the new rule in `.claude/rules/mobile-ui.md`.
-     On #32 today: photo buttons show "not in this version yet"; PDF +
-     type-instead work. (Publish OTA with `--platform ios`; `--platform all`
-     fails in the web export — supabase-js hits AsyncStorage in Node.)
-   - **Build #34 is THE build to upload** (FINISHED 2026-07-26, from
-     `060f575` — embeds the probe-first fix natively AND the linked
-     ExpoMlkitOcr pod). Build #33 (from `83fc4e1`) also has the pod but only
-     the round-1 guard embedded — superseded, do not upload. Full 4-way
-     verification PASSED 2026-07-26 (workflow): OTA chain correct
-     (`fe4e5423` newest for runtime 1.1.0), build pipeline correct, code
-     surface clean (report-scan is the only native-probe site, probe-first
-     order verified), and EVERY expo native module confirmed present in the
-     #33 binary (MinimumOSVersion 16.0; camera + photo plist keys present;
-     ML Kit intentionally absent — `iosEngine:"auto"` uses Apple Vision on
-     ALL builds, not just simulators). → USER OPS: upload **#34** via
-     Transporter → TestFlight → photograph a printed report end-to-end.
-     (Binary-gate recipe for native-module builds: download the ipa artifact,
-     `strings` the executable for the module class name — EAS log downloads
-     are flaky.)
-2. **Build #32 smoke list still stands** (after the OTA lands, ~2 launches):
-   fresh phone login (test numbers, code 123456) → consent → welcome/tips →
-   anchor question (NOT colorectal-assumed) → home greeting → glossary
-   round-trip (~1-2s) → T2 escalation card → report-scan via **PDF path** +
-   pii_guard fallback (photo OCR waits for #33).
-3. **Report-scan backend LIVE + prod-smoked** (`976119e`): identifier-laden
-   fixture → 6/6 correct findings, CEA → display_only, apply wrote confirmed
-   beliefs; test account restored after. Deferred to v1.1: report-extraction
-   eval suite; labs.* namespace.
-4. **PENDING USER DECISION — "My terms" further speed** (options given
+0b. **Connection map Phase 2 (reviewer roles + PHI boundary + audit log) —
+   built and probed 2026-07-28** (`a9b0aed`, 389 tests green). Owner chose the
+   **restricted database account** over app-layer separation. §5.8's dedicated
+   Postgres pool is unbuildable here (no driver, no connection string), so the
+   boundary is a `sage_review` Postgres role selected by a JWT `role` claim,
+   which PostgREST honours natively. **Proved on sage-dev:** as `sage_review`,
+   `patient_edge`/`patient_edge_event` give *permission denied for table* and
+   `auth` gives *permission denied for schema*. Probes:
+   `docs/connection_map/phase2_probe_checklist.md`.
+   Adversarial review then found and fixed three holes (`22c0050`): the
+   import-graph gate omitted `supabase_client` (the service-role client) so a
+   review module importing it passed CI; reviewer activation was broken 100% of
+   the time by a PL/pgSQL guard that parse-analysis defeats, and granting the
+   review role write access there would have made the trigger a
+   patient-existence oracle; and `reviewer_assignment` accepted an empty
+   `tiers` array (`array_length` of an empty array is NULL and CHECKs pass on
+   NULL). All re-probed. 395 tests green.
+   TWO THINGS STILL OPEN on Phase 2: (a) the PATIENT-side half of acceptance #5
+   is unproven — that trigger needs `patient_profiles`, absent on unseeded
+   sage-dev, so re-run the reviewers migration after bring-up or verify on prod
+   at release (the reviewer-side half is now fixed and proven); (b) acceptance
+   #2 (every `/review/*` route uses the restricted client) has no routes yet —
+   it lands with the Phase 3 workspace and must not be forgotten.
+
+0c. **Connection map Phase 3, database half — DONE and proven 2026-07-28**
+   (`3ed75c1`, 439 tests green). Attestation records + the §5.7 publication
+   gate. An edge went candidate → approved → physician-signed → published with
+   a frozen hash on sage-dev; 12 probes in
+   `docs/connection_map/phase3_probe_checklist.md` cover acceptance #6-#10,
+   #25 and §4.5. Key design: signing snapshots the reviewer's status so
+   revoking someone later does not invalidate what they signed while active;
+   "editing voids the attestation" is a content hash over the edge plus every
+   evidence row; the gate re-verifies every citation against its source AT
+   publication and reports all blockers at once; there is no override.
+   REMAINING IN PHASE 3: `/api/review/*` endpoints on the restricted client
+   (this is where acceptance #2 gets proven), the D1 loose re-check of
+   physician edits, and the review workspace itself. **Frontend decision
+   REVERSED by the owner 2026-07-28: the workspace is a MOBILE surface.**
+   "Everything needs to put the phone app first, that is the main goal/product"
+   — and internal clinician tools are not an exemption. §5.4's desktop
+   side-by-side + keyboard-shortcut layout gets adapted to stacked panels with
+   a triage-style flow (see `.claude/CLAUDE.md` conventions and the
+   mobile-is-the-product memory). The PHI boundary is unaffected: the app talks
+   to Flask, and `/api/review/*` uses the restricted `sage_review` client
+   regardless of what renders it. New mobile need this creates: reviewer-role
+   gating in the app, which has none today (`RootGate` gates on server booleans
+   only) — the same gating Phase 10's sandbox will need.
+   Owner decisions D1-D4 (incl. tier C redefined and now allowed to reach
+   patients once attested) are recorded in PLAN.md; D2 will deliberately flip
+   two Phase 1 guardrail tests when implemented. Tier C also needs an
+   attestation-wording variant with attorney sign-off before it ships.
+
+1. **Name-mismatch warning — one user-ops check left.** Shipped 2026-07-27
+   (`a038899` backend + `fb759ad` mobile, OTA `f51b42cd`; prod-smoked:
+   mismatch→true, match→false, zero name echo; invariants locked in
+   `.claude/rules/backend-python.md`). REMAINING: user relaunches the app
+   twice (OTA pickup), rescans `~/Downloads/
+   SAMPLE-pathology-report-for-app-testing.pdf` (fictional "Jane Q. Sampleton"
+   ≠ account name) → amber banner should sit above the review findings.
+   Watch the `report_scanned` event's `name_mismatch` boolean over time for
+   the false-positive base rate before considering stricter matching.
+2. **PENDING USER DECISION — "My terms" further speed** (options given
    2026-07-26): (1) drop per-call get_cancer_slug lookup (~0.25s, free);
    (2) streaming = perceived-instant (~half day, OTA-shippable); (3) Groq
    8b-instant + anti-filler prompt (needs quality audit). Gemini Flash-Lite
@@ -69,7 +91,7 @@ and prune the rest. Last updated: 2026-07-26._
 - All lifecycle + safety flags live in prod; `SAFETY_CLASSIFIER_ENABLED=false`
   is the safety-layer kill switch (floor-only).
 - After any deploy touching bundling: check `/api/health` →
-  `prompt_files: 10, overlays: 10`.
+  `prompt_files: 12, overlays: 10`.
 
 ## Blockers / waiting on people
 - **Physician review of `config/safety/sage-safety-rules-v0.9.json` = LAUNCH
@@ -81,12 +103,20 @@ and prune the rest. Last updated: 2026-07-26._
   pilot recruiting timing. Trademark check runs later (not blocking builds).
 
 ## Shipped reference (details live in SAGE_TODO + memory, not here)
+- **Build #34 installed + device-verified 2026-07-27**: report-scan photo OCR
+  end-to-end (9/9 findings, labs display-only, de-id held). The #32 crash
+  saga is CLOSED — every lesson (autolinking silent skip, Metro fatal on
+  factory throws, binary strings gate, iOS 16 floor, Apple Vision engine,
+  OTA `--platform ios`) lives in `.claude/rules/mobile-ui.md` + CLAUDE.md.
+  Builds #32/#33 superseded; buildNumber 34 committed (`d02c601`).
 - Safety layer LIVE 2026-07-22 (tiers, audit table, eval gate 100%); Flask
   boundary CONFIRMED permanent by supervisor; guidelines adoption done
   (accounts split, AI_CALL telemetry, prompts-as-files, direct supabase-js
   phone OTP — Flask `/api/auth/phone/*` deprecated, DELETE next release).
 - Glossary (`glossary_terms` in prod, explain + CRUD endpoints) verified
   end-to-end in prod 2026-07-26.
+- Report-scan backend deferred-to-v1.1 items: report-extraction eval suite;
+  labs.* namespace.
 - Legacy `handle_new_user` trigger fixed 2026-07-25 (unused `user_profiles`
   table 500'd all phone signups — falls back to auth uid now).
 

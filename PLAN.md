@@ -374,3 +374,35 @@ General survivorship sources are the owner's ask to the CEO, who is also the
 attesting physician. Email drafted 2026-07-28. Targets: ASCO/ACS survivorship
 care guidelines, late-effects, exercise/nutrition. Without them the §10.3
 symptom-cluster half of extraction has no citable source and will underproduce.
+
+## D5. The review workspace is a MOBILE surface (owner direction, 2026-07-28)
+
+Supersedes PLAN.md conflict #2's framing, which treated the frontend as an open
+choice and leaned toward a page under `public/`.
+
+**Direction:** "Everything needs to put the phone app first, that is the main
+goal/product." Internal clinician tools are explicitly not an exemption — the
+correction was made about this very screen.
+
+**What changes:**
+- §5.4's workspace is built in `mobile/` as an expo-router surface, not in
+  `public/`. Web parity, if ever wanted, is a follow-up.
+- §5.4's layout is adapted rather than abandoned: side-by-side evidence and
+  connection becomes stacked panels; keyboard shortcuts become large tap
+  targets and a triage flow; "Tier A is a batch operation" becomes an
+  approve-the-rest action on a filtered group. The economics §5.4 actually
+  cares about — every quotation on screen WITH the connection, never behind a
+  click — is preserved, and arguably suits a clinician reviewing between
+  appointments better than a desk-bound tool.
+- §5.5's sandbox chat (Phase 10) lands on the same surface, which is a bonus:
+  it is a chat, and the chat already lives in the app.
+
+**What does NOT change:** the PHI boundary. The app talks to Flask; `/api/review/*`
+executes as `sage_review` regardless of what renders it. Acceptance #2 is still
+proven server-side.
+
+**New work this creates:** the app has no role gating today (`RootGate` in
+`mobile/app/_layout.tsx` branches on server-returned booleans, and
+`verify_token` discards JWT claims). Reviewer-role gating has to be built, and
+must satisfy §5.8 test 4 — a reviewer-only session cannot open a chat bound to
+a real patient. Phase 10's sandbox needs the same gating, so it is not wasted.
