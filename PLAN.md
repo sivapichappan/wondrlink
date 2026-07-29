@@ -406,3 +406,28 @@ proven server-side.
 `verify_token` discards JWT claims). Reviewer-role gating has to be built, and
 must satisfy §5.8 test 4 — a reviewer-only session cannot open a chat bound to
 a real patient. Phase 10's sandbox needs the same gating, so it is not wasted.
+
+## D7. Source hierarchy — peer-reviewed corroborates, never stands alone (2026-07-31)
+
+**Direction:** "Use peer-reviewed and open-access sources to double check and
+verify but NEVER as the only source."
+
+So a peer-reviewed review is admissible evidence, but a relationship may not
+rest on one alone. Every connection needs at least one official source — a
+professional body, government agency, or major cancer organisation — and a
+review may be added alongside it to corroborate or sharpen the claim.
+
+**Enforcement, when tier C and multi-source edges arrive:** record a source
+tier on `source_document` (`official` | `peer_reviewed`) and add a publication
+blocker for any edge whose evidence is entirely `peer_reviewed`. That makes the
+rule a property of the database rather than a habit of whoever runs extraction,
+which is the same reasoning as every other guarantee in this feature.
+
+**Consequence for the AI-arthralgia gap.** Joint pain from aromatase
+inhibitors, and joint pain as the leading reason women stop taking them
+(§10.2, §10.3), has no official openly-accessible source; the ASCO guidelines
+covering it are paywalled. Under D7 the two CC-BY reviews cannot carry that
+relationship by themselves. It therefore stays UNCOVERED unless an official
+source is obtained — the ACS/ASCO Survivorship Guideline is the most likely
+candidate already in hand, and the ASCO Adjuvant Endocrine Therapy Focused
+Update (paywalled, free ASCO account) is the direct fix.
