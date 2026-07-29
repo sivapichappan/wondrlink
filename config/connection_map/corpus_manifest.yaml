@@ -147,3 +147,70 @@ documents:
     edition: null
     scope: general_survivorship
     cancer: null
+
+  # --- survivorship + symptom management, added 2026-07-31 ---------------
+  # The original 20 documents yielded nothing: screening guidance, treatment
+  # algorithms and trial results state no symptom-treatment relationships.
+  # These nine do. Measured qualifying sentences (treatment+symptom, and
+  # symptom pairs) are noted per document so a future reader can see which
+  # sources actually carry the corpus.
+  #
+  # NCI PDQ summaries are US government works. Every one here is the
+  # HEALTH PROFESSIONAL version: the patient versions strip out exactly the
+  # specific drug-and-symptom sentences extraction depends on, and two were
+  # downloaded in that form by mistake before this was caught.
+  - file: nci_nausea_vomiting_hp_pdq.pdf          # 30 side-effect, 4 co-occurrence
+    title: "Nausea and Vomiting Related to Cancer Treatment (PDQ) — Health Professional Version"
+    publisher: NCI
+    edition: null
+    scope: general_survivorship
+    cancer: null
+  - file: nci_fatigue_hp_pdq.pdf                  # 22 / 77
+    title: "Fatigue (PDQ) — Health Professional Version"
+    publisher: NCI
+    edition: null
+    scope: general_survivorship
+    cancer: null
+  - file: asco_cipn_guideline_2020.pdf            # 27 / 5
+    title: "Prevention and Management of Chemotherapy-Induced Peripheral Neuropathy in Survivors of Adult Cancers: ASCO Guideline Update"
+    publisher: ASCO
+    edition: "2020"
+    scope: general_survivorship
+    cancer: null
+    notes: "Author manuscript deposited in Indiana University ScholarWorks; the published JCO version is paywalled."
+  - file: nci_sleep_disorders_hp_pdq.pdf          # 0 / 26
+    title: "Sleep Disorders (PDQ) — Health Professional Version"
+    publisher: NCI
+    edition: null
+    scope: general_survivorship
+    cancer: null
+  - file: nci_pain_hp_pdq.pdf                     # 8 / 14
+    title: "Cancer Pain (PDQ) — Health Professional Version"
+    publisher: NCI
+    edition: null
+    scope: general_survivorship
+    cancer: null
+  - file: nci_hot_flashes_night_sweats_pdq.pdf    # 8 / 23
+    title: "Hot Flashes and Night Sweats (PDQ) — Health Professional Version"
+    publisher: NCI
+    edition: null
+    scope: general_survivorship
+    cancer: null
+  - file: nci_lymphedema_pdq.pdf                  # 8 / 16
+    title: "Lymphedema (PDQ) — Health Professional Version"
+    publisher: NCI
+    edition: null
+    scope: general_survivorship
+    cancer: null
+  - file: acs_asco_breast_survivorship_2016.pdf   # 5 / 14
+    title: "American Cancer Society/ASCO Breast Cancer Survivorship Care Guideline"
+    publisher: "ACS and ASCO"
+    edition: "2016"
+    scope: cancer_specific
+    cancer: breast
+  - file: nci_cardiopulmonary_hp_pdq.pdf          # 0 / 3
+    title: "Cardiopulmonary Syndromes (PDQ) — Health Professional Version"
+    publisher: NCI
+    edition: null
+    scope: general_survivorship
+    cancer: null

@@ -89,11 +89,16 @@ def extract_pages(pdf_path: Path):
         for page in pdf.pages:
             words = page.extract_words() or []
             gutter = _gutter(page, words)
+            # x_tolerance=1: journal typesetting (ASCO/JCO) otherwise loses
+            # word spacing entirely — "Paclitaxelalsofrequentlycausesa..." —
+            # which measured 8.6% and 28.3% run-together words in two
+            # documents and made real sentences unquotable. NCI pages are
+            # unaffected by the setting, so it is safe across the corpus.
             if gutter is None:
-                pages.append(page.extract_text() or "")
+                pages.append(page.extract_text(x_tolerance=1) or "")
                 continue
-            left = page.crop((0, 0, gutter, page.height)).extract_text() or ""
-            right = page.crop((gutter, 0, page.width, page.height)).extract_text() or ""
+            left = page.crop((0, 0, gutter, page.height)).extract_text(x_tolerance=1) or ""
+            right = page.crop((gutter, 0, page.width, page.height)).extract_text(x_tolerance=1) or ""
             # Left column then right column: the order a person reads them.
             pages.append(left + ("\n" if left and right else "") + right)
     return pages

@@ -7,6 +7,47 @@ _Keep this for in-flight work only. Last updated: 2026-07-31._
 **State: everything is built and tested; the blocker was corpus content, and
 six new documents have just been staged to fix it.**
 
+### THE ONE REMAINING BLOCKER: the prompt is too conservative
+
+Corpus is now good and the pipeline is proven; extraction still returns
+**zero candidates, and zero rejections**, even on clean NCI health-professional
+sections with high concept density. Zero rejections is the tell: the model is
+not proposing anything at all, rather than proposing things that fail checks.
+
+`config/connection_map/prompts/pass1_section.md` is over-tuned toward restraint.
+It says, repeatedly, "an empty list is far more useful than a strained one",
+"only propose a relationship you can point at a single real sentence for",
+"if you find yourself editing a sentence to make it fit, that candidate does
+not belong". DeepSeek-V4-Pro obeys all of it maximally.
+
+**Next actions, in order:**
+1. Rebalance that prompt. Keep the exact-quotation rule absolutely (it is the
+   feature's whole guarantee, and the validator enforces it regardless), but
+   drop the repeated encouragement to return nothing. Add 2-3 WORKED EXAMPLES
+   showing a real source sentence and the candidate it should produce —
+   few-shot will move this further than more instruction.
+2. Verify against a section known to contain a qualifying sentence, e.g.
+   Cancer Pain PDQ `s0014-overview`, or Nausea PDQ sections.
+3. If the prompt alone does not move it, try a second model
+   (`MODEL_CONNECTION_EXTRACTOR=...`, e.g. Kimi-K2.6) before changing anything
+   structural. Change ONE variable per run.
+4. A useful smoke test that needs no model: `validate_pass1` already accepts
+   hand-written candidates, so a fixture proves the write path end to end.
+
+### Corpus state (good — do not redo)
+
+29 documents, **896 sections**, all re-ingested 2026-07-31 with BOTH fixes:
+two-column gutter detection AND `x_tolerance=1` (journal PDFs otherwise lose
+word spacing entirely — 28% run-together words in the ACS/ASCO guideline).
+Nine survivorship/symptom documents added; measured ~108 side-effect and ~182
+co-occurrence qualifying sentences.
+
+**Known remaining corpus defect:** the two JCO-formatted PDFs
+(`asco_cipn_guideline_2020.pdf`, `acs_asco_breast_survivorship_2016.pdf`) are
+still interleaved — their pages have a sidebar plus two body columns, and
+`_gutter()` only handles a single clean split. Prefer the NCI PDQ documents,
+which are clean. Fixing JCO needs multi-zone column detection.
+
 ### What to do next, in order
 
 1. **Add the 6 new documents to `config/connection_map/corpus_manifest.yaml`.**
