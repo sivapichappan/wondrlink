@@ -18,6 +18,10 @@ import pytest
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "lib"))
 
+from connection_map.extraction.repair import (  # noqa: E402
+    anchor_quote,
+    normalised_equal,
+)
 from connection_map.extraction.validate import (  # noqa: E402
     MIN_PASS2_EVIDENCE,
     find_exact_quote,
@@ -75,26 +79,19 @@ class TestExactCitation:
         assert SECTION[off:off + len(quote)] == quote
 
     @pytest.mark.parametrize("quote,why", [
-        ("joint pain is common with an aromatase inhibitor.", "case changed"),
-        ("Joint pain is common with an  aromatase inhibitor.", "spacing changed"),
         ("Joint pain is common with the aromatase inhibitor.", "a word changed"),
         ("Joint pain is common.",                              "sentence shortened"),
         ("Joint pain is common with an aromatase inhibitor, which patients dislike.",
          "clause appended"),
         ("Patients taking aromatase inhibitors often get sore joints.", "paraphrased"),
+        ("Aromatase inhibitors are safe and well tolerated.",  "wholly invented"),
     ])
-    def test_anything_short_of_exact_is_rejected(self, quote, why):
+    def test_an_altered_or_invented_sentence_is_still_rejected(self, quote, why):
+        # Re-anchoring bridges MECHANICAL differences only. A sentence the
+        # document does not contain is the case this pipeline exists to catch.
         ok, bad = validate_pass1(one(quoted_sentence=quote), SECTION, SLUGS, RELS)
         assert not ok, why
         assert bad[0]["reason"] == "quote_not_found"
-
-    def test_a_tidied_quote_is_what_fabrication_looks_like(self):
-        # The model "helpfully" normalising whitespace it copied is exactly
-        # the signature of a sentence it did not actually read.
-        ok, bad = validate_pass1(
-            one(quoted_sentence="Some patients report double spaced text"),
-            SECTION, SLUGS, RELS)
-        assert not ok and bad[0]["reason"] == "quote_not_found"
 
     def test_find_exact_quote_never_normalises(self):
         assert find_exact_quote(SECTION, "double  spaced") >= 0
@@ -247,3 +244,68 @@ class TestRejectionReporting:
             dict(one()["candidates"][0], src_concept_slug="nope"),
         ]}, SECTION, SLUGS, RELS)
         assert list(rejection_summary(bad))[0] == "quote_not_found"
+
+
+class TestReAnchoring:
+    """Owner decision D6: a near miss is re-anchored to the document's own
+    words rather than discarded.
+
+    The guarantee is unchanged — what gets STORED is always source text, so it
+    still passes the exact check in the database trigger and again at
+    publication. Only the way we FIND the sentence is tolerant.
+    """
+
+    def stored(self, quote):
+        ok, bad = validate_pass1(one(quoted_sentence=quote), SECTION, SLUGS, RELS)
+        return (ok[0] if ok else None), bad
+
+    def test_case_difference_is_recovered(self):
+        got, bad = self.stored("joint pain is common with an AROMATASE INHIBITOR.")
+        assert got and not bad
+        # The model's casing is discarded; the document's text is stored.
+        assert got["quoted_sentence"] == "Joint pain is common with an aromatase inhibitor."
+        assert got["quote_repaired"] is True
+
+    def test_tidied_whitespace_is_recovered_with_the_originals_spacing(self):
+        got, bad = self.stored("Some patients report double spaced text")
+        assert got and not bad
+        assert "double  spaced" in got["quoted_sentence"], "source spacing, not the model's"
+        assert got["quote_repaired"] is True
+
+    def test_a_repaired_quote_still_passes_the_exact_check(self):
+        # This is the whole point: the stored text is verbatim, so the
+        # database trigger and the publication re-check both still accept it.
+        got, _ = self.stored("joint pain is COMMON with an aromatase inhibitor.")
+        assert find_exact_quote(SECTION, got["quoted_sentence"]) == got["char_offset"]
+
+    def test_offset_points_at_the_stored_text(self):
+        got, _ = self.stored("JOINT PAIN IS COMMON WITH AN AROMATASE INHIBITOR.")
+        off, q = got["char_offset"], got["quoted_sentence"]
+        assert SECTION[off:off + len(q)] == q
+
+    def test_an_exact_quote_is_not_marked_repaired(self):
+        got, _ = self.stored("Joint pain is common with an aromatase inhibitor.")
+        assert got["quote_repaired"] is False
+
+    def test_curly_quotes_and_dashes_are_bridged(self):
+        section = "Use the patient\u2019s own words \u2014 they matter here."
+        model = "Use the patient's own words - they matter here."
+        got = anchor_quote(section, model)
+        assert got and got.repaired
+        assert got.quoted_sentence == section, "stores the source's typography"
+
+    def test_a_short_fragment_is_not_repaired(self):
+        # Too short to re-anchor safely: a few words can land anywhere.
+        assert anchor_quote(SECTION, "joint pain") is None
+
+    def test_repair_never_invents_text(self):
+        # Whatever comes back must be a literal slice of the section.
+        for probe in ("joint pain is common with an aromatase inhibitor.",
+                      "Some patients report double spaced text"):
+            got = anchor_quote(SECTION, probe)
+            assert got is not None
+            assert got.quoted_sentence in SECTION
+
+    def test_normalised_equal_is_reporting_only(self):
+        assert normalised_equal("Joint  PAIN", "joint pain")
+        assert not normalised_equal("joint pain", "joint ache")

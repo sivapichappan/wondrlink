@@ -1,4 +1,8 @@
 .env
+# Every env file, not just .env: .env.development held a real service-role key
+# and was NOT covered by the original pattern. The example stays tracked.
+.env.*
+!.env.example
 venv/
 __pycache__/
 .DS_Store

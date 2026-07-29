@@ -15,6 +15,8 @@ output for `quote_not_found` is telling you something specific about the prompt.
 import re
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
+from connection_map.extraction.repair import anchor_quote
+
 # Why a candidate was discarded before a human ever saw it.
 REJECT_REASONS = (
     "malformed",              # missing or wrong-typed fields
@@ -109,9 +111,13 @@ def validate_pass1(
             rejected.append(_reject("already_exists", cand))
             continue
 
-        offset = find_exact_quote(section_text, quote)
-        if offset < 0:
-            # Acceptance #11. The most important rejection in the pipeline.
+        # Acceptance #11. Locate the sentence, and store THE SOURCE'S words —
+        # never the model's. A near miss (case, spacing, curly quotes) is
+        # re-anchored to the document's own bytes rather than discarded; a
+        # sentence that is not in the document is still rejected, which is the
+        # case that matters.
+        anchor = anchor_quote(section_text, quote)
+        if anchor is None:
             rejected.append(_reject("quote_not_found", cand, quote[:80]))
             continue
 
@@ -120,8 +126,11 @@ def validate_pass1(
             "src_concept_slug": src,
             "dst_concept_slug": dst,
             "relationship": rel,
-            "quoted_sentence": quote,
-            "char_offset": offset,
+            # The document's text, which is why this still passes the exact
+            # check in the database trigger and again at publication.
+            "quoted_sentence": anchor.quoted_sentence,
+            "char_offset": anchor.char_offset,
+            "quote_repaired": anchor.repaired,
             "tier": "A",
             "extraction_pass": 1,
         })
