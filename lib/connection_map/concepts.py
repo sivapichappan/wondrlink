@@ -104,6 +104,7 @@ _ALLOWED_KEYS = _REQUIRED_KEYS | {
     "instrument",
     "notes",
     "spec_addition",
+    "aliases",
 }
 
 CONCEPTS_DIR = Path(__file__).resolve().parent.parent.parent / "config" / "connection_map"
@@ -176,6 +177,11 @@ def validate_concepts(doc: Dict[str, Any]) -> List[str]:
         elif cancer and cancer not in scopes:
             errors.append(f"{label}: cancer_scopes must include {cancer!r}")
 
+        aliases = c.get("aliases")
+        if aliases is not None and (not isinstance(aliases, list)
+                                    or not all(isinstance(a, str) and a.strip() for a in aliases)):
+            errors.append(f"{label}: aliases must be a list of non-empty strings")
+
         if "spec_addition" in c and c["spec_addition"] is not True:
             errors.append(f"{label}: spec_addition, when present, must be true")
 
@@ -198,4 +204,7 @@ def concept_rows(doc: Dict[str, Any]) -> List[Dict[str, Any]]:
         "terminology_code": c.get("terminology_code"),
         "instrument": c.get("instrument"),
         "cancer_scopes": c["cancer_scopes"],
+        # Surface forms the guidelines use (drug names for a class, lay terms
+        # for a clinical one). Recognition only — never evidence.
+        "aliases": c.get("aliases") or [],
     } for c in doc["concepts"]]

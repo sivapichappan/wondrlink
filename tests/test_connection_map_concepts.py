@@ -217,7 +217,7 @@ class TestSeedRows:
         rows = concept_rows(doc)
         expected = {"slug", "domain", "display_clinical", "display_patient",
                     "terminology_system", "terminology_code", "instrument",
-                    "cancer_scopes"}
+                    "cancer_scopes", "aliases"}
         assert rows and all(set(r) == expected for r in rows)
 
     def test_authoring_metadata_stays_out_of_the_database(self, doc):
@@ -231,6 +231,22 @@ class TestSeedRows:
         rows = {r["slug"]: r for r in concept_rows(doc)}
         assert rows["fatigue"]["terminology_system"] is None
         assert rows["fatigue"]["display_patient"] is None
+
+    def test_aliases_carry_the_words_the_guidelines_use(self, doc):
+        # Measured on the ingested corpus: drug names appear MORE often than
+        # the class names we chose (paclitaxel 44 sections vs taxane 30;
+        # letrozole + anastrozole + exemestane 81 vs "aromatase inhibitor" 34).
+        # Without these the extractor cannot connect a real side-effect
+        # sentence to the concept it is about.
+        rows = {r["slug"]: r for r in concept_rows(doc)}
+        assert "exemestane" in rows["aromatase_inhibitor"]["aliases"]
+        assert "paclitaxel" in rows["taxane_chemotherapy"]["aliases"]
+        assert "doxorubicin" in rows["anthracycline_chemotherapy"]["aliases"]
+        assert "arthralgia" in rows["joint_pain"]["aliases"]
+
+    def test_aliases_default_to_empty_not_null(self, doc):
+        rows = concept_rows(doc)
+        assert all(isinstance(r["aliases"], list) for r in rows)
 
     def test_row_count_matches_the_seed(self, doc):
         assert len(concept_rows(doc)) == len(doc["concepts"]) == 60

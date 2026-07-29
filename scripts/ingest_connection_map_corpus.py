@@ -46,20 +46,56 @@ from connection_map.ingest import (  # noqa: E402
 )
 
 
-def extract_pages(pdf_path: Path):
-    """Per-page text, exactly as pdfplumber returns it.
+def _gutter(page, words):
+    """x of a clean vertical gutter splitting the page into two columns, or None.
 
-    No strip, no normalization, no fallback extractor: a different extractor
-    produces different text, which would silently invalidate every offset
-    already stored for this document. A PDF pdfplumber cannot read is skipped
-    loudly instead.
+    A gutter is a vertical band no word crosses. Patient guidelines are
+    typeset in two columns, and reading them with plain extract_text()
+    interleaves the columns LINE BY LINE, producing text like
+
+        "Nausea and vomiting diagnosis until the end of life. After treatment,
+         your health will be monitored for side effects Nausea and vomiting
+         are common side effects and the return of cancer."
+
+    where two unrelated sentences are shredded together. Sentences in that
+    state cannot be quoted, so the extractor found nothing in the entire
+    breast patient corpus. Splitting on the gutter restores real prose.
+    """
+    if len(words) < 40:
+        return None
+    for frac in (0.5, 0.48, 0.52, 0.46, 0.54):
+        x = page.width * frac
+        crossing = sum(1 for w in words if w["x0"] < x - 2 and w["x1"] > x + 2)
+        left = sum(1 for w in words if w["x1"] <= x)
+        right = sum(1 for w in words if w["x0"] >= x)
+        # No word straddles the line, and both sides carry real content.
+        if crossing == 0 and left > 15 and right > 15:
+            return x
+    return None
+
+
+def extract_pages(pdf_path: Path):
+    """Per-page text from pdfplumber, column-aware.
+
+    Still no strip, no normalization, no fallback extractor: whatever comes
+    back is stored verbatim and every offset is measured against it. The only
+    judgement made here is READING ORDER — which column comes first — and that
+    is decided geometrically, not by rewriting any text.
     """
     import pdfplumber
 
     pages = []
     with pdfplumber.open(str(pdf_path)) as pdf:
         for page in pdf.pages:
-            pages.append(page.extract_text() or "")
+            words = page.extract_words() or []
+            gutter = _gutter(page, words)
+            if gutter is None:
+                pages.append(page.extract_text() or "")
+                continue
+            left = page.crop((0, 0, gutter, page.height)).extract_text() or ""
+            right = page.crop((gutter, 0, page.width, page.height)).extract_text() or ""
+            # Left column then right column: the order a person reads them.
+            pages.append(left + ("\n" if left and right else "") + right)
     return pages
 
 
