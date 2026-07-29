@@ -1,89 +1,93 @@
 # HANDOFF — active work
 
-_Keep this for in-flight work only. Fold anything permanent into `.claude/CLAUDE.md`
-and prune the rest. Last updated: 2026-07-27._
+_Keep this for in-flight work only. Last updated: 2026-07-31._
 
-## IN FLIGHT RIGHT NOW
+## RESUME HERE — connection map Phase 4 (extraction)
 
-0. **Connection map Phase 1 (schema/migrations/concept seed/corpus ingest) —
-   DONE, gate met 2026-07-28.** Spec at `SPEC-connection-map.md`, plan +
-   integration-point map + the 12 spec-vs-repo divergences at `PLAN.md`.
-   Commits `8ac9993`..`2bd9caf`. 350 tests green. The five
-   `supabase_migrations/2026_07_28_connection_map_*.sql` files are applied to
-   **sage-dev only** (`eizhshntrquvqwfsseeh`); **prod is untouched** and stays
-   that way until you say otherwise. All 29 probes in
-   `docs/connection_map/phase1_probe_checklist.md` pass, re-verified against a
-   from-scratch re-apply of the committed files; sage-dev left at zero rows.
-   NOT DONE by design: seeder/ingester have not been RUN against sage-dev
-   (needs its service key, or seed via MCP); no extraction, no runtime, no
-   patient-facing surface exists yet.
+**State: everything is built and tested; the blocker was corpus content, and
+six new documents have just been staged to fix it.**
 
-0b. **Connection map Phase 2 (reviewer roles + PHI boundary + audit log) —
-   built and probed 2026-07-28** (`a9b0aed`, 389 tests green). Owner chose the
-   **restricted database account** over app-layer separation. §5.8's dedicated
-   Postgres pool is unbuildable here (no driver, no connection string), so the
-   boundary is a `sage_review` Postgres role selected by a JWT `role` claim,
-   which PostgREST honours natively. **Proved on sage-dev:** as `sage_review`,
-   `patient_edge`/`patient_edge_event` give *permission denied for table* and
-   `auth` gives *permission denied for schema*. Probes:
-   `docs/connection_map/phase2_probe_checklist.md`.
-   Adversarial review then found and fixed three holes (`22c0050`): the
-   import-graph gate omitted `supabase_client` (the service-role client) so a
-   review module importing it passed CI; reviewer activation was broken 100% of
-   the time by a PL/pgSQL guard that parse-analysis defeats, and granting the
-   review role write access there would have made the trigger a
-   patient-existence oracle; and `reviewer_assignment` accepted an empty
-   `tiers` array (`array_length` of an empty array is NULL and CHECKs pass on
-   NULL). All re-probed. 395 tests green.
-   TWO THINGS STILL OPEN on Phase 2: (a) the PATIENT-side half of acceptance #5
-   is unproven — that trigger needs `patient_profiles`, absent on unseeded
-   sage-dev, so re-run the reviewers migration after bring-up or verify on prod
-   at release (the reviewer-side half is now fixed and proven); (b) acceptance
-   #2 (every `/review/*` route uses the restricted client) has no routes yet —
-   it lands with the Phase 3 workspace and must not be forgotten.
+### What to do next, in order
 
-0c. **Connection map Phase 3, database half — DONE and proven 2026-07-28**
-   (`3ed75c1`, 439 tests green). Attestation records + the §5.7 publication
-   gate. An edge went candidate → approved → physician-signed → published with
-   a frozen hash on sage-dev; 12 probes in
-   `docs/connection_map/phase3_probe_checklist.md` cover acceptance #6-#10,
-   #25 and §4.5. Key design: signing snapshots the reviewer's status so
-   revoking someone later does not invalidate what they signed while active;
-   "editing voids the attestation" is a content hash over the edge plus every
-   evidence row; the gate re-verifies every citation against its source AT
-   publication and reports all blockers at once; there is no override.
-   REMAINING IN PHASE 3: `/api/review/*` endpoints on the restricted client
-   (this is where acceptance #2 gets proven), the D1 loose re-check of
-   physician edits, and the review workspace itself. **Frontend decision
-   REVERSED by the owner 2026-07-28: the workspace is a MOBILE surface.**
-   "Everything needs to put the phone app first, that is the main goal/product"
-   — and internal clinician tools are not an exemption. §5.4's desktop
-   side-by-side + keyboard-shortcut layout gets adapted to stacked panels with
-   a triage-style flow (see `.claude/CLAUDE.md` conventions and the
-   mobile-is-the-product memory). The PHI boundary is unaffected: the app talks
-   to Flask, and `/api/review/*` uses the restricted `sage_review` client
-   regardless of what renders it. New mobile need this creates: reviewer-role
-   gating in the app, which has none today (`RootGate` gates on server booleans
-   only) — the same gating Phase 10's sandbox will need.
-   Owner decisions D1-D4 (incl. tier C redefined and now allowed to reach
-   patients once attested) are recorded in PLAN.md; D2 will deliberately flip
-   two Phase 1 guardrail tests when implemented. Tier C also needs an
-   attestation-wording variant with attorney sign-off before it ships.
+1. **Add the 6 new documents to `config/connection_map/corpus_manifest.yaml`.**
+   Already copied into `data/` and verified to extract cleanly:
 
-1. **Name-mismatch warning — one user-ops check left.** Shipped 2026-07-27
-   (`a038899` backend + `fb759ad` mobile, OTA `f51b42cd`; prod-smoked:
-   mismatch→true, match→false, zero name echo; invariants locked in
-   `.claude/rules/backend-python.md`). REMAINING: user relaunches the app
-   twice (OTA pickup), rescans `~/Downloads/
-   SAMPLE-pathology-report-for-app-testing.pdf` (fictional "Jane Q. Sampleton"
-   ≠ account name) → amber banner should sit above the review findings.
-   Watch the `report_scanned` event's `name_mismatch` boolean over time for
-   the false-positive base rate before considering stricter matching.
-2. **PENDING USER DECISION — "My terms" further speed** (options given
-   2026-07-26): (1) drop per-call get_cancer_slug lookup (~0.25s, free);
-   (2) streaming = perceived-instant (~half day, OTA-shippable); (3) Groq
-   8b-instant + anti-filler prompt (needs quality audit). Gemini Flash-Lite
-   parked (≈tie vs current + needs consent-copy revision naming Google).
+   | file | scope | cancer | side-effect sentences | co-occurrence |
+   |---|---|---|---|---|
+   | `asco_cipn_guideline_2020.pdf` | general_survivorship | null | 27 | 5 |
+   | `nci_lymphedema_pdq.pdf` | general_survivorship | null | 8 | 16 |
+   | `nci_hot_flashes_night_sweats_pdq.pdf` | general_survivorship | null | 8 | 23 |
+   | `acs_asco_breast_survivorship_2016.pdf` | cancer_specific | breast | 5 | 14 |
+   | `nci_fatigue_side_effects.pdf` | general_survivorship | null | 3 | 8 |
+   | `nci_cardiopulmonary_pdq.pdf` | general_survivorship | null | 0 | 1 |
+
+   Titles/publishers: ASCO CIPN Guideline Update 2020 (Loprinzi et al., author
+   manuscript via Indiana ScholarWorks); NCI PDQ Lymphedema / Hot Flashes and
+   Night Sweats / Cardiopulmonary Syndromes; ACS-ASCO Breast Cancer
+   Survivorship Care Guideline 2016 (Runowicz et al.); NCI Fatigue and Cancer.
+
+2. `set -a; . ./.env.development; set +a` then
+   `export TOGETHER_API_KEY="$(grep -E '^TOGETHER_API_KEY=' .env | head -1 | cut -d= -f2- | tr -d '\"'"'"' ')"`
+   — sourcing ALL of `.env` breaks the DB connection; take only the model key.
+3. `python3 scripts/ingest_connection_map_corpus.py` (new docs only ingest).
+4. `python3 scripts/run_connection_map_extraction.py --pass 1 --limit 12` first,
+   inspect, then drop `--limit` for the full run. Then `--pass 2`.
+5. Gate: **60+ candidates with verified evidence.** 51+67 qualifying sentences
+   are available, so this may land just short — see "if short" below.
+
+### If the run falls short of 60
+
+Three documents the research recommended were NOT saved and are the obvious
+top-up, measured from their HTML: **Nausea and Vomiting PDQ (29 side-effect
+sentences — the single richest), Pain PDQ (8), Cognitive Impairment PDQ (2)**.
+All at `cancer.gov/about-cancer/treatment/side-effects/...-hp-pdq`. Also note
+the saved Fatigue file is the SHORT patient page (3 sentences); the
+health-professional PDQ version scored 23.
+
+### Open decision for the owner
+
+**Do peer-reviewed open-access reviews count as sources?** The spec's most
+important relationship — joint pain from aromatase inhibitors, and joint pain
+as the leading reason women stop taking them (§10.2 and §10.3) — has NO
+official openly-accessible source; every ASCO guideline covering it is
+paywalled. Two CC-BY reviews cover it exactly (Frontiers in Endocrinology 2021
+PMC8353230; Rheumatology Advances in Practice 2024 PMC11003819, which contains
+"joint pain is noted to be the most common reason for ceasing AI therapy").
+Recommendation given: accept them, tagged as a lower source tier shown on the
+review card, since the physician signs each connection anyway. NOT YET ANSWERED.
+
+### Hard-won facts, do not rediscover
+
+- **Never trust a researcher's "verbatim" quote.** The one supplied for the
+  lymphedema PDQ is not in the document. The document is still good.
+- **PDF column interleaving** silently shredded the original patient
+  guidelines; `_gutter()` in the ingest script fixes it. A FINISHED ingest
+  proves nothing about text quality — grep the stored text for a real sentence.
+- **Concept aliases matter more than the class names.** Drug names appear more
+  often than classes (paclitaxel 44 sections vs taxane 30).
+- The extractor correctly returns nothing for bibliographies, trial-results
+  tables, and generic "side effects of treatment" copy. Zero candidates is
+  often right; check WHICH sections were read before touching the prompt.
+
+## Everything else on the connection map
+
+Phases 1-3 are COMPLETE and adversarially reviewed (schema, corpus store,
+reviewer roles + `sage_review` PHI boundary, attestation, publication gate,
+mobile review workspace + publish screen). 552 tests green. Applied to
+**sage-dev only — prod untouched**, and 27+ commits are UNPUSHED.
+Probe checklists: `docs/connection_map/phase{1,2,3}_probe_checklist.md`.
+Plan, decisions D1-D6 and the 12 spec-vs-repo divergences: `PLAN.md`.
+Screen preview for design review (published artifact):
+https://claude.ai/code/artifact/7edcc192-e3ba-4ef3-8b36-451f3f1ce333
+
+**Still unproven:** the patient-side half of reviewer/patient account
+exclusivity (needs `patient_profiles`, absent on sage-dev); acceptance #2's
+route test lands with real reviewer traffic. **Not built at all:** every
+patient-facing surface (Phases 7-9) — the question in chat, the honesty
+commitment, the revision view.
+
+**Security:** `.env.development` holds a real sage-dev service-role key and is
+gitignored (`.env.*`). The owner should rotate it — it was pasted in a chat.
 
 ## Standing operations
 - Weekly `python3 scripts/modeler_report.py --all` AND
