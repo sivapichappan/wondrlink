@@ -1,0 +1,62 @@
+<!--
+  Supabase "Reauthentication" email. Paste into
+  Authentication > Emails > Reauthentication, subject: "Your Sage code"
+
+  Sent by supabase.auth.reauthenticate(), used to re-confirm identity before a
+  sensitive change. This is the ONE Supabase template whose default already
+  sends a code rather than a link, because reauthentication has no link form.
+
+  It is written out here anyway so the set is complete and checkable: the test
+  asserts all six templates carry {{ .Token }} and none carries
+  {{ .ConfirmationURL }}, and "five of six, and the sixth is fine by default,
+  trust me" is exactly the kind of exception that stops being true later.
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background-color:#faf8f5;padding:32px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="max-width:480px;background-color:#ffffff;border-radius:14px;border:1px solid #ece7e0;">
+        <tr>
+          <td style="padding:32px 32px 8px 32px;">
+            <p style="margin:0;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#8a8178;">
+              Sage
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:8px 32px 0 32px;">
+            <h1 style="margin:0;font-size:23px;line-height:30px;font-weight:600;color:#2f2a24;">
+              Here is your code
+            </h1>
+            <p style="margin:12px 0 0 0;font-size:15px;line-height:23px;color:#5f584f;">
+              Enter this code in the app to confirm it is you.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 32px;">
+            <div style="background-color:#faf8f5;border:1px solid #ece7e0;border-radius:10px;padding:20px;text-align:center;">
+              <span style="font-size:34px;line-height:40px;letter-spacing:9px;font-weight:600;color:#2f2a24;font-family:'SF Mono',Menlo,Consolas,monospace;">
+                {{ .Token }}
+              </span>
+            </div>
+            <p style="margin:14px 0 0 0;font-size:13px;line-height:20px;color:#8a8178;text-align:center;">
+              The code works for one hour.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 32px 32px 32px;">
+            <p style="margin:0;padding-top:20px;border-top:1px solid #ece7e0;font-size:13px;line-height:20px;color:#8a8178;">
+              If you did not ask for this, do not enter the code. It is worth changing your password.
+            </p>
+          </td>
+        </tr>
+      </table>
+      <p style="max-width:480px;margin:20px auto 0 auto;font-size:12px;line-height:18px;color:#a39a90;text-align:center;">
+        Sage is a support tool. It does not give medical advice and it is not a substitute for your care team.
+      </p>
+    </td>
+  </tr>
+</table>

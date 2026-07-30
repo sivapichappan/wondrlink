@@ -1,0 +1,64 @@
+<!--
+  Supabase "Magic Link" email. Paste into
+  Authentication > Emails > Magic Link, subject: "Your Sage code"
+
+  The app never calls the magic-link flow: sign-in is email + password, and the
+  only one-time codes it asks for are sign-up confirmation and password reset.
+  This template exists anyway because the DEFAULT Supabase template for it
+  contains {{ .ConfirmationURL }}, and an unused template that sends a link is
+  still a link that can be sent — by a stray signInWithOtp call, by a future
+  feature, or by someone testing from the dashboard.
+
+  Owner direction: codes on phone and email, no links anywhere. So every one of
+  the six Supabase templates carries {{ .Token }}, and a test holds all six to
+  it. Verifying a code from this template uses type 'email'.
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background-color:#faf8f5;padding:32px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="max-width:480px;background-color:#ffffff;border-radius:14px;border:1px solid #ece7e0;">
+        <tr>
+          <td style="padding:32px 32px 8px 32px;">
+            <p style="margin:0;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#8a8178;">
+              Sage
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:8px 32px 0 32px;">
+            <h1 style="margin:0;font-size:23px;line-height:30px;font-weight:600;color:#2f2a24;">
+              Here is your code
+            </h1>
+            <p style="margin:12px 0 0 0;font-size:15px;line-height:23px;color:#5f584f;">
+              Enter this code in the app to sign in.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 32px;">
+            <div style="background-color:#faf8f5;border:1px solid #ece7e0;border-radius:10px;padding:20px;text-align:center;">
+              <span style="font-size:34px;line-height:40px;letter-spacing:9px;font-weight:600;color:#2f2a24;font-family:'SF Mono',Menlo,Consolas,monospace;">
+                {{ .Token }}
+              </span>
+            </div>
+            <p style="margin:14px 0 0 0;font-size:13px;line-height:20px;color:#8a8178;text-align:center;">
+              The code works for one hour.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 32px 32px 32px;">
+            <p style="margin:0;padding-top:20px;border-top:1px solid #ece7e0;font-size:13px;line-height:20px;color:#8a8178;">
+              If you did not ask to sign in, you can ignore this email and nothing will happen.
+            </p>
+          </td>
+        </tr>
+      </table>
+      <p style="max-width:480px;margin:20px auto 0 auto;font-size:12px;line-height:18px;color:#a39a90;text-align:center;">
+        Sage is a support tool. It does not give medical advice and it is not a substitute for your care team.
+      </p>
+    </td>
+  </tr>
+</table>

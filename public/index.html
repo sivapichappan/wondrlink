@@ -6278,6 +6278,16 @@
                 </div>
                 <button type="submit" class="auth-btn" id="authSubmitBtn">Sign In</button>
             </form>
+            <!-- Sign-up confirmation by six digit code. Email confirmation used to
+                 be a link the user opened in a browser; it is a code now, on every
+                 surface, so this form has somewhere to type it. Without it the web
+                 sign-up dead-ends: the email arrives and there is no field for it. -->
+            <form class="auth-form" id="authCodeForm" style="display:none;" aria-label="Confirmation code">
+                <input type="text" class="auth-input" id="authCode" placeholder="Six digit code"
+                    aria-label="Six digit code" inputmode="numeric" autocomplete="one-time-code"
+                    maxlength="6" required>
+                <button type="submit" class="auth-btn" id="authCodeBtn">Confirm and continue</button>
+            </form>
             <div class="auth-toggle">
                 <span id="authToggleText">Don't have an account?</span>
                 <a id="authToggleLink" onclick="toggleAuthMode()">Create one</a>
@@ -8223,7 +8233,66 @@
             authPassword.value = "";
             authError.style.display = "none";
             authSuccess.style.display = "none";
+            // Reopening the modal must not leave a half-finished confirmation
+            // on screen with no email behind it.
+            const codeForm = document.getElementById('authCodeForm');
+            if (codeForm) {
+                codeForm.style.display = "none";
+                document.getElementById('authCode').value = "";
+            }
+            authForm.style.display = "";
+            pendingConfirmEmail = null;
         }
+
+        // The address awaiting a confirmation code, set when sign-up returns no
+        // session. verifyOtp needs the email as well as the code.
+        let pendingConfirmEmail = null;
+
+        // Confirm the six digit code from the sign-up email.
+        //
+        // type: 'signup' is the confirm-signup token, which is what signUp() sends.
+        // NOT 'email' (that is the passwordless/magic-link type) and NOT 'recovery'
+        // (password reset). Getting this wrong fails on every valid code.
+        document.getElementById('authCodeForm').addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const code = document.getElementById('authCode').value.trim();
+            const btn = document.getElementById('authCodeBtn');
+            if (!code || !pendingConfirmEmail) return;
+            btn.disabled = true;
+            btn.textContent = "Confirming...";
+            try {
+                const { data, error } = await supabaseClient.auth.verifyOtp({
+                    email: pendingConfirmEmail,
+                    token: code,
+                    type: 'signup',
+                });
+                if (error) {
+                    const m = (error.message || "").toLowerCase();
+                    showAuthError(
+                        m.includes("expired") ? "That code has expired. Please sign up again to get a new one."
+                        : m.includes("invalid") || m.includes("token") ? "That code did not work. Please check it and try again."
+                        : error.message);
+                    return;
+                }
+                if (!data.session) {
+                    showAuthError("Could not start a session. Please try signing in.");
+                    return;
+                }
+                accessToken = data.session.access_token;
+                currentUser = data.user;
+                pendingConfirmEmail = null;
+                document.getElementById('authCodeForm').style.display = 'none';
+                document.getElementById('authForm').style.display = '';
+                showMainApp();
+                await loadDataSources();
+                await loadExistingProfile();
+            } catch (err) {
+                showAuthError("Network error. Please try again.");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Confirm and continue";
+            }
+        });
 
         // Handle auth form submission
         authForm.addEventListener("submit", async (e) => {
@@ -8261,19 +8330,19 @@
                         await loadDataSources();
                         await loadExistingProfile();
                     } else {
-                        // No session means email confirmation is required - show SUCCESS not error
+                        // No session means the address needs confirming. That is a
+                        // six digit CODE now, not a link, so ask for it here rather
+                        // than sending the user to an inbox and back.
+                        pendingConfirmEmail = email;
                         showAuthSuccess(`
                             <strong>Account created!</strong><br>
-                            Check your email to confirm your account, then sign in.<br>
+                            We sent a six digit code to ${email}. Enter it below.<br>
                             <small style="opacity: 0.8;">(Check your spam folder if you don't see it)</small>
                         `);
-                        // Switch to login mode
-                        isLoginMode = true;
-                        authTitle.textContent = "Welcome Back";
-                        authSubtitle.textContent = "Sign in to access your colon cancer care guide";
-                        authSubmitBtn.textContent = "Sign In";
-                        authToggleText.textContent = "Don't have an account?";
-                        authToggleLink.textContent = "Create one";
+                        document.getElementById('authForm').style.display = 'none';
+                        document.getElementById('authSignupNotice').style.display = 'none';
+                        document.getElementById('authCodeForm').style.display = '';
+                        document.getElementById('authCode').focus();
                     }
                 }
             } catch (err) {

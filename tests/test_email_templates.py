@@ -24,7 +24,24 @@ sys.path.insert(0, str(_REPO / "lib"))
 from branding import APP_NAME  # noqa: E402
 
 TEMPLATES = _REPO / "config" / "email_templates"
-FILES = ("confirm_signup.html", "reset_password.html")
+# All SIX Supabase email templates. The owner's rule is codes on phone and
+# email, no links anywhere, so every template is listed and every one is held to
+# the same check — not just the two the app calls today.
+#
+# Supabase's DEFAULTS for magic link, invite and change-email all contain
+# {{ .ConfirmationURL }}. An unused template that sends a link is still a link
+# that can be sent: by a stray call, by a future screen, or by an admin inviting
+# someone from the dashboard. Reauthentication already defaults to a code and is
+# written out anyway, because "five of six and the sixth is fine by default" is
+# the kind of exception that quietly stops being true.
+FILES = (
+    "confirm_signup.html",
+    "reset_password.html",
+    "magic_link.html",
+    "change_email.html",
+    "invite.html",
+    "reauthentication.html",
+)
 
 
 def raw(name: str) -> str:
@@ -82,8 +99,20 @@ class TestPatientFacingCopy:
         assert "MySage" not in visible(name)
 
     def test_says_what_to_do_with_an_unexpected_email(self, name):
-        # Someone who did not ask for this needs to know it is safe to ignore.
-        assert "ignore" in visible(name).lower()
+        """Someone who did not ask for this must be told what to do about it.
+
+        NOT always "ignore it". For sign-up, sign-in and invite, ignoring really
+        is safe and saying so calms the reader. For a CHANGE OF EMAIL ADDRESS or
+        a REAUTHENTICATION, an unexpected message may be someone working on
+        taking the account, and telling that reader to ignore it is bad advice —
+        those two say not to enter the code and to change the password instead.
+
+        So the property is "it tells you what to do", not "it contains the word
+        ignore", which is what this asserted before the second kind existed.
+        """
+        text = visible(name).lower()
+        assert "ignore" in text or "do not enter" in text, (
+            f"{name} leaves an unexpected recipient with no instruction")
 
     def test_reading_level_is_plain(self, name):
         # Reuses the copy lint's grade estimator rather than a second one.
@@ -117,3 +146,70 @@ class TestOperatorInstructions:
 
     def test_warns_that_confirm_email_must_be_on(self):
         assert "Confirm email" in self.README
+
+
+class TestEveryTemplateIsCovered:
+    """The rule is codes everywhere, so the rule has to bind every template that
+    exists — including one added later by someone who did not read this file."""
+
+    def test_no_template_file_escapes_the_checks(self):
+        on_disk = {p.name for p in TEMPLATES.glob("*.html")}
+        assert on_disk == set(FILES), (
+            "a template file exists that the code-not-link checks do not cover: "
+            f"{sorted(on_disk ^ set(FILES))}. Add it to FILES.")
+
+    def test_all_six_supabase_templates_are_present(self):
+        # Missing one does not fail loudly anywhere: the dashboard just keeps
+        # its default, which for three of these sends a link.
+        assert len(FILES) == 6
+
+    def test_not_one_template_can_send_a_link(self):
+        offenders = [n for n in FILES if "{{ .ConfirmationURL }}" in body(n)]
+        assert not offenders, f"these would send a link: {offenders}"
+
+    def test_every_template_carries_a_code(self):
+        missing = [n for n in FILES if "{{ .Token }}" not in body(n)]
+        assert not missing, f"these carry no code: {missing}"
+
+
+class TestTakeoverRiskCopy:
+    """The two templates that can signal an account takeover must not tell the
+    reader to ignore it. Signing up, signing in and being invited are harmless
+    to ignore; someone changing your email address is not."""
+
+    TAKEOVER = ("change_email.html", "reauthentication.html")
+
+    @pytest.mark.parametrize("name", TAKEOVER)
+    def test_tells_the_reader_not_to_enter_the_code(self, name):
+        assert "do not enter" in visible(name).lower()
+
+    @pytest.mark.parametrize("name", TAKEOVER)
+    def test_tells_the_reader_to_change_their_password(self, name):
+        assert "password" in visible(name).lower()
+
+    @pytest.mark.parametrize("name", TAKEOVER)
+    def test_does_not_say_nothing_will_happen(self, name):
+        # The harmless-flow reassurance would be false here.
+        assert "nothing will happen" not in visible(name).lower()
+
+
+class TestReadmeCoversEveryTemplate:
+    """The dashboard steps live only here. A template the README does not name is
+    a template nobody pastes in, which means it silently keeps the Supabase
+    default — and three of those defaults send links."""
+
+    README = (TEMPLATES / "README.md").read_text(encoding="utf-8")
+
+    @pytest.mark.parametrize("name", FILES)
+    def test_each_template_file_is_named(self, name):
+        assert name in self.README
+
+    def test_the_sequencing_hazard_is_written_down(self):
+        # Shipping the app and the templates apart breaks sign-up in one
+        # direction or the other, and neither failure is self-explanatory.
+        assert "Order matters" in self.README
+        assert "eas update" in self.README
+
+    def test_existing_unconfirmed_accounts_are_flagged(self):
+        # Turning Confirm email on is not a no-op for accounts that predate it.
+        assert "Confirm email ON affects accounts that already exist" in self.README

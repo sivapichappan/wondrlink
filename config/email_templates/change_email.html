@@ -1,0 +1,66 @@
+<!--
+  Supabase "Change Email Address" email. Paste into
+  Authentication > Emails > Change Email Address, subject: "Your Sage code"
+
+  Sent when an account changes its email. With "Secure email change" on (the
+  Supabase default) this goes to BOTH the old and the new address, and both must
+  be confirmed — which is the behaviour you want on a patient account, because it
+  means losing an inbox is not enough to take the account.
+
+  The app has no change-email screen yet. The template is here for the same
+  reason as magic_link.html: the Supabase default contains
+  {{ .ConfirmationURL }}, and the first person to build that screen would
+  otherwise ship a link without noticing. Verifying a code from this template
+  uses type 'email_change'.
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background-color:#faf8f5;padding:32px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="max-width:480px;background-color:#ffffff;border-radius:14px;border:1px solid #ece7e0;">
+        <tr>
+          <td style="padding:32px 32px 8px 32px;">
+            <p style="margin:0;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#8a8178;">
+              Sage
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:8px 32px 0 32px;">
+            <h1 style="margin:0;font-size:23px;line-height:30px;font-weight:600;color:#2f2a24;">
+              Here is your code
+            </h1>
+            <p style="margin:12px 0 0 0;font-size:15px;line-height:23px;color:#5f584f;">
+              Someone asked to change the email address on this Sage account. Enter this code in
+              the app to confirm the change.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 32px;">
+            <div style="background-color:#faf8f5;border:1px solid #ece7e0;border-radius:10px;padding:20px;text-align:center;">
+              <span style="font-size:34px;line-height:40px;letter-spacing:9px;font-weight:600;color:#2f2a24;font-family:'SF Mono',Menlo,Consolas,monospace;">
+                {{ .Token }}
+              </span>
+            </div>
+            <p style="margin:14px 0 0 0;font-size:13px;line-height:20px;color:#8a8178;text-align:center;">
+              The code works for one hour.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:0 32px 32px 32px;">
+            <p style="margin:0;padding-top:20px;border-top:1px solid #ece7e0;font-size:13px;line-height:20px;color:#8a8178;">
+              If you did not ask for this, do not enter the code. Your email address stays as it is,
+              and it is worth changing your password.
+            </p>
+          </td>
+        </tr>
+      </table>
+      <p style="max-width:480px;margin:20px auto 0 auto;font-size:12px;line-height:18px;color:#a39a90;text-align:center;">
+        Sage is a support tool. It does not give medical advice and it is not a substitute for your care team.
+      </p>
+    </td>
+  </tr>
+</table>
