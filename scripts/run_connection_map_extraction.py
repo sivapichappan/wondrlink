@@ -107,7 +107,24 @@ def load_prompt(name: str) -> str:
     return (PROMPTS / name).read_text(encoding="utf-8")
 
 
-def together_json(prompt: str, model: str, max_tokens: int = 2000) -> str:
+def together_json(prompt: str, model: str, max_tokens: int = 4000) -> str:
+    """One extraction call.
+
+    `enable_thinking: False` is LOAD-BEARING, not a tuning knob. The extractor is
+    a reasoning model, and on a real 12k-character section its thinking consumes
+    the whole token budget before a single visible character is emitted (measured:
+    completion_tokens hit the cap, content came back empty). Under
+    `response_format=json_object` that does not surface as an error — the
+    constrained decoder must emit SOME valid object, so it emits the cheapest one,
+    `{"candidates": []}` in 7 tokens, or echoes the input back as
+    `{"section_text": "..."}`. Both read as "the section states nothing".
+
+    That cost a day of chasing the prompt. The same trap, with the same fix, is
+    documented for the chat model in .claude/rules/backend-python.md.
+
+    With thinking off the same section returns four cited candidates in 263
+    tokens. Raising max_tokens does NOT substitute for this.
+    """
     from together import Together
 
     client = Together(api_key=os.environ["TOGETHER_API_KEY"])
@@ -117,6 +134,7 @@ def together_json(prompt: str, model: str, max_tokens: int = 2000) -> str:
         max_tokens=max_tokens,
         temperature=0.1,          # near-deterministic: this is extraction, not writing
         response_format={"type": "json_object"},
+        chat_template_kwargs={"enable_thinking": False},
     )
     return resp.choices[0].message.content or ""
 
@@ -149,6 +167,9 @@ def main() -> int:
                 .contains("cancer_scopes", [args.cancer])
                 .execute()).data or []
     by_slug = {c["slug"]: c for c in concepts}
+    # Both passes hand this to the validator so RELATIONSHIP_DOMAINS is enforced
+    # rather than merely stated in the prompt.
+    domains_by_slug = {c["slug"]: c["domain"] for c in concepts}
     if not concepts:
         print("ERROR: no concepts seeded; run scripts/seed_connection_map_concepts.py")
         return 1
@@ -174,7 +195,8 @@ def main() -> int:
                         for s, d, r in existing if s in id_to_slug and d in id_to_slug}
 
     if args.pass_no == 2:
-        return run_pass2(db, args, model, by_slug, concept_lines, existing_triples)
+        return run_pass2(db, args, model, by_slug, concept_lines, existing_triples,
+                         domains_by_slug)
 
     # --- pass 1 -------------------------------------------------------------
     docs = {d["id"]: d for d in (db.table("source_document")
@@ -192,7 +214,7 @@ def main() -> int:
                 if MIN_SECTION_CHARS <= len(s["text"]) <= MAX_SECTION_CHARS]
 
     terms = concept_terms(concepts)
-    domain_of = {c["slug"]: c["domain"] for c in concepts}
+    domain_of = domains_by_slug
     eligible = len(sections)
     ranked = []
     for sec in sections:
@@ -224,6 +246,7 @@ def main() -> int:
     rel_lines = "\n".join(f"- {r}" for r in PASS1_RELATIONSHIPS)
 
     accepted_total, rejected_all, repaired_total, written = 0, [], 0, 0
+    no_answer = 0
     seen_triples = set(existing_triples)
     started = time.time()
 
@@ -243,12 +266,22 @@ def main() -> int:
 
         ok, bad = validate_pass1(
             parse_model_json(raw), sec["text"],
-            by_slug.keys(), PASS1_RELATIONSHIPS, existing_triples=seen_triples)
+            by_slug.keys(), PASS1_RELATIONSHIPS, existing_triples=seen_triples,
+            concept_domains=domains_by_slug)
 
         repaired = sum(1 for c in ok if c.get("quote_repaired"))
         repaired_total += repaired
         accepted_total += len(ok)
         rejected_all.extend(bad)
+
+        # A section the model did not ANSWER is a different event from a section
+        # that states nothing, and it is the one worth interrupting for.
+        unanswered = [r for r in bad
+                      if r["reason"] in ("unparsable_response", "no_candidate_list")]
+        no_answer += len(unanswered)
+        for r in unanswered:
+            print(f"  [{n}/{len(sections)}] {sec['section_ref']}: "
+                  f"NO ANSWER ({r['reason']}: {r['detail']})")
 
         if ok:
             print(f"  [{n}/{len(sections)}] {doc.get('title','?')[:38]} {sec['section_ref']}: "
@@ -293,6 +326,7 @@ def main() -> int:
     print(f"candidates accepted {accepted_total}")
     print(f"  re-anchored       {repaired_total}  (stored the source's own words)")
     print(f"written to review   {written}{'  (dry run)' if args.dry_run else ''}")
+    print(f"sections unanswered {no_answer}  (model did not answer; NOT 'states nothing')")
     print(f"rejected            {len(rejected_all)}")
     for reason, count in rejection_summary(rejected_all).items():
         print(f"  {reason:22} {count}")
@@ -302,12 +336,14 @@ def main() -> int:
             "finished_at": "now()",
             "stats": {"sections": len(sections), "accepted": accepted_total,
                       "written": written, "repaired": repaired_total,
+                      "unanswered": no_answer,
                       "rejected": rejection_summary(rejected_all)},
         }).eq("id", run_id).execute()
     return 0
 
 
-def run_pass2(db, args, model, by_slug, concept_lines, existing_triples) -> int:
+def run_pass2(db, args, model, by_slug, concept_lines, existing_triples,
+              domains_by_slug) -> int:
     """Chain verified quotations across sections (§6.2). Never introduces a
     quotation: it may only cite evidence pass 1 already verified."""
     evidence = (db.table("master_edge_evidence")
@@ -332,7 +368,8 @@ def run_pass2(db, args, model, by_slug, concept_lines, existing_triples) -> int:
     raw = together_json(prompt, model, max_tokens=3000)
     ok, bad = validate_pass2(parse_model_json(raw), [e["id"] for e in evidence],
                              by_slug.keys(), RELATIONSHIP_TYPES,
-                             existing_triples=existing_triples)
+                             existing_triples=existing_triples,
+                             concept_domains=domains_by_slug)
 
     print(f"\nchains accepted {len(ok)}, rejected {len(bad)}")
     for reason, count in rejection_summary(bad).items():

@@ -10,6 +10,7 @@ Offline: no model, no database. The validators are pure by design so these
 rules can be proven without either.
 """
 
+import re
 import sys
 from pathlib import Path
 
@@ -18,12 +19,19 @@ import pytest
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "lib"))
 
+from connection_map.concepts import (  # noqa: E402
+    CONCEPT_DOMAINS,
+    RELATIONSHIP_DOMAINS,
+    RELATIONSHIP_TYPES,
+)
 from connection_map.extraction.repair import (  # noqa: E402
     anchor_quote,
     normalised_equal,
 )
 from connection_map.extraction.validate import (  # noqa: E402
     MIN_PASS2_EVIDENCE,
+    REJECT_REASONS,
+    domain_violation,
     find_exact_quote,
     parse_model_json,
     rejection_summary,
@@ -135,9 +143,13 @@ class TestPass1Vocabulary:
         assert not ok
         assert {r["reason"] for r in bad} == {"malformed", "empty_quote"}
 
-    def test_empty_output_is_normal(self):
+    def test_an_empty_candidate_list_is_normal(self):
+        # A section that states no relationship is the common case and must not
+        # produce a rejection. A reply that was not an ANSWER is a different
+        # thing entirely and is now counted — see TestSilentModelFailures. This
+        # test used to assert that `None` was also "normal", which is precisely
+        # what let a broken extractor read as a quiet corpus.
         assert validate_pass1({"candidates": []}, SECTION, SLUGS, RELS) == ([], [])
-        assert validate_pass1(None, SECTION, SLUGS, RELS) == ([], [])
 
     def test_accepted_candidates_are_tier_a_pass_1(self):
         ok, _ = validate_pass1(one(), SECTION, SLUGS, RELS)
@@ -309,3 +321,156 @@ class TestReAnchoring:
     def test_normalised_equal_is_reporting_only(self):
         assert normalised_equal("Joint  PAIN", "joint pain")
         assert not normalised_equal("joint pain", "joint ache")
+
+
+DOMAINS = {
+    "joint_pain": "symptom",
+    "fatigue": "symptom",
+    "aromatase_inhibitor": "treatment",
+    "medication_adherence": "daily_life",
+}
+
+
+class TestSilentModelFailures:
+    """A run that reports "0 accepted, 0 rejected" must mean the section stated
+    nothing — never that the extractor was broken.
+
+    Both of this extractor's real failures returned zero candidates silently: an
+    empty list it did not mean, and the section text echoed back as
+    `{"section_text": "..."}`. Neither was visible in any counter, so a genuinely
+    broken run looked exactly like a quiet corpus for an entire debugging
+    session. These are the counters that tell them apart.
+    """
+
+    def test_echoing_the_prompt_back_is_reported(self):
+        ok, bad = validate_pass1({"section_text": SECTION}, SECTION, SLUGS, RELS)
+        assert not ok
+        assert [r["reason"] for r in bad] == ["no_candidate_list"]
+
+    def test_unparsable_reply_is_reported(self):
+        ok, bad = validate_pass1(parse_model_json("I cannot help with that"),
+                                 SECTION, SLUGS, RELS)
+        assert not ok
+        assert [r["reason"] for r in bad] == ["unparsable_response"]
+
+    def test_a_genuinely_empty_answer_is_not_a_rejection(self):
+        # The legitimate case must stay silent, or the signal is worthless.
+        ok, bad = validate_pass1({"candidates": []}, SECTION, SLUGS, RELS)
+        assert not ok and not bad
+
+    def test_detail_names_the_keys_without_dumping_the_section(self):
+        _, bad = validate_pass1({"section_text": SECTION}, SECTION, SLUGS, RELS)
+        assert "section_text" in bad[0]["detail"]
+        assert SECTION not in bad[0]["detail"], "a summary, not the echoed text"
+
+    def test_pass2_reports_it_too(self):
+        ok, bad = validate_pass2({"section_text": "..."}, ["e1", "e2"], SLUGS, RELS)
+        assert not ok and [r["reason"] for r in bad] == ["no_candidate_list"]
+
+    def test_every_reason_used_is_declared(self):
+        for reason in ("no_candidate_list", "unparsable_response", "wrong_domain"):
+            assert reason in REJECT_REASONS
+
+
+class TestRelationshipDomains:
+    """`side_effect_of` runs symptom -> treatment. The prompt says so and a model
+    ignored it, proposing `weight_gain --side_effect_of--> nausea`, which asserts
+    that nausea is a treatment. A closed vocabulary makes the direction
+    checkable, so it is checked.
+    """
+
+    def cand(self, **over):
+        base = one()["candidates"][0]
+        base.update(over)
+        return {"candidates": [base]}
+
+    def test_correct_direction_is_accepted(self):
+        ok, bad = validate_pass1(self.cand(), SECTION, SLUGS, RELS,
+                                 concept_domains=DOMAINS)
+        assert len(ok) == 1 and not bad
+
+    def test_a_symptom_on_the_treatment_end_is_rejected(self):
+        ok, bad = validate_pass1(
+            self.cand(src_concept_slug="joint_pain", dst_concept_slug="fatigue"),
+            SECTION, SLUGS, RELS, concept_domains=DOMAINS)
+        assert not ok and bad[0]["reason"] == "wrong_domain"
+        assert "symptom" in bad[0]["detail"]
+
+    def test_the_reversed_pair_is_rejected(self):
+        ok, bad = validate_pass1(
+            self.cand(src_concept_slug="aromatase_inhibitor",
+                      dst_concept_slug="joint_pain"),
+            SECTION, SLUGS, RELS, concept_domains=DOMAINS)
+        assert not ok and bad[0]["reason"] == "wrong_domain"
+
+    def test_a_treatment_cannot_co_occur(self):
+        ok, bad = validate_pass1(
+            self.cand(relationship="co_occurs_with",
+                      dst_concept_slug="aromatase_inhibitor"),
+            SECTION, SLUGS, RELS, concept_domains=DOMAINS)
+        assert not ok and bad[0]["reason"] == "wrong_domain"
+
+    def test_two_experience_concepts_may_co_occur(self):
+        ok, bad = validate_pass1(
+            self.cand(relationship="co_occurs_with",
+                      dst_concept_slug="medication_adherence"),
+            SECTION, SLUGS, RELS, concept_domains=DOMAINS)
+        assert len(ok) == 1 and not bad
+
+    def test_an_unconstrained_relationship_is_left_alone(self):
+        # Only the two v1 relationships have rules; the rest are not extracted
+        # yet, and a missing rule must not become a silent rejection.
+        assert "indicated_by" not in RELATIONSHIP_DOMAINS
+        assert domain_violation("indicated_by", "joint_pain", "fatigue", DOMAINS) is None
+
+    def test_no_domain_map_means_no_check(self):
+        ok, _ = validate_pass1(
+            self.cand(src_concept_slug="aromatase_inhibitor",
+                      dst_concept_slug="joint_pain"),
+            SECTION, SLUGS, RELS)
+        assert len(ok) == 1, "unchecked, not silently rejected"
+
+    def test_the_rules_only_name_real_domains(self):
+        for rel, rule in RELATIONSHIP_DOMAINS.items():
+            assert rel in RELATIONSHIP_TYPES
+            for end in ("src", "dst"):
+                for domain in rule[end]:
+                    assert domain in CONCEPT_DOMAINS
+
+
+class TestExtractionRunnerWiring:
+    """Static guards on scripts/run_connection_map_extraction.py.
+
+    Both of these protect a fix that took a day to find and is one deleted line
+    from coming back, with no test failure to announce it.
+    """
+
+    RUNNER = (_REPO / "scripts" / "run_connection_map_extraction.py").read_text()
+
+    def test_thinking_is_disabled_on_the_extraction_call(self):
+        # The extractor is a reasoning model. With thinking ON, a real 12k-char
+        # section burns the whole token budget before emitting a character, and
+        # json_object mode turns that into `{"candidates": []}` — a broken run
+        # that looks like an empty corpus. Measured: 0 candidates with thinking
+        # on, 4 with it off, same section and prompt.
+        assert '"enable_thinking": False' in self.RUNNER
+
+    def test_both_passes_supply_the_domain_map(self):
+        assert self.RUNNER.count("concept_domains=domains_by_slug") == 2
+
+    def test_the_prompt_placeholders_all_exist(self):
+        # A renamed placeholder means the model receives the literal string
+        # "{section_text}" and correctly reports no relationships.
+        prompts = _REPO / "config" / "connection_map" / "prompts"
+        for name, expected in (
+            ("pass1_section.md",
+             {"relationships", "concepts", "document_title", "section_ref", "section_text"}),
+            ("pass2_chain.md",
+             {"relationships", "concepts", "existing", "quotations"}),
+        ):
+            text = (prompts / name).read_text()
+            found = set(re.findall(r"\{([a-z_]+)\}", text))
+            assert found == expected, f"{name}: {found ^ expected}"
+            for placeholder in expected:
+                assert f'.replace("{{{placeholder}}}"' in self.RUNNER, \
+                    f"{name} declares {{{placeholder}}} but the runner never substitutes it"

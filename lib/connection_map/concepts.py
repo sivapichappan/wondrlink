@@ -47,6 +47,33 @@ RELATIONSHIP_TYPES = (
 
 EDGE_URGENCIES = ("routine", "urgent")
 
+# Which concept domains may sit on each end of a relationship.
+#
+# `side_effect_of` runs from the experience to the thing that caused it, so its
+# destination is a treatment or a procedure and its source is not. This is the
+# spec's own definition (§4.3) and the extraction prompt states it, but a model
+# ignored it and proposed `weight_gain --side_effect_of--> nausea`, which reads
+# as "nausea is a treatment". A closed vocabulary makes that mechanically
+# checkable, so it is checked rather than hoped for.
+#
+# `co_occurs_with` links two things a patient experiences. A treatment or a
+# procedure is not something that co-occurs with a symptom; it is something that
+# causes one, which is a different relationship.
+#
+# A domain absent from `src` or `dst` is refused for that relationship. Only the
+# two v1 relationships are constrained here — the other four are not extracted
+# yet, and inventing their rules before their prompts exist would be guessing.
+RELATIONSHIP_DOMAINS: Dict[str, Dict[str, tuple]] = {
+    "side_effect_of": {
+        "src": ("symptom", "lab_or_measure", "daily_life"),
+        "dst": ("treatment", "procedure"),
+    },
+    "co_occurs_with": {
+        "src": ("symptom", "lab_or_measure", "daily_life"),
+        "dst": ("symptom", "lab_or_measure", "daily_life"),
+    },
+}
+
 # Spec §4.4 defines tier C as "no verifiable quotation. Discarded, never
 # queued", and Phase 1 enforced that. Owner decision D2 (PLAN.md) REDEFINED it:
 # a tier C connection is a far-fetched, non-verbatim relationship kept in a

@@ -13,8 +13,9 @@ output for `quote_not_found` is telling you something specific about the prompt.
 """
 
 import re
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
+from connection_map.concepts import RELATIONSHIP_DOMAINS
 from connection_map.extraction.repair import anchor_quote
 
 # Why a candidate was discarded before a human ever saw it.
@@ -23,6 +24,7 @@ REJECT_REASONS = (
     "unknown_concept",        # slug not in the approved vocabulary
     "unknown_relationship",   # type not in the closed enum
     "self_loop",              # concept related to itself
+    "wrong_domain",           # e.g. a symptom on the treatment end of side_effect_of
     "quote_not_found",        # NOT an exact substring of the section
     "empty_quote",
     "duplicate_in_batch",     # the model returned the same triple twice
@@ -30,6 +32,12 @@ REJECT_REASONS = (
     "too_few_evidence",       # pass 2: fewer than two quotations cited
     "unknown_evidence",       # pass 2: cited a quotation id that does not exist
     "duplicate_evidence",     # pass 2: cited the same quotation twice
+    # The two below are not bad candidates; they are a model that did not answer.
+    # They exist because a run reporting "0 accepted, 0 rejected" is
+    # indistinguishable from a section that genuinely states nothing, and that
+    # ambiguity hid a broken extractor through an entire debugging session.
+    "unparsable_response",    # the reply was not JSON at all
+    "no_candidate_list",      # JSON, but with no candidate list in it
 )
 
 MIN_PASS2_EVIDENCE = 2
@@ -41,6 +49,20 @@ class Rejection(Dict[str, Any]):
 
 def _reject(reason: str, candidate: Any, detail: str = "") -> Dict[str, Any]:
     return {"reason": reason, "candidate": candidate, "detail": detail}
+
+
+def _envelope_detail(raw: Any) -> str:
+    """A short, printable description of a reply that was not an answer.
+
+    Names the top-level keys rather than dumping the value, because the value in
+    the failure that motivated this is the entire section text echoed back.
+    """
+    if raw is None:
+        return "no JSON found in the reply"
+    if isinstance(raw, dict):
+        keys = ", ".join(sorted(map(str, raw.keys()))[:6]) or "(no keys)"
+        return f"top-level keys: {keys}"
+    return f"top-level value was {type(raw).__name__}"
 
 
 def find_exact_quote(section_text: str, quote: str) -> int:
@@ -62,11 +84,15 @@ def validate_pass1(
     concept_slugs: Iterable[str],
     relationship_types: Iterable[str],
     existing_triples: Optional[Iterable[Tuple[str, str, str]]] = None,
+    concept_domains: Optional[Mapping[str, str]] = None,
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """Validate one section's worth of pass-1 output.
 
     Returns (accepted, rejected). An accepted candidate carries the verified
     `char_offset`, so nothing downstream has to search for the quote again.
+
+    `concept_domains` maps slug to domain and enables the direction check in
+    RELATIONSHIP_DOMAINS. Callers that have the vocabulary should pass it.
     """
     slugs = set(concept_slugs)
     rels = set(relationship_types)
@@ -76,7 +102,11 @@ def validate_pass1(
     accepted: List[Dict[str, Any]] = []
     rejected: List[Dict[str, Any]] = []
 
-    for cand in _candidate_list(raw):
+    candidates, problem = _candidate_list(raw)
+    if problem:
+        rejected.append(_reject(problem, raw, _envelope_detail(raw)))
+
+    for cand in candidates:
         if not isinstance(cand, dict):
             rejected.append(_reject("malformed", cand, "not an object"))
             continue
@@ -101,6 +131,10 @@ def validate_pass1(
             continue
         if src == dst:
             rejected.append(_reject("self_loop", cand, src))
+            continue
+        bad_domain = domain_violation(rel, src, dst, concept_domains)
+        if bad_domain:
+            rejected.append(_reject("wrong_domain", cand, bad_domain))
             continue
 
         triple = (src, dst, rel)
@@ -144,6 +178,7 @@ def validate_pass2(
     concept_slugs: Iterable[str],
     relationship_types: Iterable[str],
     existing_triples: Optional[Iterable[Tuple[str, str, str]]] = None,
+    concept_domains: Optional[Mapping[str, str]] = None,
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """Validate pass-2 chaining output.
 
@@ -160,7 +195,11 @@ def validate_pass2(
     accepted: List[Dict[str, Any]] = []
     rejected: List[Dict[str, Any]] = []
 
-    for cand in _candidate_list(raw):
+    candidates, problem = _candidate_list(raw)
+    if problem:
+        rejected.append(_reject(problem, raw, _envelope_detail(raw)))
+
+    for cand in candidates:
         if not isinstance(cand, dict):
             rejected.append(_reject("malformed", cand, "not an object"))
             continue
@@ -184,6 +223,10 @@ def validate_pass2(
             continue
         if src == dst:
             rejected.append(_reject("self_loop", cand, src))
+            continue
+        bad_domain = domain_violation(rel, src, dst, concept_domains)
+        if bad_domain:
+            rejected.append(_reject("wrong_domain", cand, bad_domain))
             continue
 
         if len(set(ids)) != len(ids):
@@ -222,6 +265,32 @@ def validate_pass2(
     return accepted, rejected
 
 
+def domain_violation(
+    relationship: str,
+    src: str,
+    dst: str,
+    concept_domains: Optional[Mapping[str, str]],
+) -> Optional[str]:
+    """Why this relationship cannot join these two domains, or None.
+
+    Returns None when no rule covers the relationship, or when no domain map was
+    supplied — an unconstrained relationship is not a violated one. The callers
+    that matter DO supply the map; a static test holds them to it.
+    """
+    if not concept_domains:
+        return None
+    rule = RELATIONSHIP_DOMAINS.get(relationship)
+    if not rule:
+        return None
+    src_domain = concept_domains.get(src)
+    dst_domain = concept_domains.get(dst)
+    if src_domain is not None and src_domain not in rule["src"]:
+        return f"{relationship} src cannot be a {src_domain} ({src})"
+    if dst_domain is not None and dst_domain not in rule["dst"]:
+        return f"{relationship} dst cannot be a {dst_domain} ({dst})"
+    return None
+
+
 def rejection_summary(rejected: Sequence[Dict[str, Any]]) -> Dict[str, int]:
     """Counts per reason, so a run can be read at a glance (§13.1's habit,
     applied to the machine-side half)."""
@@ -231,23 +300,33 @@ def rejection_summary(rejected: Sequence[Dict[str, Any]]) -> Dict[str, int]:
     return dict(sorted(out.items(), key=lambda kv: -kv[1]))
 
 
-def _candidate_list(raw: Any) -> List[Any]:
+def _candidate_list(raw: Any) -> Tuple[List[Any], Optional[str]]:
     """Pull the candidate list out of whatever shape the model returned.
 
-    Tolerant about the envelope, strict about the contents: a model wrapping
-    its answer differently is a formatting quirk, while a model inventing a
-    citation is the thing we exist to catch.
+    Returns (candidates, problem). `problem` is a rejection reason when the reply
+    was not an answer at all, and None when it was — INCLUDING when the answer
+    was a legitimately empty list.
+
+    Tolerant about the envelope, strict about the contents: a model wrapping its
+    answer differently is a formatting quirk, while a model inventing a citation
+    is the thing we exist to catch.
+
+    The `problem` half exists because both of this extractor's real-world
+    failures returned zero candidates *silently*: an empty list it did not mean,
+    and `{"section_text": "..."}` echoing the prompt back. Neither is a section
+    that states nothing, and a reader of the run summary could not tell the
+    difference. Now they are counted.
     """
     if raw is None:
-        return []
+        return [], "unparsable_response"
     if isinstance(raw, list):
-        return raw
+        return raw, None
     if isinstance(raw, dict):
         for key in ("candidates", "relationships", "results", "items"):
             value = raw.get(key)
             if isinstance(value, list):
-                return value
-    return []
+                return value, None
+    return [], "no_candidate_list"
 
 
 def parse_model_json(text: str) -> Any:
