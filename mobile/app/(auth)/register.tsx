@@ -6,8 +6,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
-import { Colors, Fonts } from '@/constants/theme';
-import { NoSessionError, register, resendSignupConfirmation } from '@/lib/api/auth';
+import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
+import {
+  NoSessionError,
+  passwordProblem,
+  register,
+  resendSignupConfirmation,
+  verifySignupCode,
+} from '@/lib/api/auth';
 import { ApiError, extractErrorMessage } from '@/lib/api/client';
 
 export default function Register() {
@@ -25,8 +31,11 @@ export default function Register() {
       setError('Email is required.');
       return;
     }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+    // Same rules the server enforces, checked here so a weak password does not
+    // cost a round trip.
+    const weak = passwordProblem(password);
+    if (weak) {
+      setError(weak);
       return;
     }
     if (password !== confirm) {
@@ -39,10 +48,9 @@ export default function Register() {
       await qc.invalidateQueries({ queryKey: ['acknowledgement'] });
       // Root layout will route to onboarding.
     } catch (e) {
-      // NoSessionError = sign-up succeeded but Supabase has email
-      // confirmation enabled, so there's no session yet. This is a
-      // success path, not an error, surface as an info/success banner
-      // with a clear "Go to Log In" CTA, not red error text.
+      // NoSessionError = sign-up succeeded but Supabase has email confirmation
+      // enabled, so there is no session yet. That is the normal path, not an
+      // error: move to code entry rather than showing red text.
       if (e instanceof NoSessionError) {
         setVerifyEmail(email.trim());
         return;
@@ -58,10 +66,9 @@ export default function Register() {
     }
   };
 
-  // If we're in the "check your email" state, render a dedicated success
-  // screen instead of the form.
+  // Account created, email not confirmed yet: collect the code.
   if (verifyEmail) {
-    return <VerifyEmailScreen email={verifyEmail} onUseDifferent={() => setVerifyEmail(null)} />;
+    return <ConfirmCodeScreen email={verifyEmail} onUseDifferent={() => setVerifyEmail(null)} />;
   }
 
   return (
@@ -96,7 +103,7 @@ export default function Register() {
             autoComplete="new-password"
             value={password}
             onChangeText={setPassword}
-            hint="At least 8 characters."
+            hint="At least 8 characters, with a capital letter and a number."
           />
           <TextField
             label="Confirm password"
@@ -140,41 +147,63 @@ export default function Register() {
 }
 
 /**
- * "Check your email" screen rendered after a sign-up that returned a
- * NoSessionError (Supabase has email confirmation enabled).
+ * Sign-up step 2: confirm the six-digit code from the email.
  *
- * Surfaces a clear next step + a Resend button (Supabase rate-limits
- * the resend aggressively, so we show a generic "we tried again"
- * message regardless of result, never reveal whether the account
- * exists).
+ * Replaces the old "check your email for a link" dead-end, which asked the user
+ * to leave the app, tap a link, come back, and sign in again. The code keeps
+ * them in one place and lands them straight in a session, so onboarding follows
+ * immediately.
+ *
+ * The code only arrives if the Confirm signup email template carries
+ * {{ .Token }} — see config/email_templates/.
  */
-function VerifyEmailScreen({
+function ConfirmCodeScreen({
   email,
   onUseDifferent,
 }: {
   email: string;
   onUseDifferent: () => void;
 }) {
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
   const [resendNote, setResendNote] = useState<string | null>(null);
+  const qc = useQueryClient();
+
+  const onVerify = async () => {
+    setError(null);
+    if (code.trim().length < 6) {
+      setError('Please enter the 6-digit code from the email.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await verifySignupCode(email, code);
+      // Root layout sees the new session and routes on to consent.
+      await qc.invalidateQueries({ queryKey: ['acknowledgement'] });
+    } catch (e) {
+      setError(extractErrorMessage(e, 'That code did not work. Please try again.'));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const doResend = async () => {
     setResending(true);
     setResendNote(null);
+    setError(null);
     try {
       await resendSignupConfirmation(email);
-      setResendNote("We've sent another verification email. Check your inbox (and spam).");
+      setResendNote('We sent another code. It can take a minute to arrive.');
     } catch (e) {
-      // Supabase often rate-limits, show a generic message either way.
-      // Real failures still surface so we can debug.
-      const isRateLimit =
-        e && typeof e === 'object' && 'message' in e &&
-        typeof (e as any).message === 'string' &&
-        /rate|too many|wait/i.test((e as any).message);
+      // Supabase rate-limits resends hard. Either way the user needs the same
+      // instruction, so the note never reveals whether the account exists.
+      const msg = e && typeof e === 'object' && 'message' in e ? String((e as Error).message) : '';
       setResendNote(
-        isRateLimit
-          ? "Please wait a minute before requesting another email, Supabase rate-limits these."
-          : "We tried to resend. If you still don't see the email in a few minutes, check spam or use a different address."
+        /rate|too many|wait|security purposes/i.test(msg)
+          ? 'Please wait a minute before asking for another code.'
+          : 'We tried again. If nothing arrives in a few minutes, check your spam folder.',
       );
     } finally {
       setResending(false);
@@ -183,60 +212,77 @@ function VerifyEmailScreen({
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.surface }} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: 24, gap: 16, flexGrow: 1, justifyContent: 'center' }}>
-        <Text style={{ fontFamily: Fonts.serifBold, fontSize: 24, color: Colors.textPrimary, textAlign: 'center' }}>
-          Check your email
-        </Text>
-        <View
-          style={{
-            padding: 16,
-            borderRadius: 12,
-            backgroundColor: Colors.sidebarBg,
-            borderWidth: 1,
-            borderColor: Colors.primary,
-          }}>
-          <Text style={{ color: Colors.textPrimary, fontSize: 14, lineHeight: 21 }}>
-            We sent a verification link to{' '}
-            <Text style={{ fontFamily: Fonts.sansSemiBold }}>{email}</Text>. Tap the link in that
-            email, then come back here and sign in.
-          </Text>
-        </View>
-        <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 19, textAlign: 'center' }}>
-          Don't see the email? Check your spam folder, your Gmail "Promotions" tab, or use the
-          resend button below.
-        </Text>
-        {resendNote && (
-          <Text
-            style={{
-              color: Colors.textSecondary,
-              fontSize: 12,
-              lineHeight: 17,
-              textAlign: 'center',
-              fontStyle: 'italic',
-            }}>
-            {resendNote}
-          </Text>
-        )}
-      </ScrollView>
-      <View
-        style={{
-          padding: 16,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 16,
-          borderTopWidth: 1,
-          borderTopColor: Colors.border,
-          backgroundColor: Colors.surface,
-          gap: 8,
-        }}>
-        <Button label="Go to Log In" fullWidth size="lg" onPress={() => router.replace('/(auth)/login')} />
-        <Button
-          label="Resend verification email"
-          variant="secondary"
-          fullWidth
-          loading={resending}
-          onPress={doResend}
-        />
-        <Button label="Use a different email" variant="ghost" fullWidth onPress={onUseDifferent} />
-      </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg, flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled">
+          <View style={{ gap: 6, marginTop: Spacing.xl }}>
+            <Text style={{ fontFamily: Fonts.serifBold, fontSize: 26, color: Colors.textPrimary }}>
+              Confirm your email
+            </Text>
+            <Text style={{ fontSize: FontSize.md, lineHeight: 21, color: Colors.textSecondary }}>
+              We sent a 6-digit code to {email}. Enter it below to finish setting up your account.
+            </Text>
+          </View>
+
+          <TextField
+            label="Code from the email"
+            value={code}
+            onChangeText={setCode}
+            placeholder="123456"
+            keyboardType="number-pad"
+            textContentType="oneTimeCode"
+            maxLength={8}
+            autoFocus
+          />
+
+          {error ? (
+            <View
+              style={{
+                backgroundColor: Colors.warningBg,
+                borderRadius: Radius.md,
+                padding: Spacing.md,
+              }}>
+              <Text style={{ color: Colors.textPrimary, fontSize: FontSize.base, lineHeight: 19 }}>
+                {error}
+              </Text>
+            </View>
+          ) : null}
+
+          {resendNote ? (
+            <Text style={{ color: Colors.textSecondary, fontSize: FontSize.xs, lineHeight: 17 }}>
+              {resendNote}
+            </Text>
+          ) : null}
+
+          <View style={{ gap: Spacing.sm, marginTop: 'auto', paddingBottom: Spacing.lg }}>
+            <Button
+              label={busy ? 'Checking…' : 'Confirm and continue'}
+              size="lg"
+              fullWidth
+              disabled={busy}
+              onPress={onVerify}
+            />
+            <Button
+              label="Send a new code"
+              variant="secondary"
+              fullWidth
+              loading={resending}
+              disabled={busy}
+              onPress={doResend}
+            />
+            <Button
+              label="Use a different email"
+              variant="ghost"
+              fullWidth
+              disabled={busy}
+              onPress={onUseDifferent}
+            />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

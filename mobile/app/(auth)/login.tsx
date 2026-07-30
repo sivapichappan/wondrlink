@@ -89,6 +89,15 @@ export default function Login() {
           }}>
           <Button label="Log in" fullWidth size="lg" loading={submitting} onPress={onSubmit} />
           <Button
+            label="Forgot your password?"
+            variant="ghost"
+            fullWidth
+            // `as never`: expo-router's generated route types do not include a
+            // new screen until it regenerates them. Same reason welcome.tsx
+            // casts the phone route.
+            onPress={() => router.push('/(auth)/forgot-password' as never)}
+          />
+          <Button
             label="Don't have an account? Create one"
             variant="ghost"
             fullWidth
