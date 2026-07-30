@@ -177,6 +177,14 @@ def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]
                     .in_("id", concept_ids).execute()).data or []}
 
         edge_ids = [e["id"] for e in edges]
+        # The hash of each edge AS THE REVIEWER IS ABOUT TO SEE IT. It comes back
+        # with the signature and pins it: §5.6 binds an attestation to the content
+        # that was on screen, and computing the hash at signing time instead meant
+        # a corroborating evidence row arriving in between landed inside a
+        # signature nobody had read. One call for the page, not one per edge.
+        hashes = {row["edge_id"]: row["edge_hash"] for row in
+                  (client.rpc("connection_map_edge_hashes",
+                              {"p_edge_ids": edge_ids}).execute()).data or []}
         evidence = (client.table("master_edge_evidence")
                     .select("master_edge_id, source_document_id, section_ref, "
                             "quoted_sentence, char_offset, ordinal, reasoning")
@@ -231,6 +239,8 @@ def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]
                 # one. It is the model's argument, never a source's claim, and
                 # the UI must label it that way.
                 "chain_reasoning": rationale.get(e["id"]),
+                # Sent back with the signature; the database refuses a mismatch.
+                "edge_hash": hashes.get(e["id"]),
                 "attestation": attestation_text_for_tier(e["tier"]),
             })
         return jsonify({"status": "ok", "items": items, "count": len(items)})
@@ -278,10 +288,20 @@ def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]
                 return jsonify({"error": "COPY_RULES", "problems": check["blocking"]}), 422
             result["concerns"] = check["concerns"]
 
-        updated = (client.table("master_edge")
-                   .update(payload)
-                   .eq("id", edge_id)
-                   .execute()).data or []
+        try:
+            updated = (client.table("master_edge")
+                       .update(payload)
+                       .eq("id", edge_id)
+                       .execute()).data or []
+        except Exception as exc:  # noqa: BLE001
+            # Rewording an edge that has already been signed changes a
+            # hash-bearing field and voids the attestation. This handler had no
+            # status check at all, so it did that silently and the edge only
+            # failed later at the publication gate. The database refuses it now;
+            # this makes the refusal readable instead of a 500.
+            if "SIGNED_EDGE" in str(exc):
+                return jsonify({"error": "SIGNED_EDGE"}), 409
+            raise
         if not updated:
             return jsonify({"error": "NOT_FOUND"}), 404
 
@@ -330,19 +350,35 @@ def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]
             # §5.4: reject requires a structured reason (§13.1 vocabulary).
             return jsonify({"error": "REJECTION_REASON_REQUIRED"}), 400
 
+        expected_hash = payload.get("expected_hash")
+        if not expected_hash:
+            # A signature has to say which version of the edge it covers. The
+            # database refuses a null pin too; this is the readable half.
+            return jsonify({"error": "EXPECTED_HASH_REQUIRED"}), 400
+
         # The status change happens INSIDE the signing function, in one
         # transaction with the signature. It used to be a separate PostgREST
         # request made first, so a failure in between left an edge marked
         # approved with nothing signed — while the UI said "nothing was signed".
-        signed = client.rpc("connection_map_attest", {
-            "p_edge_id": edge_id,
-            "p_auth_user_id": g.auth_user_id,
-            "p_decision": decision,
-            "p_text_version": text["version"],
-            "p_text": text["text"],
-            "p_ip_hash": _ip_hash(),
-            "p_rejection_reason": payload.get("rejection_reason"),
-        }).execute()
+        try:
+            signed = client.rpc("connection_map_attest", {
+                "p_edge_id": edge_id,
+                "p_auth_user_id": g.auth_user_id,
+                "p_decision": decision,
+                "p_text_version": text["version"],
+                "p_text": text["text"],
+                "p_expected_hash": expected_hash,
+                "p_ip_hash": _ip_hash(),
+                "p_rejection_reason": payload.get("rejection_reason"),
+            }).execute()
+        except Exception as exc:  # noqa: BLE001
+            # The edge moved under the reviewer between opening it and signing.
+            # That is a normal, recoverable event and must read as one: without
+            # this it surfaced as a 500, which the UI showed as "that did not go
+            # through", inviting a retry that would fail identically.
+            if "STALE_EDGE" in str(exc):
+                return jsonify({"error": "STALE_EDGE"}), 409
+            raise
         return jsonify({"status": "ok", "attestation_id": signed.data,
                         "decision": decision})
 

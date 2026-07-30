@@ -148,7 +148,10 @@ function QueueCard({ item }: { item: ReviewQueueItem }) {
 
   const attest = useMutation({
     mutationFn: (args: { decision: 'approve' | 'reject'; reason?: RejectionReason }) =>
-      attestEdge(item.id, args.decision, args.reason),
+      // item.edge_hash pins the signature to the card as it was rendered. If a
+      // citation arrived while it sat open, the server refuses with 409 rather
+      // than quietly signing something that was never read.
+      attestEdge(item.id, args.decision, item.edge_hash, args.reason),
     // Leave the sign/reject panel immediately. The card stays mounted while
     // the queue refetches, so keeping live buttons on screen invites a second
     // signature on an edge that was just signed.

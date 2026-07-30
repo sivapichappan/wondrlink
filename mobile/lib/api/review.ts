@@ -44,6 +44,11 @@ export interface ReviewQueueItem {
    * argument, not a claim any source makes — the UI labels it as such. Null on a
    * candidate that rests on a single quotation. */
   chain_reasoning: string | null;
+  /** Fingerprint of this connection as it is being shown. It goes back with the
+   * signature so the server can refuse if the connection changed in between —
+   * otherwise a citation added while the card was open would land inside a
+   * signature nobody read. */
+  edge_hash: string;
   /** The exact wording a signature endorses; null = no approved wording for
    * this tier yet (tier C until the attorney variant lands) — signing is
    * refused server-side. */
@@ -145,13 +150,14 @@ export function rewordEdge(edgeId: string, patientPhrasing: string) {
 export function attestEdge(
   edgeId: string,
   decision: 'approve' | 'reject',
+  expectedHash: string,
   rejectionReason?: RejectionReason,
 ) {
   return apiFetch<ReviewAttestResponse>(ENDPOINTS.reviewAttest(edgeId), {
     method: 'POST',
     body:
       decision === 'reject'
-        ? { decision, rejection_reason: rejectionReason }
-        : { decision },
+        ? { decision, rejection_reason: rejectionReason, expected_hash: expectedHash }
+        : { decision, expected_hash: expectedHash },
   });
 }

@@ -54,9 +54,14 @@ class FakeQuery:
 
 
 class FakeReviewClient:
-    def __init__(self, tables=None, rpc_results=None):
+    def __init__(self, tables=None, rpc_results=None, rpc_errors=None,
+                 table_errors=None):
         self.tables = tables or {}
         self.rpc_results = rpc_results or {}
+        # A database RAISE has to be reproducible here, or the handler paths that
+        # turn one into a readable 409 cannot be tested at all.
+        self.rpc_errors = rpc_errors or {}
+        self.table_errors = table_errors or {}
         self.rpc_calls = []
         self.inserted = {}
 
@@ -65,21 +70,31 @@ class FakeReviewClient:
         query = FakeQuery(rows)
         original_execute = query.execute
         inserted = self.inserted
+        boom = self.table_errors.get(name)
 
         def tracking_insert(payload):
             inserted.setdefault(name, []).append(payload)
             return query
         query.insert = tracking_insert
+
+        if boom:
+            def failing_update(payload):
+                raise Exception(boom)
+            query.update = failing_update
         query.execute = original_execute
         return query
 
     def rpc(self, name, params):
         self.rpc_calls.append((name, params))
+        if name in self.rpc_errors:
+            raise Exception(self.rpc_errors[name])
         return FakeQuery(self.rpc_results.get(name))
 
 
-def make_client(reviewer=REVIEWER, tables=None, rpc_results=None):
-    fake = FakeReviewClient(tables=tables, rpc_results=rpc_results)
+def make_client(reviewer=REVIEWER, tables=None, rpc_results=None,
+                rpc_errors=None, table_errors=None):
+    fake = FakeReviewClient(tables=tables, rpc_results=rpc_results,
+                            rpc_errors=rpc_errors, table_errors=table_errors)
     fake.tables.setdefault("reviewer", [dict(reviewer)] if reviewer else [])
     return fake
 
@@ -232,7 +247,8 @@ class TestAcceptance2:
         }, rpc_results={"connection_map_attest": "att-1"})
         with patch.object(review_api, "get_review_client", return_value=fake):
             resp = client.post("/api/review/edge/e-1/attest", headers=AUTH,
-                               data=json.dumps({"decision": "approve"}))
+                               data=json.dumps({"decision": "approve",
+                                                "expected_hash": "h-1"}))
         assert resp.status_code == 200
         names = [n for n, _ in fake.rpc_calls]
         assert names == ["connection_map_attest"]
@@ -253,7 +269,8 @@ class TestAcceptance2:
         }, rpc_results={"connection_map_attest": "att-1"})
         with patch.object(review_api, "get_review_client", return_value=fake):
             client.post("/api/review/edge/e-1/attest", headers=AUTH,
-                        data=json.dumps({"decision": "approve"}))
+                        data=json.dumps({"decision": "approve",
+                                         "expected_hash": "h-1"}))
         assert "master_edge" not in fake.inserted
         # Exactly one write path: the function that signs.
         assert [n for n, _ in fake.rpc_calls] == ["connection_map_attest"]
@@ -642,3 +659,101 @@ class TestChainReasoningInTheQueue:
     @pytest.fixture(autouse=True)
     def _bind_client(self, client, authed):
         self._client = client
+
+
+class TestSignatureIsPinnedToWhatWasOnScreen:
+    """§5.6 binds an attestation to the content that was on screen when it was
+    signed. It was computing the hash at signing time instead, so a corroborating
+    evidence row arriving between opening a card and signing it landed inside a
+    signature nobody had read. The queue now hands out the hash and the signature
+    carries it back.
+    """
+
+    EDGE = {"tier": "A", "status": "candidate", "rejection_reason": None}
+
+    def test_the_queue_hands_out_the_hash(self, client, authed):
+        fake = make_client(
+            tables={"master_edge": [{
+                "id": "e-1", "relationship": "side_effect_of", "tier": "A",
+                "urgency": "routine", "status": "candidate",
+                "candidate_origin": "literature_scan", "patient_phrasing": "x",
+                "expected_prevalence_low": None, "expected_prevalence_high": None,
+                "src_concept_id": "c1", "dst_concept_id": "c2"}],
+                    "concept": [], "master_edge_evidence": []},
+            rpc_results={"connection_map_edge_hashes": [
+                {"edge_id": "e-1", "edge_hash": "abc123"}]})
+        with patch.object(review_api, "get_review_client", return_value=fake):
+            resp = client.get("/api/review/queue", headers=AUTH)
+        assert resp.status_code == 200
+        assert resp.get_json()["items"][0]["edge_hash"] == "abc123"
+
+    def test_the_hashes_come_back_in_one_call_not_one_per_edge(self, client, authed):
+        # A per-edge RPC would be one network round trip per row through
+        # PostgREST, on a screen that loads a whole page at once.
+        fake = make_client(tables={"master_edge": [], "concept": []})
+        with patch.object(review_api, "get_review_client", return_value=fake):
+            client.get("/api/review/queue", headers=AUTH)
+        assert [n for n, _ in fake.rpc_calls].count("connection_map_edge_hashes") <= 1
+
+    def test_signing_without_a_pin_is_refused(self, client, authed):
+        fake = make_client(tables={"master_edge": [dict(self.EDGE)]},
+                           rpc_results={"connection_map_attest": "att-1"})
+        with patch.object(review_api, "get_review_client", return_value=fake):
+            resp = client.post("/api/review/edge/e-1/attest", headers=AUTH,
+                               data=json.dumps({"decision": "approve"}))
+        assert resp.status_code == 400
+        assert resp.get_json()["error"] == "EXPECTED_HASH_REQUIRED"
+        assert fake.rpc_calls == [], "nothing may be signed without saying what"
+
+    def test_the_pin_reaches_the_database_function(self, client, authed):
+        fake = make_client(tables={"master_edge": [dict(self.EDGE)]},
+                           rpc_results={"connection_map_attest": "att-1"})
+        with patch.object(review_api, "get_review_client", return_value=fake):
+            client.post("/api/review/edge/e-1/attest", headers=AUTH,
+                        data=json.dumps({"decision": "approve",
+                                         "expected_hash": "abc123"}))
+        _, params = fake.rpc_calls[0]
+        assert params["p_expected_hash"] == "abc123"
+
+    def test_a_stale_edge_is_a_409_not_a_500(self, client, authed):
+        # The edge moved under the reviewer. That is normal and recoverable, and
+        # has to read as such: as a 500 the UI said "that did not go through",
+        # inviting a retry that would fail the same way forever.
+        fake = make_client(
+            tables={"master_edge": [dict(self.EDGE)]},
+            rpc_errors={"connection_map_attest":
+                        'connection_map: STALE_EDGE this connection changed'})
+        with patch.object(review_api, "get_review_client", return_value=fake):
+            resp = client.post("/api/review/edge/e-1/attest", headers=AUTH,
+                               data=json.dumps({"decision": "approve",
+                                                "expected_hash": "old"}))
+        assert resp.status_code == 409
+        assert resp.get_json()["error"] == "STALE_EDGE"
+
+    def test_any_other_database_failure_still_surfaces(self, client, authed):
+        # Only the stale case is translated. Swallowing everything would hide a
+        # real fault behind a friendly message.
+        fake = make_client(tables={"master_edge": [dict(self.EDGE)]},
+                           rpc_errors={"connection_map_attest": "connection died"})
+        with patch.object(review_api, "get_review_client", return_value=fake):
+            with pytest.raises(Exception, match="connection died"):
+                client.post("/api/review/edge/e-1/attest", headers=AUTH,
+                            data=json.dumps({"decision": "approve",
+                                             "expected_hash": "h"}))
+
+    def test_rewording_a_signed_edge_is_a_409_not_a_silent_void(self, client, authed):
+        # This handler had no status check at all: rewording an approved edge
+        # changed a hash-bearing field and voided the signature in silence, and
+        # the edge only failed later at the publication gate.
+        fake = make_client(
+            tables={"master_edge": [{"patient_phrasing": "old"}],
+                    "master_edge_evidence": [
+                        {"quoted_sentence": "Joint pain is common with an aromatase inhibitor."}]},
+            table_errors={"master_edge":
+                          'connection_map: SIGNED_EDGE this connection has been signed'})
+        with patch.object(review_api, "get_review_client", return_value=fake):
+            resp = client.patch("/api/review/edge/e-1", headers=AUTH,
+                                data=json.dumps({"patient_phrasing":
+                                                 "Some people notice new joint aches. Is that you?"}))
+        assert resp.status_code == 409
+        assert resp.get_json()["error"] == "SIGNED_EDGE"
