@@ -1,123 +1,126 @@
 # HANDOFF — active work
 
-_Keep this for in-flight work only. Last updated: 2026-07-31._
+_Keep this for in-flight work only. Last updated: 2026-08-02._
 
-## RESUME HERE — connection map Phase 4 (extraction)
+## RESUME HERE — connection map: Phase 4 DONE, Phase 5 is a human task
 
-**State: everything is built and tested; the blocker was corpus content, and
-six new documents have just been staged to fix it.**
+**Phase 4's gate (≥60 candidates with verified evidence) is MET: 82 edges and
+137 citations on sage-dev, every citation an exact match against source bytes.**
+Phases 1-4 complete. 617 tests green. Prod still untouched; ~34 commits unpushed.
 
-### THE ONE REMAINING BLOCKER: the prompt is too conservative
+### What Phase 4 actually took (all four were invisible failures)
 
-Corpus is now good and the pipeline is proven; extraction still returns
-**zero candidates, and zero rejections**, even on clean NCI health-professional
-sections with high concept density. Zero rejections is the tell: the model is
-not proposing anything at all, rather than proposing things that fail checks.
+Extraction returned zero candidates AND zero rejections. Four separate defects:
 
-`config/connection_map/prompts/pass1_section.md` is over-tuned toward restraint.
-It says, repeatedly, "an empty list is far more useful than a strained one",
-"only propose a relationship you can point at a single real sentence for",
-"if you find yourself editing a sentence to make it fit, that candidate does
-not belong". DeepSeek-V4-Pro obeys all of it maximally.
+1. **The extractor is a reasoning model.** On a real 12k-character section its
+   thinking spent the whole token budget before one visible character, and under
+   `response_format=json_object` the decoder must still return a valid object —
+   so it returned `{"candidates": []}` in 7 tokens, or echoed the section back as
+   `{"section_text": …}`. Fixed with `chat_template_kwargs={"enable_thinking":
+   False}`. Raising max_tokens does NOT substitute (measured at 8000).
+2. **Neither failure was visible.** Any unrecognised envelope became an empty
+   list, so a broken extractor and a quiet corpus printed identically. Now
+   counted as `unparsable_response` / `no_candidate_list` and printed per section
+   as NO ANSWER.
+3. **The prompt was tuned toward restraint** — worked examples replaced the
+   repeated encouragement to return nothing.
+4. **Direction was stated but not enforced**, so `weight_gain --side_effect_of-->
+   nausea` (nausea as a treatment) was accepted. `RELATIONSHIP_DOMAINS` now
+   enforces it in both passes.
 
-**Next actions, in order:**
-1. Rebalance that prompt. Keep the exact-quotation rule absolutely (it is the
-   feature's whole guarantee, and the validator enforces it regardless), but
-   drop the repeated encouragement to return nothing. Add 2-3 WORKED EXAMPLES
-   showing a real source sentence and the candidate it should produce —
-   few-shot will move this further than more instruction.
-2. Verify against a section known to contain a qualifying sentence, e.g.
-   Cancer Pain PDQ `s0014-overview`, or Nausea PDQ sections.
-3. If the prompt alone does not move it, try a second model
-   (`MODEL_CONNECTION_EXTRACTOR=...`, e.g. Kimi-K2.6) before changing anything
-   structural. Change ONE variable per run.
-4. A useful smoke test that needs no model: `validate_pass1` already accepts
-   hand-written candidates, so a fixture proves the write path end to end.
+Pass 2 hit the SAME collapse at scale: all 131 quotations in one call returned 7
+tokens of nothing, six in one call produced a real chain. It now batches by
+shared concept (a chain runs *through* a concept, so arbitrary chunking separates
+the pairs that could combine).
 
-### Corpus state (good — do not redo)
+### Where the map stands
 
-29 documents, **896 sections**, all re-ingested 2026-07-31 with BOTH fixes:
-two-column gutter detection AND `x_tolerance=1` (journal PDFs otherwise lose
-word spacing entirely — 28% run-together words in the ACS/ASCO guideline).
-Nine survivorship/symptom documents added; measured ~108 side-effect and ~182
-co-occurrence qualifying sentences.
+- **82 edges, 137 citations.** 28 edges carry more than one citation; 21 are
+  cited by more than one document.
+- **Corroboration works** (D7): a second source stating a known relationship adds
+  an evidence row instead of being discarded (52 added in one sweep, 62 already
+  recorded and correctly skipped). Only `candidate` edges accept one — `edge_hash`
+  covers every evidence row, so adding to a signed edge would void the signature.
+- **3 tier B chains** from pass 2, each with 2 citations plus its reasoning,
+  which the review API surfaces as `chain_reasoning` and the mobile card labels
+  "Proposed reasoning, not a quotation".
+- **Best corroborated:** bone mineral density loss ← aromatase inhibitor and
+  neutrophil count ← anthracycline (6 citations from 4 documents each).
 
-**Known remaining corpus defect:** the two JCO-formatted PDFs
-(`asco_cipn_guideline_2020.pdf`, `acs_asco_breast_survivorship_2016.pdf`) are
-still interleaved — their pages have a sidebar plus two body columns, and
-`_gutter()` only handles a single clean split. Prefer the NCI PDQ documents,
-which are clean. Fixing JCO needs multi-zone column detection.
+### CORRECTION to a previous handoff claim
 
-### What to do next, in order
+This file said the spec's headline relationship — joint pain from aromatase
+inhibitors — had **no official openly-accessible source**. That is wrong. Cancer
+Pain (PDQ), Health Professional Version (NCI, a US government work) states it
+outright: *"Among hormonal therapies, aromatase inhibitors cause musculoskeletal
+symptoms, osteoporotic fractures, arthralgias, and myalgias.[34]"* The edge now
+carries 5 citations, of which one is plainly wrong (it is about fracture
+episodes, not joint pain) and should be rejected in review. The SECOND half —
+joint pain as the reason women stop the drug — is still uncovered, and no
+quotation in the corpus supports it.
 
-1. **Add the 6 new documents to `config/connection_map/corpus_manifest.yaml`.**
-   Already copied into `data/` and verified to extract cleanly:
+**The peer-reviewed-sources question is CLOSED** (D7: they corroborate, never
+carry a connection alone). Nothing is blocked on it.
 
-   | file | scope | cancer | side-effect sentences | co-occurrence |
-   |---|---|---|---|---|
-   | `asco_cipn_guideline_2020.pdf` | general_survivorship | null | 27 | 5 |
-   | `nci_lymphedema_pdq.pdf` | general_survivorship | null | 8 | 16 |
-   | `nci_hot_flashes_night_sweats_pdq.pdf` | general_survivorship | null | 8 | 23 |
-   | `acs_asco_breast_survivorship_2016.pdf` | cancer_specific | breast | 5 | 14 |
-   | `nci_fatigue_side_effects.pdf` | general_survivorship | null | 3 | 8 |
-   | `nci_cardiopulmonary_pdq.pdf` | general_survivorship | null | 0 | 1 |
+### Next: Phase 5 is Dr. Csiki's, not code
 
-   Titles/publishers: ASCO CIPN Guideline Update 2020 (Loprinzi et al., author
-   manuscript via Indiana ScholarWorks); NCI PDQ Lymphedema / Hot Flashes and
-   Night Sweats / Cardiopulmonary Syndromes; ACS-ASCO Breast Cancer
-   Survivorship Care Guideline 2016 (Runowicz et al.); NCI Fatigue and Cancer.
+Phase 5's gate is "v1 map published" and its work is 3-4 hours of clinical
+review. Before handing it over:
 
-2. `set -a; . ./.env.development; set +a` then
-   `export TOGETHER_API_KEY="$(grep -E '^TOGETHER_API_KEY=' .env | head -1 | cut -d= -f2- | tr -d '\"'"'"' ')"`
-   — sourcing ALL of `.env` breaks the DB connection; take only the model key.
-3. `python3 scripts/ingest_connection_map_corpus.py` (new docs only ingest).
-4. `python3 scripts/run_connection_map_extraction.py --pass 1 --limit 12` first,
-   inspect, then drop `--limit` for the full run. Then `--pass 2`.
-5. Gate: **60+ candidates with verified evidence.** 51+67 qualifying sentences
-   are available, so this may land just short — see "if short" below.
+1. **The reviewer UI has never run on a device.** It is the surface the whole
+   phase depends on. Ship a build (or `eas update`) and walk the queue.
+2. Decide whether to trim the queue first. 82 candidates at ~2 minutes each is
+   ~3 hours, which matches the spec's budget, but the obviously-wrong ones (the
+   fracture citation above, the `general_pain → work_status` chain that rests on
+   a sentence attributing disability to the cancer rather than the pain) could be
+   pre-rejected to spend that time better.
+3. Tier C still cannot be signed: no attorney-approved attestation wording
+   exists, and the API refuses rather than falling back (D2).
 
-### If the run falls short of 60
+### Known gaps, still open
 
-Three documents the research recommended were NOT saved and are the obvious
-top-up, measured from their HTML: **Nausea and Vomiting PDQ (29 side-effect
-sentences — the single richest), Pain PDQ (8), Cognitive Impairment PDQ (2)**.
-All at `cancer.gov/about-cancer/treatment/side-effects/...-hp-pdq`. Also note
-the saved Fatigue file is the SHORT patient page (3 sentences); the
-health-professional PDQ version scored 23.
+- **`concept` has no provenance column**, so a physician-proposed concept (D3)
+  and stray probe data are indistinguishable. Two Phase 3 fixture concepts
+  (`g_ai`, `g_joint_pain`) sat in the live breast vocabulary and extraction built
+  five duplicate edges on them before this was caught. They are out of scope now
+  and the duplicates are deleted, but add provenance before physicians start
+  adding terms.
+- **Attestation has no optimistic concurrency.** `connection_map_attest` computes
+  `edge_hash` server-side at signing, so a reviewer who loads a candidate and has
+  evidence added underneath them signs a hash covering a row they never read.
+  Restricting corroboration to `candidate` edges does not close it, because
+  candidates are what reviewers read. The fix is the queue returning `edge_hash`,
+  the client sending it back, and the function refusing a mismatch.
+- The two JCO-formatted PDFs are still column-interleaved (sidebar plus two body
+  columns; `_gutter()` handles one clean split). Needs multi-zone detection.
 
-### Open decision for the owner
+### Where the durable facts now live (do not re-derive)
 
-**Do peer-reviewed open-access reviews count as sources?** The spec's most
-important relationship — joint pain from aromatase inhibitors, and joint pain
-as the leading reason women stop taking them (§10.2 and §10.3) — has NO
-official openly-accessible source; every ASCO guideline covering it is
-paywalled. Two CC-BY reviews cover it exactly (Frontiers in Endocrinology 2021
-PMC8353230; Rheumatology Advances in Practice 2024 PMC11003819, which contains
-"joint pain is noted to be the most common reason for ceasing AI therapy").
-Recommendation given: accept them, tagged as a lower source tier shown on the
-review card, since the physician signs each connection anyway. NOT YET ANSWERED.
+`.claude/rules/connection-map.md` — every invariant: exact-match citations,
+re-anchoring, the PHI boundary and its import rule, corpus-ingest failures
+(column interleaving, lost word spacing, NCI patient-vs-HP versions), the
+reasoning-model call config, how to read a zero-candidate run, the batching rule
+for both passes, and the corroboration path.
+`.claude/rules/supabase-migrations.md` — probe as the app's role rather than as
+postgres; `BEFORE DELETE` triggers must `RETURN COALESCE(NEW, OLD)` or they
+cancel the delete silently; constraint-name collisions; pinned search_path;
+cardinality vs array_length.
 
-### Hard-won facts, do not rediscover
-
-- **Never trust a researcher's "verbatim" quote.** The one supplied for the
-  lymphedema PDQ is not in the document. The document is still good.
-- **PDF column interleaving** silently shredded the original patient
-  guidelines; `_gutter()` in the ingest script fixes it. A FINISHED ingest
-  proves nothing about text quality — grep the stored text for a real sentence.
-- **Concept aliases matter more than the class names.** Drug names appear more
-  often than classes (paclitaxel 44 sections vs taxane 30).
-- The extractor correctly returns nothing for bibliographies, trial-results
-  tables, and generic "side effects of treatment" copy. Zero candidates is
-  often right; check WHICH sections were read before touching the prompt.
+Env for any connection-map script: `set -a; . ./.env.development; set +a`, then
+take ONLY `TOGETHER_API_KEY` from `.env` — sourcing all of `.env` breaks the DB
+connection.
 
 ## Everything else on the connection map
 
 Phases 1-3 are COMPLETE and adversarially reviewed (schema, corpus store,
 reviewer roles + `sage_review` PHI boundary, attestation, publication gate,
-mobile review workspace + publish screen). 552 tests green. Applied to
-**sage-dev only — prod untouched**, and 27+ commits are UNPUSHED.
-Probe checklists: `docs/connection_map/phase{1,2,3}_probe_checklist.md`.
-Plan, decisions D1-D6 and the 12 spec-vs-repo divergences: `PLAN.md`.
+mobile review workspace + publish screen). Applied to **sage-dev only — prod
+untouched**. Probe checklists: `docs/connection_map/phase{1,2,3}_probe_checklist.md`.
+Plan, decisions D1-D7 and the 12 spec-vs-repo divergences: `PLAN.md`.
+
+Corpus: 29 documents, 896 sections, ingested with BOTH extraction fixes
+(two-column gutter detection AND `x_tolerance=1`, without which journal PDFs
+lose word spacing entirely). Do not re-ingest.
 Screen preview for design review (published artifact):
 https://claude.ai/code/artifact/7edcc192-e3ba-4ef3-8b36-451f3f1ce333
 
