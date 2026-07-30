@@ -406,3 +406,63 @@ class TestNoLearningLoopContact:
         text = all_sql().lower()
         assert "pattern_records" not in text
         assert "learning_loop" not in text
+
+
+class TestBeforeDeleteTriggersReturnCoalesce:
+    """A BEFORE ... FOR EACH ROW trigger that returns NULL CANCELS the operation.
+    NEW is NULL during DELETE, so a trigger covering DELETE that ends in
+    `RETURN NEW` silently discards every delete it was supposed to allow.
+
+    That shipped in Phase 3 on master_edge: five deletes reported success and
+    left the rows in place. Its sibling on master_edge_evidence, written in the
+    same commit, had it right. This test reads every migration rather than that
+    one function, so the next trigger to cover DELETE cannot repeat it.
+    """
+
+    def _delete_triggers(self):
+        """(file, trigger, table, function, returns) for every BEFORE-DELETE row
+        trigger across all migrations, paired with its function body."""
+        import re
+        out = []
+        bodies = {}
+        for path in sorted(MIGRATIONS.glob("*.sql")):
+            src = path.read_text()
+            for name, body in re.findall(
+                    r"CREATE OR REPLACE FUNCTION (\w+)\(\)\s*RETURNS TRIGGER(.*?)\n\$\$;",
+                    src, re.DOTALL):
+                bodies[name] = body           # later migration wins, as in the DB
+        for path in sorted(MIGRATIONS.glob("*.sql")):
+            src = path.read_text()
+            for m in re.finditer(
+                    r"CREATE (?:CONSTRAINT )?TRIGGER (\w+)\s+(BEFORE|AFTER)\s+([A-Z ]+?)\s+ON "
+                    r"(\w+)[\s\S]*?EXECUTE FUNCTION (\w+)\(\)", src):
+                trig, when, ops, table, fn = m.groups()
+                if when != "BEFORE" or "DELETE" not in ops:
+                    continue
+                body = bodies.get(fn, "")
+                out.append((path.name, trig, table, fn, body))
+        return out
+
+    def test_there_is_at_least_one_to_check(self):
+        assert self._delete_triggers(), "trigger/function regex stopped matching"
+
+    def test_none_returns_bare_new(self):
+        import re
+        offenders = []
+        for fname, trig, table, fn, body in self._delete_triggers():
+            returns = set(re.findall(r"RETURN (COALESCE\(NEW, OLD\)|NEW|OLD|NULL)", body))
+            always_raises = "RAISE EXCEPTION" in body and not returns
+            if always_raises:
+                continue          # e.g. connection_map_block_write: never returns
+            if returns == {"NEW"}:
+                offenders.append(f"{fname}: {trig} on {table} -> {fn}() returns NEW only")
+        assert not offenders, (
+            "a BEFORE DELETE trigger returning NEW cancels the delete silently: "
+            + "; ".join(offenders))
+
+    def test_the_master_edge_guard_is_fixed_and_still_guards(self):
+        sql = (MIGRATIONS / "2026_08_02_connection_map_delete_trigger_fix.sql").read_text()
+        assert "RETURN COALESCE(NEW, OLD)" in sql
+        # The point of the trigger must survive the fix.
+        assert "connection_map_edge_is_published(OLD.id)" in sql
+        assert "RAISE EXCEPTION" in sql
