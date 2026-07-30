@@ -50,6 +50,24 @@ taps like Approve (it was one tap on one of eight 36pt buttons, irreversible).
 Keyboard handling, pull-to-refresh, retry, specific error messages, role
 awareness, sign-out, and AppState token refresh all landed with it.
 
+### Acceptance #2 is now PROVEN, and probing it found a hole
+
+With the dev secrets in place the real `/api/review/queue` was run against
+sage-dev through the restricted `sage_review` connection, with the privileged
+clients patched to explode if anything touched them: 200, 81 items, every one
+carrying a hash, and the privileged clients never called. Signing with a stale
+pin returned 409 and signing with no pin returned 400, both with nothing written.
+
+Probing the other half of the boundary — trying to cross it rather than reading
+the grant list — found that `sage_review` held **table-wide UPDATE on
+master_edge**, so the restricted connection could set `status='approved'` with no
+attestation behind it. The probe did exactly that and left a real edge approved
+and unsigned (restored immediately). The API always refused it, which meant the
+guarantee rested on one Flask handler; the publication gate caught the orphan,
+which is defence in depth working, but that is the wrong last line to rely on.
+The grant is now column-scoped to what the code always claimed, and a test
+compares the two lists.
+
 ### Known gaps, in the order they will bite
 
 1. **`trastuzumab` has no patient-facing name**, which blocks 5 of 81 cards from
@@ -57,13 +75,10 @@ awareness, sign-out, and AppState token refresh all landed with it.
    "targeted therapy for HER2 positive cancer" and the jargon gate keeps refusing
    it. A clinician should name it. The card now says so rather than letting it
    surface at publish time.
-2. **The review API has never run against a real database.** Not once. The
-   restricted `sage_review` client needs `SUPABASE_JWT_SECRET` and `SUPABASE_KEY`,
-   neither of which is in `.env.development`, so every end-to-end attempt returns
-   503 REVIEW_UNAVAILABLE — correct fail-closed behaviour, and also the reason
-   acceptance #2 is still unproven. Add both to `.env.development` from the
-   Supabase dashboard (Settings → API) to close this. The data shape itself IS
-   verified: all 81 candidates have a hash, evidence and (bar one) wording.
+2. **PROD needs `SUPABASE_JWT_SECRET` and `SUPABASE_KEY` set in Vercel**, or the
+   review API returns 503 there exactly as it did locally. Dev is now configured
+   and acceptance #2 is PROVEN against a real database (below); production is
+   not, and the reviewer app cannot work there until those two are set.
 3. `publish.tsx` is unreachable dead code — nothing produces a `versionId`, and
    publishing is admin-only while attesting is physician-only. Phase 5 ends with
    a published version, so this needs a route before then.

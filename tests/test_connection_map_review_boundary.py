@@ -404,3 +404,56 @@ class TestDependencyIsDeclared:
         # mints IS the boundary; the mobile side already lost a build to a
         # dependency that only resolved through hoisting.
         assert "PyJWT" in (_REPO / "requirements.txt").read_text(encoding="utf-8")
+
+
+class TestReviewRoleCannotDecideAnything:
+    """§5.8 + §0 rule 1. sage_review held table-wide UPDATE on master_edge, so
+    the restricted connection could set status='approved' with no attestation
+    behind it. Found by probing the live database, not by reading the SQL: the
+    update succeeded and left a real edge approved and unsigned.
+
+    The application always refused it — EDITABLE_EDGE_FIELDS omits status and
+    says why — but that made the guarantee depend on one Flask handler. The
+    grant is now as narrow as the code always claimed.
+    """
+
+    GRANT_SQL = (_REPO / "supabase_migrations"
+                 / "2026_08_04_connection_map_review_column_grants.sql").read_text()
+
+    def _granted_columns(self):
+        import re
+        body = self.GRANT_SQL[self.GRANT_SQL.index("GRANT UPDATE ("):]
+        inside = body[body.index("(") + 1:body.index(")")]
+        return {re.sub(r"(--.*|,)", "", line).strip()
+                for line in inside.splitlines() if line.strip()} - {""}
+
+    def test_table_wide_update_is_revoked_first(self):
+        # Postgres has no per-column REVOKE; the table grant must be dropped or
+        # it keeps overriding the narrower one.
+        revoke_at = self.GRANT_SQL.index("REVOKE UPDATE ON master_edge FROM sage_review")
+        grant_at = self.GRANT_SQL.index("GRANT UPDATE (")
+        assert revoke_at < grant_at
+
+    def test_the_granted_columns_match_the_application(self):
+        # Drift between these two is how the hole reopens: the API would refuse
+        # a field the database still allows, or refuse one it no longer can.
+        import sys
+        sys.path.insert(0, str(_REPO / "lib"))
+        from connection_map.review.api import (
+            ATTESTING_ONLY_EDGE_FIELDS,
+            EDITABLE_EDGE_FIELDS,
+        )
+        assert self._granted_columns() == EDITABLE_EDGE_FIELDS | ATTESTING_ONLY_EDGE_FIELDS
+
+    def test_a_verdict_column_is_never_granted(self):
+        for verdict in ("status", "rejection_reason"):
+            assert verdict not in self._granted_columns(), (
+                f"{verdict} moves only through connection_map_attest, which mints "
+                "the signature in the same transaction")
+
+    def test_the_columns_that_define_the_claim_are_never_granted(self):
+        # Repointing src/dst or changing the relationship would rewrite what an
+        # edge asserts without touching its wording.
+        for structural in ("src_concept_id", "dst_concept_id", "relationship",
+                           "tier", "candidate_origin"):
+            assert structural not in self._granted_columns()
