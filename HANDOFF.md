@@ -1,8 +1,78 @@
 # HANDOFF — active work
 
-_Keep this for in-flight work only. Last updated: 2026-08-02._
+_Keep this for in-flight work only. Last updated: 2026-08-03._
 
-## RESUME HERE — connection map: Phase 4 DONE, Phase 5 is a human task
+## RESUME HERE — the reviewer app is built; the next step is a device
+
+**Phase 4 is done and Phase 5 is prepared. 76 of 81 candidates are ready to
+approve AND publish; the remaining 5 wait on one concept name (below). 644 tests
+pass, tsc clean, Pressable scan clean. Prod untouched; 39 commits unpushed.**
+
+### THE NEXT ACTION IS TO PUT IT ON A PHONE
+
+Nothing in the reviewer workspace has ever rendered on a device, and it is the
+surface a physician will sit in for 3-4 hours. `eas update --channel production
+--platform ios` (JS only, no build needed), then walk several real cards through
+approve, reject and reword. Specifically worth testing by hand, because no
+mobile test framework exists:
+
+- background the app for a few minutes, come back, and confirm the session still
+  works (this was silently broken until the AppState wiring landed);
+- kill wifi mid-decision and confirm the message says nothing was signed;
+- the reword keyboard, on a card that is not the first one.
+
+### What was fixed this session
+
+**You cannot sign, or change, what you did not see.** `connection_map_attest`
+computed the edge hash AT signing time, so a citation added between opening a
+card and signing it landed inside a signature nobody had read. The queue now
+hands out each edge's hash, the client returns it, and the function refuses a
+mismatch (`STALE_EDGE`, 409). The old unpinned 7-arg form is dropped, not
+overloaded, so no caller can skip it.
+
+A second instance of the same bug was worse and reachable from the UI: `edit_edge`
+had no status check at all, so rewording an approved edge voided its signature in
+silence, surfacing only later at the publication gate as "attestation voided". A
+trigger now freezes the hash-bearing columns once an attestation exists;
+`status` and `rejection_reason` stay editable, because approving is what signing
+does and a physician may still change her mind.
+
+**There was nothing to review.** All 81 candidates had empty `patient_phrasing`
+and all 60 concepts had no `display_patient`, and Approve is disabled without
+wording — so the queue would have opened with nothing approvable and 141 strings
+to hand-author on a phone. `scripts/draft_connection_map_wording.py` drafts both,
+gated on the same copy lint the publication gate applies; failures are left blank
+rather than shown as a starting point.
+
+**The queue was built for browsing, not for a long sitting.** Rewritten as one
+card at a time with progress, Previous and Skip. Reject is now two deliberate
+taps like Approve (it was one tap on one of eight 36pt buttons, irreversible).
+Keyboard handling, pull-to-refresh, retry, specific error messages, role
+awareness, sign-out, and AppState token refresh all landed with it.
+
+### Known gaps, in the order they will bite
+
+1. **`trastuzumab` has no patient-facing name**, which blocks 5 of 81 cards from
+   PUBLISHING (they can still be approved). The drafting model keeps reaching for
+   "targeted therapy for HER2 positive cancer" and the jargon gate keeps refusing
+   it. A clinician should name it. The card now says so rather than letting it
+   surface at publish time.
+2. **The review API has never run against a real database.** Not once. The
+   restricted `sage_review` client needs `SUPABASE_JWT_SECRET` and `SUPABASE_KEY`,
+   neither of which is in `.env.development`, so every end-to-end attempt returns
+   503 REVIEW_UNAVAILABLE — correct fail-closed behaviour, and also the reason
+   acceptance #2 is still unproven. Add both to `.env.development` from the
+   Supabase dashboard (Settings → API) to close this. The data shape itself IS
+   verified: all 81 candidates have a hash, evidence and (bar one) wording.
+3. `publish.tsx` is unreachable dead code — nothing produces a `versionId`, and
+   publishing is admin-only while attesting is physician-only. Phase 5 ends with
+   a published version, so this needs a route before then.
+4. `concept` still has no provenance column, so a physician-proposed name (D3)
+   and a pipeline-drafted one are indistinguishable once stored.
+
+### Old context, still true
+
+## Phase 4 as it happened
 
 **Phase 4's gate (≥60 candidates with verified evidence) is MET: 82 edges and
 137 citations on sage-dev, every citation an exact match against source bytes.**
@@ -61,38 +131,6 @@ quotation in the corpus supports it.
 
 **The peer-reviewed-sources question is CLOSED** (D7: they corroborate, never
 carry a connection alone). Nothing is blocked on it.
-
-### Next: Phase 5 is Dr. Csiki's, not code
-
-Phase 5's gate is "v1 map published" and its work is 3-4 hours of clinical
-review. Before handing it over:
-
-1. **The reviewer UI has never run on a device.** It is the surface the whole
-   phase depends on. Ship a build (or `eas update`) and walk the queue.
-2. Decide whether to trim the queue first. 82 candidates at ~2 minutes each is
-   ~3 hours, which matches the spec's budget, but the obviously-wrong ones (the
-   fracture citation above, the `general_pain → work_status` chain that rests on
-   a sentence attributing disability to the cancer rather than the pain) could be
-   pre-rejected to spend that time better.
-3. Tier C still cannot be signed: no attorney-approved attestation wording
-   exists, and the API refuses rather than falling back (D2).
-
-### Known gaps, still open
-
-- **`concept` has no provenance column**, so a physician-proposed concept (D3)
-  and stray probe data are indistinguishable. Two Phase 3 fixture concepts
-  (`g_ai`, `g_joint_pain`) sat in the live breast vocabulary and extraction built
-  five duplicate edges on them before this was caught. They are out of scope now
-  and the duplicates are deleted, but add provenance before physicians start
-  adding terms.
-- **Attestation has no optimistic concurrency.** `connection_map_attest` computes
-  `edge_hash` server-side at signing, so a reviewer who loads a candidate and has
-  evidence added underneath them signs a hash covering a row they never read.
-  Restricting corroboration to `candidate` edges does not close it, because
-  candidates are what reviewers read. The fix is the queue returning `edge_hash`,
-  the client sending it back, and the function refusing a mismatch.
-- The two JCO-formatted PDFs are still column-interleaved (sidebar plus two body
-  columns; `_gutter()` handles one clean split). Needs multi-zone detection.
 
 ### Where the durable facts now live (do not re-derive)
 
