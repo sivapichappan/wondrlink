@@ -216,6 +216,9 @@ function QueueCard({
   const busy = reword.isPending || attest.isPending || decided;
   const relationship = RELATIONSHIP_LABELS[item.relationship] ?? item.relationship;
   const noWording = !item.patient_phrasing?.trim();
+  const unnamedConcepts = [item.src, item.dst]
+    .filter((c) => !c.display_patient?.trim())
+    .map((c) => c.display ?? c.slug);
 
   return (
     <Card gap={Spacing.md}>
@@ -341,6 +344,27 @@ function QueueCard({
         <Text style={{ fontFamily: Fonts.sans, fontSize: FontSize.sm, color: Colors.textSecondary }}>
           Add the patient wording before approving. Reject and Reword still work.
         </Text>
+      ) : null}
+
+      {/* A concept with no patient-facing name does not block approving, but it
+          DOES block publishing, and that would only surface at the very end with
+          nothing to say which card caused it. */}
+      {mode === 'view' && unnamedConcepts.length > 0 ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            gap: Spacing.sm,
+            backgroundColor: Colors.warningBg,
+            borderRadius: Radius.md,
+            padding: Spacing.md,
+          }}>
+          <AlertCircle size={16} color={Colors.warning} />
+          <Text style={{ flex: 1, fontFamily: Fonts.sans, fontSize: FontSize.sm, color: Colors.warning }}>
+            {unnamedConcepts.join(' and ')} {unnamedConcepts.length > 1 ? 'have' : 'has'} no
+            patient-facing name yet. You can still approve this, but the map cannot be
+            published until someone adds one.
+          </Text>
+        </View>
       ) : null}
 
       {/* sign step: the exact sentence being signed, then one deliberate tap */}
