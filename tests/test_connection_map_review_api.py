@@ -50,6 +50,10 @@ class FakeQuery:
     def execute(self):
         result = MagicMock()
         result.data = self._rows
+        # A real PostgREST response carries an integer count when one was asked
+        # for. Leaving it a MagicMock made anything that reads `.count` blow up
+        # only once a handler started using it.
+        result.count = len(self._rows) if isinstance(self._rows, list) else 0
         return result
 
 
@@ -757,3 +761,28 @@ class TestSignatureIsPinnedToWhatWasOnScreen:
                                                  "Some people notice new joint aches. Is that you?"}))
         assert resp.status_code == 409
         assert resp.get_json()["error"] == "SIGNED_EDGE"
+
+
+class TestQueueProgress:
+    """The reviewer needs to know how much is left. `count` was the length of
+    the response and the page cap was 50, so against 81 candidates she saw 50
+    and nothing on screen or in the payload disagreed with "50 is all there is".
+    """
+
+    EDGE = {"id": "e-1", "relationship": "side_effect_of", "tier": "A",
+            "urgency": "routine", "status": "candidate",
+            "candidate_origin": "literature_scan", "patient_phrasing": "x",
+            "expected_prevalence_low": None, "expected_prevalence_high": None,
+            "src_concept_id": "c1", "dst_concept_id": "c2"}
+
+    def test_the_response_carries_a_total(self, client, authed):
+        fake = make_client(tables={"master_edge": [dict(self.EDGE)],
+                                   "concept": [], "master_edge_evidence": []})
+        with patch.object(review_api, "get_review_client", return_value=fake):
+            body = client.get("/api/review/queue", headers=AUTH).get_json()
+        assert body["total"] == body["count"] == 1
+
+    def test_the_page_can_hold_the_whole_pilot_queue(self):
+        # 81 candidates today. A cap below that hides work with no signal,
+        # because there is no offset parameter to page with.
+        assert review_api.QUEUE_PAGE_LIMIT >= 100

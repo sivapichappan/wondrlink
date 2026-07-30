@@ -9,7 +9,13 @@
  * owns its own bottom inset). Set `keyboardAvoiding` for composer screens.
  */
 
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  type RefreshControlProps,
+  ScrollView,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors, Spacing } from '@/constants/theme';
@@ -23,6 +29,10 @@ interface ScreenProps {
   padded?: boolean;
   keyboardAvoiding?: boolean;
   keyboardShouldPersistTaps?: boolean;
+  /** Pull-to-refresh for the scrolling body. Additive: screens that pass
+   *  nothing behave exactly as before. Without it, a screen whose only data
+   *  source has failed leaves force-quitting the app as the sole recovery. */
+  refreshControl?: React.ReactElement<RefreshControlProps>;
   /** Let the scroll content fill the viewport so children can use auto
    *  margins for vertical centering (e.g. the home menu). */
   grow?: boolean;
@@ -37,6 +47,7 @@ export function Screen({
   padded = true,
   keyboardAvoiding = false,
   keyboardShouldPersistTaps = false,
+  refreshControl,
   grow = false,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
@@ -47,6 +58,7 @@ export function Screen({
       style={{ flex: 1 }}
       contentContainerStyle={{ padding: pad, gap, paddingBottom: footer ? Spacing.md : insets.bottom + Spacing.xl, ...(grow ? { flexGrow: 1 } : null) }}
       keyboardShouldPersistTaps={keyboardShouldPersistTaps ? 'handled' : 'never'}
+      refreshControl={refreshControl}
       showsVerticalScrollIndicator={false}>
       {children}
     </ScrollView>

@@ -58,7 +58,11 @@ export interface ReviewQueueItem {
 export interface ReviewQueueResponse {
   status: 'ok';
   items: ReviewQueueItem[];
+  /** How many came back in this page. */
   count: number;
+  /** How many exist. Differs from `count` only if a page fills, and the progress
+   *  indicator needs the one that cannot understate the work left. */
+  total: number;
 }
 
 export interface ReviewMetaResponse {

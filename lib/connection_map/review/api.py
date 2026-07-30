@@ -72,7 +72,13 @@ ROLES_MAY_ATTEST = {"reviewer_attesting"}
 ROLES_MAY_PUBLISH = {"admin"}
 ROLES_MAY_ADD_CONCEPT = {"reviewer_clinical", "reviewer_attesting", "admin"}
 
-QUEUE_PAGE_LIMIT = 50
+# A page has to be able to hold the whole pilot queue. At 50 against 81
+# candidates the reviewer saw 50 and had no way to know 31 existed: there is no
+# offset parameter to page with, and `count` was the length of the response, so
+# nothing on screen or in the payload disagreed with "50 is all there is".
+# The response now also carries `total`, so the two can never silently diverge
+# again even if a page does fill.
+QUEUE_PAGE_LIMIT = 200
 
 
 @lru_cache(maxsize=1)
@@ -243,7 +249,16 @@ def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]
                 "edge_hash": hashes.get(e["id"]),
                 "attestation": attestation_text_for_tier(e["tier"]),
             })
-        return jsonify({"status": "ok", "items": items, "count": len(items)})
+        # `count` is what came back; `total` is how many exist. They differ only
+        # if a page fills, and the reviewer's progress indicator needs the one
+        # that does not lie about how much work is left.
+        total = (client.table("master_edge")
+                 .select("id", count="exact")
+                 .eq("status", status)
+                 .limit(1)
+                 .execute()).count
+        return jsonify({"status": "ok", "items": items, "count": len(items),
+                        "total": total if total is not None else len(items)})
 
     # ------------------------------------------------------------------
     # Edit (§5.4 Reword + D1). Wording and metadata only; never evidence.

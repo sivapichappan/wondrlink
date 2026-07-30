@@ -8,6 +8,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import { AppState } from 'react-native';
 import { env } from './env';
 
 const hasCreds = !!env.supabaseUrl && !!env.supabaseAnonKey;
@@ -31,4 +32,15 @@ export const supabase = createClient(url, key, {
     persistSession: true,
     detectSessionInUrl: false,
   },
+});
+
+// `autoRefreshToken` alone is not enough on React Native: its timer does not
+// survive the app going to the background, so a session that outlives one token
+// silently expires while backgrounded and every request afterwards returns 401.
+// Supabase's own RN guidance is to drive the refresh loop from AppState, and
+// without it a reviewer who takes a twenty-minute call mid-session comes back to
+// a queue that will not load and signatures that will not save.
+AppState.addEventListener('change', (state) => {
+  if (state === 'active') supabase.auth.startAutoRefresh();
+  else supabase.auth.stopAutoRefresh();
 });

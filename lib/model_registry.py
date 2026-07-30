@@ -109,6 +109,19 @@ _SEGMENTS: Dict[str, Dict[str, str]] = {
         "default": "deepseek-ai/DeepSeek-V4-Pro",
         "env": "MODEL_CONNECTION_EXTRACTOR",
     },
+    # Connection-map patient wording (§8). Also offline, and a DIFFERENT job from
+    # extraction: extraction finds relationships and is judged on recall, this
+    # writes one sixth-grade sentence and is judged on plain language. Separate
+    # segment so the two can be swapped independently — the house rule is one
+    # variable per eval window, and sharing an entry would break it.
+    #
+    # Nothing this produces reaches a patient unreviewed: every string passes
+    # copy_lint before it is stored, and a physician approves or rewrites it.
+    "connection_wording": {
+        "provider": "together",
+        "default": "deepseek-ai/DeepSeek-V4-Pro",
+        "env": "MODEL_CONNECTION_WORDING",
+    },
 }
 
 
