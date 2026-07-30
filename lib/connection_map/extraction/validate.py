@@ -85,6 +85,7 @@ def validate_pass1(
     relationship_types: Iterable[str],
     existing_triples: Optional[Iterable[Tuple[str, str, str]]] = None,
     concept_domains: Optional[Mapping[str, str]] = None,
+    existing_edge_ids: Optional[Mapping[Tuple[str, str, str], str]] = None,
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """Validate one section's worth of pass-1 output.
 
@@ -93,6 +94,18 @@ def validate_pass1(
 
     `concept_domains` maps slug to domain and enables the direction check in
     RELATIONSHIP_DOMAINS. Callers that have the vocabulary should pass it.
+
+    `existing_edge_ids` maps an already-known triple to its edge id and turns a
+    duplicate into a CORROBORATION: the candidate is accepted, carrying
+    `corroborates_edge_id`, and the caller records its quotation as another
+    evidence row on that edge instead of discarding it. A second guideline
+    stating the same relationship is evidence, not noise (D7). Without this map a
+    known triple is still rejected as `already_exists`, so nothing changes for a
+    caller that has no edge ids to give.
+
+    A corroboration is held to the SAME citation check as a new edge. Being
+    already known buys a candidate nothing: an invented quotation is rejected
+    either way.
     """
     slugs = set(concept_slugs)
     rels = set(relationship_types)
@@ -141,7 +154,8 @@ def validate_pass1(
         if triple in seen:
             rejected.append(_reject("duplicate_in_batch", cand))
             continue
-        if triple in existing:
+        corroborates = (existing_edge_ids or {}).get(triple)
+        if corroborates is None and triple in existing:
             rejected.append(_reject("already_exists", cand))
             continue
 
@@ -167,6 +181,8 @@ def validate_pass1(
             "quote_repaired": anchor.repaired,
             "tier": "A",
             "extraction_pass": 1,
+            # Set = record this quotation on that existing edge. None = new edge.
+            "corroborates_edge_id": corroborates,
         })
 
     return accepted, rejected

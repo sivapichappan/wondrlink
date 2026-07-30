@@ -186,13 +186,28 @@ def main() -> int:
     concept_lines = "\n".join(
         _concept_line(c) for c in sorted(concepts, key=lambda c: (c["domain"], c["slug"])))
 
-    existing = {(e["src_concept_id"], e["dst_concept_id"], e["relationship"])
-                for e in (db.table("master_edge")
-                          .select("src_concept_id, dst_concept_id, relationship")
-                          .execute()).data or []}
     id_to_slug = {c["id"]: c["slug"] for c in concepts}
-    existing_triples = {(id_to_slug.get(s), id_to_slug.get(d), r)
-                        for s, d, r in existing if s in id_to_slug and d in id_to_slug}
+    # Triple -> edge id, and only for edges that can still take evidence. An
+    # approved edge carries a signature bound to its current evidence and a
+    # rejected one was a clinical decision, so neither is corroborated by a
+    # batch job; both stay plain duplicates. The DB function refuses them too —
+    # this just avoids asking.
+    edge_id_by_triple = {}
+    for e in (db.table("master_edge")
+              .select("id, src_concept_id, dst_concept_id, relationship, status")
+              .eq("status", "candidate")
+              .execute()).data or []:
+        src, dst = id_to_slug.get(e["src_concept_id"]), id_to_slug.get(e["dst_concept_id"])
+        if src and dst:
+            edge_id_by_triple[(src, dst, e["relationship"])] = e["id"]
+    # Every known triple, corroboratable or not, so a duplicate on a decided
+    # edge is still recognised as a duplicate.
+    existing_triples = {(id_to_slug.get(e["src_concept_id"]), id_to_slug.get(e["dst_concept_id"]),
+                         e["relationship"])
+                        for e in (db.table("master_edge")
+                                  .select("src_concept_id, dst_concept_id, relationship")
+                                  .execute()).data or []
+                        if e["src_concept_id"] in id_to_slug and e["dst_concept_id"] in id_to_slug}
 
     if args.pass_no == 2:
         return run_pass2(db, args, model, by_slug, concept_lines, existing_triples,
@@ -246,7 +261,7 @@ def main() -> int:
     rel_lines = "\n".join(f"- {r}" for r in PASS1_RELATIONSHIPS)
 
     accepted_total, rejected_all, repaired_total, written = 0, [], 0, 0
-    no_answer = 0
+    no_answer, corroborated, already_had = 0, 0, 0
     seen_triples = set(existing_triples)
     started = time.time()
 
@@ -267,11 +282,16 @@ def main() -> int:
         ok, bad = validate_pass1(
             parse_model_json(raw), sec["text"],
             by_slug.keys(), PASS1_RELATIONSHIPS, existing_triples=seen_triples,
-            concept_domains=domains_by_slug)
+            concept_domains=domains_by_slug,
+            existing_edge_ids=edge_id_by_triple)
 
         repaired = sum(1 for c in ok if c.get("quote_repaired"))
         repaired_total += repaired
-        accepted_total += len(ok)
+        # A corroboration is not a new candidate for the physician's queue; it is
+        # another citation under one they already have. Counted apart so the
+        # queue length stays honest.
+        new_edges = [c for c in ok if not c.get("corroborates_edge_id")]
+        accepted_total += len(new_edges)
         rejected_all.extend(bad)
 
         # A section the model did not ANSWER is a different event from a section
@@ -284,19 +304,50 @@ def main() -> int:
                   f"NO ANSWER ({r['reason']}: {r['detail']})")
 
         if ok:
+            corr = len(ok) - len(new_edges)
             print(f"  [{n}/{len(sections)}] {doc.get('title','?')[:38]} {sec['section_ref']}: "
-                  f"{len(ok)} accepted, {len(bad)} rejected"
+                  f"{len(new_edges)} new, {corr} corroborating, {len(bad)} rejected"
                   + (f", {repaired} re-anchored" if repaired else ""))
         for cand in ok:
-            seen_triples.add((cand["src_concept_slug"], cand["dst_concept_slug"],
-                              cand["relationship"]))
+            triple = (cand["src_concept_slug"], cand["dst_concept_slug"],
+                      cand["relationship"])
+            seen_triples.add(triple)
+            arrow = ("  (corroborates)" if cand.get("corroborates_edge_id") else "")
             print(f"        {cand['src_concept_slug']} --{cand['relationship']}--> "
-                  f"{cand['dst_concept_slug']}")
+                  f"{cand['dst_concept_slug']}{arrow}")
             print(f"          \"{cand['quoted_sentence'][:96]}\"")
             if args.dry_run or not run_id:
+                if cand.get("corroborates_edge_id"):
+                    corroborated += 1
                 continue
+
+            # A second source for a relationship already found: record its
+            # quotation on the existing edge rather than throwing it away (D7).
+            if cand.get("corroborates_edge_id"):
+                try:
+                    added = db.rpc("add_evidence_to_master_edge", {
+                        "p_master_edge_id": cand["corroborates_edge_id"],
+                        "p_evidence": {
+                            "source_section_id": sec["id"],
+                            "source_document_id": sec["document_id"],
+                            "section_ref": sec["section_ref"],
+                            "evidence_kind": "verbatim",
+                            "quoted_sentence": cand["quoted_sentence"],
+                            "char_offset": cand["char_offset"],
+                        },
+                    }).execute()
+                    if added.data:
+                        corroborated += 1
+                    else:
+                        # The conflict clause fired: this exact citation was
+                        # already on the edge. Normal on a re-run.
+                        already_had += 1
+                except Exception as e:  # noqa: BLE001
+                    print(f"          CORROBORATION FAILED: {str(e)[:140]}")
+                continue
+
             try:
-                db.rpc("insert_master_edge_with_evidence", {
+                created = db.rpc("insert_master_edge_with_evidence", {
                     "p_edge": {
                         "src_concept_id": by_slug[cand["src_concept_slug"]]["id"],
                         "dst_concept_id": by_slug[cand["dst_concept_slug"]]["id"],
@@ -317,15 +368,21 @@ def main() -> int:
                     }],
                 }).execute()
                 written += 1
+                # Remember the new edge so a LATER section stating the same
+                # relationship corroborates it instead of being discarded.
+                if created.data:
+                    edge_id_by_triple[triple] = created.data
             except Exception as e:  # noqa: BLE001
                 print(f"          WRITE FAILED: {str(e)[:140]}")
 
     elapsed = time.time() - started
     print("\n" + "=" * 62)
     print(f"sections read      {len(sections)}")
-    print(f"candidates accepted {accepted_total}")
+    print(f"new candidates      {accepted_total}")
     print(f"  re-anchored       {repaired_total}  (stored the source's own words)")
     print(f"written to review   {written}{'  (dry run)' if args.dry_run else ''}")
+    print(f"corroborations      {corroborated}  (another source under an existing candidate)")
+    print(f"  already recorded  {already_had}  (same citation, nothing added)")
     print(f"sections unanswered {no_answer}  (model did not answer; NOT 'states nothing')")
     print(f"rejected            {len(rejected_all)}")
     for reason, count in rejection_summary(rejected_all).items():
@@ -336,7 +393,8 @@ def main() -> int:
             "finished_at": "now()",
             "stats": {"sections": len(sections), "accepted": accepted_total,
                       "written": written, "repaired": repaired_total,
-                      "unanswered": no_answer,
+                      "unanswered": no_answer, "corroborated": corroborated,
+                      "already_recorded": already_had,
                       "rejected": rejection_summary(rejected_all)},
         }).eq("id", run_id).execute()
     return 0

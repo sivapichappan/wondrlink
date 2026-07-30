@@ -438,6 +438,109 @@ class TestRelationshipDomains:
                     assert domain in CONCEPT_DOMAINS
 
 
+class TestCorroboration:
+    """A second source stating a relationship the map already holds is evidence,
+    not noise (owner decision D7). It becomes another evidence row on the
+    existing edge instead of being discarded as a duplicate — 72 citations were
+    thrown away in the first full pass-1 sweep.
+    """
+
+    TRIPLE = ("joint_pain", "aromatase_inhibitor", "side_effect_of")
+    EDGE_ID = "11111111-2222-3333-4444-555555555555"
+
+    def test_a_known_triple_becomes_a_corroboration(self):
+        ok, bad = validate_pass1(one(), SECTION, SLUGS, RELS,
+                                 existing_edge_ids={self.TRIPLE: self.EDGE_ID})
+        assert len(ok) == 1 and not bad
+        assert ok[0]["corroborates_edge_id"] == self.EDGE_ID
+
+    def test_a_new_triple_is_still_a_new_edge(self):
+        ok, _ = validate_pass1(one(), SECTION, SLUGS, RELS, existing_edge_ids={})
+        assert ok[0]["corroborates_edge_id"] is None
+
+    def test_without_edge_ids_a_duplicate_is_still_rejected(self):
+        # Callers that cannot corroborate must behave exactly as before.
+        ok, bad = validate_pass1(one(), SECTION, SLUGS, RELS,
+                                 existing_triples=[self.TRIPLE])
+        assert not ok and bad[0]["reason"] == "already_exists"
+
+    def test_a_corroboration_gets_no_citation_discount(self):
+        # THE test in this class. Being already known must not buy a candidate
+        # a weaker citation check — that would be a route to an unverified
+        # quotation entering the map under an edge a physician trusts.
+        ok, bad = validate_pass1(one(quoted_sentence="Joint pain is caused by letrozole."),
+                                 SECTION, SLUGS, RELS,
+                                 existing_edge_ids={self.TRIPLE: self.EDGE_ID})
+        assert not ok and bad[0]["reason"] == "quote_not_found"
+
+    def test_a_corroboration_is_still_domain_checked(self):
+        ok, bad = validate_pass1(
+            {"candidates": [dict(one()["candidates"][0],
+                                 src_concept_slug="aromatase_inhibitor",
+                                 dst_concept_slug="joint_pain")]},
+            SECTION, SLUGS, RELS, concept_domains=DOMAINS,
+            existing_edge_ids={("aromatase_inhibitor", "joint_pain",
+                                "side_effect_of"): self.EDGE_ID})
+        assert not ok and bad[0]["reason"] == "wrong_domain"
+
+    def test_the_same_triple_twice_in_one_reply_is_not_two_corroborations(self):
+        dup = one()["candidates"][0]
+        ok, bad = validate_pass1({"candidates": [dup, dict(dup)]},
+                                 SECTION, SLUGS, RELS,
+                                 existing_edge_ids={self.TRIPLE: self.EDGE_ID})
+        assert len(ok) == 1 and bad[0]["reason"] == "duplicate_in_batch"
+
+    def test_a_corroboration_stores_the_sources_own_words(self):
+        ok, _ = validate_pass1(
+            one(quoted_sentence="joint pain is COMMON with an aromatase inhibitor."),
+            SECTION, SLUGS, RELS, existing_edge_ids={self.TRIPLE: self.EDGE_ID})
+        assert ok[0]["quoted_sentence"] == "Joint pain is common with an aromatase inhibitor."
+        assert SECTION[ok[0]["char_offset"]:][:len(ok[0]["quoted_sentence"])] \
+            == ok[0]["quoted_sentence"]
+
+
+class TestCorroborationMigration:
+    """Static SQL guards. The DB is the real boundary here: the function refuses
+    a signed edge even if a caller asks it to.
+    """
+
+    SQL = (_REPO / "supabase_migrations"
+           / "2026_08_01_connection_map_corroboration.sql").read_text()
+
+    def test_only_a_candidate_edge_may_be_corroborated(self):
+        # edge_hash covers every evidence row, so adding one to an approved edge
+        # would void the physician's signature.
+        assert "v_status <> 'candidate'" in self.SQL
+        assert "RAISE EXCEPTION" in self.SQL
+
+    def test_the_ordinal_is_allocated_under_a_row_lock(self):
+        assert "FOR UPDATE" in self.SQL
+        assert "COALESCE(MAX(ordinal), -1) + 1" in self.SQL
+
+    def test_re_running_cannot_duplicate_a_citation(self):
+        assert "CREATE UNIQUE INDEX IF NOT EXISTS master_edge_evidence_one_quote_per_place" in self.SQL
+        assert "DO NOTHING" in self.SQL
+
+    def test_the_uniqueness_rule_covers_verbatim_rows_only(self):
+        # An inferred (tier C) row carries its meaning in `reasoning`, not in a
+        # location, so two of them on one section are not duplicates by definition.
+        assert "WHERE evidence_kind = 'verbatim'" in self.SQL
+
+    def test_the_function_is_security_invoker(self):
+        # sage_review holds no INSERT on master_edge_evidence, so a reviewer
+        # session cannot reach this even by calling it directly.
+        assert "SECURITY INVOKER" in self.SQL
+        assert "SECURITY DEFINER" not in self.SQL
+
+    def test_search_path_is_pinned(self):
+        assert "SET search_path = public, pg_temp" in self.SQL
+
+    def test_only_the_service_role_may_execute_it(self):
+        for role in ("PUBLIC", "anon", "authenticated"):
+            assert f"REVOKE ALL ON FUNCTION add_evidence_to_master_edge(UUID, JSONB) FROM {role}" in self.SQL
+        assert "GRANT EXECUTE ON FUNCTION add_evidence_to_master_edge(UUID, JSONB) TO service_role" in self.SQL
+
+
 class TestExtractionRunnerWiring:
     """Static guards on scripts/run_connection_map_extraction.py.
 
@@ -457,6 +560,18 @@ class TestExtractionRunnerWiring:
 
     def test_both_passes_supply_the_domain_map(self):
         assert self.RUNNER.count("concept_domains=domains_by_slug") == 2
+
+    def test_a_corroboration_is_written_as_evidence_not_dropped(self):
+        assert "add_evidence_to_master_edge" in self.RUNNER
+        assert "existing_edge_ids=edge_id_by_triple" in self.RUNNER
+
+    def test_only_candidate_edges_are_offered_for_corroboration(self):
+        # An approved edge carries a signature; a rejected one was a clinical
+        # decision. The runner does not even ask about them.
+        assert '.eq("status", "candidate")' in self.RUNNER
+
+    def test_a_new_edge_is_remembered_so_later_sections_corroborate_it(self):
+        assert "edge_id_by_triple[triple] = created.data" in self.RUNNER
 
     def test_the_prompt_placeholders_all_exist(self):
         # A renamed placeholder means the model receives the literal string
