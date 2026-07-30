@@ -577,3 +577,68 @@ class TestCopyLintHardening:
         assert copy_lint._syllables("pain") == 1
         assert copy_lint._syllables("people") == 2
         assert copy_lint._syllables("") == 0
+
+
+class TestChainReasoningInTheQueue:
+    """A chained (tier B) candidate rests on two quotations combined by an
+    argument no source makes. The reviewer has to see that argument, and has to
+    be able to tell it apart from the quotations.
+    """
+
+    EDGE = {
+        "id": "edge-b", "relationship": "co_occurs_with", "tier": "B",
+        "urgency": "routine", "status": "candidate",
+        "candidate_origin": "literature_scan", "patient_phrasing": None,
+        "expected_prevalence_low": None, "expected_prevalence_high": None,
+        "src_concept_id": "c1", "dst_concept_id": "c2",
+    }
+
+    def queue(self, client, evidence):
+        fake = make_client(tables={
+            "master_edge": [dict(self.EDGE)],
+            "concept": [{"id": "c1", "slug": "joint_pain", "display_clinical": "joint pain",
+                         "display_patient": None, "domain": "symptom"},
+                        {"id": "c2", "slug": "medication_adherence",
+                         "display_clinical": "adherence", "display_patient": None,
+                         "domain": "daily_life"}],
+            "master_edge_evidence": evidence,
+            "source_document": [{"id": "d1", "title": "Guideline", "publisher": "NCI",
+                                 "scope": "general_survivorship", "cancer": None}],
+        })
+        with patch.object(review_api, "get_review_client", return_value=fake):
+            resp = client.get("/api/review/queue", headers=AUTH)
+        assert resp.status_code == 200
+        return resp.get_json()["items"][0]
+
+    def ev(self, ordinal, reasoning=None):
+        return {"master_edge_id": "edge-b", "source_document_id": "d1",
+                "section_ref": f"s000{ordinal}", "quoted_sentence": f"Sentence {ordinal}.",
+                "char_offset": 0, "ordinal": ordinal, "reasoning": reasoning}
+
+    def test_the_chain_argument_reaches_the_reviewer(self):
+        # It rides on an evidence row in the database; the API lifts it to the
+        # edge so a client does not have to know that.
+        item = self.queue(self._client,
+                          [self.ev(0, "Quote 1 gives the cause, quote 2 gives the consequence."),
+                           self.ev(1)])
+        assert item["chain_reasoning"] == \
+            "Quote 1 gives the cause, quote 2 gives the consequence."
+        assert len(item["evidence"]) == 2
+
+    def test_a_single_quotation_candidate_has_none(self):
+        item = self.queue(self._client, [self.ev(0)])
+        assert item["chain_reasoning"] is None
+
+    def test_blank_reasoning_is_not_surfaced_as_an_argument(self):
+        item = self.queue(self._client, [self.ev(0, "   ")])
+        assert item["chain_reasoning"] is None
+
+    def test_the_argument_is_never_presented_as_a_quotation(self):
+        item = self.queue(self._client,
+                          [self.ev(0, "The two sentences combine."), self.ev(1)])
+        quotes = [e["quoted_sentence"] for e in item["evidence"]]
+        assert item["chain_reasoning"] not in quotes
+
+    @pytest.fixture(autouse=True)
+    def _bind_client(self, client, authed):
+        self._client = client

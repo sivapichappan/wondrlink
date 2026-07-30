@@ -46,9 +46,41 @@ const RELATIONSHIP_LABELS: Record<string, string> = {
 
 type CardMode = 'view' | 'reword' | 'reject' | 'sign';
 
+function ChainReasoning({ text }: { text: string }) {
+  // A chained candidate rests on two quotations that each say something true,
+  // combined by an argument no source makes. The reviewer has to be able to see
+  // the argument and tell it apart from the quotations, so it is labelled as
+  // proposed reasoning and styled unlike the serif quotation blocks.
+  return (
+    <View style={{ gap: Spacing.xs }}>
+      <SectionLabel>Proposed reasoning, not a quotation</SectionLabel>
+      <View
+        style={{
+          backgroundColor: Colors.surface,
+          borderRadius: Radius.md,
+          borderWidth: 1,
+          borderColor: Colors.border,
+          borderStyle: 'dashed',
+          padding: Spacing.md,
+        }}>
+        <Text
+          style={{
+            fontFamily: Fonts.sans,
+            fontSize: FontSize.sm,
+            color: Colors.textSecondary,
+            lineHeight: 20,
+          }}>
+          {text}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 function EvidenceBlock({ item }: { item: ReviewQueueItem }) {
   return (
     <View style={{ gap: Spacing.sm }}>
+      {item.chain_reasoning ? <ChainReasoning text={item.chain_reasoning} /> : null}
       <SectionLabel>Evidence</SectionLabel>
       {item.evidence.length === 0 ? (
         <Text style={{ fontFamily: Fonts.sans, fontSize: FontSize.sm, color: Colors.danger }}>

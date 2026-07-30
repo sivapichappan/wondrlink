@@ -573,6 +573,31 @@ class TestExtractionRunnerWiring:
     def test_a_new_edge_is_remembered_so_later_sections_corroborate_it(self):
         assert "edge_id_by_triple[triple] = created.data" in self.RUNNER
 
+    def test_pass_2_batches_its_quotations(self):
+        # All 131 quotations in one call returned `{"candidates": []}` in seven
+        # tokens; six in one call produced a real chain. Same collapse as pass 1
+        # on long sections, so the size limit is load-bearing, not tidiness.
+        assert "BATCH_QUOTATIONS = 25" in self.RUNNER
+        assert "rows[:BATCH_QUOTATIONS]" in self.RUNNER
+
+    def test_pass_2_batches_are_grouped_by_shared_concept(self):
+        # A chain runs THROUGH a concept, so quotations that could chain have to
+        # land in the same call; arbitrary chunking would separate them.
+        assert "by_concept" in self.RUNNER and "edge_concepts" in self.RUNNER
+
+    def test_both_passes_are_limited_to_the_v1_relationships(self):
+        # §4.3 enables two types in v1. The publication gate checks a version's
+        # enabled_relationships, so proposing `acts_through` (authoring-only,
+        # never patient-facing) would spend review on an unpublishable candidate.
+        assert 'V1_RELATIONSHIPS = ("side_effect_of", "co_occurs_with")' in self.RUNNER
+        assert "V1_RELATIONSHIPS)" in self.RUNNER
+        assert "RELATIONSHIP_TYPES" not in self.RUNNER, \
+            "pass 2 must not offer the types v1 cannot publish"
+
+    def test_a_chained_edge_is_tier_b_and_carries_its_reasoning(self):
+        assert '"tier": "B",' in self.RUNNER
+        assert 'rows[0]["reasoning"] = c["reasoning"]' in self.RUNNER
+
     def test_the_prompt_placeholders_all_exist(self):
         # A renamed placeholder means the model receives the literal string
         # "{section_text}" and correctly reports no relationships.

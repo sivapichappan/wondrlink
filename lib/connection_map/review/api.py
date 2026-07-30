@@ -179,7 +179,7 @@ def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]
         edge_ids = [e["id"] for e in edges]
         evidence = (client.table("master_edge_evidence")
                     .select("master_edge_id, source_document_id, section_ref, "
-                            "quoted_sentence, char_offset, ordinal")
+                            "quoted_sentence, char_offset, ordinal, reasoning")
                     .in_("master_edge_id", edge_ids)
                     .order("ordinal")
                     .execute()).data or []
@@ -189,6 +189,11 @@ def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]
                 .in_("id", doc_ids).execute()).data or []} if doc_ids else {}
 
         by_edge: Dict[str, List[Dict[str, Any]]] = {}
+        # A tier B (chained) edge carries WHY its quotations combine. Without it
+        # the reviewer sees two true sentences and has to reconstruct the
+        # argument the model made, which is the reviewer's scarcest resource
+        # spent on the wrong thing.
+        rationale: Dict[str, str] = {}
         for ev in evidence:
             doc = docs.get(ev["source_document_id"], {})
             by_edge.setdefault(ev["master_edge_id"], []).append({
@@ -199,6 +204,8 @@ def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]
                 # §5.4: each quotation labelled with its source scope.
                 "scope": doc.get("scope"),
             })
+            if (ev.get("reasoning") or "").strip():
+                rationale.setdefault(ev["master_edge_id"], ev["reasoning"].strip())
 
         items = []
         for e in edges:
@@ -220,6 +227,10 @@ def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]
                 "expected_prevalence_low": e["expected_prevalence_low"],
                 "expected_prevalence_high": e["expected_prevalence_high"],
                 "evidence": by_edge.get(e["id"], []),
+                # Present on a chained candidate, absent on a directly quoted
+                # one. It is the model's argument, never a source's claim, and
+                # the UI must label it that way.
+                "chain_reasoning": rationale.get(e["id"]),
                 "attestation": attestation_text_for_tier(e["tier"]),
             })
         return jsonify({"status": "ok", "items": items, "count": len(items)})

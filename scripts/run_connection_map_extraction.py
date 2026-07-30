@@ -32,8 +32,8 @@ load_dotenv()
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO / "lib"))
 
-from connection_map.concepts import RELATIONSHIP_TYPES  # noqa: E402
 from connection_map.extraction.validate import (  # noqa: E402
+    MIN_PASS2_EVIDENCE,
     parse_model_json,
     rejection_summary,
     validate_pass1,
@@ -43,8 +43,18 @@ from model_registry import get_model  # noqa: E402
 
 PROMPTS = _REPO / "config" / "connection_map" / "prompts"
 
-# v1 enables these two (§4.3); the others are extracted later, not now.
-PASS1_RELATIONSHIPS = ("side_effect_of", "co_occurs_with")
+# v1 enables these two (§4.3); the others are extracted later, not now. Both
+# passes are held to them: the publication gate checks a version's
+# enabled_relationships, so proposing anything else spends physician review on a
+# candidate that cannot ship.
+V1_RELATIONSHIPS = ("side_effect_of", "co_occurs_with")
+PASS1_RELATIONSHIPS = V1_RELATIONSHIPS
+
+# Quotations per pass-2 call. Measured: all 131 in one call returned
+# `{"candidates": []}` in 7 completion tokens; 6 in one call produced a real
+# chain. This is the same collapse pass 1 showed on long sections, so pass 2 gets
+# the same treatment — smaller calls, not a different prompt.
+BATCH_QUOTATIONS = 25
 
 # Sections shorter than this are headings and page furniture.
 MIN_SECTION_CHARS = 400
@@ -403,42 +413,174 @@ def main() -> int:
 def run_pass2(db, args, model, by_slug, concept_lines, existing_triples,
               domains_by_slug) -> int:
     """Chain verified quotations across sections (§6.2). Never introduces a
-    quotation: it may only cite evidence pass 1 already verified."""
+    quotation: it may only cite evidence pass 1 already verified.
+
+    §6.2's input is "every verified quotation from pass 1", and handing over all
+    131 of them in one call returned `{"candidates": []}` in seven tokens — the
+    same collapse that pass 1 showed on long sections. The same six quotations in
+    a smaller call produced a real chain. So the quotations are BATCHED, which
+    changes nothing about what may be cited: each call still reasons only over
+    verified quotations, and the validator still refuses any evidence id it was
+    not given.
+
+    Batches are grouped BY SHARED CONCEPT rather than chopped arbitrarily,
+    because that is what a chain is made of: "an aromatase inhibitor causes joint
+    pain" chains with "pain severity correlates with depression risk" THROUGH
+    joint pain. Quotations that cannot chain have no reason to share a call.
+    """
     evidence = (db.table("master_edge_evidence")
-                .select("id, quoted_sentence, section_ref, master_edge_id")
+                .select("id, quoted_sentence, section_ref, master_edge_id, "
+                        "source_section_id, source_document_id, char_offset, evidence_kind")
+                .eq("evidence_kind", "verbatim")
                 .execute()).data or []
     if len(evidence) < 2:
         print("pass 2 needs at least two verified quotations; run pass 1 first")
         return 1
+    by_evidence_id = {e["id"]: e for e in evidence}
 
-    quote_lines = "\n".join(
-        f"- id={e['id']} ({e['section_ref']}): \"{e['quoted_sentence']}\""
-        for e in evidence)
-    existing_lines = "\n".join(f"- {s} --{r}--> {d}" for s, d, r in sorted(existing_triples)) or "(none)"
+    # Which concepts each quotation's edge touches, so batches can be built
+    # around the concept a chain would pass through.
+    id_to_slug = {c["id"]: c["slug"] for c in by_slug.values()}
+    edge_concepts = {}
+    for e in (db.table("master_edge").select("id, src_concept_id, dst_concept_id")
+              .execute()).data or []:
+        edge_concepts[e["id"]] = tuple(
+            s for s in (id_to_slug.get(e["src_concept_id"]),
+                        id_to_slug.get(e["dst_concept_id"])) if s)
 
-    prompt = (load_prompt("pass2_chain.md")
-              .replace("{relationships}", "\n".join(f"- {r}" for r in RELATIONSHIP_TYPES))
-              .replace("{concepts}", concept_lines)
-              .replace("{existing}", existing_lines)
-              .replace("{quotations}", quote_lines))
+    by_concept = {}
+    for ev in evidence:
+        for slug in edge_concepts.get(ev["master_edge_id"], ()):
+            by_concept.setdefault(slug, []).append(ev)
 
-    print(f"chaining over {len(evidence)} verified quotations")
-    raw = together_json(prompt, model, max_tokens=3000)
-    ok, bad = validate_pass2(parse_model_json(raw), [e["id"] for e in evidence],
-                             by_slug.keys(), RELATIONSHIP_TYPES,
-                             existing_triples=existing_triples,
-                             concept_domains=domains_by_slug)
+    batches, seen_batches = [], set()
+    for slug, rows in sorted(by_concept.items()):
+        if len(rows) < MIN_PASS2_EVIDENCE:
+            continue                      # nothing here can chain with anything
+        rows = rows[:BATCH_QUOTATIONS]
+        key = tuple(sorted(r["id"] for r in rows))
+        if key in seen_batches:
+            continue                      # two concepts covering the same rows
+        seen_batches.add(key)
+        batches.append((slug, rows))
+
+    print(f"chaining over {len(evidence)} verified quotations "
+          f"in {len(batches)} concept batches (max {BATCH_QUOTATIONS} each)")
+    if not batches:
+        print("no concept has two or more quotations; nothing can chain yet")
+        return 0
+
+    # v1 enables two relationship types (§4.3). Pass 2 is held to the same pair:
+    # the publication gate checks a version's enabled_relationships, so a chain
+    # proposing `acts_through` (authoring-only, never patient-facing) would be
+    # reviewed by a physician and then be unpublishable in a v1 map.
+    rel_lines = "\n".join(f"- {r}" for r in V1_RELATIONSHIPS)
+    template = load_prompt("pass2_chain.md")
+
+    ok, bad = [], []
+    seen_triples = set(existing_triples)
+    for n, (slug, rows) in enumerate(batches, 1):
+        quote_lines = "\n".join(
+            f"- id={e['id']} ({e['section_ref']}): \"{e['quoted_sentence']}\""
+            for e in rows)
+        existing_lines = "\n".join(
+            f"- {s} --{r}--> {d}" for s, d, r in sorted(seen_triples)) or "(none)"
+        prompt = (template
+                  .replace("{relationships}", rel_lines)
+                  .replace("{concepts}", concept_lines)
+                  .replace("{existing}", existing_lines)
+                  .replace("{quotations}", quote_lines))
+        try:
+            raw = together_json(prompt, model, max_tokens=3000)
+        except Exception as e:  # noqa: BLE001 - one bad batch must not end the run
+            print(f"  [{n}/{len(batches)}] {slug}: model error: {e}")
+            continue
+        got, rejected = validate_pass2(
+            parse_model_json(raw), [e["id"] for e in rows],
+            by_slug.keys(), V1_RELATIONSHIPS,
+            existing_triples=seen_triples, concept_domains=domains_by_slug)
+        for c in got:
+            seen_triples.add((c["src_concept_slug"], c["dst_concept_slug"], c["relationship"]))
+        ok.extend(got)
+        bad.extend(rejected)
+        if got or any(r["reason"] in ("unparsable_response", "no_candidate_list")
+                      for r in rejected):
+            print(f"  [{n}/{len(batches)}] through {slug} ({len(rows)} quotations): "
+                  f"{len(got)} chained, {len(rejected)} rejected")
 
     print(f"\nchains accepted {len(ok)}, rejected {len(bad)}")
     for reason, count in rejection_summary(bad).items():
         print(f"  {reason:22} {count}")
+
+    run_id = None
+    if not args.dry_run and ok:
+        run = (db.table("extraction_run").insert({
+            "cancer": args.cancer, "pass_number": 2, "model": model,
+            "prompt_id": "pass2_chain.md",
+        }).execute()).data
+        run_id = run[0]["id"] if run else None
+
+    written = 0
     for c in ok:
         print(f"\n  {c['src_concept_slug']} --{c['relationship']}--> {c['dst_concept_slug']}")
         print(f"    {c['reasoning'][:140]}")
         print(f"    cites {len(c['evidence_ids'])} quotations")
+        if args.dry_run or not run_id:
+            continue
 
-    if args.dry_run:
-        print("\n(dry run: nothing written)")
+        # A chained edge gets its OWN evidence rows, copied from the pass-1 rows
+        # it cites — an evidence row belongs to one edge. Copying is not a
+        # weakening: the verify trigger re-checks every quotation against
+        # source_section on insert, so a chain built on a citation that has since
+        # stopped matching its source fails here rather than reaching a
+        # physician. The reasoning lives on the edge, not on the evidence, because
+        # each quotation is still a plain verbatim citation of its own section.
+        rows = []
+        for i, ev_id in enumerate(c["evidence_ids"]):
+            ev = by_evidence_id[ev_id]
+            rows.append({
+                "source_section_id": ev["source_section_id"],
+                "source_document_id": ev["source_document_id"],
+                "section_ref": ev["section_ref"],
+                "evidence_kind": "verbatim",
+                "quoted_sentence": ev["quoted_sentence"],
+                "char_offset": ev["char_offset"],
+                "ordinal": i,
+            })
+        # The chain's argument rides on the first row. It describes the
+        # combination rather than that one quotation, but the schema has no
+        # edge-level field for it and connection_map_edge_hash already covers
+        # ev.reasoning — so rewording the argument voids the attestation, which
+        # is the property that has to hold (acceptance #10). The review API
+        # lifts it to the edge as `chain_reasoning`.
+        if c["reasoning"]:
+            rows[0]["reasoning"] = c["reasoning"]
+        try:
+            db.rpc("insert_master_edge_with_evidence", {
+                "p_edge": {
+                    "src_concept_id": by_slug[c["src_concept_slug"]]["id"],
+                    "dst_concept_id": by_slug[c["dst_concept_slug"]]["id"],
+                    "relationship": c["relationship"],
+                    # Tier B: no single sentence states this, so it is a chain of
+                    # verbatim citations rather than one quotation (§4.4).
+                    "tier": "B",
+                    "candidate_origin": "literature_scan",
+                    "extraction_run_id": run_id,
+                    "extraction_pass": 2,
+                },
+                "p_evidence": rows,
+            }).execute()
+            written += 1
+        except Exception as e:  # noqa: BLE001
+            print(f"    WRITE FAILED: {str(e)[:160]}")
+
+    print(f"\nwritten to review   {written}{'  (dry run)' if args.dry_run else ''}")
+    if run_id:
+        db.table("extraction_run").update({
+            "finished_at": "now()",
+            "stats": {"quotations": len(evidence), "accepted": len(ok),
+                      "written": written, "rejected": rejection_summary(bad)},
+        }).eq("id", run_id).execute()
     return 0
 
 

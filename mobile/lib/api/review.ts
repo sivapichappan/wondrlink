@@ -40,6 +40,10 @@ export interface ReviewQueueItem {
   expected_prevalence_low: number | null;
   expected_prevalence_high: number | null;
   evidence: ReviewEvidence[];
+  /** Why a chained (tier B) candidate's quotations combine. The model's own
+   * argument, not a claim any source makes — the UI labels it as such. Null on a
+   * candidate that rests on a single quotation. */
+  chain_reasoning: string | null;
   /** The exact wording a signature endorses; null = no approved wording for
    * this tier yet (tier C until the attorney variant lands) — signing is
    * refused server-side. */
