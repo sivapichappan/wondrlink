@@ -130,9 +130,20 @@ class TestOperatorInstructions:
 
     README = (TEMPLATES / "README.md").read_text(encoding="utf-8")
 
-    def test_names_both_supabase_templates(self):
-        assert "Confirm signup" in self.README
-        assert "Reset Password" in self.README
+    def test_uses_the_dashboard_row_labels_verbatim(self):
+        # The reader is scanning a dashboard list for a matching row. Supabase
+        # labels them "Confirm sign up", "Magic link or OTP" and so on; a README
+        # that says "Confirm signup" or "Magic Link" sends them hunting.
+        for label in ("Confirm sign up", "Reset password", "Magic link or OTP",
+                      "Change email address", "Invite user", "Reauthentication"):
+            assert label in self.README, f"dashboard label missing: {label}"
+
+    def test_the_security_notifications_are_accounted_for(self):
+        # A second group on the same page, seven emails, all off. They carry no
+        # code so the codes rule does not reach them, but silence about them
+        # reads as "these do not exist".
+        assert "Security section is separate" in self.README
+        assert "Password changed" in self.README
 
     def test_states_the_verify_types(self):
         # Getting these wrong is the most likely implementation mistake: 'email'

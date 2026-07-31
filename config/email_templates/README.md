@@ -8,10 +8,10 @@ All six Supabase auth emails are kept in the repo because they are
 
 | File | Supabase template | Sent by | Confirmed with |
 |---|---|---|---|
-| `confirm_signup.html` | Confirm signup | `sign_up()` (Flask `/api/auth/register`) | `verifyOtp(type: 'signup')` |
-| `reset_password.html` | Reset Password | `resetPasswordForEmail()` | `verifyOtp(type: 'recovery')` |
-| `magic_link.html` | Magic Link | `signInWithOtp({email})` | `verifyOtp(type: 'email')` |
-| `change_email.html` | Change Email Address | `updateUser({email})` | `verifyOtp(type: 'email_change')` |
+| `confirm_signup.html` | Confirm sign up | `sign_up()` (Flask `/api/auth/register`) | `verifyOtp(type: 'signup')` |
+| `reset_password.html` | Reset password | `resetPasswordForEmail()` | `verifyOtp(type: 'recovery')` |
+| `magic_link.html` | Magic link or OTP | `signInWithOtp({email})` | `verifyOtp(type: 'email')` |
+| `change_email.html` | Change email address | `updateUser({email})` | `verifyOtp(type: 'email_change')` |
 | `invite.html` | Invite user | admin invite (dashboard or API) | `verifyOtp(type: 'invite')` |
 | `reauthentication.html` | Reauthentication | `reauthenticate()` | `verifyOtp(type: 'reauthentication')` |
 
@@ -81,6 +81,34 @@ Also check, in **Authentication → Sign In / Providers → Email**:
 - **Secure email change** should stay ON. It sends the change-email code to the old
   address as well as the new one, so losing access to an inbox is not by itself
   enough to take an account.
+
+## The Security section is separate, and is all OFF
+
+Below Authentication on the same Emails page there is a **Security** group of
+seven notification emails, every one of them currently off:
+
+Password changed · Email address changed · Phone number changed · Sign-in method
+linked · Sign-in method removed · MFA method added · MFA method removed
+
+These are **notifications, not verification**. They carry no code and no link to
+act on, so the codes-everywhere rule does not apply to them and none of them is in
+this directory.
+
+They are worth a decision anyway, because two of them are the other half of copy
+already written here. `change_email.html` and `reauthentication.html` both tell an
+unexpected recipient to change their password, on the assumption that someone may
+be working on taking the account. **Password changed** and **Email address
+changed** are what tell the real owner it happened at all. With both off, a
+successful takeover is silent.
+
+Recommended: turn on **Password changed** and **Email address changed**. Leave the
+MFA and sign-in-method ones off until there is MFA to notify about.
+
+If you do turn any on, their copy becomes patient-facing and should follow the
+same rules as everything else here — no em dashes, plain language, sixth-grade
+reading level. Supabase's defaults do not. Nothing in this repo covers them yet,
+so either bring the ones you enable in here alongside the six, or accept the
+default wording knowingly.
 
 ### Turning Confirm email ON affects accounts that already exist
 
