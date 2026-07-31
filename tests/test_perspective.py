@@ -136,3 +136,40 @@ class TestAccountCopyIsLeftAlone:
         assert text in screen(rel), (
             f"{rel}: '{text}' belongs to the ACCOUNT HOLDER and must not follow "
             "the patient perspective")
+
+
+class TestSecureFieldsCannotBeAutocapitalised:
+    """React Native's default autoCapitalize is "sentences", which uppercases the
+    first character of a typed password. A password starting with a lowercase
+    letter then cannot be entered on iOS at all, and the only feedback is
+    "invalid email or password".
+
+    This shipped: five secure fields across login, register and password reset,
+    none setting autoCapitalize, while the email field beside them did. It was
+    found when a real reviewer could not sign in with a correct password.
+    """
+
+    FIELD = (MOBILE / "components" / "ui" / "TextField.tsx").read_text()
+
+    def test_the_primitive_defaults_secure_fields_to_no_autocapitalise(self):
+        assert "rest.secureTextEntry" in self.FIELD
+        assert "autoCapitalize: 'none' as const" in self.FIELD
+
+    def test_it_also_disables_autocorrect_on_secure_fields(self):
+        assert "autoCorrect: false" in self.FIELD
+        assert "spellCheck: false" in self.FIELD
+
+    def test_an_explicit_prop_still_wins(self):
+        # The spread order is the whole contract: defaults first, caller last.
+        assert self.FIELD.index("{...secureDefaults}") < self.FIELD.index("{...rest}")
+
+    def test_it_is_fixed_in_the_primitive_not_at_each_call_site(self):
+        # Five fields today; the sixth would forget it. Fixing it per-screen is
+        # how this happened in the first place.
+        secure_screens = [
+            "app/(auth)/login.tsx",
+            "app/(auth)/register.tsx",
+            "app/(auth)/forgot-password.tsx",
+        ]
+        for rel in secure_screens:
+            assert "secureTextEntry" in screen(rel), f"{rel}: no secure field found"

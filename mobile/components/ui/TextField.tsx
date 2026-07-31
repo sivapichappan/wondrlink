@@ -15,6 +15,24 @@ export const TextField = forwardRef<TextInput, Props>(function TextField(
 ) {
   const [focused, setFocused] = useState(false);
   const borderColor = error ? Colors.danger : focused ? Colors.primary : Colors.border;
+
+  // A secure field must never be autocapitalised or autocorrected. React
+  // Native's default autoCapitalize is "sentences", which silently uppercases
+  // the FIRST CHARACTER of a typed password — so a password beginning with a
+  // lowercase letter cannot be entered on iOS at all, and the user is told
+  // "invalid email or password" with no way to work out why. That shipped: five
+  // secure fields across login, register and password reset, none of them
+  // setting it, while the email field beside them did.
+  //
+  // Defaulted here rather than at each call site, because the next password
+  // field someone adds will forget it too. An explicit prop still wins.
+  const secureDefaults = rest.secureTextEntry
+    ? {
+        autoCapitalize: 'none' as const,
+        autoCorrect: false,
+        spellCheck: false,
+      }
+    : null;
   return (
     <View style={{ gap: 6 }}>
       {label && (
@@ -25,6 +43,7 @@ export const TextField = forwardRef<TextInput, Props>(function TextField(
       <TextInput
         ref={ref}
         placeholderTextColor={Colors.textMuted}
+        {...secureDefaults}
         onFocus={(e) => {
           setFocused(true);
           onFocus?.(e);
