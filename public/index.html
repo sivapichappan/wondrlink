@@ -6278,14 +6278,17 @@
                 </div>
                 <button type="submit" class="auth-btn" id="authSubmitBtn">Sign In</button>
             </form>
-            <!-- Sign-up confirmation by six digit code. Email confirmation used to
+            <!-- Sign-up confirmation by emailed code. Email confirmation used to
                  be a link the user opened in a browser; it is a code now, on every
-                 surface, so this form has somewhere to type it. Without it the web
-                 sign-up dead-ends: the email arrives and there is no field for it. -->
+                 surface, so this form has somewhere to type it.
+
+                 maxlength MUST match Supabase's Email OTP Length setting. It was
+                 6 while the real codes were 8, so the field silently truncated
+                 every code to something that could never verify. -->
             <form class="auth-form" id="authCodeForm" style="display:none;" aria-label="Confirmation code">
-                <input type="text" class="auth-input" id="authCode" placeholder="Six digit code"
-                    aria-label="Six digit code" inputmode="numeric" autocomplete="one-time-code"
-                    maxlength="6" required>
+                <input type="text" class="auth-input" id="authCode" placeholder="8 digit code"
+                    aria-label="8 digit code" inputmode="numeric" autocomplete="one-time-code"
+                    maxlength="8" required>
                 <button type="submit" class="auth-btn" id="authCodeBtn">Confirm and continue</button>
             </form>
             <div class="auth-toggle">
@@ -8244,11 +8247,15 @@
             pendingConfirmEmail = null;
         }
 
+        // Digits in the emailed code. Must match Supabase's Email OTP Length.
+        const EMAIL_CODE_LENGTH = 8;
+
         // The address awaiting a confirmation code, set when sign-up returns no
         // session. verifyOtp needs the email as well as the code.
         let pendingConfirmEmail = null;
 
-        // Confirm the six digit code from the sign-up email.
+        // Confirm the emailed code from sign-up. EMAIL_CODE_LENGTH must match
+        // Supabase's Email OTP Length setting (6 to 10; it is 8 here).
         //
         // type: 'signup' is the confirm-signup token, which is what signUp() sends.
         // NOT 'email' (that is the passwordless/magic-link type) and NOT 'recovery'
@@ -8331,12 +8338,12 @@
                         await loadExistingProfile();
                     } else {
                         // No session means the address needs confirming. That is a
-                        // six digit CODE now, not a link, so ask for it here rather
+                        // CODE now, not a link, so ask for it here rather
                         // than sending the user to an inbox and back.
                         pendingConfirmEmail = email;
                         showAuthSuccess(`
                             <strong>Account created!</strong><br>
-                            We sent a six digit code to ${email}. Enter it below.<br>
+                            We sent a ${EMAIL_CODE_LENGTH} digit code to ${email}. Enter it below.<br>
                             <small style="opacity: 0.8;">(Check your spam folder if you don't see it)</small>
                         `);
                         document.getElementById('authForm').style.display = 'none';

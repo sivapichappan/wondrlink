@@ -156,6 +156,20 @@ export async function resendSignupConfirmation(email: string) {
  * and the region geofence.
  * ---------------------------------------------------------------------- */
 
+/**
+ * How many digits the emailed code has.
+ *
+ * MUST match Supabase's **Email OTP Length** (Authentication → Sign In /
+ * Providers → Email), which is configurable from 6 to 10. It is 8 on this
+ * project. Every screen and every message reads this rather than spelling a
+ * number, because the length was written into six separate places and the web
+ * form capped its input at 6 — which silently truncated a real code to
+ * something that could never verify.
+ *
+ * Change the dashboard setting and change this, together.
+ */
+export const EMAIL_CODE_LENGTH = 8;
+
 function friendlyEmailCodeError(message: string): string {
   const m = message.toLowerCase();
   // The built-in Supabase SMTP refuses every address outside the project's own

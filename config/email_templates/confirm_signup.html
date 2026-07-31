@@ -4,7 +4,7 @@
 
   {{ .Token }} is what makes this a CODE rather than a link. Supabase decides
   between the two purely on template content: {{ .ConfirmationURL }} sends a
-  link, {{ .Token }} sends a six digit code. The app's confirm screen asks for a
+  link, {{ .Token }} sends a numeric code. The app's confirm screen asks for a
   code, so removing {{ .Token }} would leave users with an email they cannot use.
   tests/test_email_templates.py holds that line.
 

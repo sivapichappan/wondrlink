@@ -224,3 +224,38 @@ class TestReadmeCoversEveryTemplate:
     def test_existing_unconfirmed_accounts_are_flagged(self):
         # Turning Confirm email on is not a no-op for accounts that predate it.
         assert "Confirm email ON affects accounts that already exist" in self.README
+
+
+class TestCodeLengthIsNotHardcodedTwice:
+    """Supabase's Email OTP Length is settable from 6 to 10 and is 8 here. The
+    number was written into six places and the web input capped at 6, so a real
+    code was silently truncated to one that could never verify. Both surfaces now
+    read a single constant; this checks they agree."""
+
+    MOBILE = (_REPO / "mobile" / "lib" / "api" / "auth.ts").read_text()
+    WEB = (_REPO / "public" / "index.html").read_text()
+
+    def _length(self, text: str) -> str:
+        m = re.search(r"EMAIL_CODE_LENGTH\s*=\s*(\d+)", text)
+        assert m, "EMAIL_CODE_LENGTH not found"
+        return m.group(1)
+
+    def test_both_surfaces_declare_the_same_length(self):
+        assert self._length(self.MOBILE) == self._length(self.WEB)
+
+    def test_the_web_input_cap_matches_the_constant(self):
+        # The cap is the part that actually breaks: too low and the user cannot
+        # finish typing a valid code.
+        cap = re.search(r'id="authCode"[\s\S]{0,240}?maxlength="(\d+)"', self.WEB)
+        assert cap, "code input maxlength not found"
+        assert cap.group(1) == self._length(self.WEB)
+
+    def test_no_surface_still_says_six_digits(self):
+        for label, text in (("mobile", self.MOBILE), ("web", self.WEB)):
+            assert "six digit" not in text.lower(), f"{label} still says six digit"
+            assert "6-digit" not in text, f"{label} still says 6-digit"
+
+    def test_the_readme_records_the_setting_it_must_match(self):
+        readme = (TEMPLATES / "README.md").read_text()
+        assert "Email OTP Length" in readme
+        assert "EMAIL_CODE_LENGTH" in readme

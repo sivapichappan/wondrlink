@@ -13,7 +13,7 @@ import {
   register,
   resendSignupConfirmation,
   verifySignupCode,
-} from '@/lib/api/auth';
+  EMAIL_CODE_LENGTH,} from '@/lib/api/auth';
 import { ApiError, extractErrorMessage } from '@/lib/api/client';
 
 export default function Register() {
@@ -147,7 +147,7 @@ export default function Register() {
 }
 
 /**
- * Sign-up step 2: confirm the six-digit code from the email.
+ * Sign-up step 2: confirm the emailed code (EMAIL_CODE_LENGTH digits).
  *
  * Replaces the old "check your email for a link" dead-end, which asked the user
  * to leave the app, tap a link, come back, and sign in again. The code keeps
@@ -173,8 +173,8 @@ function ConfirmCodeScreen({
 
   const onVerify = async () => {
     setError(null);
-    if (code.trim().length < 6) {
-      setError('Please enter the 6-digit code from the email.');
+    if (code.trim().length < EMAIL_CODE_LENGTH) {
+      setError(`Please enter the ${EMAIL_CODE_LENGTH} digit code from the email.`);
       return;
     }
     setBusy(true);
@@ -223,7 +223,7 @@ function ConfirmCodeScreen({
               Confirm your email
             </Text>
             <Text style={{ fontSize: FontSize.md, lineHeight: 21, color: Colors.textSecondary }}>
-              We sent a 6-digit code to {email}. Enter it below to finish setting up your account.
+              We sent a {EMAIL_CODE_LENGTH} digit code to {email}. Enter it below to finish setting up your account.
             </Text>
           </View>
 
@@ -234,7 +234,7 @@ function ConfirmCodeScreen({
             placeholder="123456"
             keyboardType="number-pad"
             textContentType="oneTimeCode"
-            maxLength={8}
+            maxLength={EMAIL_CODE_LENGTH}
             autoFocus
           />
 

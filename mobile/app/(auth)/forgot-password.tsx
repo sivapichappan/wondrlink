@@ -27,7 +27,7 @@ import {
   sendPasswordResetCode,
   setNewPassword,
   verifyPasswordResetCode,
-} from '@/lib/api/auth';
+  EMAIL_CODE_LENGTH,} from '@/lib/api/auth';
 import { extractErrorMessage } from '@/lib/api/client';
 
 type Step = 'email' | 'code' | 'password';
@@ -69,8 +69,8 @@ export default function ForgotPassword() {
 
   const onVerify = async () => {
     setError(null);
-    if (code.trim().length < 6) {
-      setError('Please enter the 6-digit code from the email.');
+    if (code.trim().length < EMAIL_CODE_LENGTH) {
+      setError(`Please enter the ${EMAIL_CODE_LENGTH} digit code from the email.`);
       return;
     }
     setBusy(true);
@@ -151,7 +151,7 @@ export default function ForgotPassword() {
             </Text>
             <Text style={{ fontSize: FontSize.md, lineHeight: 21, color: Colors.textSecondary }}>
               {step === 'email'
-                ? 'Tell us your email address and we will send you a 6-digit code.'
+                ? `Tell us your email address and we will send you a ${EMAIL_CODE_LENGTH} digit code.`
                 : step === 'code'
                   ? `We sent a code to ${email.trim()}. It can take a minute to arrive.`
                   : 'Pick something you have not used here before.'}
@@ -177,7 +177,7 @@ export default function ForgotPassword() {
               placeholder="123456"
               keyboardType="number-pad"
               textContentType="oneTimeCode"
-              maxLength={8}
+              maxLength={EMAIL_CODE_LENGTH}
             />
           ) : (
             <>

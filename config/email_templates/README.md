@@ -28,7 +28,7 @@ to a code and is written out so the set is complete and checkable.
 between the two purely on what the template contains:
 
 - `{{ .ConfirmationURL }}` → a link the user taps in a browser
-- `{{ .Token }}` → a six digit code
+- `{{ .Token }}` → a numeric code
 
 Every app screen asks for a code. Swap a template back to the link version and the
 user gets an email with nothing in it they can type. `tests/test_email_templates.py`
@@ -78,6 +78,11 @@ Also check, in **Authentication → Sign In / Providers → Email**:
   email is sent, and the confirm screen never appears.
 - **Email OTP Expiration** is the code's lifetime. Every template tells the user one
   hour, so if you change it, change the copy in all six files to match.
+- **Email OTP Length** is how many digits the code has, settable from 6 to 10. It is
+  **8** here. The apps read a single constant — `EMAIL_CODE_LENGTH` in
+  `mobile/lib/api/auth.ts` and in `public/index.html` — and both must be changed with
+  it. This drifted once: the web input capped at 6 while real codes were 8, so it
+  silently truncated every code to one that could never verify.
 - **Secure email change** should stay ON. It sends the change-email code to the old
   address as well as the new one, so losing access to an inbox is not by itself
   enough to take an account.
@@ -112,8 +117,8 @@ default wording knowingly.
 
 ### Turning Confirm email ON affects accounts that already exist
 
-Checked against production on 2026-08-03: **22 accounts, 20 with an email address,
-15 with the address confirmed.** The other 5 have never confirmed. Switching Confirm
+Checked against production on 2026-07-31: **20 accounts, 19 with an email address,
+14 with the address confirmed.** The other 5 have never confirmed. Switching Confirm
 email on makes confirmation a precondition for those accounts, so decide what should
 happen to them before flipping it — either confirm them from the dashboard, or
 expect them to go through the code flow on next sign-in.
