@@ -54,7 +54,13 @@ export interface CheckAcknowledgementResponse {
   /** Sage onboarding: who-for + basics screens still needed (absent on older servers). */
   needs_basics?: boolean;
   perspective?: 'self' | 'caregiver';
+  /** The account holder's own name. On a caregiver account this is the
+   *  caregiver, NOT the person being cared for. */
   account_holder_name?: string | null;
+  /** First name of the person the app is about. On a caregiver account this is
+   *  the loved one; on a self account it is the same person as the holder.
+   *  Drives every "your / their" decision in patient-facing copy. */
+  patient_name?: string | null;
 }
 
 /** Sage onboarding basics (screens 2/2a/2b). */

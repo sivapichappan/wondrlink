@@ -1420,6 +1420,12 @@ def get_account_basics(user_id: str) -> Dict[str, Any]:
         has_basics = bool(holder) or bool(patient.get('firstName'))
         return {
             'exists': True,
+            # The person the app is ABOUT, which on a caregiver account is not
+            # the person holding it. Screens need it to stop saying "my medical
+            # details" to someone managing their mother's care. First name only:
+            # it goes on a frequently-polled endpoint, and a first name is the
+            # least that makes the copy read like a person.
+            'patient_name': (patient.get('firstName') or None),
             'perspective': perspective,
             'relationship': relationship,
             'account_holder_name': holder,

@@ -22,6 +22,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Colors, FontSize, Fonts, Spacing } from '@/constants/theme';
 import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { useCareSnapshot, useProfile } from '@/hooks/useCare';
+import { usePerspective } from '@/lib/perspective';
 import { APP_NAME } from '@shared/branding';
 
 /** Fraction of the well-known profile sections that carry data (0–1). */
@@ -46,6 +47,7 @@ function completenessOf(profileData: unknown): number {
 }
 
 export default function MyCareScreen() {
+  const who = usePerspective();
   const profile = useProfile();
   const snap = useCareSnapshot();
   const ack = useAcknowledgement();
@@ -74,7 +76,7 @@ export default function MyCareScreen() {
   const checkinDue = days == null || days >= 7;
 
   return (
-    <Screen header={<TopBar leading="back" backLabel="Home" title="My Care" />}>
+    <Screen header={<TopBar leading="back" backLabel="Home" title={who.titleFor('Care')} />}>
       {/* Profile card */}
       <Card onPress={() => router.push('/profile')} accessibilityLabel="View your profile" gap={Spacing.sm}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.md }}>
@@ -135,7 +137,7 @@ export default function MyCareScreen() {
           fill="sidebar"
           icon={<IconCircle size={30} bg={Colors.surface}><LineChart size={15} color={Colors.primary} /></IconCircle>}
           title="Trends"
-          subtitle="How your check-ins track over time"
+          subtitle={`How ${who.possessive} check-ins track over time`}
           onPress={() => router.push('/tools/trends')}
         />
       </Card>

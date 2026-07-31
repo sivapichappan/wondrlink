@@ -20,6 +20,7 @@ import { Colors, Fonts, Radius } from '@/constants/theme';
 import { uploadProfile } from '@/lib/api/care';
 import { ApiError, extractErrorMessage } from '@/lib/api/client';
 import { useProfile } from '@/hooks/useCare';
+import { usePerspective } from '@/lib/perspective';
 import { APP_NAME } from '@shared/branding';
 
 type Sex = 'Male' | 'Female' | 'Other';
@@ -474,10 +475,11 @@ function StepDiagnosis({ state, update }: StepProps) {
 }
 
 function StepHealth({ state, update }: StepProps) {
+  const who = usePerspective();
   return (
     <>
-      <Hint title="Your overall health" body="How you're doing day to day helps match trials and spot medicine interactions." />
-      <Field label="On most days, which sounds most like you?">
+      <Hint title={`${who.Possessive} overall health`} body={`How ${who.subject} ${who.isCaregiver ? 'are' : 'are'} doing day to day helps match trials and spot medicine interactions.`} />
+      <Field label={`On most days, which sounds most like ${who.object}?`}>
         <View style={{ gap: 8 }}>
           {/* Plain descriptions only — the stored value still maps to the
               ECOG scale the backend and trial matching use; the term itself
@@ -520,6 +522,7 @@ function StepHealth({ state, update }: StepProps) {
 }
 
 function StepBiomarkers({ state, update }: StepProps) {
+  const who = usePerspective();
   const [showMore, setShowMore] = useState(false);
   const updateBio = (key: string, value: string) => {
     update('biomarkers', { ...state.biomarkers, [key]: value });
@@ -527,7 +530,7 @@ function StepBiomarkers({ state, update }: StepProps) {
   return (
     <>
       <Hint
-        title="Test results from your reports"
+        title={`Test results from ${who.possessive} reports`}
         body="These names come from your pathology or testing report. Most people don't know them by heart, and that's completely fine. Fill in what you know and skip the rest."
       />
       <Pressable

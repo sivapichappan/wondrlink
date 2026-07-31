@@ -19,6 +19,7 @@ import { Linking, Pressable, Text, View } from 'react-native';
 import { useNavOverlay } from '@/components/common/NavOverlay';
 import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 import { logSymptom } from '@/lib/api/chat';
+import { usePerspective } from '@/lib/perspective';
 import type { ChatSafety, CrisisResources } from '@shared/types';
 
 interface Props {
@@ -120,6 +121,7 @@ function LogSymptomChip({ safety }: { safety: ChatSafety }) {
 }
 
 export function EscalationCard({ safety, crisisResources }: Props) {
+  const who = usePerspective();
   // Hooks must run unconditionally; the null-return happens after.
   const { openHelp } = useNavOverlay();
   if (!safety || safety.tier === 'T3') return null;
@@ -191,11 +193,11 @@ export function EscalationCard({ safety, crisisResources }: Props) {
           {safety.tier === 'T1' ? (
             <>
               <CallButton label={`Call ${en}`} tel={`tel:${en}`} primary />
-              <CallButton label="My care team" onPress={openHelp} icon="help" primary={false} />
+              <CallButton label={`${who.PossessiveNamed} care team`} onPress={openHelp} icon="help" primary={false} />
             </>
           ) : (
             <>
-              <CallButton label="Reach my care team" onPress={openHelp} icon="help" primary />
+              <CallButton label={`Reach ${who.possessiveNamed} care team`} onPress={openHelp} icon="help" primary />
               <CallButton label={`Call ${en}`} tel={`tel:${en}`} primary={false} />
             </>
           )}

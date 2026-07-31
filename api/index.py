@@ -883,6 +883,10 @@ def api_check_acknowledgement():
             "needs_basics": bool(basics.get('needs_basics', False)),
             "perspective": basics.get('perspective', 'self'),
             "account_holder_name": basics.get('account_holder_name'),
+            # Who the app is ABOUT. Differs from account_holder_name on a
+            # caregiver account, and every patient-facing string needs it to
+            # avoid addressing the caregiver as the patient.
+            "patient_name": basics.get('patient_name'),
         })
     except Exception as e:
         logger.exception("check_acknowledgement error")

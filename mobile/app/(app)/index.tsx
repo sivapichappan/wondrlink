@@ -44,6 +44,7 @@ import { NEW_CONVERSATION } from '@/hooks/useChat';
 import { useWelcomePromptSeen } from '@/hooks/useWelcomePromptSeen';
 import { fetchCancerOptions, updateCancerSlug } from '@/lib/api/care';
 import { fetchConsentStatus } from '@/lib/api/consent';
+import { usePerspective } from '@/lib/perspective';
 
 const STILL_FINDING_KEY = 'sage:still_finding_out';
 
@@ -63,6 +64,7 @@ function useStillFindingOut() {
 }
 
 export default function HomeScreen() {
+  const who = usePerspective();
   const hero = useHero();
   const snap = useCareSnapshot();
   const profile = useProfile();
@@ -133,7 +135,11 @@ export default function HomeScreen() {
           {anchorMode ? (
             <>
               <Text style={{ fontFamily: Fonts.serifBold, fontSize: FontSize.h1, lineHeight: 36, color: Colors.textPrimary }}>
-                {firstName ? `Hi ${firstName},` : 'Hi there,'}
+                {/* Greet whoever is holding the phone. hero.first_name is the
+                    PATIENT's name, which on a caregiver account is someone else. */}
+                {who.isCaregiver
+                  ? (who.holderFirstName ? `Hi ${who.holderFirstName},` : 'Hi there,')
+                  : firstName ? `Hi ${firstName},` : 'Hi there,'}
               </Text>
               <Text style={{ fontFamily: Fonts.serif, fontSize: FontSize.h1, lineHeight: 36, color: Colors.textSecondary }}>
                 I&apos;m glad you&apos;re here.
@@ -141,9 +147,11 @@ export default function HomeScreen() {
             </>
           ) : (
             <Text style={{ fontFamily: Fonts.serifBold, fontSize: FontSize.h1, lineHeight: 36, color: Colors.textPrimary }}>
-              {firstName
-                ? `Tell me how you're feeling, ${firstName}`
-                : "Tell me how you're feeling"}
+              {who.isCaregiver
+                ? `Tell me how ${who.subjectAre} feeling`
+                : firstName
+                  ? `Tell me how you're feeling, ${firstName}`
+                  : "Tell me how you're feeling"}
             </Text>
           )}
         </View>
@@ -242,14 +250,14 @@ export default function HomeScreen() {
                 <MenuRow
                   Icon={Microscope}
                   title={`Find clinical trials for ${cancerDisplay.toLowerCase()}`}
-                  subtitle="Matched to you, explained in plain words"
+                  subtitle={`Matched to ${who.object}, explained in plain words`}
                   onPress={() => router.push('/tools/clinical-trials')}
                 />
               ) : (
                 <MenuRow
                   Icon={Microscope}
-                  title="Set your cancer focus"
-                  subtitle="Unlocks trial matching when you are ready"
+                  title={`Set ${who.possessive} cancer focus`}
+                  subtitle={`Unlocks trial matching when ${who.subject} are ready`}
                   onPress={() => router.push('/profile/cancer-switcher')}
                 />
               )}
@@ -261,7 +269,7 @@ export default function HomeScreen() {
               />
               <MenuRow
                 Icon={FileText}
-                title="Add my medical details"
+                title={`Add ${who.possessiveNamed} medical details`}
                 subtitle="A short optional form for a head start"
                 onPress={() => router.push('/profile/build')}
               />

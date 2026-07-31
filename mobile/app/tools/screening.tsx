@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { saveScreening } from '@/lib/api/tools';
+import { usePerspective } from '@/lib/perspective';
 import type { ScreeningCrisisResources, ScreeningInstrument } from '@shared/types';
 
 interface ScaleOption {
@@ -256,12 +257,16 @@ export default function ScreeningScreen() {
 }
 
 function InstrumentPicker({ onPick }: { onPick: (i: ScreeningInstrument) => void }) {
+  const who = usePerspective();
+  // Every one of these describes the PATIENT, not whoever is holding the phone.
+  // "How you've felt" is wrong on a caregiver account; "they've" conjugates the
+  // same way, so the sentence survives the substitution intact.
   const items: { key: ScreeningInstrument; blurb: string; Icon: typeof Activity }[] = [
-    { key: 'SYMPTOM', blurb: 'How you’ve felt physically the last 7 days', Icon: Activity },
-    { key: 'PHQ9', blurb: 'How your mood has been over 2 weeks', Icon: Smile },
-    { key: 'GAD7', blurb: 'How anxious you’ve felt over 2 weeks', Icon: Brain },
-    { key: 'PSS10', blurb: 'How stressed you’ve felt this month', Icon: HeartPulse },
-    { key: 'ISI', blurb: 'How well you’ve been sleeping', Icon: Bed },
+    { key: 'SYMPTOM', blurb: `How ${who.subjectHave} felt physically the last 7 days`, Icon: Activity },
+    { key: 'PHQ9', blurb: `How ${who.possessive} mood has been over 2 weeks`, Icon: Smile },
+    { key: 'GAD7', blurb: `How anxious ${who.subjectHave} felt over 2 weeks`, Icon: Brain },
+    { key: 'PSS10', blurb: `How stressed ${who.subjectHave} felt this month`, Icon: HeartPulse },
+    { key: 'ISI', blurb: `How well ${who.subjectHave} been sleeping`, Icon: Bed },
     { key: 'PREMM5', blurb: 'Hereditary cancer risk (Lynch syndrome)', Icon: Dna },
   ];
   return (

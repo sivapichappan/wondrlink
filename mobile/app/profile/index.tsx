@@ -19,6 +19,7 @@ import { Colors, Fonts, Radius } from '@/constants/theme';
 import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { useProfile } from '@/hooks/useCare';
 import { clearProfile } from '@/lib/api/care';
+import { usePerspective } from '@/lib/perspective';
 import { APP_NAME } from '@shared/branding';
 
 interface PatientObj {
@@ -47,6 +48,7 @@ interface Treatment {
 }
 
 export default function ProfileViewScreen() {
+  const who = usePerspective();
   const profile = useProfile();
   const ack = useAcknowledgement();
   const qc = useQueryClient();
@@ -171,7 +173,7 @@ export default function ProfileViewScreen() {
           </View>
         </Pressable>
 
-        <Section title="About you" Icon={User}>
+        <Section title={who.isCaregiver ? `About ${who.name ?? 'them'}` : 'About you'} Icon={User}>
           <Row label="Age" value={patient.age != null ? String(patient.age) : '—'} />
           <Row label="Sex" value={patient.sex || '—'} />
           <Row label="ZIP code" value={patient.zipCode || '—'} />

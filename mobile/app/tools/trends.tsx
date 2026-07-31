@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Sparkline } from '@/components/care/Sparkline';
 import { Colors, Fonts, Radius } from '@/constants/theme';
 import { fetchScreeningHistory, type ScreeningHistoryPoint } from '@/lib/api/tools';
+import { usePerspective } from '@/lib/perspective';
 
 interface InstrumentMeta {
   key: string;
@@ -26,6 +27,7 @@ const INSTRUMENTS: InstrumentMeta[] = [
 ];
 
 export default function TrendsScreen() {
+  const who = usePerspective();
   const history = useQuery({
     queryKey: ['screening_history'],
     queryFn: fetchScreeningHistory,
@@ -41,7 +43,7 @@ export default function TrendsScreen() {
             Your wellness trends
           </Text>
           <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 19 }}>
-            How your check-ins are tracking over time. Share these with your care team if anything
+            How {who.possessive} check-ins are tracking over time. Share these with the care team if anything
             looks off.
           </Text>
         </View>

@@ -36,6 +36,7 @@ import { SectionLabel } from '@/components/ui/SectionLabel';
 import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 import { ApiError } from '@/lib/api/client';
 import { applyReportFacts, extractReportPdf, extractReportText } from '@/lib/api/tools';
+import { usePerspective } from '@/lib/perspective';
 import type { ReportExtractResponse, ReportFinding } from '@shared/types';
 
 const MAX_PAGES = 3;
@@ -75,6 +76,7 @@ function loadOcr(): typeof MlkitOcrTypes | null {
 type Phase = 'capture' | 'processing' | 'review' | 'success';
 
 export default function ReportScanScreen() {
+  const who = usePerspective();
   const [phase, setPhase] = useState<Phase>('capture');
   const [pageTexts, setPageTexts] = useState<string[]>([]);
   const [processingLabel, setProcessingLabel] = useState('');
@@ -406,7 +408,7 @@ export default function ReportScanScreen() {
             <Text style={{ color: Colors.textSecondary, fontSize: FontSize.sm, textAlign: 'center', lineHeight: 19 }}>
               They are part of your profile now, so answers and trial matches can use them.
             </Text>
-            <Button label="See my profile" onPress={() => router.push('/profile' as never)} />
+            <Button label={`See ${who.possessiveNamed} profile`} onPress={() => router.push('/profile' as never)} />
             <Button label="Done" variant="ghost" onPress={() => router.back()} />
           </View>
         )}
