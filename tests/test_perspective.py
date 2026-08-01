@@ -173,3 +173,49 @@ class TestSecureFieldsCannotBeAutocapitalised:
         ]
         for rel in secure_screens:
             assert "secureTextEntry" in screen(rel), f"{rel}: no secure field found"
+
+
+class TestPasswordRevealToggle:
+    """Every password field can be revealed. Added after a correct password was
+    rejected and there was no way to see what had actually been typed."""
+
+    FIELD = (MOBILE / "components" / "ui" / "TextField.tsx").read_text()
+
+    def test_the_toggle_lives_in_the_primitive(self):
+        # One implementation, so every secure field has it and no screen has to
+        # remember to add one.
+        assert "setRevealed" in self.FIELD
+        assert "Eye" in self.FIELD and "EyeOff" in self.FIELD
+
+    def test_only_password_fields_get_a_toggle(self):
+        assert "{isPassword && (" in self.FIELD
+
+    def test_revealing_does_not_re_enable_autocapitalise(self):
+        # The subtle one: the keyboard defaults must key off "is a password",
+        # not off "is currently hidden", or revealing mid-entry would start
+        # capitalising and reintroduce the bug this file already covers.
+        assert "const secureDefaults = isPassword" in self.FIELD
+        assert "const isPassword = !!rest.secureTextEntry;" in self.FIELD
+
+    def test_the_toggle_owns_visibility_after_the_caller(self):
+        # The caller says "this is a password"; the toggle says "hidden or not".
+        # So the computed secureTextEntry must be applied AFTER {...rest}.
+        assert self.FIELD.index("{...rest}") < self.FIELD.index("secureTextEntry={isPassword && !revealed}")
+
+    def test_it_is_reachable_without_sight(self):
+        assert "accessibilityRole=\"button\"" in self.FIELD
+        assert "'Hide password' : 'Show password'" in self.FIELD
+
+    def test_text_cannot_run_under_the_button(self):
+        assert "paddingRight: isPassword ? REVEAL_HIT : 12" in self.FIELD
+
+    def test_the_touch_target_is_big_enough(self):
+        import re as _re
+        m = _re.search(r"const REVEAL_HIT = (\d+)", self.FIELD)
+        assert m and int(m.group(1)) >= 44, "iOS minimum touch target is 44pt"
+
+    def test_the_visuals_are_not_in_a_pressed_style_function(self):
+        # NativeWind silently strips visual styles from a Pressable's pressed
+        # style FUNCTION, leaving a control that is invisible but still
+        # tappable. The icon must sit on a static inner View.
+        assert "style={{ position: 'absolute', right: 0, top: 0, bottom: 0 }}" in self.FIELD
