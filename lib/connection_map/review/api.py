@@ -72,6 +72,11 @@ ROLES_MAY_ATTEST = {"reviewer_attesting"}
 ROLES_MAY_PUBLISH = {"admin"}
 ROLES_MAY_ADD_CONCEPT = {"reviewer_clinical", "reviewer_attesting", "admin"}
 
+# §5.2 keeps its intent — anyone may APPLY, only an admin may activate. Kept as
+# its own name rather than reusing ROLES_MAY_PUBLISH: they are the same set today
+# and are not the same decision, and one of them will change first.
+ROLES_MAY_DECIDE_APPLICATIONS = {"admin"}
+
 # A page has to be able to hold the whole pilot queue. At 50 against 81
 # candidates the reviewer saw 50 and had no way to know 31 existed: there is no
 # offset parameter to page with, and `count` was the length of the response, so
@@ -111,7 +116,17 @@ def _ip_hash() -> Optional[str]:
     return hashlib.sha256((salt + addr).encode("utf-8")).hexdigest()[:32]
 
 
-def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]]]) -> Blueprint:
+def _no_notification(*_args: Any, **_kwargs: Any) -> None:
+    """The default when nothing is injected. Delivery lives in lib/notifications,
+    which reaches the service-role client — so it is INJECTED here for the same
+    reason verify_token is, not imported (§5.8)."""
+    return None
+
+
+def build_review_blueprint(
+    verify_token: Callable[[str], Optional[Dict[str, Any]]],
+    notify: Callable[..., Any] = _no_notification,
+) -> Blueprint:
     bp = Blueprint("connection_map_review", __name__, url_prefix="/api/review")
 
     # ------------------------------------------------------------------
@@ -420,6 +435,85 @@ def build_review_blueprint(verify_token: Callable[[str], Optional[Dict[str, Any]
             "p_actor_id": g.reviewer["id"],
         }).execute()
         return jsonify({"status": "ok", "version_id": published.data})
+
+    # ------------------------------------------------------------------
+    # Applications (§5.2). A clinician may ask for access; an admin decides.
+    #
+    # These live on the review blueprint rather than beside /api/reviewer/apply
+    # because deciding is REVIEW work by an authenticated reviewer, and this
+    # blueprint already establishes who the caller is through the restricted
+    # client. The apply route cannot live here: an applicant is by definition
+    # not yet a reviewer, so before_request would refuse them.
+    # ------------------------------------------------------------------
+    @bp.get("/applications")
+    def list_applications():
+        denied = _require_role(ROLES_MAY_DECIDE_APPLICATIONS)
+        if denied:
+            return denied
+        client = get_review_client()
+        rows = (client.table("reviewer")
+                .select("id, full_name, email, credential, npi, license_state, "
+                        "specialty, institution, affiliation, role, status, "
+                        "created_at, decided_at, decision_note")
+                .in_("status", ["requested", "invited"])
+                .order("created_at")
+                .execute()).data or []
+        return jsonify({"status": "ok", "items": rows, "count": len(rows)})
+
+    @bp.post("/applications/<application_id>/decide")
+    def decide_application(application_id: str):
+        denied = _require_role(ROLES_MAY_DECIDE_APPLICATIONS)
+        if denied:
+            return denied
+        payload = request.get_json(silent=True) or {}
+        decision = payload.get("decision")
+        if decision not in ("approve", "reject"):
+            return jsonify({"error": "BAD_DECISION"}), 400
+
+        # SECURITY DEFINER, and it takes the AUTH user id rather than a reviewer
+        # id the caller could supply, so the recorded decider is the account this
+        # request's token proved. It also creates the sandbox patient and writes
+        # audit_log in the same transaction — sage_review holds SELECT only on
+        # reviewer on purpose, so there is no UPDATE path to do this instead.
+        client = get_review_client()
+        try:
+            result = client.rpc("connection_map_decide_reviewer_application", {
+                "p_reviewer_id": application_id,
+                "p_admin_auth_user_id": g.auth_user_id,
+                "p_decision": decision,
+                "p_note": payload.get("note"),
+            }).execute()
+        except Exception as exc:  # noqa: BLE001
+            message = str(exc)
+            # Someone else decided it first, or the applicant withdrew. A normal
+            # race between two admins looking at the same list, so it must read
+            # as one rather than as a 500 that invites an identical retry.
+            if "nothing to decide" in message:
+                return jsonify({"error": "ALREADY_DECIDED"}), 409
+            if "not found" in message:
+                return jsonify({"error": "NOT_FOUND"}), 404
+            if "own application" in message:
+                return jsonify({"error": "NO_SELF_APPROVAL"}), 403
+            raise
+
+        # Best effort, and after the decision is committed: an approval that
+        # succeeded must not be reported as a failure because a notification
+        # did not go out. The applicant learns either way — the app reads their
+        # status on every launch.
+        try:
+            applicant = (client.table("reviewer")
+                         .select("auth_user_id")
+                         .eq("id", application_id)
+                         .limit(1)
+                         .execute()).data or []
+            auth_user_id = applicant[0].get("auth_user_id") if applicant else None
+            if auth_user_id:
+                notify(auth_user_id,
+                       "reviewer_approved" if decision == "approve" else "reviewer_rejected")
+        except Exception:  # noqa: BLE001
+            pass
+
+        return jsonify({"status": "ok", "new_status": result.data})
 
     # ------------------------------------------------------------------
     # D3: physicians may add concepts.

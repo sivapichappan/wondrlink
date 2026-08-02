@@ -5,6 +5,7 @@ import json
 import logging
 from datetime import datetime
 from functools import wraps
+from typing import Any, Dict, Optional
 from flask import Flask, request, jsonify
 
 # Add lib to path for imports
@@ -168,8 +169,15 @@ try:
     from connection_map.review.api import build_review_blueprint
     # Late-bound on purpose: resolves verify_token from this module at call
     # time, so tests patching index.verify_token reach review routes too.
+    # notify is injected for the same reason: lib/notifications reaches the
+    # service-role client, which the review package may not import.
+    def _notify(user_id, kind, **kw):
+        from notifications import notify as _n
+        return _n(user_id, kind, **kw)
+
     app.register_blueprint(build_review_blueprint(
-        verify_token=lambda token: verify_token(token)))
+        verify_token=lambda token: verify_token(token),
+        notify=_notify))
 except Exception as _review_err:  # noqa: BLE001 - patient app must not depend on review
     logging.getLogger(__name__).error(
         "connection_map review blueprint not registered: %s", _review_err)
@@ -407,6 +415,342 @@ def api_phone_verify():
     except Exception:
         logger.exception("Phone OTP verify error")
         return jsonify({"error": "Sign-in failed. Please try again."}), 500
+
+
+@app.route("/api/reviewer/apply", methods=["POST"])
+@require_auth
+def api_reviewer_apply():
+    """A clinician asks for reviewer access (SPEC §5.2, adapted).
+
+    §5.2 says "No self-registration. No public signup." That intent is kept
+    exactly: this creates a row with status 'requested', which passes NO review
+    route. A pending applicant gets the same uniform 403 a stranger does, and
+    stays that way until an admin decides. Anyone may ask; only an admin grants.
+
+    The credential fields are recorded because an attestation snapshots the
+    signer's capacity, so the thing the admin is verifying has to be stored
+    alongside the decision rather than living in a chat message somewhere.
+    """
+    try:
+        user_id = request.user["user_id"]
+        data = request.get_json(silent=True) or {}
+
+        full_name = str(data.get("full_name", "")).strip()
+        credential = str(data.get("credential", "")).strip().upper()
+        email = str(data.get("email", "")).strip().lower()
+        if not full_name:
+            return jsonify({"error": "full_name is required"}), 400
+        if credential not in ("MD", "DO"):
+            # Only a physician may hold an attesting role — the database says so
+            # too (reviewer_attesting_is_physician_check). Failing here explains
+            # why instead of surfacing a constraint name.
+            return jsonify({"error": "An oncologist reviewer must be an MD or DO"}), 400
+        if not email:
+            return jsonify({"error": "email is required"}), 400
+
+        from supabase_client import get_admin_client
+        client = get_admin_client()
+
+        # A reviewer may not also be a patient, enforced by trigger in both
+        # directions. Say so plainly rather than letting the trigger fire.
+        existing_patient = (client.table("patient_profiles")
+                            .select("user_id").eq("user_id", user_id)
+                            .limit(1).execute()).data
+        if existing_patient:
+            return jsonify({
+                "error": "This account is already set up as a patient account. "
+                         "A clinician who also uses Sage as a patient needs a separate account.",
+                "code": "ALREADY_A_PATIENT",
+            }), 409
+
+        already = (client.table("reviewer").select("id, status")
+                   .eq("auth_user_id", user_id).limit(1).execute()).data
+        if already:
+            # Re-submitting is not an error; it is someone checking on it.
+            return jsonify({"status": "ok", "reviewer_status": already[0].get("status")})
+
+        client.table("reviewer").insert({
+            "auth_user_id": user_id,
+            "email": email,
+            "full_name": full_name,
+            "credential": credential,
+            "affiliation": str(data.get("affiliation", "external")).strip().lower(),
+            "role": "reviewer_attesting",
+            "status": "requested",
+            "npi": (str(data.get("npi", "")).strip() or None),
+            "license_state": (str(data.get("license_state", "")).strip().upper() or None),
+            "specialty": (str(data.get("specialty", "")).strip() or None),
+            "institution": (str(data.get("institution", "")).strip() or None),
+        }).execute()
+
+        return jsonify({"status": "ok", "reviewer_status": "requested"})
+    except Exception as e:
+        logger.exception("reviewer apply error")
+        return jsonify({"error": str(e)}), 500
+
+
+_GUIDELINE_KEYWORDS = ['NCCN', 'guideline', 'ACS', 'ASCO', 'CDC', 'NCI', 'recommendation']
+
+
+def _sources_from_chunks(retrieved: list) -> tuple:
+    """The source panel and the guideline list for a set of retrieved chunks.
+
+    Shared by the patient chat and the reviewer sandbox so a physician judging
+    how sources are shown is judging the same code patients meet. Pure — it
+    reads chunks and nothing else.
+    """
+    sources_metadata: list = []
+    guidelines_used: list = []
+    try:
+        from llm_utils import get_friendly_source_name
+        seen_sources = set()
+        for chunk in (retrieved or [])[:5]:  # max 5 sources per response
+            if isinstance(chunk, dict) and chunk.get('filename'):
+                fname = chunk['filename']
+                if fname not in seen_sources:
+                    content = chunk.get('content', '') or ''
+                    preview = content[:140].strip()
+                    if len(content) > 140:
+                        preview += '...'
+                    sources_metadata.append({
+                        "title": fname,
+                        "display_name": get_friendly_source_name(fname),
+                        "type": "document",
+                        "section": chunk.get('chunk_index'),
+                        "preview": preview,
+                    })
+                    seen_sources.add(fname)
+
+                    fname_lower = fname.lower()
+                    if any(kw.lower() in fname_lower for kw in _GUIDELINE_KEYWORDS):
+                        guidelines_used.append(fname)
+
+        for s in sources_metadata:
+            if "Comprehensive_Colon_Cancer_Guide" in s["title"]:
+                s["is_featured"] = True
+    except Exception as e:
+        logger.error(f"Error extracting source metadata: {e}", exc_info=True)
+    return sources_metadata, guidelines_used
+
+
+def _active_reviewer_row(user_id: str) -> Optional[Dict[str, Any]]:
+    """The reviewer row behind this token, or None unless it is ACTIVE.
+
+    The gate for every sandbox route. A pending applicant is not a reviewer yet
+    and gets the same refusal a stranger does — the sandbox is part of what
+    approval grants, not a preview of it.
+    """
+    try:
+        from supabase_client import get_admin_client
+        rows = (get_admin_client().table("reviewer")
+                .select("id, role, status")
+                .eq("auth_user_id", user_id)
+                .limit(1)
+                .execute()).data or []
+    except Exception:
+        logger.exception("sandbox reviewer lookup failed")
+        return None
+    if not rows or rows[0].get("status") != "active":
+        return None
+    return rows[0]
+
+
+@app.route("/api/sandbox/chat", methods=["POST"])
+@require_auth
+def api_sandbox_chat():
+    """The chat a reviewer tests on (SPEC §5.5).
+
+    A SEPARATE endpoint rather than a branch in /api/chat, and separate tables
+    rather than a flag: a reviewer cannot hold a patient profile, so there is no
+    patient_id anywhere in this path to bind a chat to by mistake. See
+    lib/sandbox_chat.py for what this runs and what it deliberately does not.
+    """
+    try:
+        user_id = request.user["user_id"]
+        reviewer = _active_reviewer_row(user_id)
+        if not reviewer:
+            return jsonify({"error": "FORBIDDEN"}), 403
+
+        from rate_limit import check_rate_limit
+        allowed, _remaining = check_rate_limit(user_id, 'chat', *RATE_LIMIT_CHAT)
+        if not allowed:
+            return jsonify({"error": "You've reached the message limit. Please wait a bit before sending more."}), 429
+
+        data = request.get_json(silent=True) or {}
+        message = (data.get("message") or "").strip()
+        if not message:
+            return jsonify({"error": "No message provided"}), 400
+        message = message[:2000]
+        response_length = data.get("response_length", "normal")
+
+        import sandbox_chat as sandbox
+
+        patient_row = sandbox.get_sandbox_patient(reviewer["id"])
+        if not patient_row:
+            return jsonify({"error": "Sandbox unavailable"}), 503
+        conversation_id = sandbox.get_or_create_sandbox_conversation(
+            patient_row["id"], data.get("conversation_id"))
+
+        profile = sandbox.sandbox_profile(patient_row)
+        patient_context = extract_patient_context_complex(profile) or {}
+        cancer_slug = patient_row.get("cancer_slug") or sandbox.DEFAULT_SANDBOX_CANCER
+        patient_context['cancer_slug'] = cancer_slug
+
+        # No sanitize_query pass. It exists to strip a real person's identifiers
+        # before they reach a model; there is no real person here, and running it
+        # would show the reviewer redactions a patient would not see.
+        query_type = classify_query_type(message)
+
+        # The safety layer is one of the things a physician is here to judge, so
+        # it runs exactly as it does for a patient — same tiers, same short
+        # circuit, same card.
+        safety_result = None
+        try:
+            from safety_classifier import classify_message
+            safety_result = classify_message(
+                message,
+                on_active_treatment=bool(patient_context.get('current_regimen')),
+                perspective='self',
+            )
+        except Exception:
+            logger.exception("Sandbox safety classifier failed (continuing)")
+        safety_tier = safety_result.tier if safety_result else 'NONE'
+
+        if safety_tier in ('T1', 'T2', 'MH'):
+            from confidence import render_crisis_response, crisis_resources_for
+            from safety_classifier import render_patient_line
+            from safety_rules import emergency_number, rules_version
+            _legacy_cat = {'MH': 'self_harm', 'T1': 'medical_emergency',
+                           'T2': 'urgent_oncology'}[safety_tier]
+            _answer = render_crisis_response(_legacy_cat)
+            sandbox.append_sandbox_turn(conversation_id, message, _answer)
+            return jsonify({
+                "status": "ok",
+                "answer": _answer,
+                "api_used": "safety-classifier",
+                "conversation_id": conversation_id,
+                "sandbox": True,
+                "sources": [], "citations": {}, "resources": [], "followups": [],
+                "guidelines_used": [], "has_guidelines": False,
+                "is_crisis": True,
+                "crisis_resources": crisis_resources_for(_legacy_cat),
+                "crisis_category": _legacy_cat,
+                "safety": {
+                    "tier": safety_tier,
+                    "category": safety_result.category,
+                    "patient_line": render_patient_line(safety_tier, 'self', None),
+                    "rule_matched": safety_result.rule_matched,
+                    "confidence": safety_result.confidence,
+                    "emergency_number": emergency_number(),
+                    "offer_symptom_log": safety_tier == 'T2',
+                    "rules_version": rules_version(),
+                },
+            })
+
+        history = sandbox.sandbox_history(conversation_id)
+        conversation_context = format_conversation_context(history)
+
+        retrieved = []
+        try:
+            retrieved = hybrid_search(
+                message, load_all_chunks(),
+                top_k=8 if query_type in ('treatment', 'clinical_trial') else 5,
+                cancer_types=[cancer_slug, 'general'])
+        except Exception:
+            logger.exception("Sandbox retrieval failed (continuing without chunks)")
+
+        prompt, prompt_metadata = assemble_prompt(
+            message, retrieved, profile, response_length,
+            conversation_context, patient_context)
+        # The guard scans PHI-bearing components. There is none here, and popping
+        # the key keeps the metadata shape identical to the patient path.
+        prompt_metadata.pop('pii_guard_payload', None)
+
+        if not get_llm_status()["primary_api"]:
+            return jsonify({"error": "No LLM API available."}), 500
+
+        answer, api_used = call_llm(prompt, response_length,
+                                    query=message, query_type=query_type)
+        if not answer:
+            return jsonify({"error": "The model did not answer. Try again."}), 502
+        answer = trim_incomplete_sentence(answer)
+        answer = validate_response(answer, message, patient_context)['enhanced_response']
+
+        citation_map = {}
+        if feature_enabled('inline_citations'):
+            try:
+                answer, citation_map = postprocess_citations(answer, retrieved)
+            except Exception:
+                logger.exception("Sandbox citation post-processing failed")
+
+        followups = []
+        try:
+            from llm_utils import extract_followups, soften_tone
+            answer, followups = extract_followups(answer)
+            answer, _tone = soften_tone(answer)
+        except Exception:
+            logger.exception("Sandbox answer post-processing failed")
+
+        sandbox.append_sandbox_turn(conversation_id, message, answer)
+        sources_metadata, guidelines_used = _sources_from_chunks(retrieved)
+
+        return jsonify({
+            "status": "ok",
+            "answer": answer,
+            "api_used": api_used,
+            "conversation_id": conversation_id,
+            "sandbox": True,
+            "retrieved_count": len(retrieved),
+            "citations": citation_map,
+            "followups": followups,
+            "resources": [],
+            "sources": sources_metadata,
+            "guidelines_used": guidelines_used,
+            "has_guidelines": len(guidelines_used) > 0,
+            "safety": {"tier": safety_tier} if safety_tier != 'NONE' else None,
+        })
+    except Exception:
+        logger.exception("sandbox chat error")
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
+
+
+@app.route("/api/sandbox/conversations", methods=["GET"])
+@require_auth
+def api_sandbox_conversations():
+    """The reviewer's test threads. Same shape as /api/conversations so the
+    mobile list component does not need a second branch."""
+    try:
+        reviewer = _active_reviewer_row(request.user["user_id"])
+        if not reviewer:
+            return jsonify({"error": "FORBIDDEN"}), 403
+        import sandbox_chat as sandbox
+        patient_row = sandbox.get_sandbox_patient(reviewer["id"])
+        if not patient_row:
+            return jsonify({"status": "ok", "conversations": []})
+        return jsonify({"status": "ok",
+                        "conversations": sandbox.list_sandbox_conversations(patient_row["id"])})
+    except Exception:
+        logger.exception("sandbox conversations error")
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
+
+
+@app.route("/api/sandbox/reset", methods=["POST"])
+@require_auth
+def api_sandbox_reset():
+    """Clear the test conversations. Probing an escalation path should not leave
+    a reviewer living with it at the top of their list."""
+    try:
+        reviewer = _active_reviewer_row(request.user["user_id"])
+        if not reviewer:
+            return jsonify({"error": "FORBIDDEN"}), 403
+        import sandbox_chat as sandbox
+        patient_row = sandbox.get_sandbox_patient(reviewer["id"])
+        if patient_row:
+            sandbox.reset_sandbox(patient_row["id"])
+        return jsonify({"status": "ok"})
+    except Exception:
+        logger.exception("sandbox reset error")
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
 @app.route("/api/account/basics", methods=["POST"])
@@ -863,10 +1207,18 @@ def api_check_acknowledgement():
         # accounts and must never be routed into patient onboarding (finishing
         # it would create a patient profile and trip the exclusivity trigger).
         # RootGate branches on this FIRST. Failure-safe: any error means False.
+        # Three outcomes, not two: not a reviewer, applied and waiting, active.
+        # A pending applicant used to be indistinguishable from a stranger and
+        # had nowhere to be routed.
         is_reviewer = False
+        reviewer_status = None
+        reviewer_role = None
         try:
-            from supabase_storage import is_active_reviewer
-            is_reviewer = is_active_reviewer(user_id)
+            from supabase_storage import get_reviewer_state
+            _rev = get_reviewer_state(user_id)
+            reviewer_status = _rev.get('status')
+            reviewer_role = _rev.get('role')
+            is_reviewer = reviewer_status == 'active'
         except Exception as _e:
             logger.debug("reviewer lookup failed: %s", _e)
 
@@ -887,6 +1239,11 @@ def api_check_acknowledgement():
             # caregiver account, and every patient-facing string needs it to
             # avoid addressing the caregiver as the patient.
             "patient_name": basics.get('patient_name'),
+            # 'requested' | 'invited' | 'active' | 'revoked' | null.
+            # is_reviewer stays above meaning ACTIVE, so an older client that
+            # only knows that field behaves exactly as it did.
+            "reviewer_status": reviewer_status,
+            "reviewer_role": reviewer_role,
         })
     except Exception as e:
         logger.exception("check_acknowledgement error")
@@ -2126,38 +2483,7 @@ def api_chat():
                 logger.exception("Lifecycle bookkeeping failed (non-fatal)")
 
             # Extract sources for the frontend panel
-            sources_metadata = []
-            guidelines_used = []
-            guideline_keywords = ['NCCN', 'guideline', 'ACS', 'ASCO', 'CDC', 'NCI', 'recommendation']
-            try:
-                from llm_utils import get_friendly_source_name
-                seen_sources = set()
-                for chunk in retrieved[:5]:  # max 5 sources per response
-                    if isinstance(chunk, dict) and chunk.get('filename'):
-                        fname = chunk['filename']
-                        if fname not in seen_sources:
-                            content = chunk.get('content', '') or ''
-                            preview = content[:140].strip()
-                            if len(content) > 140:
-                                preview += '...'
-                            sources_metadata.append({
-                                "title": fname,
-                                "display_name": get_friendly_source_name(fname),
-                                "type": "document",
-                                "section": chunk.get('chunk_index'),
-                                "preview": preview,
-                            })
-                            seen_sources.add(fname)
-
-                            fname_lower = fname.lower()
-                            if any(kw.lower() in fname_lower for kw in guideline_keywords):
-                                guidelines_used.append(fname)
-
-                for s in sources_metadata:
-                    if "Comprehensive_Colon_Cancer_Guide" in s["title"]:
-                        s["is_featured"] = True
-            except Exception as e:
-                logger.error(f"Error extracting source metadata: {e}", exc_info=True)
+            sources_metadata, guidelines_used = _sources_from_chunks(retrieved)
 
             # T3 (same-day) banner: the classifier's verdict wins over the
             # prompt-injection urgency so exactly ONE banner renders, and the

@@ -1699,6 +1699,7 @@ def delete_all_user_data(user_id: str) -> dict:
       - accounts                — full row (keyed by id = auth.uid)
       - patient_edge_event      — all rows for user (keyed by patient_id)
       - patient_edge            — all rows for user (keyed by patient_id)
+      - device_push_token       — all rows for user (a persistent device id)
 
     Sub-processor data NOT under our direct control (documented in
     docs/compliance/subprocessor_chain.md — retention per their ToS):
@@ -1731,6 +1732,10 @@ def delete_all_user_data(user_id: str) -> dict:
             'safety_classifications',
             'glossary_terms',
             'rate_limits',
+            # A push token is a persistent device identifier, so it is user data
+            # and goes out with everything else. Written by nobody until push
+            # ships; listed now so the parity test passes with the schema.
+            'device_push_token',
         ]
 
         for table in tables:
@@ -1906,28 +1911,47 @@ def get_consent_status(user_id: str) -> Dict[str, Any]:
     return state
 
 
-def is_active_reviewer(user_id: str) -> bool:
-    """True when this auth user holds an ACTIVE connection-map reviewer row.
+def get_reviewer_state(user_id: str) -> Dict[str, Any]:
+    """This auth user's reviewer standing: {'status': str|None, 'role': str|None}.
 
-    Drives the mobile RootGate: a reviewer account must never be routed into
-    patient onboarding, because completing it would create a patient profile
-    and trip the reviewer/patient mutual-exclusion trigger. Read with the
-    service role (this is the patient-side app asking about its own caller,
-    not review code reaching outward). Any failure — including the reviewer
-    table not existing yet — means False: the patient flow must never depend
-    on the review schema being present.
+    Drives the mobile RootGate. It needs three outcomes, not two:
+
+      None         not a reviewer at all -> the patient flow
+      'requested'  applied, waiting on an admin -> a waiting screen
+      'active'     approved -> the app, plus Approvals in the drawer
+
+    The previous version selected only `id` with `status = 'active'` hardcoded,
+    so an applicant waiting on approval was indistinguishable from a stranger
+    and had nowhere to be routed.
+
+    Read with the service role: this is the patient-side app asking about its own
+    caller, not review code reaching outward. Any failure — including the reviewer
+    table not existing yet — means "not a reviewer", because the patient flow must
+    never depend on the review schema being present.
     """
+    empty: Dict[str, Any] = {'status': None, 'role': None}
     if not user_id:
-        return False
+        return empty
     try:
         client = get_admin_client()
         result = (client.table('reviewer')
-                  .select('id')
+                  .select('status, role')
                   .eq('auth_user_id', user_id)
-                  .eq('status', 'active')
                   .limit(1)
                   .execute())
-        return bool(result.data)
+        if not result.data:
+            return empty
+        row = result.data[0]
+        return {'status': row.get('status'), 'role': row.get('role')}
     except Exception as e:
-        logger.debug("is_active_reviewer check failed (treating as False): %s", e)
-        return False
+        logger.debug("reviewer state lookup failed (treating as not a reviewer): %s", e)
+        return empty
+
+
+def is_active_reviewer(user_id: str) -> bool:
+    """True when this auth user holds an ACTIVE reviewer row.
+
+    Kept as the narrow question the name asks, now answered from
+    get_reviewer_state so there is one query and one definition of "active".
+    """
+    return get_reviewer_state(user_id).get('status') == 'active'

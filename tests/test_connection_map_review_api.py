@@ -224,13 +224,18 @@ class TestAcceptance2:
     """Every /api/review/* route resolves through the restricted client."""
 
     def test_all_review_routes_are_registered_and_counted(self):
+        # The trailing slash matters: /api/reviewer/apply is a PATIENT-app route
+        # (an applicant is not a reviewer yet, so it cannot live behind this
+        # blueprint's before_request) and startswith("/api/review") swept it in.
         rules = [r.rule for r in index.app.url_map.iter_rules()
-                 if r.rule.startswith("/api/review")]
+                 if r.rule.startswith("/api/review/")]
         expected = {"/api/review/queue", "/api/review/edge/<edge_id>",
                     "/api/review/edge/<edge_id>/attest",
                     "/api/review/version/<version_id>/blockers",
                     "/api/review/version/<version_id>/publish",
                     "/api/review/concept", "/api/review/concept/<concept_id>",
+                    "/api/review/applications",
+                    "/api/review/applications/<application_id>/decide",
                     "/api/review/meta"}
         assert set(rules) == expected
 
@@ -313,9 +318,16 @@ class TestAcceptance2:
 
 
 class TestReviewerFlagInAcknowledgement:
-    """RootGate branches on is_reviewer FIRST: a reviewer routed into patient
-    onboarding would end by creating a patient profile and tripping the
-    exclusivity trigger. The flag must exist, and must fail to False."""
+    """RootGate branches on the reviewer fields FIRST: a reviewer routed into
+    patient onboarding would end by creating a patient profile and tripping the
+    exclusivity trigger.
+
+    There are THREE outcomes here, not two — not a reviewer, applied and
+    waiting, active — and the middle one is why the payload carries a status
+    and not only a boolean. A pending applicant used to be indistinguishable
+    from a stranger, so the app had nowhere to send them but patient onboarding,
+    which is the one path they must never take.
+    """
 
     def _call(self, client, reviewer_result):
         kwargs = ({"side_effect": reviewer_result}
@@ -326,18 +338,32 @@ class TestReviewerFlagInAcknowledgement:
              patch("supabase_storage.get_cancer_slug", return_value=None), \
              patch("supabase_storage.get_account_basics",
                    return_value={"needs_basics": True}), \
-             patch("supabase_storage.is_active_reviewer", **kwargs):
+             patch("supabase_storage.get_reviewer_state", **kwargs):
             return client.get("/api/check_acknowledgement", headers=AUTH)
 
     def test_reviewer_account_is_flagged(self, client, authed):
-        resp = self._call(client, True)
+        resp = self._call(client, {"status": "active", "role": "reviewer_attesting"})
         assert resp.status_code == 200
-        assert resp.get_json()["is_reviewer"] is True
+        body = resp.get_json()
+        assert body["is_reviewer"] is True
+        assert body["reviewer_status"] == "active"
+        assert body["reviewer_role"] == "reviewer_attesting"
 
     def test_patient_account_is_not(self, client, authed):
-        resp = self._call(client, False)
+        resp = self._call(client, {"status": None, "role": None})
         assert resp.status_code == 200
-        assert resp.get_json()["is_reviewer"] is False
+        body = resp.get_json()
+        assert body["is_reviewer"] is False
+        assert body["reviewer_status"] is None
+
+    def test_a_pending_applicant_is_not_yet_a_reviewer(self, client, authed):
+        # is_reviewer keeps meaning ACTIVE, so an older client sees exactly what
+        # it saw before; the status is what tells the new client to wait.
+        resp = self._call(client, {"status": "requested", "role": "reviewer_attesting"})
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert body["is_reviewer"] is False
+        assert body["reviewer_status"] == "requested"
 
     def test_lookup_failure_means_false_never_500(self, client, authed):
         # The patient flow must not depend on the review schema existing.
