@@ -165,3 +165,71 @@ export function attestEdge(
         : { decision, expected_hash: expectedHash },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Applications (§5.2). Anyone may ask; only an admin activates.
+// ---------------------------------------------------------------------------
+
+/** What an applicant submits. MD/DO is required and checked before submit —
+ *  only a physician may hold an attesting role, and the database says so too. */
+export interface ReviewerApplication {
+  full_name: string;
+  credential: 'MD' | 'DO';
+  email: string;
+  npi?: string;
+  license_state?: string;
+  specialty?: string;
+  institution?: string;
+}
+
+export interface ReviewerApplyResponse {
+  status: 'ok';
+  reviewer_status: 'requested' | 'invited' | 'active' | 'revoked';
+}
+
+export function applyAsReviewer(application: ReviewerApplication) {
+  return apiFetch<ReviewerApplyResponse>(ENDPOINTS.reviewerApply, {
+    method: 'POST',
+    body: application,
+  });
+}
+
+/** A pending application, as the admin dashboard shows it. The credential
+ *  fields are the point: they are what the admin is actually verifying. */
+export interface PendingApplication {
+  id: string;
+  full_name: string;
+  email: string;
+  credential: string;
+  npi: string | null;
+  license_state: string | null;
+  specialty: string | null;
+  institution: string | null;
+  affiliation: string;
+  role: string;
+  status: 'requested' | 'invited';
+  created_at: string;
+}
+
+export interface ApplicationsResponse {
+  status: 'ok';
+  items: PendingApplication[];
+  count: number;
+}
+
+export function fetchApplications() {
+  return apiFetch<ApplicationsResponse>(ENDPOINTS.reviewApplications, {
+    method: 'GET',
+  });
+}
+
+export function decideApplication(
+  applicationId: string,
+  decision: 'approve' | 'reject',
+  note?: string,
+) {
+  return apiFetch<{ status: 'ok'; new_status: 'active' | 'revoked' }>(
+    ENDPOINTS.reviewApplicationDecide(applicationId),
+    { method: 'POST', body: { decision, note } },
+  );
+}

@@ -60,6 +60,17 @@ export const TextField = forwardRef<TextInput, Props>(function TextField(
           placeholderTextColor={Colors.textMuted}
           {...secureDefaults}
           {...rest}
+          // onFocus/onBlur are destructured out of `rest`, so they have to be
+          // put back explicitly — otherwise the caller's handlers are dropped
+          // and the focus border never lights up.
+          onFocus={(e) => {
+            setFocused(true);
+            onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            onBlur?.(e);
+          }}
           // After {...rest} on purpose: the caller sets secureTextEntry to say
           // "this is a password", and the toggle owns whether it is hidden now.
           secureTextEntry={isPassword && !revealed}

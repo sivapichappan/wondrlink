@@ -157,6 +157,31 @@ def append_sandbox_turn(conversation_id: str, question: str, answer: str) -> Non
         {"updated_at": "now()"}).eq("id", conversation_id).execute()
 
 
+def sandbox_messages(sandbox_patient_id: str, conversation_id: str) -> Optional[List[Dict[str, Any]]]:
+    """The full thread for display, or None if it is not this reviewer's.
+
+    Ownership is checked here rather than at the call site: a conversation id
+    arrives from the client, and one reviewer reading another's test thread
+    would be a small leak of nothing much, which is exactly the kind that gets
+    waved through until the table holds something else.
+    """
+    client = _client()
+    owned = (client.table("sandbox_conversation")
+             .select("id")
+             .eq("id", conversation_id)
+             .eq("sandbox_patient_id", sandbox_patient_id)
+             .limit(1)
+             .execute()).data or []
+    if not owned:
+        return None
+    return (client.table("sandbox_message")
+            .select("role, content, created_at")
+            .eq("conversation_id", conversation_id)
+            .order("created_at")
+            .limit(200)
+            .execute()).data or []
+
+
 def list_sandbox_conversations(sandbox_patient_id: str) -> List[Dict[str, Any]]:
     client = _client()
     return (client.table("sandbox_conversation")

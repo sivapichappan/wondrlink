@@ -60,12 +60,38 @@ function RootGate() {
     const data = ack.data;
     if (!data) return;
 
-    // Reviewer accounts come FIRST. A reviewer is never a patient (the
-    // database enforces the exclusivity), so they must not fall through into
-    // patient onboarding — completing it would try to create a patient
-    // profile and be rejected. They get the review workspace and nothing else.
-    if (data.is_reviewer) {
-      if (top !== 'review') router.replace('/review' as never);
+    // Reviewer accounts branch FIRST. A reviewer is never a patient (the
+    // database enforces the exclusivity in both directions), so they must not
+    // fall through into patient onboarding — completing it would try to create
+    // a patient profile and be rejected, leaving the account stuck.
+    //
+    // Three outcomes, not two, and the middle one is the reason this reads a
+    // status rather than a boolean:
+    //
+    //   requested / invited — applied, waiting on an admin. Not a reviewer yet
+    //     and not a patient either, so the pending screen is the ONLY place
+    //     they can be. Before the server sent a status they looked exactly like
+    //     a stranger, and the app had nowhere to send them but onboarding.
+    //   active — a full user of the app. They fall THROUGH to the normal
+    //     branches below and get the same home, chat and drawer everyone else
+    //     does, with Approvals as one more item in it. The old exclusive
+    //     redirect to /review is gone: a physician vouching for patient-facing
+    //     wording has to be able to see the product it appears in.
+    //   revoked / none — an ordinary patient path.
+    const reviewerStatus = data.reviewer_status ?? (data.is_reviewer ? 'active' : null);
+
+    if (reviewerStatus === 'requested' || reviewerStatus === 'invited') {
+      const onPending = top === '(onboarding)' && second === 'reviewer-pending';
+      if (!onPending) router.replace('/(onboarding)/reviewer-pending' as never);
+      return;
+    }
+
+    if (reviewerStatus === 'active') {
+      // Skip the patient-only gates (consent, state, basics) — none of them can
+      // be satisfied by an account that may not hold a patient profile.
+      if (top === '(auth)' || top === '(onboarding)' || top == null) {
+        router.replace('/');
+      }
       return;
     }
 
@@ -77,7 +103,13 @@ function RootGate() {
     }
 
     if (data.needs_consent) {
-      if (top !== '(onboarding)') router.replace('/(onboarding)/consent');
+      // account-type comes before consent, because the consent being asked for
+      // is a PATIENT's consent to have their health data processed. A clinician
+      // signing up to review content is not agreeing to that, and should not be
+      // shown it. One extra tap for a patient; the only honest order for the
+      // other path. Anything inside (onboarding) is left alone so the branch
+      // itself can navigate.
+      if (top !== '(onboarding)') router.replace('/(onboarding)/account-type' as never);
       return;
     }
 

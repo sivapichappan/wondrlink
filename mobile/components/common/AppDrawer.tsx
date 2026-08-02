@@ -14,7 +14,7 @@
  */
 
 import { router } from 'expo-router';
-import { Activity, HeartPulse, LayoutGrid, LifeBuoy, Search, Settings, SquarePen, Tag, User } from 'lucide-react-native';
+import { Activity, ClipboardCheck, HeartPulse, LayoutGrid, LifeBuoy, Search, Settings, SquarePen, Tag, User, UserCheck } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { BackHandler, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -25,6 +25,7 @@ import { Colors, FontSize, Fonts, Radius } from '@/constants/theme';
 import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { useCareSnapshot, useProfile } from '@/hooks/useCare';
 import { useConversations } from '@/hooks/useConversations';
+import { useReviewerSession } from '@/hooks/useReviewerSession';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { APP_NAME } from '@shared/branding';
 import { LifecycleStageLine } from './LifecycleStageLine';
@@ -44,6 +45,7 @@ export function AppDrawer() {
   const snap = useCareSnapshot();
   const profile = useProfile();
   const ack = useAcknowledgement();
+  const reviewer = useReviewerSession();
 
   const cancerDisplay = ack.data?.cancer_display ?? 'Pick cancer';
   const savedCount = watchlist.trials.length;
@@ -194,6 +196,38 @@ export function AppDrawer() {
               </Pressable>
             ));
           })()}
+
+          {/* Review work. Physicians use the app like anyone else and reach
+              their queue from here, rather than being locked in a workspace
+              that never shows them the product they are vouching for. */}
+          {reviewer.isReviewer ? (
+            <>
+              <SectionLabel>REVIEW</SectionLabel>
+              <DrawerRow
+                icon={<ClipboardCheck size={17} color={Colors.primary} />}
+                label="Approvals"
+                onPress={() => go('/review')}
+              />
+              {reviewer.isAdmin ? (
+                <DrawerRow
+                  icon={<UserCheck size={17} color={Colors.textSecondary} />}
+                  label="Reviewer applications"
+                  onPress={() => go('/review/applications')}
+                />
+              ) : null}
+              <Text
+                style={{
+                  fontSize: 11,
+                  lineHeight: 15,
+                  color: Colors.textMuted,
+                  paddingHorizontal: 10,
+                  paddingTop: 2,
+                  paddingBottom: 4,
+                }}>
+                Your chat runs on a sample patient, not a real one.
+              </Text>
+            </>
+          ) : null}
 
           {/* My Care */}
           <SectionLabel>MY CARE</SectionLabel>

@@ -38,11 +38,22 @@ export interface AuthResponse {
 
 export interface CheckAcknowledgementResponse {
   /**
-   * Connection-map reviewer account. Mutually exclusive with being a patient;
-   * RootGate branches on this FIRST so a reviewer is never routed into
-   * patient onboarding. Absent on older servers — treat undefined as false.
+   * An ACTIVE connection-map reviewer. Mutually exclusive with being a patient;
+   * RootGate branches on the reviewer fields FIRST so a reviewer is never
+   * routed into patient onboarding. Absent on older servers — treat undefined
+   * as false. Keeps meaning "active" now that reviewer_status exists, so an
+   * older client sees exactly what it saw before.
    */
   is_reviewer?: boolean;
+  /**
+   * Three outcomes, not two. 'requested' is someone who applied and is waiting
+   * on an admin: not a reviewer yet, and NOT a patient either — routing them
+   * into patient onboarding would end in a patient profile the database
+   * refuses to let a reviewer hold. Null / absent means no reviewer row.
+   */
+  reviewer_status?: 'requested' | 'invited' | 'active' | 'revoked' | null;
+  /** §5.1 capability. 'admin' also gets the applications dashboard. */
+  reviewer_role?: 'observer' | 'reviewer_clinical' | 'reviewer_attesting' | 'admin' | null;
   acknowledged: boolean;
   consent_version: string | null;
   current_version: string;

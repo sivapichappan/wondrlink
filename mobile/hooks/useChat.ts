@@ -22,8 +22,10 @@ import type { ChatHistoryMessage, ChatResponse } from '@shared/types';
 
 import { fetchConversationMessages } from '@/lib/api/conversations';
 import { sendChatMessage } from '@/lib/api/chat';
+import { fetchSandboxMessages, sendSandboxMessage } from '@/lib/api/sandbox';
 import { CONVERSATIONS_KEY } from './useConversations';
 import { useResponseLength } from './useResponseLength';
+import { useReviewerSession } from './useReviewerSession';
 
 export const NEW_CONVERSATION = 'new';
 
@@ -42,9 +44,16 @@ export function useChat(conversationId: string, opts: UseChatOptions = {}) {
   const key = messagesKey(conversationId);
   const isNew = conversationId === NEW_CONVERSATION;
 
+  // A reviewer's chat runs on a synthetic patient in separate tables (§5.5).
+  // This is the ONE place the app chooses between them: a reviewer may not hold
+  // a patient profile, so /api/chat would fail for them anyway — routing here
+  // means it fails as an obvious 403 rather than a half-written patient row.
+  const { isReviewer } = useReviewerSession();
+
   const history = useQuery({
     queryKey: key,
-    queryFn: () => fetchConversationMessages(conversationId),
+    queryFn: () =>
+      isReviewer ? fetchSandboxMessages(conversationId) : fetchConversationMessages(conversationId),
     enabled: !isNew,
     staleTime: 30_000,
     // "new" starts empty; optimistic sends populate this cache directly.
@@ -64,7 +73,8 @@ export function useChat(conversationId: string, opts: UseChatOptions = {}) {
         messages: [...(prev?.messages ?? []), userMsg],
       }));
 
-      const resp: ChatResponse = await sendChatMessage({
+      const send = isReviewer ? sendSandboxMessage : sendChatMessage;
+      const resp: ChatResponse = await send({
         message,
         response_length: responseLength,
         session_id: conversationId, // legacy field kept for API compatibility

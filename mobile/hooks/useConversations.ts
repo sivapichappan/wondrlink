@@ -13,15 +13,20 @@ import {
   fetchConversations,
   renameConversation,
 } from '@/lib/api/conversations';
+import { fetchSandboxConversations } from '@/lib/api/sandbox';
+import { useReviewerSession } from './useReviewerSession';
 
 export const CONVERSATIONS_KEY = ['conversations'] as const;
 
 export function useConversations() {
   const qc = useQueryClient();
+  // A reviewer's Recents are their sandbox threads. Same key, so every existing
+  // invalidation in useChat keeps working for both.
+  const { isReviewer } = useReviewerSession();
 
   const list = useQuery({
     queryKey: CONVERSATIONS_KEY,
-    queryFn: () => fetchConversations(),
+    queryFn: () => (isReviewer ? fetchSandboxConversations() : fetchConversations()),
     staleTime: 15_000,
   });
 

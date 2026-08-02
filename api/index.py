@@ -734,6 +734,27 @@ def api_sandbox_conversations():
         return jsonify({"error": "Something went wrong. Please try again."}), 500
 
 
+@app.route("/api/sandbox/conversations/<conversation_id>/messages", methods=["GET"])
+@require_auth
+def api_sandbox_conversation_messages(conversation_id: str):
+    """One test thread, same shape as /api/conversations/<id>/messages."""
+    try:
+        reviewer = _active_reviewer_row(request.user["user_id"])
+        if not reviewer:
+            return jsonify({"error": "FORBIDDEN"}), 403
+        import sandbox_chat as sandbox
+        patient_row = sandbox.get_sandbox_patient(reviewer["id"])
+        if not patient_row:
+            return jsonify({"error": "NOT_FOUND"}), 404
+        messages = sandbox.sandbox_messages(patient_row["id"], conversation_id)
+        if messages is None:
+            return jsonify({"error": "NOT_FOUND"}), 404
+        return jsonify({"status": "ok", "messages": messages})
+    except Exception:
+        logger.exception("sandbox messages error")
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
+
+
 @app.route("/api/sandbox/reset", methods=["POST"])
 @require_auth
 def api_sandbox_reset():

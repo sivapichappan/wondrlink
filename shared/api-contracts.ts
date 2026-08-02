@@ -67,6 +67,23 @@ export const ENDPOINTS = {
   reviewVersionBlockers: (id: string) => `/api/review/version/${id}/blockers`,
   reviewVersionPublish: (id: string) => `/api/review/version/${id}/publish`,
   reviewConcept: '/api/review/concept',
+  // Admin only. Approving is not an UPDATE server-side: sage_review holds
+  // SELECT on reviewer by design, so the decision goes through a SECURITY
+  // DEFINER function that also creates the sandbox and writes audit_log.
+  reviewApplications: '/api/review/applications',
+  reviewApplicationDecide: (id: string) => `/api/review/applications/${id}/decide`,
+
+  // --- Becoming a reviewer (patient-app routes: an applicant is not a
+  // reviewer yet, so these cannot sit behind the review blueprint) ---
+  reviewerApply: '/api/reviewer/apply',
+
+  // --- Reviewer sandbox (§5.5): the chat a reviewer tests on, backed by a
+  // SYNTHETIC patient in separate tables. A reviewer may not hold a patient
+  // profile, so there is no patient chat route they could use instead. ---
+  sandboxChat: '/api/sandbox/chat',
+  sandboxConversations: '/api/sandbox/conversations',
+  sandboxConversationMessages: (id: string) => `/api/sandbox/conversations/${id}/messages`,
+  sandboxReset: '/api/sandbox/reset',
 
   // --- Profile (clearProfile is POST per api/index.py:307) ---
   uploadProfile: '/api/upload_profile',

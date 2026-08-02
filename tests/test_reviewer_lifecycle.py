@@ -414,3 +414,96 @@ class TestRightToDeleteParity:
     def test_push_tokens_are_deleted_with_the_account(self):
         storage = (_REPO / "lib" / "supabase_storage.py").read_text()
         assert "'device_push_token'," in storage
+
+
+class TestTheAppKnowsWhereToSendAReviewer:
+    """RootGate is the only thing standing between a physician and patient
+    onboarding, which for a reviewer account is a one-way door: finishing it
+    creates a patient profile the database then refuses to let the account trade
+    for a reviewer row, in either direction. The only remedy is deletion."""
+
+    MOBILE = _REPO / "mobile"
+    GATE = (MOBILE / "app" / "_layout.tsx").read_text()
+    HOOK = (MOBILE / "hooks" / "useReviewerSession.ts").read_text()
+
+    def test_the_gate_branches_on_status_not_only_the_boolean(self):
+        assert "reviewer_status" in self.GATE
+        assert "'requested'" in self.GATE and "'invited'" in self.GATE
+
+    def test_a_pending_applicant_gets_the_waiting_screen(self):
+        assert "reviewer-pending" in self.GATE
+
+    def test_an_active_reviewer_is_no_longer_pinned_to_the_review_stack(self):
+        # The whole point of the change: a physician vouching for patient-facing
+        # wording has to be able to see the product it appears in.
+        assert "if (top !== 'review') router.replace('/review'" not in self.GATE
+
+    def test_an_active_reviewer_skips_the_patient_only_gates(self):
+        # consent, state and basics all end in a patient profile, which a
+        # reviewer account may not hold.
+        active = self.GATE.split("if (reviewerStatus === 'active')")[1]
+        assert active.index("router.replace('/')") < active.index("state_restricted")
+
+    def test_the_hook_falls_back_for_an_older_server(self):
+        # is_reviewer keeps meaning ACTIVE, so a client newer than the server
+        # still routes correctly.
+        assert "data?.is_reviewer ? 'active' : null" in self.HOOK
+
+    def test_only_an_admin_sees_the_applications_row(self):
+        drawer = (self.MOBILE / "components" / "common" / "AppDrawer.tsx").read_text()
+        assert "reviewer.isAdmin ?" in drawer
+        assert "Reviewer applications" in drawer
+
+    def test_the_drawer_says_the_chat_is_not_a_real_patient(self):
+        # A physician must never wonder for a second whether they are reading
+        # somebody's chart.
+        drawer = (self.MOBILE / "components" / "common" / "AppDrawer.tsx").read_text()
+        assert "sample patient, not a real one" in drawer
+
+    def test_the_chat_hook_has_exactly_one_sandbox_seam(self):
+        # Two branches drift; one cannot.
+        chat = (self.MOBILE / "hooks" / "useChat.ts").read_text()
+        assert chat.count("isReviewer ?") + chat.count("isReviewer ?") >= 1
+        assert "sendSandboxMessage" in chat and "fetchSandboxMessages" in chat
+
+    def test_the_account_type_fork_comes_before_patient_consent(self):
+        # The consent on that screen is a PATIENT agreeing to have their health
+        # data processed. A clinician is not agreeing to that.
+        assert "'/(onboarding)/account-type'" in self.GATE
+        fork = (self.MOBILE / "app" / "(onboarding)" / "account-type.tsx").read_text()
+        assert "/(onboarding)/consent" in fork
+        assert "/(onboarding)/reviewer-apply" in fork
+
+
+class TestApplyFormRefusesNonPhysiciansBeforeSubmitting:
+    FORM = (_REPO / "mobile" / "app" / "(onboarding)" / "reviewer-apply.tsx").read_text()
+
+    def test_only_md_and_do_are_offered(self):
+        assert "const CREDENTIALS = ['MD', 'DO'] as const;" in self.FORM
+
+    def test_it_says_what_a_reviewer_actually_does(self):
+        # Someone deciding whether to apply needs to know what they are agreeing
+        # to spend time on.
+        assert "approve the wording patients will see" in self.FORM
+
+
+class TestApprovingTakesTwoTaps:
+    """Approving is effectively irreversible: rejecting afterwards sets
+    'revoked', a different state from never-approved, and in between the account
+    can sign wording that patients read."""
+
+    DASH = (_REPO / "mobile" / "app" / "review" / "applications.tsx").read_text()
+
+    def test_the_second_tap_names_the_person(self):
+        assert "Yes, approve ${item.full_name}" in self.DASH
+
+    def test_the_confirmation_says_what_approval_grants(self):
+        assert "sign off on wording that patients read" in self.DASH
+
+    def test_buttons_are_gated_on_the_mutation_not_only_the_query(self):
+        # isLoading is false during a background refetch (TanStack v5), so a row
+        # that was already decided would keep live buttons.
+        assert "const busy = decide.isPending;" in self.DASH
+
+    def test_a_race_between_two_admins_reads_as_one(self):
+        assert "ALREADY_DECIDED" in self.DASH
