@@ -6,15 +6,22 @@
     python3 scripts/provision_reviewer.py --email dr@example.org \
         --name "Dr Jane Csiki" --credential MD
 
-ORDER MATTERS AND GETTING IT WRONG IS PERMANENT. The app's root gate checks
-`is_reviewer` FIRST, but only sees it once the reviewer row exists. A physician
-who signs up before being provisioned falls through into PATIENT onboarding, and
-finishing that creates a patient profile — after which the database refuses to
-make the account a reviewer, in both directions, by trigger. The only remedy is
-deleting the account.
+MOST PEOPLE NO LONGER NEED THIS SCRIPT. Clinicians now apply inside the app
+(sign up, choose "I am an oncologist", fill in the form) and an admin approves
+them from Reviewer applications in the drawer. Use this for the FIRST admin,
+who has nobody to approve them, and for anyone you would rather not route
+through the queue.
 
-So this creates the auth account AND the reviewer row together, before she ever
-opens the app. She then signs in and lands directly on the review queue.
+ORDER MATTERS AND GETTING IT WRONG IS PERMANENT. The app's root gate branches on
+the reviewer status FIRST, but only sees it once the reviewer row exists. Someone
+who signs up and picks the patient path before being provisioned falls through
+into PATIENT onboarding, and finishing that creates a patient profile — after
+which the database refuses to make the account a reviewer, in both directions, by
+trigger. The only remedy is deleting the account.
+
+So this creates the auth account AND the reviewer row together, before they ever
+open the app. They then sign in and land in the normal app, with their review
+work in the drawer.
 
 The account is created already confirmed, so nothing is emailed and none of the
 SMTP work has to be finished first.
@@ -145,9 +152,10 @@ def main() -> int:
     print("TEMPORARY PASSWORD (share over something other than email):")
     print(f"  {password}")
     print("=" * 60)
-    print("\nShe signs in with that address and password. The root gate sees the")
-    print("reviewer row and routes her straight to the review queue, never into")
-    print("patient onboarding.")
+    print("\nThey sign in with that address and password and land in the normal app.")
+    print("Their review work is in the drawer: Approvals for the queue, and")
+    print("Reviewer applications too if the role is admin. They never see patient")
+    print("onboarding, which an account like this may not complete.")
     return 0
 
 
