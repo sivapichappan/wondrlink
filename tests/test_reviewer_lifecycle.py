@@ -349,6 +349,16 @@ class TestSandboxIsSyntheticByConstruction:
         assert patient["firstName"] == "Sample"
         assert sandbox_chat.DEFAULT_SANDBOX_PROFILE["_synthetic"] is True
 
+    def test_it_uses_the_service_role_client_not_the_anon_one(self):
+        # These tables have RLS on and no policies. The ANON client is subject
+        # to RLS, and the failure is silent in the direction that matters: the
+        # SELECT returns 200 with ZERO ROWS, so the code concludes the reviewer
+        # has no sandbox and tries to create a second one. Only the INSERT says
+        # anything, and by then the endpoint has already 500'd. Caught on the
+        # first real request against production, not by any offline test.
+        assert "from supabase_client import get_admin_client" in self.SOURCE
+        assert "import get_supabase_client" not in self.SOURCE
+
     def test_a_stored_profile_cannot_declare_itself_real(self):
         import sandbox_chat
         merged = sandbox_chat.sandbox_profile({"raw_profile": {"_synthetic": False}})

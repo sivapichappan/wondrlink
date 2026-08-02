@@ -62,8 +62,18 @@ DEFAULT_SANDBOX_CANCER = "breast"
 
 
 def _client():
-    from supabase_client import get_supabase_client
-    return get_supabase_client()
+    """The SERVICE-ROLE client, like every other backend module.
+
+    get_supabase_client() is the ANON client and is subject to RLS. The sandbox
+    tables have RLS enabled and no policies, which does not fail loudly: the
+    SELECT came back 200 with zero rows, so this module concluded the reviewer
+    had no sandbox and tried to create a second one, and only the INSERT
+    surfaced anything ("new row violates row-level security policy"). A silent
+    empty read is the documented failure mode of a GRANT with no policy, and it
+    is why the endpoint 500'd on the very first real request.
+    """
+    from supabase_client import get_admin_client
+    return get_admin_client()
 
 
 # ---------------------------------------------------------------------------
