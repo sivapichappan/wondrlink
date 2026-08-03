@@ -2,7 +2,7 @@
   "expo": {
     "name": "Sage",
     "slug": "wondrchat",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "wondrchat",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "org.wondrlink.wondrchat",
-      "buildNumber": "34",
+      "buildNumber": "35",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "Sage needs photo library access if you choose to attach a document or photo, such as an insurance denial letter.",
@@ -70,6 +70,14 @@
         "expo-mlkit-ocr",
         {
           "iosEngine": "auto"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#2F6F62",
+          "mode": "production"
         }
       ]
     ],

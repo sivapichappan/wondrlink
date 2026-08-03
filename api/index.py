@@ -489,6 +489,58 @@ def api_reviewer_apply():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/push/register", methods=["POST"])
+@require_auth
+def api_push_register():
+    """Remember this device so it can be told when something happens.
+
+    Upserts on (user_id, token): the same device re-registering on every launch
+    must not accumulate rows, and a token that moves to a different account has
+    to follow the person who is actually signed in.
+    """
+    try:
+        user_id = request.user["user_id"]
+        data = request.get_json(silent=True) or {}
+        token = str(data.get("token", "")).strip()
+        platform = str(data.get("platform", "")).strip().lower()
+        # Shape-checked rather than trusted: this string is handed to a third
+        # party, and the column is unique per user.
+        if not token.startswith("ExponentPushToken[") or not token.endswith("]"):
+            return jsonify({"error": "BAD_TOKEN"}), 400
+        if platform not in ("ios", "android"):
+            return jsonify({"error": "BAD_PLATFORM"}), 400
+
+        from supabase_client import get_admin_client
+        get_admin_client().table("device_push_token").upsert(
+            {"user_id": user_id, "token": token, "platform": platform,
+             "updated_at": "now()"},
+            on_conflict="user_id,token").execute()
+        return jsonify({"status": "ok"})
+    except Exception:
+        # Never log the token: it is a persistent device identifier.
+        logger.exception("push register error")
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
+
+
+@app.route("/api/push/unregister", methods=["POST"])
+@require_auth
+def api_push_unregister():
+    """Forget this device. A shared or handed-on phone must not keep getting
+    notifications for an account nobody is signed into."""
+    try:
+        user_id = request.user["user_id"]
+        token = str((request.get_json(silent=True) or {}).get("token", "")).strip()
+        if not token:
+            return jsonify({"error": "BAD_TOKEN"}), 400
+        from supabase_client import get_admin_client
+        (get_admin_client().table("device_push_token").delete()
+         .eq("user_id", user_id).eq("token", token).execute())
+        return jsonify({"status": "ok"})
+    except Exception:
+        logger.exception("push unregister error")
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
+
+
 _GUIDELINE_KEYWORDS = ['NCCN', 'guideline', 'ACS', 'ASCO', 'CDC', 'NCI', 'recommendation']
 
 

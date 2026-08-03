@@ -259,6 +259,20 @@ export function passwordProblem(password: string): string | null {
 }
 
 export async function logout() {
+  // Drop this device's push token FIRST, while the session still exists to
+  // authorise the call. A handed-on or shared phone must not keep receiving
+  // notifications for an account nobody is signed into.
+  //
+  // Here rather than at the call sites: there are eight of them, and the ninth
+  // would forget. Best-effort by construction — unregisterPush never throws,
+  // and a failure here must not strand someone in a session they asked to
+  // leave.
+  try {
+    const { unregisterPush } = await import('../push');
+    await unregisterPush();
+  } catch {
+    // ignore — the server also drops a token Expo reports as dead
+  }
   try {
     await apiFetch(ENDPOINTS.authLogout, { method: 'POST' });
   } catch {

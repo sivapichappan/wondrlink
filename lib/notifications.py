@@ -68,6 +68,72 @@ def get_push_tokens(user_id: str) -> List[str]:
         return []
 
 
+EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
+EXPO_BATCH = 100          # Expo's documented maximum per request.
+EXPO_TIMEOUT_SECONDS = 8  # A notification must never hold a request open.
+
+
+def _send_expo(tokens: List[str], title: str, body: str,
+               data: Dict[str, Any]) -> tuple:
+    """POST to Expo's push service. Returns (delivered, dead_tokens).
+
+    Plain urllib rather than exponent_server_sdk on purpose: this is one JSON
+    POST, and the Vercel function bundle sits close to the 225 MB limit that
+    .vercelignore exists to keep it under. A dependency for this would be a
+    poor trade.
+
+    Expo answers 200 even when individual messages fail, so the per-ticket
+    statuses have to be read — treating the HTTP code as the answer would
+    report every silent failure as a success.
+    """
+    import json as _json
+    import urllib.request
+
+    delivered = 0
+    dead: List[str] = []
+
+    for start in range(0, len(tokens), EXPO_BATCH):
+        chunk = tokens[start:start + EXPO_BATCH]
+        payload = [{"to": t, "title": title, "body": body, "data": data,
+                    "sound": None, "priority": "high"} for t in chunk]
+        req = urllib.request.Request(
+            EXPO_PUSH_URL, data=_json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json",
+                     "Accept": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=EXPO_TIMEOUT_SECONDS) as resp:
+                tickets = (_json.loads(resp.read().decode("utf-8")) or {}).get("data") or []
+        except Exception:
+            logger.warning("push send failed for a batch of %d", len(chunk))
+            continue
+
+        for token, ticket in zip(chunk, tickets):
+            if not isinstance(ticket, dict):
+                continue
+            if ticket.get("status") == "ok":
+                delivered += 1
+                continue
+            reason = ((ticket.get("details") or {}).get("error") or "")
+            if reason == "DeviceNotRegistered":
+                dead.append(token)
+            else:
+                # No token, no message text — this line goes to a log.
+                logger.warning("push ticket error: %s", reason or "unknown")
+
+    return delivered, dead
+
+
+def _forget_tokens(user_id: str, tokens: List[str]) -> None:
+    try:
+        from supabase_client import get_admin_client
+        client = get_admin_client()
+        for token in tokens:
+            (client.table("device_push_token").delete()
+             .eq("user_id", user_id).eq("token", token).execute())
+    except Exception:
+        logger.debug("dropping dead push tokens failed", exc_info=True)
+
+
 def notify(user_id: str, kind: str,
            title: Optional[str] = None,
            body: Optional[str] = None,
@@ -91,16 +157,24 @@ def notify(user_id: str, kind: str,
         result["tokens"] = len(tokens)
 
         if not PUSH_ENABLED or not tokens:
-            # The in-app state IS the notification today: the pending screen
-            # reads the reviewer status on every launch.
+            # The in-app state is still the notification for anyone with no
+            # device registered: the pending screen reads the reviewer status
+            # on every launch, and that is not a fallback so much as the floor.
             logger.info("NOTIFY kind=%s delivery=in_app tokens=%d", kind, len(tokens))
             return result
 
-        # Wave 2 fills this in (exponent_server_sdk against `tokens`). Left as an
-        # explicit branch rather than a TODO comment so the flag has somewhere to
-        # be true.
-        logger.info("NOTIFY kind=%s delivery=push tokens=%d", kind, len(tokens))
-        result["delivered"] = 0
+        delivered, dead = _send_expo(tokens, title, body, data or {"kind": kind})
+        result["delivered"] = delivered
+
+        # A token Expo reports as unregistered belongs to an app that was
+        # deleted or a permission that was revoked. Keeping it means retrying
+        # forever against a device that will never answer.
+        if dead:
+            _forget_tokens(user_id, dead)
+            result["dropped"] = len(dead)
+
+        logger.info("NOTIFY kind=%s delivery=push tokens=%d delivered=%d dropped=%d",
+                    kind, len(tokens), delivered, len(dead))
         return result
     except Exception:
         logger.exception("notify failed (continuing)")

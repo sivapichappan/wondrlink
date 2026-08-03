@@ -24,6 +24,7 @@ Offline: Flask test client, patched clients, no database.
 """
 
 import json
+import re
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -517,3 +518,113 @@ class TestApprovingTakesTwoTaps:
 
     def test_a_race_between_two_admins_reads_as_one(self):
         assert "ALREADY_DECIDED" in self.DASH
+
+
+class TestPushDelivery:
+    """Wave 2. The seam was built first and the call site never moved, which is
+    the whole point of having built it that way."""
+
+    NOTIF = (_REPO / "lib" / "notifications.py").read_text()
+    PUSH = (_REPO / "mobile" / "lib" / "push.ts").read_text()
+
+    def test_expo_tickets_are_read_not_just_the_http_code(self):
+        # Expo answers 200 even when individual messages fail. Treating the
+        # status code as the answer reports every silent failure as a success.
+        assert 'ticket.get("status") == "ok"' in self.NOTIF
+        assert "DeviceNotRegistered" in self.NOTIF
+
+    def test_a_dead_token_is_dropped_not_retried_forever(self):
+        assert "_forget_tokens" in self.NOTIF
+
+    def test_sending_never_takes_down_the_thing_that_called_it(self):
+        # An approval that succeeded must not be reported as a failure because
+        # a notification did not go out.
+        assert "NEVER RAISES" in self.NOTIF
+        assert "EXPO_TIMEOUT_SECONDS" in self.NOTIF
+
+    def test_no_new_dependency_for_one_json_post(self):
+        # The Vercel function bundle sits close to the 225 MB limit that
+        # .vercelignore exists to keep it under.
+        assert "import urllib.request" in self.NOTIF
+        reqs = (_REPO / "requirements.txt").read_text()
+        assert "exponent" not in reqs.lower()
+
+    def test_the_token_is_never_logged(self):
+        # A push token is a persistent device identifier.
+        # The only place a token could reach a log is a format argument. The
+        # counts are fine; the values are not.
+        import re as _re
+        for call in _re.findall(r"logger\.\w+\((.*?)\)", self.NOTIF, _re.DOTALL):
+            assert "token," not in call and "tokens," not in call, call
+            assert "%s\", token" not in call, call
+
+    def test_permission_is_never_asked_from_a_launch_path(self):
+        # iOS gives exactly one system prompt per install. Spending it before
+        # the person knows what would be sent is how you get a permanent no.
+        assert "Not at sign-in" in self.PUSH
+        pending = (_REPO / "mobile" / "app" / "(onboarding)" / "reviewer-pending.tsx").read_text()
+        # The screen READS the status on mount and only ASKS on a tap.
+        assert "pushPermissionStatus().then(setPush)" in pending
+        assert "onPress={turnOnNotifications}" in pending
+
+    def test_a_simulator_does_not_get_a_meaningless_prompt(self):
+        assert "Device.isDevice" in self.PUSH
+
+    def test_signing_out_drops_the_device(self):
+        # In logout(), not at the eight call sites — the ninth would forget.
+        auth = (_REPO / "mobile" / "lib" / "api" / "auth.ts").read_text()
+        assert "unregisterPush" in auth
+        assert auth.index("unregisterPush") < auth.index("supabase.auth.signOut()")
+
+    def test_the_project_id_is_pinned(self):
+        # getExpoPushTokenAsync without projectId works in Expo Go and throws
+        # at runtime in a standalone build.
+        assert "projectId" in self.PUSH
+
+
+class TestTheBuildCannotShipTheOldWay:
+    """Two shipped bugs live here: build #31 (a lockfile rewrite dropped
+    babel-preset-expo) and build #32 (autolinking silently skipped a pod whose
+    podspec exceeded the deployment target, and the build still said FINISHED)."""
+
+    APP = json.loads((_REPO / "mobile" / "app.json").read_text())["expo"]
+    PKG = json.loads((_REPO / "mobile" / "package.json").read_text())
+
+    def test_the_version_was_bumped_off_the_ota_runtime(self):
+        # runtimeVersion policy is appVersion, so the update channel is keyed to
+        # this string. Without a bump, JS importing a native module lands on
+        # build #34, which does not contain it, and fatals on launch.
+        assert self.APP["version"] != "1.1.0"
+        assert self.APP["runtimeVersion"] == {"policy": "appVersion"}
+
+    def test_the_build_number_moved_too(self):
+        assert int(self.APP["ios"]["buildNumber"]) > 34
+
+    def test_babel_preset_expo_is_still_declared(self):
+        deps = {**self.PKG.get("dependencies", {}), **self.PKG.get("devDependencies", {})}
+        assert "babel-preset-expo" in deps
+
+    def test_the_notifications_plugin_is_registered(self):
+        names = [p if isinstance(p, str) else p[0] for p in self.APP["plugins"]]
+        assert "expo-notifications" in names
+
+    def test_push_targets_the_production_apns_environment(self):
+        # TestFlight runs against Apple's PRODUCTION push environment. A
+        # development entitlement delivers nothing to a tester, silently.
+        cfg = next(p[1] for p in self.APP["plugins"]
+                   if isinstance(p, list) and p[0] == "expo-notifications")
+        assert cfg["mode"] == "production"
+
+    def test_the_native_modules_fit_under_the_deployment_target(self):
+        # Autolinking SKIPS a pod whose podspec platform exceeds the app's
+        # target, and the build still reports FINISHED.
+        floor = next(p[1]["ios"]["deploymentTarget"] for p in self.APP["plugins"]
+                     if isinstance(p, list) and p[0] == "expo-build-properties")
+        for module in ("expo-notifications", "expo-device"):
+            spec = list((_REPO / "mobile" / "node_modules" / module / "ios").glob("*.podspec"))
+            assert spec, f"{module}: no podspec"
+            text = spec[0].read_text()
+            m = re.search(r":ios\s*=>\s*'([\d.]+)'", text)
+            assert m, f"{module}: no ios platform in podspec"
+            assert float(m.group(1)) <= float(floor), \
+                f"{module} needs iOS {m.group(1)}, app floor is {floor} — autolinking will SKIP it"

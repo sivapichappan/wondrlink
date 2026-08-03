@@ -85,6 +85,11 @@ export const ENDPOINTS = {
   sandboxConversationMessages: (id: string) => `/api/sandbox/conversations/${id}/messages`,
   sandboxReset: '/api/sandbox/reset',
 
+  // --- Push notifications. A token is a persistent device identifier, so it
+  // is user data: delete_all_user_data() clears device_push_token. ---
+  pushRegister: '/api/push/register',
+  pushUnregister: '/api/push/unregister',
+
   // --- Profile (clearProfile is POST per api/index.py:307) ---
   uploadProfile: '/api/upload_profile',
   getPatient: '/api/get_patient',
