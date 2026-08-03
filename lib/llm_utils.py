@@ -627,7 +627,62 @@ PATIENT_RESOURCES = {
 }
 
 
-def get_relevant_resources(query_type: str, include_resources: bool = True, query: str = "") -> List[Dict[str, str]]:
+# The generic category names this function reasons in, mapped to the names the
+# per-cancer resources.yaml files actually use. Every cancer writes its own
+# vocabulary ('surgery_reconstruction' for breast, 'cystectomy_diversion' for
+# bladder), so a plain name lookup would silently find nothing and fall through
+# to the colorectal-flavoured defaults — the exact failure this is fixing.
+_CANCER_CATEGORY_ALIASES: Dict[str, List[str]] = {
+    "side_effects_chemo": ["side_effects"],
+    "survivorship": ["side_effects"],
+    "surgery": ["surgery_reconstruction", "surgery_radiation",
+                "cystectomy_diversion", "post_nephrectomy"],
+    "general": ["advocacy"],
+    "support": ["advocacy", "caregiver"],
+    "emotional": ["caregiver", "palliative_supportive"],
+    "palliative": ["palliative_supportive", "pain_palliative"],
+    "hereditary": ["hereditary", "hereditary_lynch"],
+    "screening": ["screening", "screening_surveillance"],
+    "prevention": ["screening", "sun_protection", "smoking_cessation"],
+    "diagnosis": ["biomarker_testing", "molecular_classification", "subtype_specific"],
+    "nutrition": ["nutrition_supportive"],
+    "treatment": ["treatment_decisions", "active_surveillance", "watch_and_wait",
+                  "intravesical_therapy", "car_t_bispecifics", "fertility_sparing"],
+    "wellness": ["lymphedema", "fertility_sexual_health"],
+}
+
+
+def _cancer_resources_for(slug: Optional[str], categories: List[str]) -> List[Dict[str, str]]:
+    """This cancer's own orgs for the requested categories, best first.
+
+    Reads config/cancers/<slug>/resources.yaml through the registry. Those files
+    have existed since the multi-cancer rollout and had NO CALLER until now, so
+    every patient of every cancer was shown the colorectal defaults —
+    cancer.gov/types/colorectal and Colontown under a breast patient's answer.
+
+    A helpline entry carries a phone number rather than a url; `tel:` is a real
+    link on a phone, which is where this is read.
+    """
+    if not slug:
+        return []
+    try:
+        from cancer_registry import load_resources
+        doc = load_resources(slug) or {}
+    except Exception:
+        return []
+
+    out: List[Dict[str, str]] = []
+    for cat in categories:
+        for name in [cat, *_CANCER_CATEGORY_ALIASES.get(cat, [])]:
+            for entry in (doc.get(name) or [])[:2]:
+                link = entry.get("url") or entry.get("tel")
+                if link:
+                    out.append({"name": entry.get("name", "Resource"), "url": link})
+    return out
+
+
+def get_relevant_resources(query_type: str, include_resources: bool = True,
+                           query: str = "", cancer_slug: Optional[str] = None) -> List[Dict[str, str]]:
     """
     Return relevant patient-facing resource links as a structured list.
 
@@ -635,6 +690,8 @@ def get_relevant_resources(query_type: str, include_resources: bool = True, quer
         query_type: One of 'treatment', 'side_effect', 'emotional', 'general', 'survivorship', etc.
         include_resources: Whether to include resources (can be disabled for brief responses)
         query: The original user query for symptom-specific resource matching
+        cancer_slug: The patient's cancer. Its own orgs go FIRST; the generic
+            list fills the remaining slots. None keeps the old behaviour exactly.
 
     Returns:
         List of {"name": str, "url": str} dicts (empty list when not applicable).
@@ -704,6 +761,17 @@ def get_relevant_resources(query_type: str, include_resources: bool = True, quer
 
     resources: List[Dict[str, str]] = []
     seen_urls = set()
+
+    # This patient's own cancer first, then the generic list fills the rest.
+    # Order matters more than count: the first two are the ones anyone taps.
+    for r in _cancer_resources_for(cancer_slug, categories):
+        url = r.get("url")
+        if not url or url in seen_urls:
+            continue
+        seen_urls.add(url)
+        resources.append(r)
+        if len(resources) >= 5:
+            return resources[:5]
 
     for cat in categories:
         if cat not in PATIENT_RESOURCES:
@@ -1675,7 +1743,8 @@ def generate_visit_recap(patient_summary: str, transcript: str, cancer_slug: str
     )
 
     try:
-        answer, _api = call_llm(prompt, response_length="detailed", query_type="general")
+        answer, _api = call_llm(prompt, response_length="detailed",
+                                query_type="general", cancer_slug=cancer_slug)
         if not answer:
             raise RuntimeError("Empty LLM response")
 
@@ -1899,7 +1968,8 @@ def generate_deep_research(query: str, retrieved_chunks: list, patient_summary: 
                     "rather than fabricating. Do not invent statistics, drug names, dose numbers, or NCT trials.\n\n"
                     + prompt
                 )
-                retry_report, _ = call_llm(hedged_prompt, response_length="detailed", query_type="general")
+                retry_report, _ = call_llm(hedged_prompt, response_length="detailed",
+                                           query_type="general", cancer_slug=cancer_slug)
                 if retry_report and len(retry_report.strip()) > 200:
                     retry_report = trim_incomplete_sentence(retry_report)
                     retry_verdict = verify_response(retry_report, retrieved_chunks, query)

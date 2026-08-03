@@ -4,7 +4,7 @@ import sys
 import json
 import logging
 from datetime import datetime
-from functools import wraps
+from functools import lru_cache, wraps
 from typing import Any, Dict, Optional
 from flask import Flask, request, jsonify
 
@@ -76,6 +76,60 @@ RATE_LIMIT_TRIALS_FEEDBACK = (60, 60)   # save/remove/view pings while browsing
 def feature_enabled(flag_name: str) -> bool:
     """Per-feature kill switch via env var FEATURE_<NAME>. Defaults to True."""
     return os.getenv(f"FEATURE_{flag_name.upper()}", "true").lower() == "true"
+
+
+@lru_cache(maxsize=1)
+def _cancer_mention_patterns() -> Dict[str, Any]:
+    """One compiled word-boundary regex per cancer, from the registry's own
+    display names and aliases.
+
+    Word boundaries are not optional here: the alias list includes 'UC', 'CLL',
+    'RCC', 'SLL' and 'PDAC', and a bare substring search for 'uc' matches
+    'mucosal', 'nucleus' and 'much'. re.escape is not optional either — one
+    display name is 'Uterine (endometrial) cancer', whose parentheses are a
+    regex group.
+    """
+    import re as _re
+    from cancer_registry import get, list_all
+
+    patterns: Dict[str, Any] = {}
+    for slug in list_all():
+        cfg = get(slug) or {}
+        terms = [cfg.get("display_name") or "", *(cfg.get("aliases") or [])]
+        terms = sorted({t.strip() for t in terms if t and t.strip()}, key=len, reverse=True)
+        if terms:
+            patterns[slug] = _re.compile(
+                r"\b(?:" + "|".join(_re.escape(t) for t in terms) + r")\b",
+                _re.IGNORECASE)
+    return patterns
+
+
+def _mentions_other_cancer(message: str, own_slug: Optional[str]) -> bool:
+    """True only when the message names a cancer that is NOT this patient's.
+
+    Replaces a hardcoded 8-string list compared by substring against
+    `patient_context['cancer_type']`, which profile_utils builds as
+    "<site> <histology>". That comparison worked only while histology was
+    unknown: once the chat learned it, "Breast invasive ductal carcinoma" no
+    longer contains "breast cancer" nor vice versa, so a breast patient asking
+    about breast cancer got tagged as asking about someone else's — silently,
+    late, and only for profiles that were filling in.
+
+    Deliberately NOT `cancer_registry.resolve_slug`, which falls back to
+    colorectal when nothing matches: a message naming no cancer at all would
+    then read as a mismatch for every non-colorectal patient.
+
+    Naming their own cancer alongside another one is not a mismatch — "my
+    sister has colon cancer, does that change my breast risk" is one question,
+    not a wrong turn.
+    """
+    if not own_slug or not message:
+        return False
+    matched = {slug for slug, pattern in _cancer_mention_patterns().items()
+               if pattern.search(message)}
+    if not matched or own_slug in matched:
+        return False
+    return True
 
 
 def _resolve_cancer_slug(user_id, profile):
@@ -722,7 +776,8 @@ def api_sandbox_chat():
             return jsonify({"error": "No LLM API available."}), 500
 
         answer, api_used = call_llm(prompt, response_length,
-                                    query=message, query_type=query_type)
+                                    query=message, query_type=query_type,
+                                    cancer_slug=cancer_slug)
         if not answer:
             return jsonify({"error": "The model did not answer. Try again."}), 502
         answer = trim_incomplete_sentence(answer)
@@ -2030,19 +2085,9 @@ def api_chat():
             except Exception:
                 logger.debug("Could not load symptom data for context")
 
-        # Check for cancer type mismatch
-        mismatch_detected = False
-        if patient_context.get('cancer_type'):
-            cancer_keywords = ['breast cancer', 'lung cancer', 'prostate cancer', 'colon cancer',
-                             'colorectal', 'pancreatic', 'ovarian', 'melanoma']
-            user_message_lower = message.lower()
-            patient_cancer = patient_context.get('cancer_type', '').lower()
-
-            for cancer_type in cancer_keywords:
-                if cancer_type in user_message_lower:
-                    if cancer_type not in patient_cancer and patient_cancer not in cancer_type:
-                        mismatch_detected = True
-                        break
+        # Did they ask about a cancer that is not theirs? Compared by SLUG via
+        # the registry, not by matching free text against "<site> <histology>".
+        mismatch_detected = _mentions_other_cancer(message, cancer_slug)
 
         effective_top_k = 8 if query_type in ('treatment', 'clinical_trial') else 5
 
@@ -2273,9 +2318,17 @@ def api_chat():
             # and proceed. The upstream de-identification is still active.
             logger.warning("PII guard crashed: %s", _e)
 
-        # Call LLM with smart routing (query_type already classified above)
+        # Call LLM with smart routing (query_type already classified above).
+        #
+        # cancer_slug is what picks the per-cancer system-prompt overlay. Leaving
+        # it off does NOT fail — it silently falls back to colorectal, so every
+        # breast, lung and NHL patient was being told to think in FOLFOX / KRAS /
+        # colonoscopy / Lynch terms while retrieval correctly served their own
+        # guidelines. The eval harness always passed it (run_evals.py), which is
+        # exactly why no test score ever moved: the bug existed only in the app.
         try:
-            answer, api_used = call_llm(prompt, response_length, query=message, query_type=query_type)
+            answer, api_used = call_llm(prompt, response_length, query=message,
+                                        query_type=query_type, cancer_slug=cancer_slug)
             if not answer:
                 raise RuntimeError("LLM returned empty response")
 
@@ -2308,7 +2361,9 @@ def api_chat():
                                      "You MUST hedge heavily. If specific details are not in the sources, "
                                      "say 'I don't have reliable information on this' rather than fabricate.\n\n" + prompt)
                     try:
-                        retry_answer, retry_api = call_llm(hedged_prompt, response_length, query=message, query_type=query_type)
+                        retry_answer, retry_api = call_llm(
+                            hedged_prompt, response_length, query=message,
+                            query_type=query_type, cancer_slug=cancer_slug)
                         if retry_answer:
                             retry_answer = trim_incomplete_sentence(retry_answer)
                             retry_validation = validate_response(retry_answer, message, patient_context)
@@ -2367,7 +2422,9 @@ def api_chat():
             resources_list = []
             if response_length != "brief":
                 try:
-                    resources_list = get_relevant_resources(query_type, include_resources=True, query=message) or []
+                    resources_list = get_relevant_resources(
+                        query_type, include_resources=True, query=message,
+                        cancer_slug=cancer_slug) or []
                 except Exception:
                     logger.exception("Resource lookup failed; continuing without resources")
                     resources_list = []
@@ -2659,6 +2716,18 @@ def api_chat():
                         "clinical_trials": response_data.get("clinical_trials"),
                         "pending_confirmations": response_data.get("pending_confirmations"),
                         "api_used": response_data.get("api_used"),
+                        # Which machinery fired on this turn. Non-PHI: a query
+                        # type, a verifier verdict, retrieval confidence and
+                        # counts. Persisted because reading fifty answers back
+                        # without it means guessing which of a dozen stages
+                        # produced each one — and the answer text alone cannot
+                        # tell you whether the verifier replaced it, whether the
+                        # tone softener rewrote it, or whether the model was
+                        # told the patient asked about the wrong cancer.
+                        "debug_info": response_data.get("debug_info"),
+                        "cancer_slug": cancer_slug,
+                        "mismatch_detected": mismatch_detected,
+                        "tone": tone_meta,
                     }
                     append_qa_to_conversation(
                         active_conversation_id, user_id, message,

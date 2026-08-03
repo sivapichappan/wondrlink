@@ -1,0 +1,38 @@
+{
+  "_comment": [
+    "Mock breast patient for manual RAG testing. DELIBERATELY INCOMPLETE.",
+    "",
+    "Anchored: firstName, age, sex, site and stage. Enough that cancer_slug",
+    "resolves to 'breast' before turn one — otherwise the model gets the wrong",
+    "overlay and the home screen sits in cancer-picker mode.",
+    "",
+    "Empty on purpose: biomarkers, treatments, zipCode, histology, symptoms,",
+    "ecog. Those are exactly the fields question_policy ranks highest, so the",
+    "chat has to ASK for them. A complete profile scores high on coverage, jumps",
+    "the lifecycle straight to trial_ready, makes select_next_question return",
+    "None on every turn, and leaves extraction nothing to reconcile — you would",
+    "never see a getting-to-know-you question, a confirmation chip, or a stage",
+    "advance, which ARE the progression being tested.",
+    "",
+    "Stage IIB does double duty: it justifies a full journey (lumpectomy + SLNB",
+    "+ chemo + radiation + endocrine therapy), and it keeps the colorectal",
+    "STAGE_PROGNOSIS_CONTEXT strings dormant — that dict only has keys IIIA,",
+    "IIIB, IIIC and IV, so 'IIB' matches nothing and the 'Stage IIIB colon",
+    "cancer' text (a known, deliberately-deferred defect) cannot leak until the",
+    "journey deliberately reaches stage IV near the end.",
+    "",
+    "Age 47 is not arbitrary: under 50 is a real genetic-counselling trigger in",
+    "the breast overlay, and premenopausal status makes the fertility, ovarian",
+    "suppression and tamoxifen-vs-aromatase-inhibitor questions honest."
+  ],
+  "patient": {
+    "firstName": "Maria",
+    "name": "Maria Alvarez",
+    "age": 47,
+    "sex": "Female"
+  },
+  "primaryDiagnosis": {
+    "site": "Breast",
+    "stage": "IIB"
+  }
+}
