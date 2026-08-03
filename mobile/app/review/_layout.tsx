@@ -17,6 +17,7 @@
 
 import { Redirect, Stack } from 'expo-router';
 
+import { HeaderBack } from '@/components/common/HeaderBack';
 import { Colors } from '@/constants/theme';
 import { useReviewerSession } from '@/hooks/useReviewerSession';
 
@@ -35,6 +36,15 @@ export default function ReviewLayout() {
         headerShadowVisible: false,
         contentStyle: { backgroundColor: Colors.surface },
         headerBackTitle: 'Back',
+        // Every screen here is opened STRAIGHT FROM THE DRAWER, so it is the
+        // first route in this nested stack and react-navigation renders no back
+        // button of its own — the route beneath sits on the PARENT stack, which
+        // it will not cross. A reviewer who tapped Approvals was stuck until
+        // they force-quit the app. Set on screenOptions rather than per screen
+        // because any of them can be the first route depending on how it was
+        // reached, and the next one added would forget. This is the same
+        // HeaderBack the tools, profile and settings stacks use.
+        headerLeft: () => <HeaderBack label="Back" />,
       }}>
       <Stack.Screen name="index" options={{ title: 'Review queue' }} />
       <Stack.Screen name="publish" options={{ title: 'Publish version' }} />

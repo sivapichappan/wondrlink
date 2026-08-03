@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "org.wondrlink.wondrchat",
-      "buildNumber": "36",
+      "buildNumber": "37",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "Sage needs photo library access if you choose to attach a document or photo, such as an insurance denial letter.",

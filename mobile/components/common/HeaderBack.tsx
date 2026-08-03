@@ -7,7 +7,11 @@ import { Colors, Fonts } from '@/constants/theme';
 export function HeaderBack({ label = 'Back' }: { label?: string }) {
   return (
     <Pressable
-      onPress={() => router.back()}
+      // canGoBack() guards the cold start: opening the app straight onto a
+      // deep route — a tapped notification, a link — leaves nothing beneath it,
+      // and a bare router.back() there does nothing at all, so the header's
+      // only exit silently stops working. Send them home instead.
+      onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
       accessibilityRole="button"
       accessibilityLabel="Go back"
       hitSlop={8}

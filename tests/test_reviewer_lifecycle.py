@@ -628,3 +628,39 @@ class TestTheBuildCannotShipTheOldWay:
             assert m, f"{module}: no ios platform in podspec"
             assert float(m.group(1)) <= float(floor), \
                 f"{module} needs iOS {m.group(1)}, app floor is {floor} — autolinking will SKIP it"
+
+
+class TestEveryReviewScreenHasAWayOut:
+    """Reported from a real device: tapping Approvals left the reviewer stuck.
+
+    Every screen in the review stack is opened STRAIGHT FROM THE DRAWER, so it
+    is the first route in that nested stack and react-navigation renders no back
+    button — the route beneath sits on the PARENT stack, which the automatic
+    header will not cross. Force-quitting the app was the only way out.
+    """
+
+    LAYOUT = (_REPO / "mobile" / "app" / "review" / "_layout.tsx").read_text()
+    BACK = (_REPO / "mobile" / "components" / "common" / "HeaderBack.tsx").read_text()
+
+    def test_the_review_stack_supplies_its_own_back_control(self):
+        assert "headerLeft" in self.LAYOUT
+        assert "HeaderBack" in self.LAYOUT
+
+    def test_it_is_set_once_for_every_screen_not_per_screen(self):
+        # Any of them can be the first route depending on how it was reached,
+        # and the next screen added would forget.
+        header_left = self.LAYOUT.index("headerLeft")
+        first_screen = self.LAYOUT.index("<Stack.Screen")
+        assert header_left < first_screen, "headerLeft must be on screenOptions"
+
+    def test_it_reuses_the_shared_component(self):
+        # tools, profile and settings already had one. A second would drift.
+        assert "@/components/common/HeaderBack" in self.LAYOUT
+
+    def test_back_survives_a_cold_start_onto_a_deep_route(self):
+        # Now that a tapped notification can open the app directly onto a
+        # route, router.back() with nothing beneath it does NOTHING — the only
+        # exit silently stops working. Every stack shares this component, so
+        # the guard belongs in it.
+        assert "router.canGoBack()" in self.BACK
+        assert "router.replace('/')" in self.BACK
