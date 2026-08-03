@@ -148,6 +148,17 @@ def main() -> int:
     }).execute()
     print(f"assignment: {args.cancer}, tiers A and B")
 
+    # --- 4. the sandbox they chat on (§5.5) --------------------------------
+    # Approval through the app creates this in the same transaction as the
+    # activation. This path writes status='active' directly, so it has to do
+    # the same thing — an account made here would otherwise open a chat with
+    # nothing behind it. (It self-heals on first use, but a script that leaves
+    # a row for the runtime to notice is a script that will one day leave a
+    # different one.)
+    db.table("sandbox_patient").upsert(
+        {"reviewer_id": row["id"]}, on_conflict="reviewer_id").execute()
+    print("sandbox patient created")
+
     print("\n" + "=" * 60)
     print("TEMPORARY PASSWORD (share over something other than email):")
     print(f"  {password}")
