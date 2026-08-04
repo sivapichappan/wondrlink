@@ -678,7 +678,29 @@ def _cancer_resources_for(slug: Optional[str], categories: List[str]) -> List[Di
                 link = entry.get("url") or entry.get("tel")
                 if link:
                     out.append({"name": entry.get("name", "Resource"), "url": link})
+
+    # Every cancer writes only the categories that matter to it — breast has no
+    # 'treatment' section, so a treatment question found nothing above and fell
+    # straight through to the generic list, which is colorectal-flavoured. Its
+    # own advocacy orgs are a better answer for a breast patient than ACS Colon
+    # Treatment, whatever the question was.
+    if len(out) < 2:
+        for entry in (doc.get("advocacy") or [])[:2]:
+            link = entry.get("url") or entry.get("tel")
+            if link:
+                out.append({"name": entry.get("name", "Resource"), "url": link})
     return out
+
+
+# The generic PATIENT_RESOURCES list is colorectal-flavoured (ACS Colon
+# Treatment, the NCI colorectal PDQ, Colontown). Those are simply wrong under a
+# breast patient's answer, and they fill the slots the right ones would take.
+_COLORECTAL_ONLY = ("colon", "colorectal", "colontown", "rectal")
+
+
+def _is_colorectal_link(entry: Dict[str, str]) -> bool:
+    blob = f"{entry.get('name', '')} {entry.get('url', '')}".lower()
+    return any(term in blob for term in _COLORECTAL_ONLY)
 
 
 def get_relevant_resources(query_type: str, include_resources: bool = True,
@@ -779,6 +801,10 @@ def get_relevant_resources(query_type: str, include_resources: bool = True,
         for r in PATIENT_RESOURCES[cat][:2]:  # Max 2 per category
             url = r.get("url")
             if not url or url in seen_urls:
+                continue
+            # A colon-specific link is worse than one fewer link when the
+            # patient does not have colon cancer.
+            if cancer_slug and cancer_slug != "colorectal" and _is_colorectal_link(r):
                 continue
             seen_urls.add(url)
             resources.append({"name": r.get("name", "Resource"), "url": url})

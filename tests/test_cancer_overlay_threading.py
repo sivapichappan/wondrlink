@@ -250,6 +250,32 @@ class TestResourcesFollowThePatientsCancer:
         for slug in list_ready():
             assert self._names(slug), f"{slug}: no resources resolved"
 
+    @pytest.mark.parametrize("query_type,query", [
+        ("treatment", "What does HR+/HER2- mean for my treatment?"),
+        ("clinical_trial", "are there trials near me"),
+        ("side_effect", "my joints hurt on letrozole"),
+        ("emotional", "I am scared"),
+        ("prognosis", "what does stage IIB mean"),
+    ])
+    def test_no_colon_link_survives_any_query_type(self, query_type, query):
+        """The one the first pass missed.
+
+        Every cancer's resources.yaml holds only the categories that matter to
+        it — breast has no 'treatment' section. So a treatment question matched
+        nothing, fell through to the generic list, and served 'ACS Colon
+        Treatment' and the NCI colorectal PDQ under a breast answer. Caught by
+        actually reading the response from production, not by the first test.
+        """
+        blob = " ".join(self._names("breast", query, query_type)).lower()
+        assert blob, f"{query_type}: no resources at all"
+        for term in ("colon", "colorectal", "colontown", "rectal"):
+            assert term not in blob, f"{query_type}: '{term}' shown to a breast patient"
+
+    def test_colorectal_patients_still_get_colorectal_links(self):
+        # The filter must key off the patient's cancer, not the word.
+        blob = " ".join(self._names("colorectal", "treatment options", "treatment")).lower()
+        assert "colorectal" in blob or "colon" in blob
+
     def test_omitting_the_slug_keeps_the_old_behaviour(self):
         # Legacy callers (scripts/test_all_features.py, test_chatbot.py) pass no
         # slug and must be unaffected.
