@@ -288,6 +288,21 @@ def extract_followups(text: str):
     tail = cleaned[marker.end():]
     cleaned = cleaned[:marker.start()].rstrip()
 
+    # Drop a trailing sentence that ANNOUNCES the block we just removed.
+    #
+    # The model often writes a lead-in before FOLLOWUPS: — "Here are some
+    # questions you might explore next:" — which survived, leaving an answer
+    # that ends by promising a list and then shows nothing. On a phone the
+    # chips render as a separate row, so the promise pointed at empty space and
+    # read as the app having failed to load something. The legacy pattern above
+    # only caught one exact wording; this catches the shape.
+    _LEAD_IN = _re_followups.compile(
+        r'\n[^\n]{0,120}?\b(?:questions?|things?|topics?)\b[^\n]{0,60}?'
+        r'(?:explore|ask|consider|next|wonder)\b[^\n]{0,40}:\s*$',
+        _re_followups.IGNORECASE,
+    )
+    cleaned = _LEAD_IN.sub('', cleaned).rstrip()
+
     # Parse "- item" or "• item" or numbered "1. item" lines from the tail.
     for raw_line in tail.splitlines():
         line = raw_line.strip()

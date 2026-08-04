@@ -21,7 +21,12 @@ export function MessageBubble({ role, content }: Props) {
           borderRadius: Radius.lg,
           borderBottomRightRadius: 4,
         }}>
-        <Text style={{ color: Colors.surface, fontSize: 15, lineHeight: 22, fontFamily: Fonts.sans }}>
+        {/* selectable so someone can copy back what they asked. Their own
+            words are the half most likely to be re-used: pasted into a note,
+            or read out at an appointment. */}
+        <Text
+          selectable
+          style={{ color: Colors.surface, fontSize: 15, lineHeight: 22, fontFamily: Fonts.sans }}>
           {content}
         </Text>
       </View>

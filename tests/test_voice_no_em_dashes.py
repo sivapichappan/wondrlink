@@ -212,3 +212,76 @@ class TestEveryPatientFacingExitIsWired:
         start = src.index("def call_llm(")
         end = src.index("\ndef ", start + 10)
         assert "enforce_voice" not in src[start:end]
+
+
+class TestTheAnswerDoesNotPromiseWhatTheScreenHides:
+    """The model writes a lead-in before its FOLLOWUPS: block — "Here are some
+    questions you might explore next:". The block is stripped and rendered as
+    chips, but the lead-in survived, so the answer ended by promising a list and
+    then showed nothing. Reported from a device."""
+
+    def test_the_lead_in_goes_with_the_block(self):
+        from llm_utils import extract_followups
+        out, ups = extract_followups(
+            "Some advice here.\n\nHere are some questions you might explore next:"
+            "\n\nFOLLOWUPS:\n- What does HR mean?\n- How do I manage side effects?")
+        assert out == "Some advice here."
+        assert len(ups) == 2
+
+    def test_other_phrasings_too(self):
+        # The old rule matched one exact sentence; this matches the shape.
+        from llm_utils import extract_followups
+        for lead in ("You may want to consider these questions next:",
+                     "Here are a few things to ask about next:",
+                     "Some questions to explore:"):
+            out, _ = extract_followups(f"Advice.\n\n{lead}\n\nFOLLOWUPS:\n- One?")
+            assert out == "Advice.", f"{lead!r} left behind: {out!r}"
+
+    def test_a_genuine_list_is_left_alone(self):
+        # Over-eager stripping would eat real content.
+        from llm_utils import extract_followups
+        text = "Ends with a real list:\nThings to bring:\n- notes\n- a friend"
+        out, ups = extract_followups(text)
+        assert out == text and ups == []
+
+    def test_an_answer_with_no_block_is_untouched(self):
+        from llm_utils import extract_followups
+        text = "A normal answer that mentions questions for your doctor."
+        out, ups = extract_followups(text)
+        assert out == text and ups == []
+
+
+class TestTheChatCardShowsWhatItPromises:
+    """Four things reported from a real device on one screenshot."""
+
+    CARD = (_REPO / "mobile" / "components" / "chat" / "BotResponseCard.tsx").read_text()
+    RESOURCES = (_REPO / "mobile" / "components" / "chat" / "ResourcesRow.tsx").read_text()
+    MARKDOWN = (_REPO / "mobile" / "components" / "chat" / "MarkdownText.tsx").read_text()
+    BUBBLE = (_REPO / "mobile" / "components" / "chat" / "MessageBubble.tsx").read_text()
+
+    def test_followups_are_not_behind_show_details(self):
+        # They were below the fold, after two other sections, while the answer
+        # announced them.
+        assert "{hasFollowups && <FollowupChips" in self.CARD
+        assert "expanded && hasFollowups" not in self.CARD
+
+    def test_only_one_thing_on_the_card_is_called_sources(self):
+        # ResourcesRow said SOURCES and SourceCitations said "N sources", so one
+        # answer showed two different counts of two different things.
+        assert "WHERE TO GET HELP" in self.RESOURCES
+        assert ">SOURCES<" not in self.RESOURCES
+
+    def test_the_summary_line_distinguishes_them(self):
+        assert "to get help" in self.CARD
+        assert "guideline" in self.CARD
+
+    def test_thumbs_and_copy_are_gone(self):
+        assert "MessageActions" not in self.CARD
+
+    def test_both_sides_of_the_conversation_are_selectable(self):
+        # react-native-markdown-display 7.0.2 has no `selectable` prop, so the
+        # text rules are overridden. Both are needed: textgroup wraps a
+        # paragraph, text is each inline run.
+        assert "selectableRules" in self.MARKDOWN
+        assert self.MARKDOWN.count("selectable") >= 3
+        assert "selectable" in self.BUBBLE

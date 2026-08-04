@@ -13,7 +13,12 @@ export function ResourcesRow({ resources }: Props) {
 
   return (
     <View style={{ gap: 4 }}>
-      <Text style={styles.label}>SOURCES</Text>
+      {/* NOT "sources". These are advocacy organisations to go to for help
+          (Komen, Living Beyond Breast Cancer); the guideline documents the
+          answer was actually built from are the separate "N sources" section
+          below. Both said SOURCES, so one answer appeared to cite two
+          different counts of two different things. */}
+      <Text style={styles.label}>WHERE TO GET HELP</Text>
       <View style={styles.row}>
         {resources.map((r, i) => {
           const label = r.title || r.name || r.url;

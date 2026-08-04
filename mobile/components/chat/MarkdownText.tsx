@@ -1,4 +1,5 @@
 import Markdown from 'react-native-markdown-display';
+import { Text } from 'react-native';
 
 import { Colors, Fonts } from '@/constants/theme';
 
@@ -29,6 +30,31 @@ const styles = {
   },
 };
 
+// react-native-markdown-display 7.0.2 has NO `selectable` prop, and its default
+// rules render plain <Text>, which on iOS cannot be long-pressed or copied. So
+// an answer someone wanted to paste into an email, or read out to their
+// oncologist, was trapped in the app.
+//
+// BOTH rules need it: `textgroup` wraps a paragraph's inline runs and `text` is
+// each run. Marking only the outer one leaves bold and linked spans
+// unselectable, which reads as a selection that keeps breaking apart.
+const selectableRules = {
+  text: (node: any, _children: any, _parent: any, s: any, inherited: any = {}) => (
+    <Text key={node.key} selectable style={[inherited, s.text]}>
+      {node.content}
+    </Text>
+  ),
+  textgroup: (node: any, children: any, _parent: any, s: any) => (
+    <Text key={node.key} selectable style={s.textgroup}>
+      {children}
+    </Text>
+  ),
+};
+
 export function MarkdownText({ children }: Props) {
-  return <Markdown style={styles}>{children}</Markdown>;
+  return (
+    <Markdown style={styles} rules={selectableRules}>
+      {children}
+    </Markdown>
+  );
 }
