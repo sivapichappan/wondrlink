@@ -1,5 +1,7 @@
 # supabase_storage.py
 import logging
+import threading
+import time
 import uuid
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -381,13 +383,69 @@ def save_document_chunks(filename: str, chunks: List[str]) -> bool:
         return False
 
 
+# ---------------------------------------------------------------------------
+# Corpus cache
+#
+# The guideline corpus is STATIC between manual re-ingests, and it was being
+# re-downloaded in full on every single chat turn: 9,138 rows over ten
+# sequential requests, measured at 9.1s, against a ~13s end-to-end response of
+# which the actual model call is about 2s. So most of the wait was rebuilding
+# something that had not changed.
+#
+# Cached at module scope, which on a serverless runtime means per warm
+# container. A TTL rather than forever because a re-ingest should be picked up
+# without a redeploy, and 15 minutes is far shorter than the gap between
+# ingests while still covering any realistic session.
+#
+# The lock matters as much as the cache: without it, a burst of requests
+# arriving at a cold container each start their own 9-second download.
+_CHUNK_CACHE: Dict[str, Any] = {"rows": None, "loaded_at": 0.0}
+_CHUNK_CACHE_TTL_SECONDS = 900
+_chunk_cache_lock = threading.Lock()
+
+
+def corpus_cache_state() -> Dict[str, Any]:
+    """Whether this container is warm, for /api/warm and diagnostics."""
+    rows = _CHUNK_CACHE.get("rows")
+    age = (time.time() - _CHUNK_CACHE["loaded_at"]) if rows is not None else None
+    return {
+        "warm": rows is not None and (age or 0) < _CHUNK_CACHE_TTL_SECONDS,
+        "chunks": len(rows) if rows is not None else 0,
+        "age_seconds": round(age, 1) if age is not None else None,
+    }
+
+
 def load_all_chunks() -> List[Dict[str, Any]]:
     """
     Load all document chunks from the database with metadata.
 
+    Returns SHALLOW COPIES of the cached rows, never the cached dicts
+    themselves. `hybrid_search` writes `_similarity` onto the chunk dicts it
+    scores, so handing out the cached objects would let one query's scores
+    leak into the next one's confidence calculation. Copying 9k small dicts
+    costs single-digit milliseconds against a 9-second download.
+
     Returns:
         List of dicts: [{'content': str, 'filename': str, 'chunk_index': int, 'document_id': str}]
     """
+    cached = _CHUNK_CACHE.get("rows")
+    if cached is not None and (time.time() - _CHUNK_CACHE["loaded_at"]) < _CHUNK_CACHE_TTL_SECONDS:
+        return [dict(c) for c in cached]
+
+    with _chunk_cache_lock:
+        # Re-check: another thread may have loaded it while we waited.
+        cached = _CHUNK_CACHE.get("rows")
+        if cached is not None and (time.time() - _CHUNK_CACHE["loaded_at"]) < _CHUNK_CACHE_TTL_SECONDS:
+            return [dict(c) for c in cached]
+        rows = _load_all_chunks_uncached()
+        if rows:
+            _CHUNK_CACHE["rows"] = rows
+            _CHUNK_CACHE["loaded_at"] = time.time()
+        return [dict(c) for c in rows]
+
+
+def _load_all_chunks_uncached() -> List[Dict[str, Any]]:
+    """The actual database read. Call load_all_chunks() instead."""
     try:
         client = get_supabase_client()
 

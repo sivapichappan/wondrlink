@@ -87,6 +87,10 @@ export const ENDPOINTS = {
 
   // --- Push notifications. A token is a persistent device identifier, so it
   // is user data: delete_all_user_data() clears device_push_token. ---
+  // Pulls the guideline corpus into the serving container ahead of a question,
+  // so the first message does not wait ~9s for a corpus that never changes.
+  warm: '/api/warm',
+
   pushRegister: '/api/push/register',
   pushUnregister: '/api/push/unregister',
 

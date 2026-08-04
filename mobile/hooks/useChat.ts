@@ -16,12 +16,12 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import type { ChatHistoryMessage, ChatResponse } from '@shared/types';
 
 import { fetchConversationMessages } from '@/lib/api/conversations';
-import { sendChatMessage } from '@/lib/api/chat';
+import { sendChatMessage, warmUp } from '@/lib/api/chat';
 import { fetchSandboxMessages, sendSandboxMessage } from '@/lib/api/sandbox';
 import { CONVERSATIONS_KEY } from './useConversations';
 import { useResponseLength } from './useResponseLength';
@@ -64,6 +64,25 @@ export function useChat(conversationId: string, opts: UseChatOptions = {}) {
     () => history.data?.messages ?? [],
     [history.data],
   );
+
+  // Warm the corpus the moment a chat opens, and again once a greeting comes
+  // back. The greeting short-circuits before retrieval, so it answers in about
+  // a second and tells us nothing about whether the container is ready — and it
+  // is very often the FIRST thing someone sends, which makes it the best free
+  // warning we get that a real question is seconds away.
+  //
+  // Fires at most once per mounted conversation. warmUp() never throws and a
+  // warm container returns immediately, so the repeat costs nothing.
+  const warmed = useRef(false);
+  useEffect(() => {
+    if (warmed.current) return;
+    const lastWasGreeting =
+      messages[messages.length - 1]?.metadata?.api_used === 'greeting-shortcircuit';
+    if (isNew || messages.length === 0 || lastWasGreeting) {
+      warmed.current = true;
+      warmUp();
+    }
+  }, [isNew, messages]);
 
   const send = useMutation({
     mutationFn: async (message: string) => {

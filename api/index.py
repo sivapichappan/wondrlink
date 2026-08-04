@@ -543,6 +543,39 @@ def api_reviewer_apply():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/warm", methods=["POST", "GET"])
+@require_auth
+def api_warm():
+    """Pull the guideline corpus into this container's cache, ahead of a question.
+
+    The first message on a cold container waits about 9 seconds for a corpus
+    that never changes. This lets the app pay that cost while the person is
+    still reading the greeting and typing, instead of after they hit send.
+
+    A REAL REQUEST, not a background thread started during another one. On a
+    serverless runtime the execution environment is frozen once a response is
+    returned, so work spawned off a handler does not reliably progress in the
+    gap. An ordinary invocation gets its own execution time and warms the same
+    container the next request is likely to land on.
+
+    Cheap and idempotent: on an already-warm container it does nothing and
+    returns immediately. Authenticated because it does real database work, and
+    it deliberately returns no patient data at all.
+    """
+    try:
+        from supabase_storage import corpus_cache_state
+        before = corpus_cache_state()
+        if before["warm"]:
+            return jsonify({"status": "ok", "warmed": False, **before})
+        load_all_chunks()
+        return jsonify({"status": "ok", "warmed": True, **corpus_cache_state()})
+    except Exception:
+        # Warming is an optimisation. A failure here must never surface to
+        # someone who was only trying to open the chat.
+        logger.exception("warm failed (non-fatal)")
+        return jsonify({"status": "ok", "warmed": False}), 200
+
+
 @app.route("/api/push/register", methods=["POST"])
 @require_auth
 def api_push_register():

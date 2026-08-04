@@ -285,3 +285,69 @@ class TestTheChatCardShowsWhatItPromises:
         assert "selectableRules" in self.MARKDOWN
         assert self.MARKDOWN.count("selectable") >= 3
         assert "selectable" in self.BUBBLE
+
+
+class TestTheCorpusIsNotRedownloadedEveryTurn:
+    """Measured on production: a warm chat turn took ~13s, of which ~9s was
+    re-downloading all 9,138 guideline chunks over ten sequential database
+    requests. The corpus is static between manual re-ingests. The model call was
+    about 2s of the 13."""
+
+    STORAGE = (_REPO / "lib" / "supabase_storage.py").read_text()
+    API = (_REPO / "api" / "index.py").read_text()
+
+    def test_there_is_a_cache_with_a_bounded_lifetime(self):
+        # Forever would mean a re-ingest needs a redeploy to be seen.
+        assert "_CHUNK_CACHE" in self.STORAGE
+        assert "_CHUNK_CACHE_TTL_SECONDS" in self.STORAGE
+
+    def test_a_cold_burst_only_downloads_once(self):
+        # Without the lock, every request arriving at a cold container starts
+        # its own 9-second download.
+        assert "_chunk_cache_lock" in self.STORAGE
+        assert "with _chunk_cache_lock:" in self.STORAGE
+
+    def test_callers_get_copies_not_the_cached_dicts(self):
+        """The subtle one. hybrid_search writes `_similarity` onto the chunk
+        dicts it scores, so handing out the cached objects would let one
+        query's scores leak into the next query's confidence calculation."""
+        assert "[dict(c) for c in cached]" in self.STORAGE
+
+    def test_the_mutation_isolation_actually_holds(self):
+        from supabase_storage import _CHUNK_CACHE, load_all_chunks
+        _CHUNK_CACHE["rows"] = [{"content": "x", "filename": "f.pdf"}]
+        import time as _t
+        _CHUNK_CACHE["loaded_at"] = _t.time()
+        first = load_all_chunks()
+        first[0]["_similarity"] = 0.99
+        assert "_similarity" not in load_all_chunks()[0]
+        _CHUNK_CACHE["rows"] = None
+
+    def test_there_is_a_warm_endpoint(self):
+        assert '@app.route("/api/warm"' in self.API
+
+    def test_warming_never_surfaces_a_failure(self):
+        # It is an optimisation. Someone opening a chat must not see it fail.
+        warm = self.API.split('def api_warm():')[1].split('\n@app.route')[0]
+        assert 'return jsonify({"status": "ok", "warmed": False}), 200' in warm
+
+    def test_warming_returns_no_patient_data(self):
+        # Assert on what it RETURNS, not on the prose around it: the first
+        # version of this test failed on the word "patient" in the docstring
+        # explaining that it returns no patient data.
+        import re as _re
+        warm = self.API.split('def api_warm():')[1].split('\n@app.route')[0]
+        returned = " ".join(_re.findall(r"jsonify\((.*?)\)", warm, _re.DOTALL))
+        for leak in ("raw_profile", "patient_profiles", "message", "answer",
+                     "user_id", "profile"):
+            assert leak not in returned, f"{leak} in the warm response"
+
+    def test_the_app_warms_when_a_chat_opens_or_a_greeting_lands(self):
+        hook = (_REPO / "mobile" / "hooks" / "useChat.ts").read_text()
+        assert "warmUp()" in hook
+        assert "greeting-shortcircuit" in hook
+
+    def test_the_client_call_cannot_throw(self):
+        chat = (_REPO / "mobile" / "lib" / "api" / "chat.ts").read_text()
+        block = chat.split("export function warmUp()")[1]
+        assert ".catch(() => {})" in block

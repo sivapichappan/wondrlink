@@ -33,6 +33,23 @@ export function sendChatMessage(body: ChatRequest) {
   });
 }
 
+/**
+ * Ask the server to pull the guideline corpus into memory before the first
+ * real question.
+ *
+ * A cold container spends about 9 seconds loading a corpus that never changes,
+ * and the person pays that AFTER hitting send. Firing this while they are still
+ * reading and typing moves the wait somewhere they do not notice it.
+ *
+ * FIRE AND FORGET, and it never throws: the whole point is that it happens
+ * where nobody is watching, so a failure must not surface to someone who was
+ * only trying to open a chat. Worst case they get today's speed.
+ */
+export function warmUp(): void {
+  apiFetch<{ status: 'ok'; warmed: boolean }>(ENDPOINTS.warm, { method: 'POST' })
+    .catch(() => {});
+}
+
 export function fetchChatHistory(limit = 50) {
   return apiFetch<ChatHistoryResponse>(`${ENDPOINTS.chatHistory}?limit=${limit}`, {
     method: 'GET',
