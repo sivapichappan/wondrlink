@@ -1456,6 +1456,92 @@ def soften_tone(text: str) -> tuple[str, dict]:
 
 
 # =============================================================================
+# VOICE ENFORCEMENT — no em dashes, ever
+# =============================================================================
+#
+# The style rule has been in the system prompt since the start and the model
+# kept breaking it. That is not really the model's fault: chat_base.md contains
+# 29 em dashes and the per-cancer overlays another 10-46 each, so it is being
+# told not to use a mark that its own instructions use constantly. A model
+# copies the register of its instructions far more reliably than it obeys a
+# rule stated inside them.
+#
+# So this is not a better instruction. It is the guarantee, applied to the text
+# on its way to the patient, where no amount of model drift can reach it.
+#
+# NOT applied inside call_llm: the extractor, verifier and modeler all go
+# through it and expect JSON back, and rewriting punctuation inside a JSON
+# string would corrupt their output. It belongs at the patient-facing exits.
+
+_DASHES = "—–―"  # em dash, en dash, horizontal bar
+
+# A dash between two digits is a RANGE ("cycles 2-3", "5-10 minutes"), which is
+# a different word from a parenthetical. Read aloud it is "to".
+_DASH_RANGE = re.compile(rf"(?<=\d)\s*[{_DASHES}]\s*(?=\d)")
+# Start of a line: someone used it as a bullet.
+_DASH_BULLET = re.compile(rf"^[ \t]*[{_DASHES}][ \t]+", re.MULTILINE)
+# Spaced: the common parenthetical or aside.
+_DASH_SPACED = re.compile(rf"\s+[{_DASHES}]+\s+")
+# Unspaced between words: "the results—good news—came back".
+_DASH_TIGHT = re.compile(rf"(?<=\w)[{_DASHES}]+(?=\w)")
+# Anything left (leading, trailing, doubled).
+_DASH_ANY = re.compile(rf"[{_DASHES}]+")
+
+
+def enforce_voice(text: str) -> tuple:
+    """Remove every em/en dash from patient-facing text. Returns (text, count).
+
+    A comma is the substitution because it is grammatical in every position an
+    em dash occupies — parenthetical, appositive, aside — and never produces the
+    mangling a cleverer rule would. `soften_tone` next door is the warning:
+    it rewrites "you should" with no clause awareness, so "you shouldn't"
+    becomes "it might help ton't". A comma cannot do that.
+
+    Ranges become "to" and line-leading dashes become list bullets, because a
+    comma in either position would say something false.
+    """
+    if not text:
+        return text, 0
+    before = sum(text.count(d) for d in _DASHES)
+    if not before:
+        return text, 0
+
+    out = _DASH_RANGE.sub(" to ", text)
+    out = _DASH_BULLET.sub("- ", out)
+    out = _DASH_SPACED.sub(", ", out)
+    out = _DASH_TIGHT.sub(", ", out)
+    out = _DASH_ANY.sub("", out)
+
+    # Tidy what a dash sitting next to existing punctuation leaves behind.
+    out = re.sub(r",\s*,+", ",", out)
+    out = re.sub(r"\s+,", ",", out)
+    out = re.sub(r",(\s*[.!?;:])", r"\1", out)
+    out = re.sub(r"[ \t]{2,}", " ", out)
+
+    after = sum(out.count(d) for d in _DASHES)
+    if after:
+        _tone_logger.error("em dash survived voice enforcement: %d remaining", after)
+    return out, before
+
+
+def enforce_voice_deep(obj):
+    """enforce_voice over every string in a nested structure, shape unchanged.
+
+    The pre-visit, visit-recap, appeal and deep-research generators return a
+    dict of sections rather than one string. Cleaning them field by field means
+    the next field someone adds is missed, so this walks whatever comes back.
+    Dict KEYS are left alone: they are field names, not prose.
+    """
+    if isinstance(obj, str):
+        return enforce_voice(obj)[0]
+    if isinstance(obj, dict):
+        return {k: enforce_voice_deep(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [enforce_voice_deep(v) for v in obj]
+    return obj
+
+
+# =============================================================================
 # INLINE CITATION POST-PROCESSING (Feature 1)
 # =============================================================================
 
@@ -1598,14 +1684,14 @@ def generate_glossary_explanation(term: str, guidelines_formatted: str = "",
             if response and response.choices:
                 answer = (response.choices[0].message.content or "").strip()
             if answer:
-                return answer
+                return enforce_voice(answer)[0]
         except Exception as e:
             logger.warning(f"glossary Groq call failed ({type(e).__name__}); chat-voice fallback")
 
     try:
         answer, _api = call_llm(prompt, response_length="brief",
                                 query_type="general", cancer_slug=cancer_slug)
-        answer = (answer or "").strip()
+        answer = enforce_voice((answer or "").strip())[0]
         return answer if answer else GLOSSARY_FALLBACK
     except Exception as e:
         logger.warning(f"generate_glossary_explanation failed: {type(e).__name__}")
@@ -2977,8 +3063,8 @@ def greeting_response(first_name: str = "") -> str:
     """Return a short, warm greeting tailored to the patient (if we have a name)."""
     name = (first_name or "").strip()
     if name:
-        return f"Hi {name} — what would you like to talk through today?"
-    return "Hi — what would you like to talk through today?"
+        return f"Hi {name}, what would you like to talk through today?"
+    return "Hi, what would you like to talk through today?"
 
 
 # =============================================================================

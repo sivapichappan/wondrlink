@@ -134,6 +134,6 @@ HEDGED_FALLBACK_RESPONSE = (
 
 
 SOFT_DISCLAIMER_PREFIX = (
-    "*Note: Some details below should be verified with your care team — "
+    "*Note: Some details below should be verified with your care team. "
     "they can confirm what applies specifically to your situation.*\n\n"
 )

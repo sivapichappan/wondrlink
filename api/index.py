@@ -39,7 +39,7 @@ from llm_utils import (
     trim_incomplete_sentence, validate_response, enhanced_medical_validation,
     format_conversation_context, get_llm_status, sanitize_query,
     extract_profile_updates_from_query, get_relevant_resources,
-    postprocess_citations
+    postprocess_citations, enforce_voice, enforce_voice_deep
 )
 from clinical_trials import (
     search_trials_for_patient, format_trials_for_chat, is_clinical_trial_query,
@@ -792,9 +792,10 @@ def api_sandbox_chat():
 
         followups = []
         try:
-            from llm_utils import extract_followups, soften_tone
+            from llm_utils import enforce_voice, extract_followups, soften_tone
             answer, followups = extract_followups(answer)
             answer, _tone = soften_tone(answer)
+            answer, _ = enforce_voice(answer)
         except Exception:
             logger.exception("Sandbox answer post-processing failed")
 
@@ -2410,8 +2411,13 @@ def api_chat():
             # counts logged for telemetry.
             tone_meta = {"substitutions": 0, "by_pattern": {}}
             try:
-                from llm_utils import soften_tone
+                from llm_utils import enforce_voice, soften_tone
                 final_answer, tone_meta = soften_tone(final_answer)
+                # Last thing before the patient sees it. The style rule lives
+                # in the prompt too, but a prompt is a request and this is the
+                # guarantee.
+                final_answer, _dashes = enforce_voice(final_answer)
+                tone_meta["em_dashes_removed"] = _dashes
             except Exception:
                 logger.exception("Tone softener failed; continuing with raw answer")
 
@@ -3083,7 +3089,7 @@ def api_previsit_questions():
             })
 
         # Generate
-        result = generate_previsit_questions(patient_summary, context, cancer_slug=_pv_slug)
+        result = enforce_voice_deep(generate_previsit_questions(patient_summary, context, cancer_slug=_pv_slug))
         set_cached_previsit(user_id, context, result)
 
         # Persist to profile (max 10 entries, drop oldest)
@@ -3467,7 +3473,7 @@ def api_visit_recap():
             _vr_slug = None
 
         from llm_utils import generate_visit_recap
-        recap = generate_visit_recap(patient_summary, transcript_for_llm, cancer_slug=_vr_slug)
+        recap = enforce_voice_deep(generate_visit_recap(patient_summary, transcript_for_llm, cancer_slug=_vr_slug))
 
         # Save to profile (max 20 entries, drop oldest)
         saved = False
@@ -3610,7 +3616,7 @@ def api_insurance_appeal():
 
         # Generate appeal letter (with inline citations)
         from llm_utils import generate_insurance_appeal
-        result = generate_insurance_appeal(patient_summary, denial_for_llm, retrieved, guidelines_formatted, cancer_slug=_appeal_slug)
+        result = enforce_voice_deep(generate_insurance_appeal(patient_summary, denial_for_llm, retrieved, guidelines_formatted, cancer_slug=_appeal_slug))
 
         if result['used_fallback']:
             return jsonify({
@@ -3781,7 +3787,7 @@ def api_deep_research():
         patient_summary = format_patient_summary_complex(patient_context) if patient_context else ""
 
         # Generate report
-        result = generate_deep_research(query, retrieved, patient_summary, cancer_slug=_dr_slug)
+        result = enforce_voice_deep(generate_deep_research(query, retrieved, patient_summary, cancer_slug=_dr_slug))
 
         if result.get('used_fallback'):
             from verify import HEDGED_FALLBACK_RESPONSE

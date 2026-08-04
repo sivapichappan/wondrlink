@@ -288,8 +288,8 @@ def compute_retrieval_confidence(retrieved_chunks: List[Any]) -> Dict[str, Any]:
 OFF_TOPIC_RESPONSE_TEMPLATE = (
     "That seems outside what {app_name} can reliably help with. {app_name} "
     "focuses on {cancer_phrase} for patients and caregivers.\n\n"
-    "If you have a question I can help with — your treatment, side effects, "
-    "screening, mental wellness, or how to support a loved one — please ask.\n\n"
+    "If you have a question I can help with, such as your treatment, side effects, "
+    "screening, mental wellness, or how to support a loved one, please ask.\n\n"
     "If you need broader support, you can reach out to a Personal Navigator "
     "from the WondrLink Foundation at www.wondrlinkfoundation.org"
 )
@@ -390,27 +390,27 @@ _CRISIS_RESPONSES: Dict[str, str] = {
     "self_harm": (
         "I'm really glad you reached out, and what you're describing tells me "
         "you're carrying a heavy load right now. You deserve immediate, real "
-        "support — please reach out **right away** to one of these:\n\n"
-        "- **988 Suicide & Crisis Lifeline** — call or text **988**, free, 24/7\n"
-        "- **Crisis Text Line** — text **HOME** to **741741**, free, 24/7\n"
-        "- **Emergency services** — **{emergency_number}** if you are in immediate danger\n\n"
+        "support. Please reach out **right away** to one of these:\n\n"
+        "- **988 Suicide & Crisis Lifeline**: call or text **988**, free, 24/7\n"
+        "- **Crisis Text Line**: text **HOME** to **741741**, free, 24/7\n"
+        "- **Emergency services**: **{emergency_number}** if you are in immediate danger\n\n"
         "You don't have to navigate this alone, and there is help available "
         "this minute. Please reach out before doing anything else."
     ),
     "medical_emergency": (
         "What you're describing sounds like a medical emergency. Please **call {emergency_number}** "
-        "or go to the nearest emergency room **right away** — don't wait to message "
+        "or go to the nearest emergency room **right away**. Please do not wait to message "
         "us or anyone else.\n\n"
         "If you have your oncology team's after-hours line, you can also call them "
         "on the way to the ER. But the priority is getting evaluated **now**."
     ),
     "urgent_oncology": (
         "This is the kind of symptom your oncology team needs to hear about "
-        "**the same day**. Please **call your oncologist's office now** — most "
+        "**the same day**. Please **call your oncologist's office now**. Most "
         "practices have a 24/7 nurse line for treatment-related symptoms.\n\n"
         "If you cannot reach them within an hour, or if your symptoms get worse "
         "(severe pain, confusion, can't keep down sips of water, fever above "
-        "101°F that won't break), go to the **emergency room** — don't wait."
+        "101°F that won't break), go to the **emergency room**. Please do not wait."
     ),
 }
 
