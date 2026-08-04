@@ -123,8 +123,22 @@ def deidentify_raw_profile(patient: dict) -> dict:
     # Strip app bookkeeping sub-objects. These carry session ids, timestamps,
     # transcript previews, and (for beliefs/model_state) extraction provenance —
     # none of it is clinical context an LLM needs, and some of it is PHI-adjacent.
+    #
+    # `connections` (the Modeler's graph) belongs here and was missed when the
+    # Modeler shipped, with a consequence nobody would predict from reading
+    # this function: its `meta` block holds `watermark`, `last_run_at` and
+    # `runs.date` as ISO timestamps, the pre-LLM leak guard scans this profile
+    # and flags `full_date_iso`, and the CHAT ROUTE RETURNS 500. So the first
+    # time the nightly Modeler ran for a patient, that patient stopped being
+    # able to send a message at all. Measured 2026-08-04: 5 of 6 production
+    # profiles blocked, every one of them a profile the Modeler had touched.
+    #
+    # Nothing loses data by this: every consumer of the graph (question policy,
+    # trial ranking, the rendered summary) reads `connections` from the RAW
+    # profile in the route, before de-identification. assemble_prompt receives
+    # the summary as its own parameter and never reads the graph itself.
     for key in (
-        '_sources', 'beliefs', 'model_state',
+        '_sources', 'beliefs', 'model_state', 'connections',
         'visit_recaps', 'previsit_questions', 'appeal_drafts', 'privacy_appeals',
     ):
         safe.pop(key, None)

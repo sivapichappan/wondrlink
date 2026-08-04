@@ -191,3 +191,77 @@ def test_deidentify_raw_profile_strips_identifiers():
     if "dateOfDiagnosis" in diag:
         assert "approximately" in str(diag["dateOfDiagnosis"]).lower() or \
                "date not specified" in str(diag["dateOfDiagnosis"]).lower()
+
+
+class TestAppBookkeepingNeverReachesTheGuard:
+    """A silent 500 for every patient the Modeler had touched.
+
+    `deidentify_raw_profile` strips app bookkeeping from the profile before
+    prompt assembly. `connections` — the Modeler's graph — was never added to
+    that list when the Modeler shipped, and its `meta` block holds `watermark`,
+    `last_run_at` and `runs.date` as ISO timestamps. The pre-LLM leak guard
+    scans this profile, flagged `full_date_iso`, and the chat route returned
+    500. So the first time the nightly Modeler ran for a patient, that patient
+    silently lost the ability to send a message.
+
+    Measured in production 2026-08-04: 5 of 6 profiles blocked, every one of
+    them a profile the Modeler had written to. Nobody would predict that
+    consequence from reading either function on its own, which is why the test
+    below asserts the PROPERTY (no ISO date survives) and not just the key.
+    """
+
+    @staticmethod
+    def _profile_with_modeler_state():
+        return {
+            "patient": {"firstName": "Maria", "age": 47},
+            "primaryDiagnosis": {"site": "Breast", "stage": "IIB"},
+            "connections": {
+                "version": 1,
+                "meta": {
+                    "last_run_at": "2026-08-04T00:15:56.060322+00:00",
+                    "watermark": "2026-08-04T00:15:56.060322+00:00",
+                    "runs": {"date": "2026-08-04", "count": 1},
+                    "model": "deepseek-ai/DeepSeek-V4-Pro",
+                },
+                "edges": [{"src": "letrozole", "dst": "joint pain",
+                           "first_seen": "2026-07-30T10:00:00Z"}],
+            },
+        }
+
+    def test_connections_is_stripped(self):
+        from deidentify import deidentify_raw_profile
+        safe = deidentify_raw_profile(self._profile_with_modeler_state())
+        assert "connections" not in safe
+
+    def test_no_iso_date_survives_anywhere_in_the_profile(self):
+        """The real invariant. A future sub-object with timestamps would
+        reintroduce the outage even with `connections` handled."""
+        import json
+        import re
+        from deidentify import deidentify_raw_profile
+        safe = deidentify_raw_profile(self._profile_with_modeler_state())
+        blob = json.dumps(safe, default=str)
+        assert not re.search(r"\d{4}-\d{2}-\d{2}", blob), blob
+
+    def test_the_guard_passes_a_modeler_touched_profile(self):
+        # End to end: this is the exact condition that returned 500.
+        from deidentify import deidentify_raw_profile, detect_pii_leaks
+        safe = deidentify_raw_profile(self._profile_with_modeler_state())
+        assert detect_pii_leaks({"patient_profile": safe}) == []
+
+    def test_clinical_content_is_preserved(self):
+        # A fix that strips too much would be a quieter kind of broken.
+        from deidentify import deidentify_raw_profile
+        safe = deidentify_raw_profile(self._profile_with_modeler_state())
+        assert safe["primaryDiagnosis"]["site"] == "Breast"
+        assert safe["primaryDiagnosis"]["stage"] == "IIB"
+        assert safe["patient"]["age"] == 47
+        assert "firstName" not in safe["patient"]
+
+    def test_every_known_bookkeeping_key_is_covered(self):
+        from deidentify import deidentify_raw_profile
+        keys = ("_sources", "beliefs", "model_state", "connections",
+                "visit_recaps", "previsit_questions", "appeal_drafts",
+                "privacy_appeals")
+        safe = deidentify_raw_profile({k: {"t": "2026-08-04T00:00:00Z"} for k in keys})
+        assert safe == {}
