@@ -133,7 +133,8 @@ HEDGED_FALLBACK_RESPONSE = (
 )
 
 
-SOFT_DISCLAIMER_PREFIX = (
-    "*Note: Some details below should be verified with your care team. "
-    "they can confirm what applies specifically to your situation.*\n\n"
-)
+# SOFT_DISCLAIMER_PREFIX was removed 2026-08-05. It prepended "Note: some
+# details below should be verified with your care team" whenever the verifier
+# was unsure, which duplicated the always-visible session banner and was vaguer
+# than it ("which details?"). The verdict now lives in debug_info, persisted
+# with the turn, where it informs us without alarming the patient.

@@ -14,11 +14,11 @@ If something is unclear ("doctor mentioned a new medication but I don't remember
 
 OUTPUT FORMAT: strict JSON only:
 {{
- "discussed": ["bullet 1", "bullet 2", "..."],
- "treatment_changes": ["change 1", "..."],
- "action_items": ["thing the patient should do", "..."],
- "follow_up_questions": ["question to bring next time", "..."],
- "flags": ["potential contradiction or thing worth confirming with the care team", "..."]
+  "discussed": ["bullet 1", "bullet 2", "..."],
+  "treatment_changes": ["change 1", "..."],
+  "action_items": ["thing the patient should do", "..."],
+  "follow_up_questions": ["question to bring next time", "..."],
+  "flags": ["potential contradiction or thing worth confirming with the care team", "..."]
 }}
 
 Rules:

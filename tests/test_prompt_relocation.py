@@ -30,15 +30,15 @@ PINS = {
     # {app_name} slot (branding constant). The ASSEMBLED prompt was proven
     # byte-identical to the pre-change fingerprints across all 10 cancers,
     # so this is not a prompt-text change for eval purposes.
-    "chat_base": "b48157f057b0a1a032ee89b69c1fd04c194d3cbbcdd1c2c07c2afe3cfe20eecc",
-    "extractor": "75071c93cc9959e2fcc51f67299fbef2c29b50ee6739472b541d2603606fd394",
+    "chat_base": "701607f7771225b033b6bf29f9becd80bdf6946e85c902cff6dbf76b894792a5",
+    "extractor": "cf40c91c112d8ec9df71d2071aae0c67532b70f2b055c1d1fba7452513f4b5a9",
     "verifier": "16a6157963ca972f9190fb3d7833bd3376620b5eb2f8b58011f933fef419ad33",
     "subquery": "fcd46285f624d09b77867a8eaa229b506a48f744df75b8272da6cd6d3f363129",
-    "previsit": "4732f5400e4c4d23f001890a7a12b84c23d98a8bbdf2a0659c56916509a99217",
-    "visit_recap": "3600aa331a7b77d43869da9cdb57ac4e397f9f92430614db71b687a9af9e2bec",
+    "previsit": "e46b1aba3143812623b706f4084b6dc281e7043b9c4fe12535b16f24d1e316ef",
+    "visit_recap": "48e10d987e20c9abcc1f8b690abc7467900ef3491c1cdb0bc041503e0a29c44d",
     "insurance_appeal": "ca7fc0e8586422fb931280f8ddd6ed13ea288d17d8c91af9449c0e436710595a",
     "deep_research": "adeaa3133022ba6eefc0b0316edf251498dc4dc14831d3a0d6ca5145be94e2e1",
-    "modeler": "b27fc61fe5762472aad9c6c679f495574c730d4c29095c6200b6c86b0f14cdfc",
+    "modeler": "52fdd520dd90c446bee09a4262541c388d1c245447e8fdca3d47761c0879f405",
 }
 
 

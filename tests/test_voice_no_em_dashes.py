@@ -156,9 +156,31 @@ class TestOurOwnCannedStringsAreClean:
             assert not any(d in render_crisis_response(cat) for d in DASHES)
 
     def test_the_hedged_fallback_has_none(self):
-        from verify import HEDGED_FALLBACK_RESPONSE, SOFT_DISCLAIMER_PREFIX
-        for text in (HEDGED_FALLBACK_RESPONSE, SOFT_DISCLAIMER_PREFIX):
-            assert not any(d in text for d in DASHES)
+        from verify import HEDGED_FALLBACK_RESPONSE
+        assert not any(d in HEDGED_FALLBACK_RESPONSE for d in DASHES)
+
+    def test_the_soft_disclaimer_is_gone_from_the_answer(self):
+        """It prepended "Note: some details below should be verified with your
+        care team" whenever the verifier was unsure. That duplicated the
+        always-visible session banner and was vaguer than it: which details?
+        A patient cannot act on it, so it read as alarm."""
+        api = (_REPO / "api" / "index.py").read_text()
+        assert "SOFT_DISCLAIMER_PREFIX" not in api
+
+    def test_the_verifier_verdict_is_still_recorded(self):
+        # Removing the text must not lose the signal: it is how we tell, in an
+        # exported run, which answers the fact-checker doubted.
+        api = (_REPO / "api" / "index.py").read_text()
+        assert '"debug_info": response_data.get("debug_info")' in api
+
+    def test_the_attorney_reviewed_footer_is_untouched(self):
+        # shared/disclaimers.ts is verbatim-required copy. The redundant one
+        # that went was engineering copy in verify.py; this one is not ours to
+        # edit.
+        d = (_REPO / "shared" / "disclaimers.ts").read_text()
+        assert "Informational only. Verify with your oncologist." in d
+        card = (_REPO / "mobile" / "components" / "chat" / "BotResponseCard.tsx").read_text()
+        assert "PER_MESSAGE_FOOTER" in card
 
     def test_the_glossary_fallback_has_none(self):
         from llm_utils import GLOSSARY_FALLBACK

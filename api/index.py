@@ -2382,12 +2382,24 @@ def api_chat():
             # Second-pass verification — fact-check against retrieved chunks
             verification_result = {'verified': True, 'recommended_action': 'pass', 'verifier_used': 'skipped'}
             try:
-                from verify import verify_response, HEDGED_FALLBACK_RESPONSE, SOFT_DISCLAIMER_PREFIX
+                from verify import verify_response, HEDGED_FALLBACK_RESPONSE
                 verification_result = verify_response(final_answer, retrieved, message)
 
                 if verification_result.get('recommended_action') == 'add_disclaimer':
-                    final_answer = SOFT_DISCLAIMER_PREFIX + final_answer
-                    logger.info("Verification: added soft disclaimer")
+                    # The verdict is RECORDED, not printed on the answer.
+                    #
+                    # This used to prepend "Note: some details below should be
+                    # verified with your care team", which said nothing the
+                    # session banner does not already say at the top of every
+                    # chat ("AI can make mistakes. Verify anything important
+                    # with your care team"), and said it more vaguely: WHICH
+                    # details? A patient cannot act on that, and it lands as
+                    # alarm rather than as information.
+                    #
+                    # The signal is real and worth keeping for us, so it stays
+                    # in debug_info, which is persisted with the turn and shows
+                    # up in scripts/export_conversation.py.
+                    logger.info("Verification: flagged for hedging (not surfaced)")
                 elif verification_result.get('recommended_action') == 'regenerate':
                     logger.info("Verification: regenerating with stronger hedging")
                     # Regenerate with hedge instruction prepended
@@ -2412,8 +2424,7 @@ def api_chat():
                                 verification_result = retry_verification
                                 logger.warning("Verification: both attempts failed — using hedged fallback")
                     except Exception as _e:
-                        logger.exception("Regeneration failed; keeping original with disclaimer")
-                        final_answer = SOFT_DISCLAIMER_PREFIX + final_answer
+                        logger.exception("Regeneration failed; keeping the original answer")
             except Exception:
                 logger.exception("Verification step failed (continuing with original response)")
 

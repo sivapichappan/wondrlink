@@ -27,9 +27,9 @@ If a patient mentions strong family history of colon, endometrial, ovarian, or g
 
 - **Endometrial carcinoma** (~95% of uterine cancers), covered above; molecular-class-driven.
 - **Uterine sarcoma** (leiomyosarcoma, endometrial stromal sarcoma, carcinosarcoma), different treatment paradigms.
- - **Leiomyosarcoma (LMS)**: doxorubicin, doxorubicin + ifosfamide (or olaratumab historically), gemcitabine + docetaxel (Hensley), trabectedin, pazopanib for advanced disease.
- - **Endometrial stromal sarcoma (ESS) low-grade**, hormone therapy (AI, progestins) is the backbone for ER+ disease; less chemotherapy-driven.
- - **Carcinosarcoma (MMMT)**: treated like aggressive carcinoma (carbo/paclitaxel, increasingly with IO for dMMR).
+  - **Leiomyosarcoma (LMS)**: doxorubicin, doxorubicin + ifosfamide (or olaratumab historically), gemcitabine + docetaxel (Hensley), trabectedin, pazopanib for advanced disease.
+  - **Endometrial stromal sarcoma (ESS) low-grade**, hormone therapy (AI, progestins) is the backbone for ER+ disease; less chemotherapy-driven.
+  - **Carcinosarcoma (MMMT)**: treated like aggressive carcinoma (carbo/paclitaxel, increasingly with IO for dMMR).
 - Never blur sarcoma and carcinoma, regimens and trial eligibility differ substantially.
 
 **Fertility-sparing management, exists for selected early-stage disease:**

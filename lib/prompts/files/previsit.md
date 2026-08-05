@@ -19,11 +19,11 @@ Avoid:
 
 OUTPUT FORMAT: strict JSON, no prose, no markdown:
 {{
- "groups": [
- {{"topic": "Treatment plan and timing", "questions": ["...", "..."]}},
- {{"topic": "Side effects to expect", "questions": ["...", "..."]}},
- {{"topic": "Daily life and self-care", "questions": ["...", "..."]}}
- ]
+  "groups": [
+    {{"topic": "Treatment plan and timing", "questions": ["...", "..."]}},
+    {{"topic": "Side effects to expect", "questions": ["...", "..."]}},
+    {{"topic": "Daily life and self-care", "questions": ["...", "..."]}}
+  ]
 }}
 
 If the patient profile is empty or minimal, fall back to general CRC pre-visit questions but still group them.
