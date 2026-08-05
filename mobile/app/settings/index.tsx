@@ -12,7 +12,7 @@ import {
   MessageSquareWarning,
   ShieldCheck,
   ShieldOff,
-  SlidersHorizontal,
+  
   Tag,
   Trash2,
   UserCog,
@@ -67,12 +67,6 @@ export default function SettingsScreen() {
           Icon: Tag,
           title: 'Cancer focus',
           blurb: `Switch which cancer ${APP_NAME} is tailored to`,
-        },
-        {
-          href: '/settings/detail-level',
-          Icon: SlidersHorizontal,
-          title: 'Detail level',
-          blurb: 'Brief, normal, or detailed answers',
         },
         { onPress: signOut, Icon: LogOut, title: 'Sign out' },
       ],

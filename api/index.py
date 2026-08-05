@@ -34,6 +34,7 @@ from profile_utils import (
     set_profile, get_profile, parse_profile_json
 )
 from pdf_utils import search_chunks, hybrid_search
+from response_depth import choose_depth
 from llm_utils import (
     assemble_prompt, call_llm, classify_query_type,
     trim_incomplete_sentence, validate_response, enhanced_medical_validation,
@@ -720,7 +721,6 @@ def api_sandbox_chat():
         if not message:
             return jsonify({"error": "No message provided"}), 400
         message = message[:2000]
-        response_length = data.get("response_length", "normal")
 
         import sandbox_chat as sandbox
 
@@ -739,6 +739,11 @@ def api_sandbox_chat():
         # before they reach a model; there is no real person here, and running it
         # would show the reviewer redactions a patient would not see.
         query_type = classify_query_type(message)
+        # Same policy as the patient route. The synthetic profile has no
+        # model_state and the sandbox history has no timestamps, so this
+        # settles on `standard` — which is the point of it degrading rather
+        # than assuming.
+        response_length = choose_depth(message, profile, [], query_type)["depth"]
 
         # The safety layer is one of the things a physician is here to judge, so
         # it runs exactly as it does for a patient — same tiers, same short
@@ -1962,7 +1967,9 @@ def api_chat():
             data = {}
 
         message = data.get("message")
-        response_length = data.get("response_length", "normal")
+        # response_length is NOT read from the request any more; the depth
+        # policy decides it below, once history and profile are loaded. Old
+        # builds still send the field and it is ignored.
         session_id = data.get("session_id", "default")
 
         if not message:
@@ -2098,6 +2105,19 @@ def api_chat():
         # Classify query type early — it drives both the symptom-context injection
         # below and the chunk-retrieval top_k. Must be set before any branch reads it.
         query_type = classify_query_type(message)
+
+        # How much answer this person wants, inferred rather than asked.
+        #
+        # The client still sends `response_length` from the old Settings toggle
+        # and it is deliberately IGNORED: installed builds keep sending it, and
+        # honouring it would mean two people with identical needs get different
+        # answers because one of them once opened Settings.
+        #
+        # original_message, not the sanitized one: sanitize_query substitutes
+        # [REDACTED] tokens, which would distort both the word count and the
+        # jargon density.
+        depth_info = choose_depth(original_message, patient_profile, history, query_type)
+        response_length = depth_info["depth"]
 
         # Inject recent symptom check-in data for side_effect/treatment queries
         if query_type in ('side_effect', 'treatment'):
@@ -2776,6 +2796,7 @@ def api_chat():
                         # told the patient asked about the wrong cancer.
                         "debug_info": response_data.get("debug_info"),
                         "cancer_slug": cancer_slug,
+                        "depth": depth_info,
                         "mismatch_detected": mismatch_detected,
                         "tone": tone_meta,
                     }

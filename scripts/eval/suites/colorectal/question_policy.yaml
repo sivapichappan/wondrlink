@@ -55,11 +55,27 @@ cases:
     signals: { query_type: emotional }
     expect: { suppress: true }
 
+  # `brief` is still a real level (the glossary passes it), so this gate is
+  # still live code. What changed 2026-08-05 is that CHAT no longer emits it:
+  # the depth policy chooses guided | standard | deep instead.
   - id: brief_mode_never_asks
     profile: {}
     model_state: { turns_since_question: 9 }
     signals: { response_length: brief }
     expect: { suppress: true }
+
+  # The invariant that replaces it, and the one that matters now. `guided` is
+  # the SHORT patient-facing level, and it must NOT suppress the question: a
+  # patient moving slowly is exactly who the gentle question is for. If someone
+  # ever widens the gate to "any short level", this fails.
+  - id: guided_still_asks
+    profile: {}
+    model_state: { turns_since_question: 9 }
+    signals: { response_length: guided }
+    # `stage`, not `site`: the cancer is already known from --cancer, so site
+    # is covered. The topic is incidental here; what this case pins is that
+    # SOMETHING is asked, i.e. that guided did not fall into the brief gate.
+    expect: { topic: stage }
 
   - id: multi_part_question_never_asks
     profile: {}

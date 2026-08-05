@@ -27,9 +27,11 @@ FidK2rTkd-7oBWhPnkcQ
 You should land straight on the home screen. No consent, no who-for, no cancer
 picker. If you see any of those, stop and tell me.
 
-**Settings → Detail level → Normal.** Brief suppresses follow-up chips, the
-resources row and the getting-to-know-you questions, so a third of what you are
-testing would be switched off.
+**There is no Detail level setting any more.** Sage now sizes each answer to how
+you are engaging: a short plain question gets a short answer that offers more
+through the follow-up chips, a long technical one gets a fuller answer. Nothing
+to set, and worth watching as you go: the answers should visibly differ in
+length between question 2 and question 7.
 
 **Use two threads.** Questions 1–50 in one conversation, the P-probes in a
 second. The chat reads the last ten turns as context, so asking about car

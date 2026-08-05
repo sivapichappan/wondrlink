@@ -53,7 +53,7 @@ def run() -> int:
         coverage = compute_coverage(profile, "colorectal")
         selected = select_next_question(coverage, model_state, {
             "query_type": "general", "question_marks": message.count("?"),
-            "response_length": "normal", "has_pending_confirmations": bool(beliefs["pending"]),
+            "response_length": "standard", "has_pending_confirmations": bool(beliefs["pending"]),
         })
         record_turn(model_state, selected["topic"] if selected else None)
         if selected:

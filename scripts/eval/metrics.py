@@ -249,6 +249,42 @@ def extraction_accuracy(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
+
+def response_depth_accuracy(results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Did the depth policy pick the answer size the case expects?
+
+    Two forms of expectation. `depth: guided|standard|deep` is an exact match.
+    `not_depth: guided` is the trial-question rule -- eligibility is unforgiving
+    of a summary, so the case asserts what must NOT happen rather than pinning
+    a level that could legitimately be standard or deep.
+    """
+    total = hits = 0
+    misses: List[Dict[str, Any]] = []
+    for r in results:
+        expect = r.get("expect") or {}
+        got = r.get("depth")
+        if expect.get("not_depth"):
+            total += 1
+            ok = got != expect["not_depth"]
+        elif expect.get("depth"):
+            total += 1
+            ok = got == expect["depth"]
+        else:
+            continue
+        if ok:
+            hits += 1
+        else:
+            misses.append({"id": r.get("id"), "expected": expect.get("depth") or
+                           f"not {expect.get('not_depth')}", "actual": got,
+                           "why": r.get("why")})
+    return {
+        "metric": "response_depth_accuracy",
+        "value": hits / total if total else 1.0,
+        "pass": hits,
+        "total": total,
+        "detail": misses,
+    }
+
 def question_policy_accuracy(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Score question-policy cases (invoked only for `question_policy` suites).

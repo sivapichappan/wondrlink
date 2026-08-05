@@ -24,7 +24,6 @@ import { fetchConversationMessages } from '@/lib/api/conversations';
 import { sendChatMessage, warmUp } from '@/lib/api/chat';
 import { fetchSandboxMessages, sendSandboxMessage } from '@/lib/api/sandbox';
 import { CONVERSATIONS_KEY } from './useConversations';
-import { useResponseLength } from './useResponseLength';
 import { useReviewerSession } from './useReviewerSession';
 
 export const NEW_CONVERSATION = 'new';
@@ -40,7 +39,6 @@ interface UseChatOptions {
 
 export function useChat(conversationId: string, opts: UseChatOptions = {}) {
   const qc = useQueryClient();
-  const { responseLength, setResponseLength } = useResponseLength();
   const key = messagesKey(conversationId);
   const isNew = conversationId === NEW_CONVERSATION;
 
@@ -95,7 +93,6 @@ export function useChat(conversationId: string, opts: UseChatOptions = {}) {
       const send = isReviewer ? sendSandboxMessage : sendChatMessage;
       const resp: ChatResponse = await send({
         message,
-        response_length: responseLength,
         session_id: conversationId, // legacy field kept for API compatibility
         conversation_id: isNew ? NEW_CONVERSATION : conversationId,
       });
@@ -147,7 +144,5 @@ export function useChat(conversationId: string, opts: UseChatOptions = {}) {
     isSending: send.isPending,
     sendError: send.error,
     sendMessage: (text: string) => send.mutate(text),
-    responseLength,
-    setResponseLength,
   };
 }

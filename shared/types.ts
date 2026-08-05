@@ -165,7 +165,9 @@ export type ResponseLength = 'brief' | 'normal' | 'detailed';
 
 export interface ChatRequest {
   message: string;
-  response_length: ResponseLength;
+  /** Ignored by the chat routes since 2026-08-05: the server infers depth
+   *  from engagement (lib/response_depth.py). Old builds still send it. */
+  response_length?: ResponseLength;
   session_id: string;
   /**
    * Target conversation for the multi-conversation model. A real conversation

@@ -2468,6 +2468,27 @@ def get_response_settings(response_length: str, query_type: str = None, cancer_s
         "answered, and let the follow-up chips carry what comes next."
     )
 
+    # `guided` is the SHORT PATIENT-FACING level, and it is deliberately not
+    # `brief`. Brief switches off the follow-up chips, the resources row and the
+    # gentle getting-to-know-you question — so reusing it for the people who
+    # need the most hand-holding would leave exactly them with no way to ask for
+    # more. Guided is short and keeps all three: the chips ARE the offer of
+    # depth. See lib/response_depth.py.
+    #
+    # brief / normal / detailed stay untouched below. Five non-chat callers pass
+    # them as literals and four of those parse JSON or assert a minimum length,
+    # so shrinking their budget would fail hard rather than shorten.
+    if response_length == "guided":
+        return {
+            "max_tokens": 300 if needs_boost else 220,
+            "temperature": 0.2 if is_clinical_trial else 0.32,
+            "system_message": base_system + "\n\nRESPONSE LENGTH: Guided. One short paragraph, "
+                              "one idea. End on a door, not a summary: the follow-up questions "
+                              "carry anything you left out. " + _VOICE,
+            "prompt_instruction": "Answer in one short paragraph, covering one idea. Leave the "
+                                  "rest to the follow-up questions. " + _VOICE,
+            "include_resources": True,
+        }
     if response_length == "brief":
         return {
             "max_tokens": 200 if needs_boost else 150,
@@ -2476,7 +2497,7 @@ def get_response_settings(response_length: str, query_type: str = None, cancer_s
             "prompt_instruction": "Answer in one or two sentences, plainly. " + _VOICE,
             "include_resources": False  # Don't add resources for brief responses
         }
-    elif response_length == "detailed":
+    elif response_length in ("detailed", "deep"):
         return {
             "max_tokens": 600 if needs_boost else 400,
             "temperature": 0.2 if is_clinical_trial else 0.4,
@@ -2997,7 +3018,11 @@ After your comfort opening, gently provide helpful information."""
             "• Never ask about more than this one topic, and never re-ask something the patient already told you."
         )
 
-    # Add follow-up question suggestions for non-brief responses
+    # Follow-up suggestions for everything except `brief`.
+    #
+    # `guided` is short but KEEPS these: they are how a short answer offers
+    # more, which is the whole design. Only `brief` (glossary, and any legacy
+    # caller passing it explicitly) goes without.
     if response_length != "brief":
         prompt_parts.append(FOLLOW_UP_INSTRUCTION)
 
@@ -3019,7 +3044,6 @@ After your comfort opening, gently provide helpful information."""
         'urgency_guidance': urgency_info.get('guidance', ''),
         'is_neuropathy_question': is_neuropathy_question,
         'on_oxaliplatin': on_oxaliplatin,
-        'include_resources': settings.get('include_resources', True),
         'retrieval_confidence': retrieval_conf,
         'question_topic_asked': question_topic_asked,
         # De-identified PHI-bearing components for the route's PII leak guard.
@@ -3335,44 +3359,6 @@ def validate_response(response: str, user_question: str, patient_context: Dict[s
     validation_result['enhanced_response'] = current_response
 
     return validation_result
-
-
-def select_model_for_query(query: str, query_type: str, response_length: str) -> str:
-    """
-    Select the appropriate model based on query complexity.
-
-    Returns: "together" for complex queries (70B model), "groq" for simple queries (8B model)
-    """
-    query_lower = query.lower()
-    word_count = len(query.split())
-
-    # Simple query indicators -> use faster Groq model
-    simple_indicators = [
-        word_count < 8,                          # Very short questions
-        query_type == 'general',                 # General questions
-        '?' not in query,                        # Statements, not questions
-        response_length == 'brief',              # Brief responses requested
-    ]
-
-    # Complex query indicators -> use larger Together model
-    complex_indicators = [
-        query_type in ['treatment', 'prognosis', 'clinical_trial'],  # Medical decision topics
-        'why' in query_lower,                      # Explanatory questions
-        'should i' in query_lower,                 # Decision-making questions
-        'compare' in query_lower,                  # Comparative analysis
-        response_length == 'detailed',             # Detailed responses requested
-        word_count > 20,                           # Long complex questions
-    ]
-
-    # Count indicators
-    simple_count = sum(1 for x in simple_indicators if x)
-    complex_count = sum(1 for x in complex_indicators if x)
-
-    # Default to Together for medical safety, but use Groq for clearly simple queries
-    if simple_count >= 3 and complex_count == 0:
-        return "groq"
-
-    return "together"
 
 
 def call_llm(prompt: str, response_length: str = "normal", temperature: float = None,

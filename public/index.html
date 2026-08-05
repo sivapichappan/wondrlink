@@ -7318,18 +7318,11 @@
                     </summary>
                     <div class="sidebar-group-body">
 
-                        <!-- Detail level + chat actions -->
+                        <!-- Chat actions. The Detail Level dropdown was removed
+                             2026-08-05: the server infers answer depth from how
+                             the patient is engaging, so a control here would have
+                             been a visible knob wired to nothing. -->
                         <div class="section-card compact">
-                            <div class="settings-row">
-                                <label class="settings-label" for="responseLength">Detail Level
-                                    <span class="help-tip" title="Brief: 2-3 sentences. Normal: balanced with key details. Detailed: comprehensive with full context.">(?)</span>
-                                </label>
-                                <select class="response-dropdown" id="responseLength">
-                                    <option value="brief" title="Concise answers in 2-3 sentences">Brief</option>
-                                    <option value="normal" selected title="Balanced responses with key details">Normal</option>
-                                    <option value="detailed" title="Comprehensive responses with full context">Detailed</option>
-                                </select>
-                            </div>
                             <div class="sidebar-actions">
                                 <button class="clear-chat-btn" onclick="confirmClearChat()">
                                     <i data-lucide="trash-2" class="icon-stroke sm"></i>
@@ -8411,7 +8404,6 @@
         const sendBtn = document.getElementById("sendBtn");
         const msgInput = document.getElementById("msgInput");
         const messages = document.getElementById("messages");
-        const responseDropdown = document.getElementById("responseLength");
 
         // Profile elements
         const uploadArea = document.getElementById("uploadArea");
@@ -10349,9 +10341,6 @@
         // =====================
         // Response Settings
         // =====================
-        function getResponseLength() {
-            return responseDropdown.value;
-        }
 
         // =====================
         // Chat Functions
@@ -11438,8 +11427,7 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         message: msg,
-                        response_length: getResponseLength(),
-                        session_id: sessionId
+                                session_id: sessionId
                     })
                 });
                 j = await resp.json();

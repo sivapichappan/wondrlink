@@ -293,6 +293,36 @@ def run_extraction_case(case: Dict[str, Any], mode: str) -> Dict[str, Any]:
     }
 
 
+def run_response_depth_case(case: Dict[str, Any], cancer: str) -> Dict[str, Any]:
+    """One response-depth case: message + profile + history -> the depth Sage
+    should answer at. Pure python — runs identically in dry and llm mode.
+
+    `now` is pinned so the pace signal is deterministic; history entries carry
+    `minutes_ago` rather than timestamps for the same reason.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from response_depth import choose_depth
+
+    now = datetime(2026, 8, 5, 12, 0, 0, tzinfo=timezone.utc)
+    history = [{"created_at": (now - timedelta(minutes=float(h.get("minutes_ago", 1)))).isoformat()}
+               for h in (case.get("history") or [])]
+    result = choose_depth(
+        case.get("message") or "",
+        case.get("profile") or {},
+        history,
+        case.get("query_type") or "general",
+        now=now,
+    )
+    return {
+        "id": case.get("id", "case"),
+        "expect": case.get("expect") or {},
+        "depth": result["depth"],
+        "score": result["score"],
+        "why": result["why"],
+    }
+
+
 def run_question_policy_case(case: Dict[str, Any], cancer: str) -> Dict[str, Any]:
     """One question-policy case: profile/model_state/signals fixture -> the
     policy's selection. Pure python — runs identically in dry and llm mode.
@@ -483,6 +513,7 @@ def main() -> int:
     all_results = []
     extraction_results = []
     policy_results = []
+    depth_results = []
     modeler_results = []
     trials_results = []
     for suite in suites:
@@ -504,6 +535,15 @@ def main() -> int:
             for r in run_modeler_suite(spec, args.mode):
                 r["suite"] = suite
                 modeler_results.append(r)
+            continue
+
+        if suite == "response_depth":
+            cases = spec.get("cases") or []
+            logger.info("Running suite=response_depth (%d cases)", len(cases))
+            for c in cases:
+                r = run_response_depth_case(c, args.cancer)
+                r["suite"] = suite
+                depth_results.append(r)
             continue
 
         if suite == "question_policy":
@@ -565,6 +605,7 @@ def main() -> int:
     for special_results, metric_fn, threshold in (
         (extraction_results, metrics.extraction_accuracy, 0.80),
         (policy_results, metrics.question_policy_accuracy, 0.90),
+        (depth_results, metrics.response_depth_accuracy, 0.90),
         (modeler_results, metrics.modeler_integrity, 1.00),
         (trials_results, metrics.trials_ranking_integrity, 1.00),
     ):
@@ -629,7 +670,7 @@ def main() -> int:
             f.write(json.dumps(payload) + "\n")
         for r in extraction_results:
             f.write(json.dumps(r) + "\n")
-        for r in policy_results:
+        for r in policy_results + depth_results:
             f.write(json.dumps(r) + "\n")
         for r in modeler_results:
             f.write(json.dumps(r) + "\n")

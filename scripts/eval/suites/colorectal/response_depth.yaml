@@ -1,0 +1,100 @@
+# Response-depth gold suite (pure python — identical in dry and llm mode).
+#
+# Each case: a message + profile + history -> the depth Sage should answer at.
+#   guided   short, one idea, and the follow-up chips carry the rest
+#   standard the ordinary answer
+#   deep     fuller, defines terms as it goes
+#
+# The Settings toggle (Brief/Normal/Detailed) was removed 2026-08-05; this
+# policy replaced it. See lib/response_depth.py.
+#
+# `now` is pinned by the runner so the pace signal is deterministic. History
+# entries carry `minutes_ago` and the runner converts them to timestamps.
+#
+# Run: python3 scripts/eval/run_evals.py --cancer colorectal --suite response_depth
+
+description: Engagement-driven answer depth
+
+cases:
+  # --- guided: shorter, but the chips always offer more --------------------
+  - id: newly_diagnosed_plain_opener
+    message: "I was just diagnosed and I don't know where to start."
+    profile: { model_state: { lifecycle_stage: getting_to_know_you } }
+    history: []
+    expect: { depth: guided }
+
+  - id: newly_diagnosed_very_short
+    message: "what now?"
+    profile: { model_state: { lifecycle_stage: getting_to_know_you } }
+    history: []
+    expect: { depth: guided }
+
+  - id: returning_after_a_long_break_plain
+    message: "any update?"
+    profile: { model_state: { lifecycle_stage: getting_to_know_you } }
+    history: [{ minutes_ago: 4320 }]
+    expect: { depth: guided }
+
+  # --- deep: they are telling us they want more ----------------------------
+  - id: technical_detail_outranks_being_new
+    # The case that drove the weighting. Someone writing their own pathology
+    # back at us is a clearer signal than their lifecycle stage.
+    message: >-
+      My path report says MSI-high, KRAS wild-type, T3N1 adenocarcinoma.
+      How does that change whether I get adjuvant FOLFOX or immunotherapy?
+    profile: { model_state: { lifecycle_stage: getting_to_know_you } }
+    history: [{ minutes_ago: 2 }, { minutes_ago: 1 }]
+    expect: { depth: deep }
+
+  - id: far_along_technical_and_fast
+    message: "Does my KRAS status change second-line options?"
+    profile: { model_state: { lifecycle_stage: trial_ready } }
+    history: [{ minutes_ago: 5 }, { minutes_ago: 3 }, { minutes_ago: 2 }, { minutes_ago: 1 }, { minutes_ago: 1 }]
+    expect: { depth: deep }
+
+  - id: long_multipart_question_from_anyone
+    message: >-
+      I have been on treatment for three months and I am trying to understand
+      what happens when it finishes, what the follow up schedule looks like,
+      and how often I will actually be seen by the oncologist rather than a
+      nurse.
+    profile: { model_state: { lifecycle_stage: understanding_treatment } }
+    history: [{ minutes_ago: 2 }]
+    expect: { depth: deep }
+
+  # --- standard: the middle, which most turns should be -------------------
+  - id: ordinary_question_ordinary_answer
+    message: "How do I manage fatigue during treatment?"
+    profile: {}
+    history: [{ minutes_ago: 2 }]
+    expect: { depth: standard }
+
+  - id: far_along_but_asking_briefly
+    message: "is that normal?"
+    profile: { model_state: { lifecycle_stage: trial_ready } }
+    history: [{ minutes_ago: 3 }, { minutes_ago: 2 }, { minutes_ago: 2 }, { minutes_ago: 1 }, { minutes_ago: 1 }]
+    expect: { depth: standard }
+
+  # --- degrade rather than assume -----------------------------------------
+  - id: unknown_profile_is_not_newly_diagnosed
+    # Defaulting an absent lifecycle stage would quietly shorten answers for
+    # everyone we know nothing about, including every reviewer-sandbox turn.
+    message: "What does MSI-high mean?"
+    profile: {}
+    history: []
+    expect: { depth: standard }
+
+  - id: reviewer_sandbox_shape
+    message: "Tell me about treatment options"
+    profile: { patient: { firstName: Sample }, _synthetic: true }
+    history: []
+    expect: { depth: standard }
+
+  # --- the one exception ---------------------------------------------------
+  - id: trial_questions_are_never_shortened
+    # Eligibility is unforgiving of a summary.
+    message: "any trials?"
+    profile: { model_state: { lifecycle_stage: getting_to_know_you } }
+    history: []
+    query_type: clinical_trial
+    expect: { not_depth: guided }
