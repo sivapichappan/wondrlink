@@ -47,14 +47,16 @@ export function FollowupChips({ followups, onPick }: Props) {
                 borderWidth: 1,
                 borderColor: Colors.border,
               }}>
+              {/* NOT truncated. A question clipped to "What does my hormone
+                  receptor and HER2 status mea…" cannot be judged before
+                  tapping it, and these are now the width of the thread rather
+                  than of a card, so there is room to wrap. */}
               <Text
-                numberOfLines={1}
-                ellipsizeMode="tail"
                 style={{
                   color: Colors.textPrimary,
                   fontFamily: Fonts.sansMedium,
-                  fontSize: 12,
-                  lineHeight: 16,
+                  fontSize: 13,
+                  lineHeight: 18,
                 }}>
                 {q}
               </Text>

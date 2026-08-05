@@ -35,15 +35,18 @@ const styles = {
 // an answer someone wanted to paste into an email, or read out to their
 // oncologist, was trapped in the app.
 //
-// BOTH rules need it: `textgroup` wraps a paragraph's inline runs and `text` is
-// each run. Marking only the outer one leaves bold and linked spans
-// unselectable, which reads as a selection that keeps breaking apart.
+// ONLY THE OUTER NODE IS MARKED. A first attempt set `selectable` on both
+// `textgroup` (the paragraph) and `text` (each inline run) on the reasoning
+// that bold and linked spans would otherwise be skipped. That is backwards:
+// on iOS a nested <Text> is a RUN inside its parent's text view, not a view of
+// its own, so marking each run makes every run its own selection unit and the
+// long press selects a whole node instead of letting you drag a highlight
+// across the sentence. Which is exactly what was reported: "I can only copy
+// the whole message."
+//
+// One selectable ancestor per block, plain children inside it, is the pattern
+// that gives word-level highlighting.
 const selectableRules = {
-  text: (node: any, _children: any, _parent: any, s: any, inherited: any = {}) => (
-    <Text key={node.key} selectable style={[inherited, s.text]}>
-      {node.content}
-    </Text>
-  ),
   textgroup: (node: any, children: any, _parent: any, s: any) => (
     <Text key={node.key} selectable style={s.textgroup}>
       {children}

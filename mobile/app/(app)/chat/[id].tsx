@@ -16,6 +16,8 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { BotResponseCard } from '@/components/chat/BotResponseCard';
 import { ChatInput } from '@/components/chat/ChatInput';
+import { FollowupChips } from '@/components/chat/FollowupChips';
+import { SourcesSheet } from '@/components/chat/SourcesSheet';
 import { MessageBubble } from '@/components/chat/MessageBubble';
 import { SessionMeta } from '@/components/chat/SessionMeta';
 import { TypingIndicator } from '@/components/chat/TypingIndicator';
@@ -57,6 +59,7 @@ export default function ChatThreadScreen() {
   // End-of-conversation Modeler ping (Push 2): count sends this session and
   // fire on thread-exit / app-background. Server debounce does the limiting.
   const [sentCount, setSentCount] = useState(0);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
   useModelerTrigger(sentCount);
   const sendAndCount = (text: string) => {
     setSentCount((c) => c + 1);
@@ -89,9 +92,16 @@ export default function ChatThreadScreen() {
         </Animated.View>
       );
     }
+    const followups = item.metadata?.followups ?? [];
     return (
-      <Animated.View entering={FadeIn.duration(180)} style={{ paddingHorizontal: 12, paddingVertical: 6 }}>
+      <Animated.View entering={FadeIn.duration(180)} style={{ paddingHorizontal: 12, paddingVertical: 6, gap: 8 }}>
         <BotResponseCard message={item} onPickFollowup={(t) => sendAndCount(t)} />
+        {/* Outside the card on purpose. These read on the whole thread rather
+            than on one answer, and at thread width they have room to wrap
+            instead of being clipped mid-question. */}
+        {followups.length > 0 && (
+          <FollowupChips followups={followups} onPick={(t) => sendAndCount(t)} />
+        )}
       </Animated.View>
     );
   };
@@ -164,8 +174,15 @@ export default function ChatThreadScreen() {
           </View>
         )}
 
-        <ChatInput onSend={sendAndCount} disabled={isSending} prefill={params.prefill} />
+        <ChatInput
+          onSend={sendAndCount}
+          disabled={isSending}
+          prefill={params.prefill}
+          onSources={() => setSourcesOpen(true)}
+        />
       </KeyboardAvoidingView>
+
+      <SourcesSheet open={sourcesOpen} onClose={() => setSourcesOpen(false)} messages={messages} />
 
       <CrisisModal category={crisis?.hit.category ?? null} onContinue={continueCrisis} onClose={closeCrisis} />
     </View>

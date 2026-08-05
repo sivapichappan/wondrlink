@@ -2448,28 +2448,48 @@ def get_response_settings(response_length: str, query_type: str = None, cancer_s
     is_clinical_trial = query_type == 'clinical_trial'
     needs_boost = is_treatment or is_clinical_trial
 
+    # LENGTH IS DESCRIBED AS A SHAPE, NOT A SENTENCE COUNT.
+    #
+    # "Answer in 2-4 sentences" was already here and was being ignored: the
+    # reported answer to "I was just diagnosed and don't know where to start"
+    # came back as five paragraphs. A number loses to the surrounding rules
+    # ("present ALL options", the three-step tone framework, cite your sources,
+    # end with follow-ups), which all push longer, so the model satisfies those
+    # and treats the count as a suggestion.
+    #
+    # Describing the REGISTER instead competes on the same terms: a person
+    # talking, one thing at a time, stop when the question is answered. Owner
+    # direction 2026-08-05, after reading a real answer as a patient would:
+    # "WAY TOO LONG, this is intimidating to a cancer patient."
+    _VOICE = (
+        "Write the way a person talks, not the way a leaflet reads. "
+        "Lead with the single most useful thing. Do not list every option "
+        "unless they asked for options. Stop as soon as the question is "
+        "answered, and let the follow-up chips carry what comes next."
+    )
+
     if response_length == "brief":
         return {
             "max_tokens": 200 if needs_boost else 150,
             "temperature": 0.2 if is_clinical_trial else 0.3,
-            "system_message": base_system + "\n\nRESPONSE LENGTH: Brief (1-2 sentences). Be concise but still warm and helpful.",
-            "prompt_instruction": "Answer in 1-2 sentences using simple words. Be concise but complete.",
+            "system_message": base_system + "\n\nRESPONSE LENGTH: Brief. One or two sentences. " + _VOICE,
+            "prompt_instruction": "Answer in one or two sentences, plainly. " + _VOICE,
             "include_resources": False  # Don't add resources for brief responses
         }
     elif response_length == "detailed":
         return {
             "max_tokens": 600 if needs_boost else 400,
             "temperature": 0.2 if is_clinical_trial else 0.4,
-            "system_message": base_system + "\n\nRESPONSE LENGTH: Detailed (4-6 sentences). Be thorough. Explain medical terms. Include relevant context.",
-            "prompt_instruction": "Answer in 4-6 sentences. Explain any medical terms in plain language. Be thorough.",
+            "system_message": base_system + "\n\nRESPONSE LENGTH: Detailed. Up to three short paragraphs, and explain any medical word you use. " + _VOICE,
+            "prompt_instruction": "Answer in up to three short paragraphs. Explain any medical term in plain words. " + _VOICE,
             "include_resources": True
         }
     else:  # normal (default)
         return {
             "max_tokens": 400 if needs_boost else 250,
             "temperature": 0.2 if is_clinical_trial else 0.35,
-            "system_message": base_system + "\n\nRESPONSE LENGTH: Normal (2-4 sentences). Balance conciseness with helpfulness.",
-            "prompt_instruction": "Answer in 2-4 sentences using simple words. Be clear and helpful.",
+            "system_message": base_system + "\n\nRESPONSE LENGTH: Normal. A short paragraph, two at the very most. " + _VOICE,
+            "prompt_instruction": "Answer in a short paragraph. Two at the very most. " + _VOICE,
             "include_resources": True
         }
 

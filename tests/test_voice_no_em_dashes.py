@@ -259,11 +259,18 @@ class TestTheChatCardShowsWhatItPromises:
     MARKDOWN = (_REPO / "mobile" / "components" / "chat" / "MarkdownText.tsx").read_text()
     BUBBLE = (_REPO / "mobile" / "components" / "chat" / "MessageBubble.tsx").read_text()
 
-    def test_followups_are_not_behind_show_details(self):
-        # They were below the fold, after two other sections, while the answer
-        # announced them.
-        assert "{hasFollowups && <FollowupChips" in self.CARD
-        assert "expanded && hasFollowups" not in self.CARD
+    def test_followups_render_outside_the_card_entirely(self):
+        """Two moves. First out of "Show details" (below the fold, after two
+        other sections, while the answer announced them). Then out of the CARD:
+        they read on the whole thread rather than one answer, and at card width
+        they were clipped mid-question ("...HER2 status mea...")."""
+        thread = (_REPO / "mobile" / "app" / "(app)" / "chat" / "[id].tsx").read_text()
+        assert "FollowupChips" in thread
+        assert "FollowupChips" not in self.CARD
+
+    def test_the_questions_are_not_truncated(self):
+        chips = (_REPO / "mobile" / "components" / "chat" / "FollowupChips.tsx").read_text()
+        assert "numberOfLines" not in chips
 
     def test_only_one_thing_on_the_card_is_called_sources(self):
         # ResourcesRow said SOURCES and SourceCitations said "N sources", so one
@@ -271,9 +278,23 @@ class TestTheChatCardShowsWhatItPromises:
         assert "WHERE TO GET HELP" in self.RESOURCES
         assert ">SOURCES<" not in self.RESOURCES
 
-    def test_the_summary_line_distinguishes_them(self):
+    def test_sources_moved_out_of_every_message(self):
+        """They hung off each answer behind "Show details", which put a research
+        artifact in the middle of a conversation about someone's own cancer, on
+        every message. And it answered the wrong question: nobody asks what
+        backed sentence four, they ask what the thing is built on."""
+        assert "SourceCitations" not in self.CARD
+        chat_input = (_REPO / "mobile" / "components" / "chat" / "ChatInput.tsx").read_text()
+        assert "Sources used" in chat_input, "not reachable from the + menu"
+
+    def test_the_sources_sheet_keeps_the_link_to_each_question(self):
+        # Grouping by answer without the question loses which is which.
+        sheet = (_REPO / "mobile" / "components" / "chat" / "SourcesSheet.tsx").read_text()
+        assert "groupByQuestion" in sheet
+        assert "role === 'user'" in sheet
+
+    def test_the_summary_line_still_names_what_is_hidden(self):
         assert "to get help" in self.CARD
-        assert "guideline" in self.CARD
 
     def test_thumbs_and_copy_are_gone(self):
         assert "MessageActions" not in self.CARD

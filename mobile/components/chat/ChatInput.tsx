@@ -14,7 +14,7 @@ import {
   useSpeechRecognitionEvent,
 } from 'expo-speech-recognition';
 import { router } from 'expo-router';
-import { Activity, AudioLines, ClipboardList, Microscope, Mic, Plus, Send, Square, X } from 'lucide-react-native';
+import { Activity, AudioLines, ClipboardList, FileText, Microscope, Mic, Plus, Send, Square, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -41,13 +41,15 @@ interface Props {
   placeholder?: string;
   /** Pre-fill the composer (e.g. "My zip code is ") without sending. */
   prefill?: string;
+  /** Opens the thread's sources sheet. Omitted where there is no thread. */
+  onSources?: () => void;
 }
 
 function joinParts(...parts: string[]): string {
   return parts.map((p) => p.trim()).filter(Boolean).join(' ');
 }
 
-export function ChatInput({ onSend, disabled, placeholder = "Let's talk", prefill }: Props) {
+export function ChatInput({ onSend, disabled, placeholder = "Let's talk", prefill, onSources }: Props) {
   const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
   const [recording, setRecording] = useState(false);
@@ -180,6 +182,14 @@ export function ChatInput({ onSend, disabled, placeholder = "Let's talk", prefil
           setActionsOpen(false);
           startListening();
         }}
+        onSources={
+          onSources
+            ? () => {
+                setActionsOpen(false);
+                onSources();
+              }
+            : undefined
+        }
       />
     </View>
   );
@@ -233,7 +243,7 @@ function SendButton({ canSend, onPress }: { canSend: boolean; onPress: () => voi
   );
 }
 
-function QuickActionsSheet({ open, onClose, onVoice }: { open: boolean; onClose: () => void; onVoice: () => void }) {
+function QuickActionsSheet({ open, onClose, onVoice, onSources }: { open: boolean; onClose: () => void; onVoice: () => void; onSources?: () => void }) {
   const insets = useSafeAreaInsets();
   const snap = useCareSnapshot();
   const days = snap.data?.days_since_symptom;
@@ -249,6 +259,11 @@ function QuickActionsSheet({ open, onClose, onVoice }: { open: boolean; onClose:
     { key: 'trials', icon: <Microscope size={18} color={Colors.primary} />, title: 'Find trials', onPress: () => go('/tools/clinical-trials') },
     { key: 'previsit', icon: <ClipboardList size={18} color={Colors.primary} />, title: 'Pre-visit questions', onPress: () => go('/tools/previsit') },
     { key: 'voice', icon: <AudioLines size={18} color={Colors.primary} />, title: 'Voice conversation', onPress: onVoice },
+    // Sources live here rather than under every answer: the question is "what
+    // is this built on", which is about the whole conversation.
+    ...(onSources
+      ? [{ key: 'sources', icon: <FileText size={18} color={Colors.primary} />, title: 'Sources used', onPress: onSources }]
+      : []),
   ];
 
   return (

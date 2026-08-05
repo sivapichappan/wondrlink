@@ -8,10 +8,8 @@ import type { ChatHistoryMessage } from '@shared/types';
 
 import { ConfirmationChips } from './ConfirmationChips';
 import { EscalationCard } from './EscalationCard';
-import { FollowupChips } from './FollowupChips';
 import { MarkdownText } from './MarkdownText';
 import { ResourcesRow } from './ResourcesRow';
-import { SourceCitations } from './SourceCitations';
 import { TrialsCards } from './TrialsCards';
 import { UrgencyBanner } from './UrgencyBanner';
 
@@ -29,15 +27,13 @@ export function BotResponseCard({ message, onPickFollowup }: Props) {
   const meta = message.metadata ?? {};
   const hasResources = !!meta.resources && meta.resources.length > 0;
   const hasTrials = !!meta.clinical_trials && meta.clinical_trials.trials?.length > 0;
-  const hasFollowups = !!meta.followups && meta.followups.length > 0;
-  const hasSources = !!meta.sources && meta.sources.length > 0;
 
   const counts = [
     hasResources && `${meta.resources!.length} place${meta.resources!.length > 1 ? 's' : ''} to get help`,
     hasTrials &&
       `${meta.clinical_trials!.trials.length} trial${meta.clinical_trials!.trials.length > 1 ? 's' : ''}`,
-    // follow-ups are shown above, not in here
-    hasSources && `${meta.sources!.length} guideline${meta.sources!.length > 1 ? 's' : ''}`,
+    // follow-ups render beneath the card; sources live in the
+    // composer's "+" menu, for the whole thread at once.
   ].filter(Boolean) as string[];
 
   const hasMore = counts.length > 0;
@@ -72,15 +68,6 @@ export function BotResponseCard({ message, onPickFollowup }: Props) {
       {!!meta.pending_confirmations?.length && (
         <ConfirmationChips confirmations={meta.pending_confirmations} />
       )}
-
-      {/* Follow-up questions are ALWAYS visible too. They were behind "Show
-          details", which put them below the fold and after two other sections
-          — while the answer itself often ends by announcing them ("Here are
-          some questions you might explore next:"). Text that promises
-          something the screen does not show reads as the app being broken.
-          They are also the single most likely next tap, which is the other
-          reason they do not belong in a drawer. */}
-      {hasFollowups && <FollowupChips followups={meta.followups} onPick={onPickFollowup} />}
 
       {hasMore && (
         <Pressable
@@ -131,13 +118,6 @@ export function BotResponseCard({ message, onPickFollowup }: Props) {
         <>
           <Divider />
           <TrialsCards trials={meta.clinical_trials} />
-        </>
-      )}
-
-      {expanded && hasSources && (
-        <>
-          <Divider />
-          <SourceCitations sources={meta.sources} />
         </>
       )}
 
