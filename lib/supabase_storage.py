@@ -877,7 +877,7 @@ def get_conversation_messages(user_id: str, conversation_id: str,
             return []
         try:
             res = client.table('messages') \
-                .select('role, content, created_at, metadata') \
+                .select('id, role, content, created_at, metadata') \
                 .eq('conversation_id', conversation_id) \
                 .order('sequence_number', desc=False) \
                 .limit(limit) \
@@ -885,7 +885,7 @@ def get_conversation_messages(user_id: str, conversation_id: str,
         except Exception:
             # metadata column may not exist yet — retry without it.
             res = client.table('messages') \
-                .select('role, content, created_at') \
+                .select('id, role, content, created_at') \
                 .eq('conversation_id', conversation_id) \
                 .order('sequence_number', desc=False) \
                 .limit(limit) \

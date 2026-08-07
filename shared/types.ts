@@ -354,6 +354,13 @@ export interface LogSymptomRequest {
  * ChatResponse so we can re-render BotResponseCard from history.
  */
 export interface ChatHistoryMessage {
+  /**
+   * Server row id. Absent on an optimistic message that has not round-tripped.
+   * The list keys on this: keying on created_at breaks the moment a recovery
+   * refetch replaces the client's optimistic timestamp with the server's, which
+   * changes every key and remounts (and re-animates) the whole thread.
+   */
+  id?: string;
   role: 'user' | 'assistant';
   content: string;
   created_at: string;

@@ -48,7 +48,16 @@ export default function ChatThreadScreen() {
     if (known) setTitle(known);
   }, [known]);
 
-  const { messages, isLoading, isSending, sendError, sendMessage } = useChat(id, {
+  const {
+    messages,
+    isLoading,
+    isSending,
+    sendError,
+    recovering,
+    recoveryFailed,
+    pendingQuestion,
+    sendMessage,
+  } = useChat(id, {
     onConversationCreated: (newId, newTitle) => {
       if (newTitle) setTitle(newTitle);
       // Swap the placeholder route for the real id (cache already seeded).
@@ -172,7 +181,10 @@ export default function ChatThreadScreen() {
           ref={listRef}
           data={messages}
           renderItem={renderItem}
-          keyExtractor={(m, i) => `${m.created_at}-${i}`}
+          // Server row id first. Keying on created_at alone meant a recovery
+          // refetch (server timestamps, not the client's optimistic ones)
+          // changed every key at once and remounted the entire thread.
+          keyExtractor={(m, i) => m.id ?? `${m.role}-${m.created_at}-${i}`}
           contentContainerStyle={{ paddingVertical: 10 }}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
           ListHeaderComponent={<SessionMeta />}
@@ -193,7 +205,42 @@ export default function ChatThreadScreen() {
           </View>
         )}
 
-        {!isSending && sendError && (
+        {/* Leaving the app mid-question used to come back as a red network
+            error, which was simply wrong: the server had finished and filed
+            the answer. This says what is actually true. */}
+        {!isSending && recovering && (
+          <View
+            style={{
+              marginHorizontal: 12,
+              marginBottom: 6,
+              padding: 12,
+              borderRadius: 10,
+              backgroundColor: Colors.surfaceMuted,
+              borderWidth: 1,
+              borderColor: Colors.border,
+            }}>
+            <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
+              <Text style={{ fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary }}>
+                Still working on your answer.
+              </Text>{' '}
+              You can close the app. It will be here when you come back.
+            </Text>
+            {!!pendingQuestion && (
+              <Text
+                numberOfLines={2}
+                style={{
+                  color: Colors.textMuted,
+                  fontSize: FontSize.sm,
+                  marginTop: 4,
+                  fontStyle: 'italic',
+                }}>
+                {pendingQuestion}
+              </Text>
+            )}
+          </View>
+        )}
+
+        {!isSending && !recovering && (sendError || recoveryFailed) && (
           <View
             accessibilityRole={Platform.OS === 'android' ? 'alert' : undefined}
             style={{
@@ -207,16 +254,20 @@ export default function ChatThreadScreen() {
             }}>
             <Text style={{ color: Colors.textPrimary, fontSize: 13, lineHeight: 18 }}>
               <Text style={{ fontFamily: Fonts.serifBold, color: Colors.danger }}>Couldn&apos;t get a response.</Text>{' '}
-              {sendError instanceof ApiError
-                ? extractErrorMessage(sendError.body, `${sendError.message} (${sendError.status})`)
-                : sendError.message || 'Please try again in a moment.'}
+              {recoveryFailed
+                ? 'Your question did not go through. Please try sending it again.'
+                : sendError instanceof ApiError
+                  ? extractErrorMessage(sendError.body, `${sendError.message} (${sendError.status})`)
+                  : sendError?.message || 'Please try again in a moment.'}
             </Text>
           </View>
         )}
 
         <ChatInput
           onSend={sendAndCount}
-          disabled={isSending}
+          // Also held while recovering: only one turn is remembered on disk, so
+          // a second question would overwrite the one still being collected.
+          disabled={isSending || recovering}
           prefill={params.prefill}
           onSources={() => setSourcesOpen(true)}
         />

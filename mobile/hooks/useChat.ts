@@ -16,20 +16,40 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 
 import type { ChatHistoryMessage, ChatResponse } from '@shared/types';
 
 import { fetchConversationMessages } from '@/lib/api/conversations';
-import { sendChatMessage, warmUp } from '@/lib/api/chat';
+import {
+  fetchTurnStatus,
+  requestNotifyWhenReady,
+  sendChatMessage,
+  warmUp,
+} from '@/lib/api/chat';
 import { fetchSandboxMessages, sendSandboxMessage } from '@/lib/api/sandbox';
 import { CONVERSATIONS_KEY } from './useConversations';
+import { RECOVERY_DEADLINE_MS, usePendingTurn } from './usePendingTurn';
 import { useReviewerSession } from './useReviewerSession';
 
 export const NEW_CONVERSATION = 'new';
+const POLL_INTERVAL_MS = 3_000;
 
 function messagesKey(conversationId: string) {
   return ['conversation', conversationId, 'messages'] as const;
+}
+
+/**
+ * An id for one question, unique enough to be an idempotency key.
+ *
+ * Deliberately not expo-crypto: that is a native module, and a native module
+ * means a full build rather than an OTA update. This is a correlation id, not
+ * a secret — the server scopes every lookup by user_id anyway, so the worst a
+ * collision can do is 404.
+ */
+function mintTurnId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
 interface UseChatOptions {
@@ -63,6 +83,78 @@ export function useChat(conversationId: string, opts: UseChatOptions = {}) {
     [history.data],
   );
 
+  // --- Recovering a question the app was backgrounded out of ---
+  //
+  // The server finishes and writes the answer regardless of whether we are
+  // still listening. So a dead socket is not a failure to recover from, it is
+  // an answer to go and collect.
+  const turn = usePendingTurn();
+  const [recovering, setRecovering] = useState(false);
+  const [recoveryFailed, setRecoveryFailed] = useState(false);
+
+  const recover = useCallback(async () => {
+    const pending = turn.pending;
+    if (!pending) return;
+    setRecovering(true);
+    setRecoveryFailed(false);
+    try {
+      while (Date.now() - pending.startedAt < RECOVERY_DEADLINE_MS) {
+        let status;
+        try {
+          status = await fetchTurnStatus(pending.clientTurnId);
+        } catch {
+          status = null; // transient; the deadline is the real bound
+        }
+        if (status?.status === 'answered') {
+          const target = status.conversation_id ?? pending.conversationId;
+          if (target) {
+            // The server is the source of truth here, not the local cache:
+            // refetching gets the answer AND repairs the optimistic question
+            // that onError rolled back.
+            await qc.invalidateQueries({ queryKey: messagesKey(target) });
+            qc.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
+            if (target !== conversationId) opts.onConversationCreated?.(target, null);
+          }
+          turn.clear();
+          setRecovering(false);
+          return;
+        }
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+      }
+      // Past the deadline with nothing filed. Now, and only now, is it fair to
+      // tell someone their question did not go through.
+      setRecoveryFailed(true);
+      turn.clear();
+    } finally {
+      setRecovering(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turn.pending, conversationId, qc]);
+
+  // Two entry points, because there are two ways to come back: the app was
+  // suspended and resumed, or it was killed and relaunched into a thread with
+  // a pending turn still on disk.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && turn.pending && !send.isPending) void recover();
+      // Leaving with a question outstanding is exactly when a nudge is worth
+      // having. Best-effort: iOS gives a few seconds here and no promises.
+      if (state === 'background' && turn.pending) {
+        requestNotifyWhenReady(turn.pending.clientTurnId);
+      }
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turn.pending, recover]);
+
+  const resumedOnce = useRef(false);
+  useEffect(() => {
+    if (!turn.loaded || resumedOnce.current || !turn.pending) return;
+    resumedOnce.current = true;
+    void recover();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turn.loaded, turn.pending]);
+
   // Warm the corpus the moment a chat opens, and again once a greeting comes
   // back. The greeting short-circuits before retrieval, so it answers in about
   // a second and tells us nothing about whether the container is ready — and it
@@ -90,11 +182,25 @@ export function useChat(conversationId: string, opts: UseChatOptions = {}) {
         messages: [...(prev?.messages ?? []), userMsg],
       }));
 
+      // Written to disk BEFORE the request, so a kill mid-answer is still
+      // recoverable. Reviewers run on the sandbox, which has no chat_turn and
+      // no recovery — their session is a demo, not a medical conversation.
+      const turnId = mintTurnId();
+      if (!isReviewer) {
+        turn.begin({
+          clientTurnId: turnId,
+          conversationId: isNew ? null : conversationId,
+          question: message,
+          startedAt: Date.now(),
+        });
+      }
+
       const send = isReviewer ? sendSandboxMessage : sendChatMessage;
       const resp: ChatResponse = await send({
         message,
         session_id: conversationId, // legacy field kept for API compatibility
         conversation_id: isNew ? NEW_CONVERSATION : conversationId,
+        ...(isReviewer ? {} : { client_turn_id: turnId }),
       });
 
       if (!resp || typeof resp.answer !== 'string' || resp.answer.trim() === '') {
@@ -134,7 +240,19 @@ export function useChat(conversationId: string, opts: UseChatOptions = {}) {
 
       // Recents ordering / title changed.
       qc.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
+      turn.clear();
       return resp;
+    },
+    onError: () => {
+      // Roll the optimistic question back out. It was written inside
+      // mutationFn and never removed, so a failure left a bubble with no
+      // answer under it and a retry appended a second copy of the same
+      // question. Recovery re-adds it from the server, where it already is.
+      qc.setQueryData(key, (prev: { messages: ChatHistoryMessage[] } | undefined) => {
+        const list = prev?.messages ?? [];
+        const last = list[list.length - 1];
+        return last?.role === 'user' ? { messages: list.slice(0, -1) } : { messages: list };
+      });
     },
   });
 
@@ -142,7 +260,18 @@ export function useChat(conversationId: string, opts: UseChatOptions = {}) {
     messages,
     isLoading: history.isLoading,
     isSending: send.isPending,
-    sendError: send.error,
+    /**
+     * Only a real dead end. A lost connection is NOT one: the answer is on the
+     * server and `recovering` is going to fetch it, so showing "couldn't get a
+     * response" there would be both alarming and untrue.
+     */
+    sendError: recovering || turn.pending ? null : send.error,
+    /** The answer is still coming; the app can be closed. */
+    recovering: recovering || (!!turn.pending && !send.isPending),
+    /** Deadline passed with nothing filed. This one really did fail. */
+    recoveryFailed,
+    /** What was asked, for showing while a cold start recovers it. */
+    pendingQuestion: turn.pending?.question ?? null,
     sendMessage: (text: string) => send.mutate(text),
   };
 }

@@ -1,10 +1,10 @@
 /**
  * Chat API wrappers.
  *
- * The backend does not auto-persist messages from /api/chat — the client is
- * expected to POST /api/save_message for both the user message and the
- * resulting bot message. That gives us the ability to optimistically render
- * before the save round-trips.
+ * The SERVER is the sole writer: /api/chat persists both turns before it
+ * responds, so the answer exists whether or not the response reaches us. That
+ * is what makes recovery possible at all — see fetchTurnStatus below.
+ * (/api/save_message is legacy and is no longer on the send path.)
  */
 
 import { ENDPOINTS } from '@shared/api-contracts';
@@ -12,6 +12,7 @@ import type {
   ChatHistoryResponse,
   ChatRequest,
   ChatResponse,
+  ChatTurnStatus,
   LogSymptomRequest,
   SaveMessageRequest,
 } from '@shared/types';
@@ -31,6 +32,36 @@ export function sendChatMessage(body: ChatRequest) {
     method: 'POST',
     body,
   });
+}
+
+/**
+ * Has this question been answered yet?
+ *
+ * Polled after the app comes back from the background, where the in-flight
+ * request was almost certainly killed by the OS. One indexed row rather than
+ * re-reading the whole thread every few seconds, and it carries the
+ * conversation id — which a brand-new thread never learned, because the
+ * response holding it died with the socket.
+ */
+export function fetchTurnStatus(clientTurnId: string) {
+  return apiFetch<ChatTurnStatus>(ENDPOINTS.chatTurnStatus(clientTurnId), {
+    method: 'GET',
+  });
+}
+
+/**
+ * Ask to be notified when the answer lands, because we are being backgrounded.
+ *
+ * FIRE AND FORGET, and it never throws. It runs from an AppState handler with
+ * only a few seconds of runtime before iOS suspends everything, so it either
+ * makes it out or it does not — and if it does not, silent recovery still
+ * brings the answer back the next time the app is opened.
+ */
+export function requestNotifyWhenReady(clientTurnId: string): void {
+  apiFetch<{ status: string; notified: boolean }>(ENDPOINTS.chatNotifyWhenReady, {
+    method: 'POST',
+    body: { client_turn_id: clientTurnId },
+  }).catch(() => {});
 }
 
 /**
