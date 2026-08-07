@@ -577,6 +577,71 @@ def api_warm():
         return jsonify({"status": "ok", "warmed": False}), 200
 
 
+@app.route("/api/chat/turn/<client_turn_id>", methods=["GET"])
+@require_auth
+def api_chat_turn_status(client_turn_id):
+    """Has this question been answered yet?
+
+    What the app polls after coming back from the background. One indexed row
+    rather than re-reading the whole message list every few seconds, and it
+    hands back the conversation id — which for a brand-new thread the client
+    never learned, because the response carrying it died with the socket.
+    """
+    try:
+        from supabase_storage import get_chat_turn
+        turn = get_chat_turn(client_turn_id, request.user["user_id"])
+        if not turn:
+            return jsonify({"status": "unknown"}), 404
+        return jsonify({
+            "status": turn.get("status") or "pending",
+            "conversation_id": turn.get("conversation_id"),
+        })
+    except Exception:
+        logger.exception("chat turn status error")
+        return jsonify({"error": "Could not read that turn"}), 500
+
+
+@app.route("/api/chat/notify_when_ready", methods=["POST"])
+@require_auth
+def api_chat_notify_when_ready():
+    """Tell me when this answer lands, because I am leaving the app.
+
+    Fired from the client's AppState 'background' handler, so it has to be
+    fast: iOS gives a few seconds of runtime before it suspends everything.
+
+    The other half of the handshake in `_finish_turn`. The update returns the
+    turn's CURRENT status, so if the answer arrived while this request was in
+    flight we notice here instead of waiting for a handler that has already
+    finished looking. The CAS in claim_turn_notification is what guarantees
+    only one of the two sides actually sends.
+    """
+    try:
+        user_id = request.user["user_id"]
+        data = request.get_json(silent=True) or {}
+        client_turn_id = (data.get("client_turn_id") or "").strip()
+        if not client_turn_id:
+            return jsonify({"error": "client_turn_id is required"}), 400
+
+        from supabase_storage import request_turn_notify, claim_turn_notification
+        turn = request_turn_notify(client_turn_id, user_id)
+        if not turn:
+            return jsonify({"status": "unknown"}), 404
+
+        notified = False
+        if turn.get("status") == "answered" and claim_turn_notification(client_turn_id):
+            from notifications import notify, KIND_ANSWER_READY
+            notify(user_id, KIND_ANSWER_READY,
+                   data={"kind": KIND_ANSWER_READY,
+                         "conversation_id": turn.get("conversation_id")})
+            notified = True
+
+        return jsonify({"status": turn.get("status"), "notified": notified})
+    except Exception:
+        logger.exception("notify_when_ready error")
+        # Best effort by nature — the app still recovers the answer without it.
+        return jsonify({"status": "unknown", "notified": False}), 200
+
+
 @app.route("/api/push/register", methods=["POST"])
 @require_auth
 def api_push_register():
@@ -1926,26 +1991,106 @@ def api_delete_conversation(conversation_id):
 # -------------------------
 # Chat Route
 # -------------------------
+def _replay_answered_turn(client_turn_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+    """The stored answer for a turn we already finished, or None.
+
+    A client that lost its connection mid-question retries with the SAME turn
+    id. Without this it would pay for the whole pipeline twice, get a second
+    (differently worded) answer, and leave two copies of the exchange in the
+    thread. Returns a payload shaped exactly like a fresh one so the app cannot
+    tell the difference.
+    """
+    try:
+        from supabase_storage import get_chat_turn, find_answer_by_turn
+        turn = get_chat_turn(client_turn_id, user_id)
+        if not turn or turn.get("status") != "answered":
+            return None
+        stored = find_answer_by_turn(client_turn_id, user_id)
+        if not stored or not stored.get("content"):
+            return None
+        metadata = stored.get("metadata") or {}
+        payload: Dict[str, Any] = {
+            "status": "ok",
+            "answer": stored["content"],
+            "replayed": True,
+            "conversation_id": stored.get("conversation_id") or turn.get("conversation_id"),
+            "sources": metadata.get("sources", []),
+            "citations": metadata.get("citations", {}),
+            "resources": metadata.get("resources", []),
+            "followups": metadata.get("followups", []),
+            "urgency": metadata.get("urgency"),
+            "clinical_trials": metadata.get("clinical_trials"),
+            "pending_confirmations": metadata.get("pending_confirmations"),
+            "api_used": metadata.get("api_used", "replay"),
+            "is_crisis": metadata.get("is_crisis", False),
+            "crisis_resources": metadata.get("crisis_resources"),
+            "crisis_category": metadata.get("crisis_category"),
+            "safety": metadata.get("safety"),
+            "guidelines_used": [],
+            "has_guidelines": bool(metadata.get("sources")),
+            "retrieved_count": len(metadata.get("sources", [])),
+        }
+        return payload
+    except Exception:
+        # Never let recovery machinery block a real question. Falling through
+        # answers it again, which is wasteful but correct.
+        logger.exception("turn replay failed (answering fresh)")
+        return None
+
+
+def _finish_turn(client_turn_id: Optional[str], user_id: str,
+                 conversation_id: Optional[str]) -> None:
+    """Close a turn out and, if the patient asked to be told, tell them.
+
+    Half of a two-sided handshake. `mark_turn_answered` reports back whether a
+    notify request landed while we were working; the CAS in
+    `claim_turn_notification` is what stops this and the notify endpoint from
+    both sending. Never raises.
+    """
+    if not client_turn_id:
+        return
+    try:
+        from supabase_storage import mark_turn_answered, claim_turn_notification
+        turn = mark_turn_answered(client_turn_id, user_id, conversation_id)
+        if not turn or not turn.get("notify_requested"):
+            return
+        if not claim_turn_notification(client_turn_id):
+            return  # the notify endpoint got there first
+        from notifications import notify, KIND_ANSWER_READY
+        notify(user_id, KIND_ANSWER_READY,
+               data={"kind": KIND_ANSWER_READY, "conversation_id": conversation_id})
+    except Exception:
+        logger.exception("finish_turn failed (continuing)")
+
+
 def _persist_turn(user_id: str, conversation_id: Optional[str], question: str,
-                  answer: str, metadata: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
-    """Write one question/answer pair to the conversation store.
+                  answer: str, metadata: Dict[str, Any],
+                  client_turn_id: Optional[str] = None) -> Tuple[Optional[str], Optional[str]]:
+    """Write one question/answer pair to the conversation store, and close its turn.
 
     Returns (conversation_id, title); title is non-None only when this call
     created the thread's name. Creates the conversation if there isn't one yet,
     so a thread's very first turn can be a greeting or a crisis card.
 
+    The turn id is stamped into the assistant message's metadata, which is what
+    makes a replay findable later, and then the turn is marked answered (which
+    may fire the answer-ready push).
+
     NEVER RAISES. Every caller has already produced an answer the patient is
-    about to read, and three of them are returning a safety escalation. Failing
-    to file it must not turn a crisis card into a 500.
+    about to read, and one of them is returning a safety escalation. Failing to
+    file it must not turn a crisis card into a 500.
     """
     try:
         if not conversation_id:
             conversation_id = create_conversation(user_id)
         if not conversation_id:
             return None, None
+        if client_turn_id:
+            metadata = {**metadata, "client_turn_id": client_turn_id}
         result = append_qa_to_conversation(
             conversation_id, user_id, question, answer, metadata=metadata,
         )
+        _finish_turn(client_turn_id, user_id, conversation_id)
         return conversation_id, result.get("title")
     except Exception:
         logger.exception("Failed to persist conversation turn")
@@ -1958,6 +2103,30 @@ def api_chat():
     """Main chat endpoint."""
     try:
         user_id = request.user["user_id"]
+
+        # Read the body FIRST. Parsing has no side effects, and a client
+        # replaying a question it already paid for must not spend a rate-limit
+        # token to be told the answer it is owed.
+        data = {}
+        try:
+            raw_data = request.get_data(as_text=True)
+            if raw_data:
+                data = json.loads(raw_data)
+            elif request.is_json:
+                data = request.get_json(silent=True) or {}
+        except Exception:
+            data = {}
+
+        # `client_turn_id` is minted by the client before it sends, which makes
+        # it an address for this question that survives the app being killed.
+        # If we already answered it, hand the same answer back rather than
+        # spending another 15 to 40 seconds and a second set of LLM calls.
+        client_turn_id = (data.get("client_turn_id") or "").strip() or None
+        if client_turn_id:
+            replay = _replay_answered_turn(client_turn_id, user_id)
+            if replay is not None:
+                logger.info("Replaying already-answered turn")
+                return jsonify(replay)
 
         # Rate limit chat requests
         from rate_limit import check_rate_limit
@@ -1981,16 +2150,6 @@ def api_chat():
                 "code": "CONSENT_WITHDRAWN",
                 "withdrawn": withdrawn,
             }), 403
-        # Try to get JSON data from request body
-        data = {}
-        try:
-            raw_data = request.get_data(as_text=True)
-            if raw_data:
-                data = json.loads(raw_data)
-            elif request.is_json:
-                data = request.get_json(silent=True) or {}
-        except Exception:
-            data = {}
 
         message = data.get("message")
         # response_length is NOT read from the request any more; the depth
@@ -2022,6 +2181,13 @@ def api_chat():
         else:
             # Legacy client: the shared 'default' session, scoped to this user.
             active_conversation_id = get_or_create_conversation(session_id, user_id)
+
+        # Open the turn now that we know which conversation it belongs to. From
+        # here on the client can ask about this question by id even if the
+        # connection it arrived on is long dead.
+        if client_turn_id:
+            from supabase_storage import start_chat_turn
+            start_chat_turn(client_turn_id, user_id, active_conversation_id)
 
         # Enforce max message length (safety net for frontend maxlength)
         if len(message) > 2000:
@@ -2057,7 +2223,7 @@ def api_chat():
                 # never adopt the conversation the server had just created.
                 active_conversation_id, greeting_title = _persist_turn(
                     user_id, active_conversation_id, message, greeting_answer,
-                    {"api_used": "greeting-shortcircuit"},
+                    {"api_used": "greeting-shortcircuit"}, client_turn_id,
                 )
                 return jsonify({
                     "status": "ok",
@@ -2286,6 +2452,7 @@ def api_chat():
                     "crisis_category": _legacy_cat,
                     "safety": _crisis_safety,
                 },
+                client_turn_id,
             )
             return jsonify({
                 "answer": _crisis_answer,
@@ -2333,7 +2500,7 @@ def api_chat():
                     _ot_answer = render_off_topic_response(cancer_slug)
                     active_conversation_id, _ot_title = _persist_turn(
                         user_id, active_conversation_id, message, _ot_answer,
-                        {"api_used": "off-topic-filter"},
+                        {"api_used": "off-topic-filter"}, client_turn_id,
                     )
                     return jsonify({
                         "status": "ok",
@@ -2864,7 +3031,7 @@ def api_chat():
             }
             active_conversation_id, turn_title = _persist_turn(
                 user_id, active_conversation_id, message,
-                response_data["answer"], assistant_metadata,
+                response_data["answer"], assistant_metadata, client_turn_id,
             )
             response_data["conversation_id"] = active_conversation_id
             # The server auto-titles from the first message; echo whatever this

@@ -1006,6 +1006,143 @@ def append_qa_to_conversation(conversation_id: str, user_id: str, question: str,
         return {"ok": False, "title": None}
 
 
+# ---------------------------------------------------------------------------
+# chat_turn — surviving the app going away mid-question
+#
+# Every helper here tolerates the table not existing. Vercel deploys land
+# minutes before a migration does, and a chat route that 500s because a
+# recovery table is missing would be a far worse bug than the one this fixes.
+# ---------------------------------------------------------------------------
+
+def start_chat_turn(client_turn_id: str, user_id: str,
+                    conversation_id: Optional[str] = None) -> None:
+    """Record that this question is being worked on. Idempotent; never raises."""
+    if not client_turn_id or not user_id:
+        return
+    try:
+        row: Dict[str, Any] = {
+            'client_turn_id': client_turn_id,
+            'user_id': user_id,
+            'status': 'pending',
+        }
+        if conversation_id:
+            row['conversation_id'] = conversation_id
+        # A replayed request must not reset a turn that already answered.
+        get_admin_client().table('chat_turn') \
+            .upsert(row, on_conflict='client_turn_id', ignore_duplicates=True) \
+            .execute()
+    except Exception:
+        logger.debug("start_chat_turn failed (continuing)", exc_info=True)
+
+
+def get_chat_turn(client_turn_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+    """One turn, scoped to its owner. None if absent or the table is missing."""
+    if not client_turn_id or not user_id:
+        return None
+    try:
+        rows = (get_admin_client().table('chat_turn')
+                .select('client_turn_id, conversation_id, status, '
+                        'notify_requested, notified, created_at, answered_at')
+                .eq('client_turn_id', client_turn_id)
+                .eq('user_id', user_id)
+                .limit(1)
+                .execute()).data or []
+        return rows[0] if rows else None
+    except Exception:
+        logger.debug("get_chat_turn failed", exc_info=True)
+        return None
+
+
+def mark_turn_answered(client_turn_id: str, user_id: str,
+                       conversation_id: Optional[str]) -> Optional[Dict[str, Any]]:
+    """Close the turn out, and report back whether a notification was asked for.
+
+    Returns the updated row. Reading `notify_requested` from the SAME statement
+    that writes `status` is the point: a separate read could miss a request that
+    landed in between, and there would be no second chance to notice it.
+    """
+    if not client_turn_id or not user_id:
+        return None
+    try:
+        updates: Dict[str, Any] = {'status': 'answered', 'answered_at': _now_iso()}
+        if conversation_id:
+            updates['conversation_id'] = conversation_id
+        rows = (get_admin_client().table('chat_turn')
+                .update(updates)
+                .eq('client_turn_id', client_turn_id)
+                .eq('user_id', user_id)
+                .execute()).data or []
+        return rows[0] if rows else None
+    except Exception:
+        logger.debug("mark_turn_answered failed", exc_info=True)
+        return None
+
+
+def request_turn_notify(client_turn_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+    """Ask to be told when this turn finishes; report back whether it already has.
+
+    The mirror of mark_turn_answered. Same reason for reading `status` out of
+    the write: the answer may have landed a millisecond ago.
+    """
+    if not client_turn_id or not user_id:
+        return None
+    try:
+        rows = (get_admin_client().table('chat_turn')
+                .update({'notify_requested': True})
+                .eq('client_turn_id', client_turn_id)
+                .eq('user_id', user_id)
+                .execute()).data or []
+        return rows[0] if rows else None
+    except Exception:
+        logger.debug("request_turn_notify failed", exc_info=True)
+        return None
+
+
+def claim_turn_notification(client_turn_id: str) -> bool:
+    """Win the right to send exactly one notification for this turn.
+
+    A compare-and-swap: the UPDATE takes the row lock and re-evaluates
+    `notified = false` under it, so of two racers only one gets rows back. Both
+    sides of the handshake call this, which is what lets both of them check
+    without either of them double-sending.
+    """
+    if not client_turn_id:
+        return False
+    try:
+        rows = (get_admin_client().table('chat_turn')
+                .update({'notified': True})
+                .eq('client_turn_id', client_turn_id)
+                .eq('notified', False)
+                .execute()).data or []
+        return bool(rows)
+    except Exception:
+        logger.debug("claim_turn_notification failed", exc_info=True)
+        return False
+
+
+def find_answer_by_turn(client_turn_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+    """The assistant message this turn produced, for replaying a retry.
+
+    Returns {'content', 'metadata', 'conversation_id'} or None.
+    """
+    if not client_turn_id or not user_id:
+        return None
+    try:
+        rows = (get_admin_client().table('messages')
+                .select('content, metadata, conversation_id')
+                .eq('user_id', user_id)
+                .eq('role', 'assistant')
+                .eq('metadata->>client_turn_id', client_turn_id)
+                .limit(1)
+                .execute()).data or []
+        return rows[0] if rows else None
+    except Exception:
+        # An older deployment may have no metadata column at all; the caller
+        # then simply answers the question again rather than replaying it.
+        logger.debug("find_answer_by_turn failed", exc_info=True)
+        return None
+
+
 def rename_conversation(user_id: str, conversation_id: str, title: str) -> bool:
     """Rename a user's conversation."""
     try:
@@ -1765,6 +1902,7 @@ def delete_all_user_data(user_id: str) -> dict:
       - patient_edge_event      — all rows for user (keyed by patient_id)
       - patient_edge            — all rows for user (keyed by patient_id)
       - device_push_token       — all rows for user (a persistent device id)
+      - chat_turn               — all rows for user (one per question asked)
 
     Sub-processor data NOT under our direct control (documented in
     docs/compliance/subprocessor_chain.md — retention per their ToS):
@@ -1801,6 +1939,8 @@ def delete_all_user_data(user_id: str) -> dict:
             # and goes out with everything else. Written by nobody until push
             # ships; listed now so the parity test passes with the schema.
             'device_push_token',
+            # One row per question asked (recovery + idempotency + push).
+            'chat_turn',
         ]
 
         for table in tables:

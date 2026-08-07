@@ -18,6 +18,7 @@ Offline: no LLM, no database.
 """
 
 import ast
+import re
 import sys
 from pathlib import Path
 
@@ -273,6 +274,16 @@ class TestTheAnswerDoesNotPromiseWhatTheScreenHides:
         assert out == text and ups == []
 
 
+def _strip_js_comments(source: str) -> str:
+    """Source with // and /* */ removed, so an assertion reads the code only.
+
+    These files explain in prose why a prop is absent, and a bare substring
+    check would find the explanation and call it the bug.
+    """
+    source = re.sub(r"/\*.*?\*/", "", source, flags=re.DOTALL)
+    return re.sub(r"//[^\n]*", "", source)
+
+
 class TestTheChatCardShowsWhatItPromises:
     """Four things reported from a real device on one screenshot."""
 
@@ -318,16 +329,50 @@ class TestTheChatCardShowsWhatItPromises:
     def test_the_summary_line_still_names_what_is_hidden(self):
         assert "to get help" in self.CARD
 
-    def test_thumbs_and_copy_are_gone(self):
+    def test_thumbs_and_copy_are_not_on_the_reading_surface(self):
+        # They live in the select-text sheet now, not under every answer.
         assert "MessageActions" not in self.CARD
 
-    def test_both_sides_of_the_conversation_are_selectable(self):
-        # react-native-markdown-display 7.0.2 has no `selectable` prop, so the
-        # text rules are overridden. Both are needed: textgroup wraps a
-        # paragraph, text is each inline run.
-        assert "selectableRules" in self.MARKDOWN
-        assert self.MARKDOWN.count("selectable") >= 3
-        assert "selectable" in self.BUBBLE
+    def test_rn_selectable_is_not_used_anywhere_in_chat(self):
+        """It cannot do what it looks like it does, and it breaks what does.
+
+        RCTParagraphComponentView implements `selectable` as a long-press
+        recognizer plus an edit menu whose copy: takes NSMakeRange(0, length) —
+        the whole node. There is no partial selection at any nesting level, so
+        two shipped attempts at moving the prop between the markdown `text` and
+        `textgroup` rules could never have worked. It also installs a NATIVE
+        gesture recognizer that competes with the JS long press that opens the
+        sheet, so leaving it behind would make the sheet fire intermittently.
+        """
+        # Comments in these files explain WHY it is gone, so assert against the
+        # code with the prose stripped out.
+        for source in (self.MARKDOWN, self.BUBBLE):
+            code = _strip_js_comments(source)
+            assert not re.search(r"\bselectable\b", code)
+        assert "selectableRules" not in _strip_js_comments(self.MARKDOWN)
+
+    def test_both_sides_of_the_conversation_reach_the_select_sheet(self):
+        assert "onSelectText" in self.CARD and "onLongPress" in self.CARD
+        assert "onSelectText" in self.BUBBLE and "onLongPress" in self.BUBBLE
+
+    def test_the_sheet_selects_with_a_real_uitextview(self):
+        """editable={false} on a multiline TextInput is the entire mechanism.
+
+        RCTTextInputComponentView sets only `.editable`, so the backing
+        RCTUITextView (a UITextView) keeps isSelectable — which is drag
+        selection, grab handles, and the system Copy/Share/Look Up menu.
+        """
+        sheet = (_REPO / "mobile" / "components" / "chat" / "SelectTextSheet.tsx").read_text()
+        assert "TextInput" in sheet
+        assert "editable={false}" in sheet
+        assert "multiline" in sheet
+
+    def test_the_phone_does_not_reintroduce_em_dashes(self):
+        """markdown-it's typographer rewrites "--" as an en dash and "---" as an
+        em dash. It runs on the phone, AFTER enforce_voice cleaned the answer on
+        the server, so the guarantee had a hole in it on the surface that
+        matters most."""
+        assert "typographer: false" in self.MARKDOWN
 
 
 class TestTheCorpusIsNotRedownloadedEveryTurn:

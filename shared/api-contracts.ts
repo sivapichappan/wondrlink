@@ -91,6 +91,14 @@ export const ENDPOINTS = {
   // so the first message does not wait ~9s for a corpus that never changes.
   warm: '/api/warm',
 
+  // --- Recovering a question the app was backgrounded out of ---
+  // Poll target: one indexed row, and it carries the conversation id that a
+  // brand-new thread never learned because the response died with the socket.
+  chatTurnStatus: (clientTurnId: string) => `/api/chat/turn/${clientTurnId}`,
+  // "Tell me when this lands." Fired from AppState 'background', so it has to
+  // return fast: iOS gives a few seconds before it suspends everything.
+  chatNotifyWhenReady: '/api/chat/notify_when_ready',
+
   pushRegister: '/api/push/register',
   pushUnregister: '/api/push/unregister',
 

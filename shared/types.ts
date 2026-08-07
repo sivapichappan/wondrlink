@@ -176,6 +176,26 @@ export interface ChatRequest {
    * for the id/title the server assigns.
    */
   conversation_id?: string | 'new' | null;
+  /**
+   * Client-minted id for THIS question, generated before the request goes out.
+   *
+   * It is the address the answer can be recovered at. /api/chat takes 15 to 40
+   * seconds; if the app is backgrounded in that window iOS tears down the
+   * socket and the response is lost, even though the server finished and wrote
+   * the answer to `messages`. The id survives a process kill, so the app can
+   * come back and ask "is turn X done yet".
+   *
+   * It is also the idempotency key: a retry carrying the same id replays the
+   * stored answer instead of paying for the pipeline twice, and the join point
+   * for the answer-ready push.
+   */
+  client_turn_id?: string;
+}
+
+/** Where a question got to, for a client that lost the response. */
+export interface ChatTurnStatus {
+  status: 'pending' | 'answered' | 'unknown';
+  conversation_id?: string | null;
 }
 
 /** A named chat conversation (drawer Recents / Search). */

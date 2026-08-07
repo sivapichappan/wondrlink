@@ -35,9 +35,12 @@ PUSH_ENABLED = os.environ.get("FEATURE_PUSH_NOTIFICATIONS", "").lower() == "true
 # turn off.
 KIND_REVIEWER_APPROVED = "reviewer_approved"
 KIND_REVIEWER_REJECTED = "reviewer_rejected"
+KIND_ANSWER_READY = "answer_ready"
 
-# Copy lives with the kind. Patient-facing rules do not apply to these (they go
-# to clinicians, not patients), but the plain-language habit does.
+# Copy lives with the kind. The reviewer kinds go to clinicians, so the
+# patient-facing rules do not bind them, but the plain-language habit does.
+# ANSWER_READY is patient-facing and renders on a lock screen, so it says only
+# that an answer exists — never what was asked or what it says.
 _COPY: Dict[str, Dict[str, str]] = {
     KIND_REVIEWER_APPROVED: {
         "title": "You are approved",
@@ -46,6 +49,10 @@ _COPY: Dict[str, Dict[str, str]] = {
     KIND_REVIEWER_REJECTED: {
         "title": "About your reviewer request",
         "body": "There is an update on your request. Open the app to read it.",
+    },
+    KIND_ANSWER_READY: {
+        "title": "Your answer is ready",
+        "body": "The question you asked has been answered. Open the app to read it.",
     },
 }
 
@@ -150,7 +157,9 @@ def notify(user_id: str, kind: str,
     result: Dict[str, Any] = {"kind": kind, "delivered": 0, "enabled": PUSH_ENABLED}
     try:
         copy = _COPY.get(kind, {})
-        title = title or copy.get("title") or "Sage"
+        # The product name comes from the branding constant, never a literal.
+        from branding import APP_NAME
+        title = title or copy.get("title") or APP_NAME
         body = body or copy.get("body") or ""
 
         tokens = get_push_tokens(user_id)
