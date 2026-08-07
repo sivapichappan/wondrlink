@@ -1,4 +1,4 @@
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { Colors, Fonts, Radius } from '@/constants/theme';
 import { MarkdownText } from './MarkdownText';
@@ -6,30 +6,34 @@ import { MarkdownText } from './MarkdownText';
 interface Props {
   role: 'user' | 'assistant';
   content: string;
+  /** Long press opens the select-text sheet. */
+  onSelectText?: (content: string) => void;
 }
 
-export function MessageBubble({ role, content }: Props) {
+export function MessageBubble({ role, content, onSelectText }: Props) {
   if (role === 'user') {
     return (
-      <View
-        style={{
-          alignSelf: 'flex-end',
-          maxWidth: '88%',
-          backgroundColor: Colors.primary,
-          paddingHorizontal: 14,
-          paddingVertical: 10,
-          borderRadius: Radius.lg,
-          borderBottomRightRadius: 4,
-        }}>
-        {/* selectable so someone can copy back what they asked. Their own
-            words are the half most likely to be re-used: pasted into a note,
-            or read out at an appointment. */}
-        <Text
-          selectable
-          style={{ color: Colors.surface, fontSize: 15, lineHeight: 22, fontFamily: Fonts.sans }}>
-          {content}
-        </Text>
-      </View>
+      // No `selectable` here. On iOS it only ever offered "copy the whole
+      // bubble", and it installs a native long-press recognizer that would
+      // fight the one below for the same gesture. See SelectTextSheet.
+      <Pressable
+        onLongPress={onSelectText ? () => onSelectText(content) : undefined}
+        delayLongPress={350}
+        accessibilityHint="Press and hold to copy or select text"
+        style={{ alignSelf: 'flex-end', maxWidth: '88%' }}>
+        <View
+          style={{
+            backgroundColor: Colors.primary,
+            paddingHorizontal: 14,
+            paddingVertical: 10,
+            borderRadius: Radius.lg,
+            borderBottomRightRadius: 4,
+          }}>
+          <Text style={{ color: Colors.surface, fontSize: 15, lineHeight: 22, fontFamily: Fonts.sans }}>
+            {content}
+          </Text>
+        </View>
+      </Pressable>
     );
   }
   // Bot bubble is rendered inside BotResponseCard — just render markdown.

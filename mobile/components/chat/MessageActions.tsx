@@ -76,17 +76,16 @@ function ActionButton({
   accessibilityLabel: string;
 }) {
   return (
+    // Visuals on a static inner View. NativeWind silently strips background,
+    // border and radius from a Pressable style FUNCTION, which renders the
+    // control invisible but still tappable (.claude/rules/mobile-ui.md).
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       hitSlop={6}
-      style={({ pressed }) => [
-        styles.btn,
-        active && styles.btnActive,
-        pressed && styles.btnPressed,
-      ]}>
-      {children}
+      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+      <View style={[styles.btn, active && styles.btnActive]}>{children}</View>
     </Pressable>
   );
 }

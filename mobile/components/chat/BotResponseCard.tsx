@@ -16,13 +16,15 @@ import { UrgencyBanner } from './UrgencyBanner';
 interface Props {
   message: ChatHistoryMessage;
   onPickFollowup: (text: string) => void;
+  /** Long press on the answer text opens the select-text sheet. */
+  onSelectText?: (content: string) => void;
 }
 
 const Divider = () => (
   <View style={{ height: 1, backgroundColor: Colors.border, marginVertical: 4 }} />
 );
 
-export function BotResponseCard({ message, onPickFollowup }: Props) {
+export function BotResponseCard({ message, onPickFollowup, onSelectText }: Props) {
   const [expanded, setExpanded] = useState(false);
   const meta = message.metadata ?? {};
   const hasResources = !!meta.resources && meta.resources.length > 0;
@@ -62,7 +64,16 @@ export function BotResponseCard({ message, onPickFollowup }: Props) {
         <UrgencyBanner urgency={meta.urgency} />
       )}
 
-      <MarkdownText>{message.content}</MarkdownText>
+      {/* Only the answer text gets the long press, so pressing and holding
+          "Show details" or a trial card below does nothing surprising. No style
+          function on this Pressable: NativeWind strips visual styles from
+          those, and the card's visuals live on the static View above anyway. */}
+      <Pressable
+        onLongPress={onSelectText ? () => onSelectText(message.content) : undefined}
+        delayLongPress={350}
+        accessibilityHint="Press and hold to copy or select text">
+        <MarkdownText>{message.content}</MarkdownText>
+      </Pressable>
 
       {/* "Is that right?" chips — always visible (never behind Show details). */}
       {!!meta.pending_confirmations?.length && (

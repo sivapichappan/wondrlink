@@ -17,18 +17,20 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { BotResponseCard } from '@/components/chat/BotResponseCard';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { FollowupChips } from '@/components/chat/FollowupChips';
+import { SelectTextSheet } from '@/components/chat/SelectTextSheet';
 import { SourcesSheet } from '@/components/chat/SourcesSheet';
 import { MessageBubble } from '@/components/chat/MessageBubble';
 import { SessionMeta } from '@/components/chat/SessionMeta';
 import { TypingIndicator } from '@/components/chat/TypingIndicator';
 import { CrisisModal } from '@/components/common/CrisisModal';
 import { TopBar } from '@/components/common/TopBar';
-import { Colors, Fonts } from '@/constants/theme';
+import { Colors, FontSize, Fonts, Spacing } from '@/constants/theme';
 import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { NEW_CONVERSATION, useChat } from '@/hooks/useChat';
 import { useConversations } from '@/hooks/useConversations';
 import { useGuardedSend } from '@/hooks/useGuardedSend';
 import { useModelerTrigger } from '@/hooks/useModelerTrigger';
+import { useSelectTextHintSeen } from '@/hooks/useSelectTextHintSeen';
 import { ApiError, extractErrorMessage } from '@/lib/api/client';
 import type { ChatHistoryMessage } from '@shared/types';
 
@@ -61,6 +63,15 @@ export default function ChatThreadScreen() {
   const [sentCount, setSentCount] = useState(0);
   const [sourcesOpen, setSourcesOpen] = useState(false);
   useModelerTrigger(sentCount);
+
+  // ONE sheet for the whole screen, not one per card. `selecting` holds the
+  // markdown of whichever message was long-pressed.
+  const [selecting, setSelecting] = useState<{ content: string; feedback: boolean } | null>(null);
+  const selectHint = useSelectTextHintSeen();
+  const openSelect = (content: string, feedback: boolean) => {
+    selectHint.markSeen();
+    setSelecting({ content, feedback });
+  };
   const sendAndCount = (text: string) => {
     setSentCount((c) => c + 1);
     guardedSend(text);
@@ -73,6 +84,8 @@ export default function ChatThreadScreen() {
     }
   }, [messages.length]);
 
+  const firstBotIndex = messages.findIndex((m) => m.role === 'assistant');
+
   // Auto-send a question handed off from Home / My Care (?q=).
   useEffect(() => {
     const q = params.q;
@@ -84,18 +97,45 @@ export default function ChatThreadScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.q, isSending]);
 
-  const renderItem = ({ item }: { item: ChatHistoryMessage }) => {
+  const renderItem = ({ item, index }: { item: ChatHistoryMessage; index: number }) => {
     if (item.role === 'user') {
       return (
         <Animated.View entering={FadeIn.duration(180)} style={{ paddingHorizontal: 12, paddingVertical: 4 }}>
-          <MessageBubble role="user" content={item.content} />
+          <MessageBubble
+            role="user"
+            content={item.content}
+            onSelectText={(c) => openSelect(c, false)}
+          />
         </Animated.View>
       );
     }
     const followups = item.metadata?.followups ?? [];
+    // Selection lives behind a gesture, and an unadvertised gesture is one
+    // nobody finds. Shown once, under the first answer of the thread, until
+    // it has actually been used.
+    const showHint = selectHint.seen === false && index === firstBotIndex;
+    // No thumbs up / thumbs down on a crisis card. Asking someone whether a
+    // "call 911" card was helpful is the wrong question at the wrong moment.
+    const tier = item.metadata?.safety?.tier;
+    const rateable = !tier || tier === 'T3';
     return (
       <Animated.View entering={FadeIn.duration(180)} style={{ paddingHorizontal: 12, paddingVertical: 6, gap: 8 }}>
-        <BotResponseCard message={item} onPickFollowup={(t) => sendAndCount(t)} />
+        <BotResponseCard
+          message={item}
+          onPickFollowup={(t) => sendAndCount(t)}
+          onSelectText={(c) => openSelect(c, rateable)}
+        />
+        {showHint && (
+          <Text
+            style={{
+              fontSize: FontSize.xs,
+              color: Colors.textMuted,
+              fontFamily: Fonts.sans,
+              paddingHorizontal: Spacing.xs,
+            }}>
+            Press and hold any message to copy or select part of it.
+          </Text>
+        )}
         {/* Outside the card on purpose. These read on the whole thread rather
             than on one answer, and at thread width they have room to wrap
             instead of being clipped mid-question. */}
@@ -183,6 +223,12 @@ export default function ChatThreadScreen() {
       </KeyboardAvoidingView>
 
       <SourcesSheet open={sourcesOpen} onClose={() => setSourcesOpen(false)} messages={messages} />
+
+      <SelectTextSheet
+        content={selecting?.content ?? null}
+        onClose={() => setSelecting(null)}
+        showFeedback={selecting?.feedback ?? false}
+      />
 
       <CrisisModal category={crisis?.hit.category ?? null} onContinue={continueCrisis} onClose={closeCrisis} />
     </View>
