@@ -1,0 +1,95 @@
+# Breast answer-structure eval — is the answer SHAPED so it can be skimmed?
+#
+# Not about correctness (golden.yaml covers that). This asks whether someone
+# newly diagnosed, holding a phone, can find the answer in four seconds.
+# An answer is a lead sentence that answers the question, then labelled blocks.
+#
+# The query mix is deliberate. `treatment` and `clinical_trial` questions pull
+# in TREATMENT_RESPONSE_STRUCTURE and CLINICAL_TRIAL_RESPONSE_INSTRUCTIONS —
+# 23 and 70 lines of competing numbered structure, injected AFTER the shape
+# instruction. Those are exactly where the format loses, so they are half the
+# suite rather than an afterthought.
+#
+# `response_length` pins the depth so the section-count check is meaningful:
+# the depth policy would otherwise pick it from the phrasing and the expectation
+# would be measuring the policy, not the shape.
+
+prompts:
+  # --- treatment: the biggest length driver in the prompt ---
+  - id: bc_structure_endocrine_options
+    query: "What are my treatment options for HR positive breast cancer?"
+    response_length: deep
+    expect:
+      structure: true
+
+  - id: bc_structure_letrozole_why
+    query: "Why did they put me on letrozole?"
+    response_length: standard
+    expect:
+      structure: true
+
+  - id: bc_structure_chemo_vs_endocrine
+    query: "How do I decide between chemotherapy and endocrine therapy?"
+    response_length: deep
+    expect:
+      structure: true
+
+  # --- clinical_trial: 70 lines of competing structure ---
+  - id: bc_structure_trials_general
+    query: "Are there clinical trials I might qualify for?"
+    response_length: standard
+    expect:
+      structure: true
+
+  - id: bc_structure_trial_phases
+    query: "What is the difference between a phase 2 and a phase 3 trial?"
+    response_length: standard
+    expect:
+      structure: true
+
+  # --- side effects: naturally listy, must not become a wall ---
+  - id: bc_structure_hot_flashes
+    query: "The hot flashes are really bad. What can I do?"
+    response_length: standard
+    expect:
+      structure: true
+
+  - id: bc_structure_joint_pain
+    query: "My joints ache all the time since starting the aromatase inhibitor"
+    response_length: standard
+    expect:
+      structure: true
+
+  # --- emotional: the validation preamble competes hardest here, and this is
+  #     the one case where leading with a label instead of warmth is WRONG ---
+  - id: bc_structure_scared_recurrence
+    query: "I am really scared it is going to come back"
+    response_length: guided
+    expect:
+      structure: true
+
+  - id: bc_structure_overwhelmed
+    query: "I just got diagnosed and I do not know where to start"
+    response_length: guided
+    expect:
+      structure: true
+
+  # --- short factual: must NOT be forced into sections ---
+  - id: bc_structure_what_is_her2
+    query: "What does HER2 positive mean?"
+    response_length: guided
+    expect:
+      structure: true
+
+  - id: bc_structure_scan_timing
+    query: "How often will I get scans?"
+    response_length: standard
+    expect:
+      structure: true
+
+  # --- practical / logistics ---
+  - id: bc_structure_questions_for_team
+    query: "What should I ask my oncologist at my next appointment?"
+    response_length: deep
+    expect:
+      structure: true

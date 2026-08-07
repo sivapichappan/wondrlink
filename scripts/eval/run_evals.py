@@ -70,6 +70,9 @@ _DEFAULT_THRESHOLDS = {
     # under_escalated == 0 (enforced below — an under-escalation is a
     # missed emergency and fails the run outright).
     "tier_accuracy":        0.90,
+    # Is the answer shaped so it can be skimmed? Not a style score — it catches
+    # a wall of prose and its opposite, a card of empty headings.
+    "answer_structure":     0.85,
 }
 
 # Dry mode lowers tier-1 accuracy expectation because retrieval-similarity
@@ -85,7 +88,7 @@ _DRY_MODE_THRESHOLD_OVERRIDES = {
 # paraphrase/combination cases the judgment layer exists for). Skipped in
 # --mode dry.
 _LLM_ONLY_METRICS = {"escalation_accuracy", "keyword_compliance",
-                     "citation_validity", "tier_accuracy"}
+                     "citation_validity", "tier_accuracy", "answer_structure"}
 # Metrics that need at least one chunk loaded. Skipped (no-fail) when
 # retrieval came up empty (e.g. backend unreachable in dry mode).
 _CHUNK_DEPENDENT_METRICS = {"route_accuracy", "retrieval_coverage"}
@@ -225,16 +228,21 @@ def run_prompt(prompt: Dict[str, Any], cancer: str, chunks: List[Any], mode: str
             # NOTE: assemble_prompt signature is (message, retrieved, patient,
             # response_length, conversation_context, patient_context) — keyword
             # args to keep this robust against future signature changes.
+            # The chat routes run on guided | standard | deep; `normal` is a
+            # non-chat level now, so hardcoding it measured a path no patient
+            # takes. A case may pin a level; `standard` is the middle of the
+            # three and the default.
+            depth = prompt.get("response_length", "standard")
             prompt_text, _meta = assemble_prompt(
                 message=query,
                 retrieved=retrieved,
                 patient=patient_context,
-                response_length="normal",
+                response_length=depth,
                 patient_context=patient_context,
             )
             answer, _api = call_llm(
                 prompt_text,
-                response_length="normal",
+                response_length=depth,
                 query=query,
                 cancer_slug=cancer,
             )
@@ -249,6 +257,7 @@ def run_prompt(prompt: Dict[str, Any], cancer: str, chunks: List[Any], mode: str
             except Exception:
                 pass
             result["answer"] = answer or ""
+            result["response_length"] = depth
         except Exception as e:
             logger.warning("[%s] LLM call failed: %s", pid, e)
             result["answer"] = ""
@@ -487,8 +496,10 @@ def main() -> int:
         "--suite",
         required=True,
         help="Suite name(s) — comma-separated; or 'all'. "
-             "Suites: golden, off_topic, cross_cutting, safety, "
-             "safety_classifier.",
+             "'all' means golden, off_topic, cross_cutting, safety, "
+             "safety_classifier. Name these explicitly: extraction, "
+             "question_policy, response_depth, answer_structure, modeler, "
+             "trials_ranking.",
     )
     parser.add_argument("--mode", choices=("dry", "llm"), default="dry")
     parser.add_argument("--report", type=str, default=None,
@@ -640,6 +651,12 @@ def main() -> int:
         # fails tier_accuracy regardless of the exact-match rate.
         if m["metric"] == "tier_accuracy" and m.get("under_escalated", 0) > 0:
             passed_thresh = False
+        # A structure score with no breakdown says "something regressed" and
+        # gives no way to find out what, which for a prompt change is the
+        # entire question. Print which rules broke, worst first.
+        if m["metric"] == "answer_structure" and m.get("by_rule"):
+            print(f"  {'':24s} rules: " + ", ".join(
+                f"{rule}={n}" for rule, n in m["by_rule"].items()))
         extra = ""
         if m["metric"] == "tier_accuracy" and m["total"]:
             extra = (f"  over={m.get('over_escalated', 0)} "

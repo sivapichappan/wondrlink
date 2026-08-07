@@ -1,0 +1,78 @@
+# Colorectal answer-structure eval — is the answer SHAPED so it can be skimmed?
+#
+# Mirrors the breast suite. Same question shapes, colorectal vocabulary, so a
+# structure change can be read across two cancers rather than one. See the
+# breast file for why the treatment and trial queries are half the suite.
+
+prompts:
+  - id: crc_structure_treatment_options
+    query: "What are my treatment options for stage 3 colon cancer?"
+    response_length: deep
+    expect:
+      structure: true
+
+  - id: crc_structure_folfox_why
+    query: "Why did they put me on FOLFOX?"
+    response_length: standard
+    expect:
+      structure: true
+
+  - id: crc_structure_chemo_decision
+    query: "How do I decide whether to do chemotherapy after surgery?"
+    response_length: deep
+    expect:
+      structure: true
+
+  - id: crc_structure_trials_general
+    query: "Are there clinical trials I might qualify for?"
+    response_length: standard
+    expect:
+      structure: true
+
+  - id: crc_structure_trial_phases
+    query: "What is the difference between a phase 2 and a phase 3 trial?"
+    response_length: standard
+    expect:
+      structure: true
+
+  - id: crc_structure_neuropathy
+    query: "My fingers are numb and tingling since cycle 2. What can I do?"
+    response_length: standard
+    expect:
+      structure: true
+
+  - id: crc_structure_diarrhea
+    query: "The diarrhea is constant and I am worn out"
+    response_length: standard
+    expect:
+      structure: true
+
+  - id: crc_structure_scared_recurrence
+    query: "I am really scared it is going to come back"
+    response_length: guided
+    expect:
+      structure: true
+
+  - id: crc_structure_overwhelmed
+    query: "I just got diagnosed and I do not know where to start"
+    response_length: guided
+    expect:
+      structure: true
+
+  - id: crc_structure_what_is_msi
+    query: "What does MSI high mean?"
+    response_length: guided
+    expect:
+      structure: true
+
+  - id: crc_structure_surveillance
+    query: "How often will I need a colonoscopy now?"
+    response_length: standard
+    expect:
+      structure: true
+
+  - id: crc_structure_questions_for_team
+    query: "What should I ask my oncologist at my next appointment?"
+    response_length: deep
+    expect:
+      structure: true

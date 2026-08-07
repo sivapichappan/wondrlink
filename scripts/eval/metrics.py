@@ -395,6 +395,106 @@ def tier_accuracy(results: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
+# How many labelled sections each depth is allowed. Wider than the prompt asks
+# for on purpose: this is a floor against walls of prose and against a card full
+# of one-line headings, not a style police.
+_SECTION_RANGE = {
+    "guided": (0, 1),
+    "standard": (0, 3),
+    "deep": (0, 5),
+}
+_H2 = re.compile(r"^[ \t]*##[ \t]+(.+?)[ \t]*$", re.MULTILINE)
+_BULLET = re.compile(r"^[ \t]*[-*+][ \t]+(.*)$", re.MULTILINE)
+
+
+def answer_structure(results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Is the answer shaped so it can be skimmed?
+
+    An answer is a lead sentence that answers the question, then labelled
+    blocks. Three paragraphs of undifferentiated prose is what this exists to
+    catch, and so is its opposite: a card of headings with nothing under them.
+
+    Every failure names the RULE it broke. A structure score that reports 0.62
+    and nothing else tells you something regressed and gives you no way to find
+    out what, which for a prompt change is the whole question.
+    """
+    total = 0
+    passes = 0
+    detail: List[Dict[str, Any]] = []
+    rule_counts: Dict[str, int] = {}
+
+    for r in results:
+        expect = (r.get("expect") or {}).get("structure")
+        if not expect:
+            continue
+        total += 1
+        answer = (r.get("answer") or "").strip()
+        broke: List[str] = []
+
+        if not answer:
+            broke.append("empty_answer")
+        else:
+            lines = [ln for ln in answer.split("\n")]
+            first = next((ln.strip() for ln in lines if ln.strip()), "")
+
+            # 1. It has to OPEN with the answer, not a label or a list.
+            if first.startswith("#") or first.startswith("|") or _BULLET.match(first):
+                broke.append("no_lead_sentence")
+            elif len(first) > 200:
+                broke.append("lead_too_long")
+            elif not first.endswith((".", "?", "!", ":")):
+                broke.append("lead_not_a_sentence")
+
+            labels = _H2.findall(answer)
+            depth = r.get("response_length") or "standard"
+            lo, hi = _SECTION_RANGE.get(depth, _SECTION_RANGE["standard"])
+            if not (lo <= len(labels) <= hi):
+                broke.append(f"section_count_{len(labels)}_outside_{lo}_{hi}")
+
+            # 2. A label is something you skim, so it has to be short.
+            if any(len(lbl.split()) > 5 for lbl in labels):
+                broke.append("label_too_long")
+
+            # 3. A label with nothing under it is a truncated answer.
+            blocks = _H2.split(answer)
+            # split() gives [lead, label1, body1, label2, body2, ...]
+            for i in range(1, len(blocks) - 1, 2):
+                if not blocks[i + 1].strip():
+                    broke.append("empty_section")
+                    break
+                if len(_BULLET.findall(blocks[i + 1])) == 1:
+                    broke.append("single_bullet_section")
+                    break
+
+            # 4. Formats the renderer has no good answer for.
+            if re.search(r"^#[ \t]", answer, re.MULTILINE):
+                broke.append("h1_heading")
+            if re.search(r"^[ \t]*---[ \t]*$", answer, re.MULTILINE):
+                broke.append("horizontal_rule")
+            if re.search(r"^\s*\|.*\|", answer, re.MULTILINE):
+                broke.append("table")
+
+            # 5. A bullet that runs to a paragraph is not a bullet.
+            if any(len(b) > 200 for b in _BULLET.findall(answer)):
+                broke.append("bullet_too_long")
+
+        if broke:
+            for rule in broke:
+                rule_counts[rule] = rule_counts.get(rule, 0) + 1
+            detail.append({"id": r.get("id"), "broke": broke})
+        else:
+            passes += 1
+
+    return {
+        "metric": "answer_structure",
+        "value": passes / total if total else 1.0,
+        "pass": passes,
+        "total": total,
+        "by_rule": dict(sorted(rule_counts.items(), key=lambda kv: -kv[1])),
+        "detail": detail,
+    }
+
+
 ALL_METRICS = (
     off_topic_accuracy,
     route_accuracy,
@@ -403,4 +503,5 @@ ALL_METRICS = (
     escalation_accuracy,
     keyword_compliance,
     tier_accuracy,
+    answer_structure,
 )
