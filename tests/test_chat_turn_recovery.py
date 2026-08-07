@@ -249,6 +249,25 @@ class TestThePermissionIsSpentWell:
         assert "undetermined" in self.PUSH
 
 
+class TestTheClientToleratesAnOlderBackend:
+    """The mobile half ships OTA and can land BEFORE the matching deploy, and
+    would outlive a rollback of it."""
+
+    CHAT = (_REPO / "mobile" / "hooks" / "useChat.ts").read_text()
+
+    def test_it_gives_up_on_polling_a_route_that_is_not_there(self):
+        # Otherwise it polls a 404 until the deadline and then tells someone
+        # their question did not go through, for a question that went through.
+        assert "consecutiveFailures" in self.CHAT
+        assert "refreshThread" in self.CHAT
+
+    def test_giving_up_refreshes_the_thread_rather_than_claiming_failure(self):
+        block = self.CHAT[self.CHAT.index("const refreshThread"):]
+        block = block[:block.index("try {")]
+        assert "invalidateQueries" in block
+        assert "setRecoveryFailed" not in block
+
+
 class TestTurnStatusEndpoint:
     def test_it_reports_answered_and_hands_back_the_conversation(self, client, auth):
         # The conversation id is the whole point for a brand-new thread: the

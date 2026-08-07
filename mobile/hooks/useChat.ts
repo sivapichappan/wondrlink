@@ -98,13 +98,35 @@ export function useChat(conversationId: string, opts: UseChatOptions = {}) {
     if (!pending) return;
     setRecovering(true);
     setRecoveryFailed(false);
+    // A backend that has no turn-status endpoint yet is not the same as a
+    // question that failed. This ships OTA and can land on phones BEFORE the
+    // matching deploy (and would outlive a rollback), and polling a route that
+    // does not exist until the deadline would end in "your question did not go
+    // through" for a question that went through fine. So consecutive hard
+    // failures fall back to simply refreshing the thread: if the answer is
+    // there, they see it, which is the honest degradation.
+    let consecutiveFailures = 0;
+    const refreshThread = async () => {
+      const target = pending.conversationId;
+      if (target) await qc.invalidateQueries({ queryKey: messagesKey(target) });
+      qc.invalidateQueries({ queryKey: CONVERSATIONS_KEY });
+      turn.clear();
+    };
+
     try {
       while (Date.now() - pending.startedAt < RECOVERY_DEADLINE_MS) {
         let status;
         try {
           status = await fetchTurnStatus(pending.clientTurnId);
+          consecutiveFailures = 0;
         } catch {
           status = null; // transient; the deadline is the real bound
+          consecutiveFailures += 1;
+          if (consecutiveFailures >= 3) {
+            await refreshThread();
+            setRecovering(false);
+            return;
+          }
         }
         if (status?.status === 'answered') {
           const target = status.conversation_id ?? pending.conversationId;
