@@ -5,7 +5,7 @@ import json
 import logging
 from datetime import datetime
 from functools import lru_cache, wraps
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 from flask import Flask, request, jsonify
 
 # Add lib to path for imports
@@ -1926,6 +1926,32 @@ def api_delete_conversation(conversation_id):
 # -------------------------
 # Chat Route
 # -------------------------
+def _persist_turn(user_id: str, conversation_id: Optional[str], question: str,
+                  answer: str, metadata: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
+    """Write one question/answer pair to the conversation store.
+
+    Returns (conversation_id, title); title is non-None only when this call
+    created the thread's name. Creates the conversation if there isn't one yet,
+    so a thread's very first turn can be a greeting or a crisis card.
+
+    NEVER RAISES. Every caller has already produced an answer the patient is
+    about to read, and three of them are returning a safety escalation. Failing
+    to file it must not turn a crisis card into a 500.
+    """
+    try:
+        if not conversation_id:
+            conversation_id = create_conversation(user_id)
+        if not conversation_id:
+            return None, None
+        result = append_qa_to_conversation(
+            conversation_id, user_id, question, answer, metadata=metadata,
+        )
+        return conversation_id, result.get("title")
+    except Exception:
+        logger.exception("Failed to persist conversation turn")
+        return conversation_id, None
+
+
 @app.route("/api/chat", methods=["POST"])
 @require_auth
 def api_chat():
@@ -1980,11 +2006,10 @@ def api_chat():
         # to start a fresh thread). Legacy clients omit the field entirely and
         # are mapped to their single 'default' conversation, preserving old
         # behavior. `active_conversation_id` may be None here for a brand-new
-        # thread — it's created lazily at persist time so an empty greeting
-        # never leaves an orphan conversation.
+        # thread — `_persist_turn` creates it when the turn is filed, so a
+        # request that dies before answering leaves no orphan conversation.
         has_conversation_field = "conversation_id" in data
         raw_conversation_id = data.get("conversation_id")
-        is_new_conversation = False
         if has_conversation_field and raw_conversation_id and raw_conversation_id != "new":
             if conversation_belongs_to_user(user_id, raw_conversation_id):
                 active_conversation_id = raw_conversation_id
@@ -1992,10 +2017,8 @@ def api_chat():
                 # Unknown / not-owned id → start a fresh conversation instead of
                 # writing to someone else's or a non-existent thread.
                 active_conversation_id = None
-                is_new_conversation = True
         elif has_conversation_field:
             active_conversation_id = None
-            is_new_conversation = True
         else:
             # Legacy client: the shared 'default' session, scoped to this user.
             active_conversation_id = get_or_create_conversation(session_id, user_id)
@@ -2026,9 +2049,19 @@ def api_chat():
                     name = (quick_profile.get("patient") or {}).get("name") or ""
                     first_name = name.split(" ")[0] if name else ""
                 logger.info(f"Greeting short-circuit fired for user {user_id}")
+                greeting_answer = greeting_response(first_name)
+                # Persisted like any other turn. A thread that opens with "hi"
+                # and does not keep it reads as broken on reload, and until this
+                # landed the greeting also returned no conversation_id at all —
+                # so a brand-new thread whose first message was a greeting could
+                # never adopt the conversation the server had just created.
+                active_conversation_id, greeting_title = _persist_turn(
+                    user_id, active_conversation_id, message, greeting_answer,
+                    {"api_used": "greeting-shortcircuit"},
+                )
                 return jsonify({
                     "status": "ok",
-                    "answer": greeting_response(first_name),
+                    "answer": greeting_answer,
                     "api_used": "greeting-shortcircuit",
                     "retrieved_count": 0,
                     "sources": [],
@@ -2037,6 +2070,8 @@ def api_chat():
                     "followups": [],
                     "guidelines_used": [],
                     "has_guidelines": False,
+                    "conversation_id": active_conversation_id,
+                    "title": greeting_title,
                 })
         except Exception:
             logger.exception("Greeting short-circuit failed (continuing with normal flow)")
@@ -2216,8 +2251,44 @@ def api_chat():
                 f"source={safety_result.source} "
                 f"rule_matched={safety_result.rule_matched}"
             )
+            _crisis_answer = render_crisis_response(_legacy_cat)
+            _crisis_urgency = {
+                "detected": True,
+                "level": _level,
+                "guidance": _line or _crisis_res.get("message"),
+            }
+            _crisis_safety = {
+                "tier": safety_tier,
+                "category": safety_result.category,
+                "patient_line": _line,
+                "rule_matched": safety_result.rule_matched,
+                "confidence": safety_result.confidence,
+                "emergency_number": emergency_number(),
+                "offer_symptom_log": safety_tier == 'T2',
+                "rules_version": rules_version(),
+            }
+            # The escalation is filed like any other turn. It is the highest
+            # stakes reply the product makes, and until this landed it lived
+            # ONLY in the HTTP body: a patient who backgrounded the app while
+            # it was in flight lost it outright, and reloading the thread later
+            # showed no sign it had ever happened.
+            #
+            # `safety` and `crisis_resources` have to travel with it — the card
+            # branches on metadata.safety.tier to choose EscalationCard, so a
+            # reloaded crisis without them renders as an ordinary answer.
+            active_conversation_id, _crisis_title = _persist_turn(
+                user_id, active_conversation_id, message, _crisis_answer,
+                {
+                    "api_used": "safety-classifier",
+                    "urgency": _crisis_urgency,
+                    "is_crisis": True,
+                    "crisis_resources": _crisis_res,
+                    "crisis_category": _legacy_cat,
+                    "safety": _crisis_safety,
+                },
+            )
             return jsonify({
-                "answer": render_crisis_response(_legacy_cat),
+                "answer": _crisis_answer,
                 "api_used": "safety-classifier",
                 "retrieved_count": 0,
                 "response_length": response_length,
@@ -2236,24 +2307,13 @@ def api_chat():
                 "guidelines_used": [],
                 "has_guidelines": False,
                 "clinical_trials": None,
-                "urgency": {
-                    "detected": True,
-                    "level": _level,
-                    "guidance": _line or _crisis_res.get("message"),
-                },
+                "urgency": _crisis_urgency,
                 "is_crisis": True,
                 "crisis_resources": _crisis_res,
                 "crisis_category": _legacy_cat,
-                "safety": {
-                    "tier": safety_tier,
-                    "category": safety_result.category,
-                    "patient_line": _line,
-                    "rule_matched": safety_result.rule_matched,
-                    "confidence": safety_result.confidence,
-                    "emergency_number": emergency_number(),
-                    "offer_symptom_log": safety_tier == 'T2',
-                    "rules_version": rules_version(),
-                },
+                "safety": _crisis_safety,
+                "conversation_id": active_conversation_id,
+                "title": _crisis_title,
                 "debug_info": {
                     "api_used": "safety-classifier",
                     "safety_source": safety_result.source,
@@ -2270,15 +2330,22 @@ def api_chat():
                 on_topic, ot_reason = is_in_oncology_domain(message, retrieved)
                 if not on_topic:
                     logger.info(f"Off-topic query refused: {ot_reason}")
+                    _ot_answer = render_off_topic_response(cancer_slug)
+                    active_conversation_id, _ot_title = _persist_turn(
+                        user_id, active_conversation_id, message, _ot_answer,
+                        {"api_used": "off-topic-filter"},
+                    )
                     return jsonify({
                         "status": "ok",
-                        "answer": render_off_topic_response(cancer_slug),
+                        "answer": _ot_answer,
                         "api_used": "off-topic-filter",
                         "retrieved_count": 0,
                         "off_topic": True,
                         "sources": [],
                         "guidelines_used": [],
                         "has_guidelines": False,
+                        "conversation_id": active_conversation_id,
+                        "title": _ot_title,
                     })
         except Exception:
             logger.exception("Off-topic detection failed (continuing with normal flow)")
@@ -2772,46 +2839,40 @@ def api_chat():
             # Brand-new threads are created lazily here (only real exchanges get
             # a conversation). The assistant message carries the same render
             # metadata the client shows, so history survives a relaunch intact.
-            try:
-                if not active_conversation_id:
-                    active_conversation_id = create_conversation(user_id)
-                    is_new_conversation = True
-                if active_conversation_id:
-                    assistant_metadata = {
-                        "sources": response_data.get("sources", []),
-                        "citations": response_data.get("citations", {}),
-                        "followups": response_data.get("followups", []),
-                        "resources": response_data.get("resources", []),
-                        "urgency": response_data.get("urgency"),
-                        "clinical_trials": response_data.get("clinical_trials"),
-                        "pending_confirmations": response_data.get("pending_confirmations"),
-                        "api_used": response_data.get("api_used"),
-                        # Which machinery fired on this turn. Non-PHI: a query
-                        # type, a verifier verdict, retrieval confidence and
-                        # counts. Persisted because reading fifty answers back
-                        # without it means guessing which of a dozen stages
-                        # produced each one — and the answer text alone cannot
-                        # tell you whether the verifier replaced it, whether the
-                        # tone softener rewrote it, or whether the model was
-                        # told the patient asked about the wrong cancer.
-                        "debug_info": response_data.get("debug_info"),
-                        "cancer_slug": cancer_slug,
-                        "depth": depth_info,
-                        "mismatch_detected": mismatch_detected,
-                        "tone": tone_meta,
-                    }
-                    append_qa_to_conversation(
-                        active_conversation_id, user_id, message,
-                        response_data["answer"], metadata=assistant_metadata,
-                    )
-                response_data["conversation_id"] = active_conversation_id
-                # On the first turn the server auto-titles from the message;
-                # echo that back so the client can label the thread immediately.
-                if is_new_conversation and active_conversation_id:
-                    fresh = list_conversations(user_id, limit=1)
-                    response_data["title"] = fresh[0]["title"] if fresh else None
-            except Exception:
-                logger.exception("Failed to persist conversation turn")
+            assistant_metadata = {
+                "sources": response_data.get("sources", []),
+                "citations": response_data.get("citations", {}),
+                "followups": response_data.get("followups", []),
+                "resources": response_data.get("resources", []),
+                "urgency": response_data.get("urgency"),
+                "clinical_trials": response_data.get("clinical_trials"),
+                "pending_confirmations": response_data.get("pending_confirmations"),
+                "api_used": response_data.get("api_used"),
+                # Which machinery fired on this turn. Non-PHI: a query
+                # type, a verifier verdict, retrieval confidence and
+                # counts. Persisted because reading fifty answers back
+                # without it means guessing which of a dozen stages
+                # produced each one — and the answer text alone cannot
+                # tell you whether the verifier replaced it, whether the
+                # tone softener rewrote it, or whether the model was
+                # told the patient asked about the wrong cancer.
+                "debug_info": response_data.get("debug_info"),
+                "cancer_slug": cancer_slug,
+                "depth": depth_info,
+                "mismatch_detected": mismatch_detected,
+                "tone": tone_meta,
+            }
+            active_conversation_id, turn_title = _persist_turn(
+                user_id, active_conversation_id, message,
+                response_data["answer"], assistant_metadata,
+            )
+            response_data["conversation_id"] = active_conversation_id
+            # The server auto-titles from the first message; echo whatever this
+            # turn named so the client can label the thread immediately. Sent
+            # unconditionally rather than only for a new conversation: the
+            # previous version re-read list_conversations(limit=1) and assumed
+            # the row it had just bumped sorted first.
+            response_data["title"] = turn_title
 
             return jsonify(response_data)
 

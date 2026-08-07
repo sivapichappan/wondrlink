@@ -935,18 +935,25 @@ def get_conversation_history_by_id(conversation_id: str, user_id: str,
 
 
 def append_qa_to_conversation(conversation_id: str, user_id: str, question: str,
-                              answer: str, metadata: dict = None) -> bool:
+                              answer: str, metadata: dict = None) -> Dict[str, Any]:
     """
     Append a user question + assistant answer (as two messages) to a specific
     conversation. Stores assistant `metadata` (sources/trials/etc.), bumps
     `updated_at`, and auto-titles the conversation from the first message.
     User-scoped: no-ops if the conversation isn't owned by the user.
+
+    Returns {"ok": bool, "title": Optional[str]}, where `title` is the title
+    THIS call derived (first pair only) and is None otherwise. The caller needs
+    it to echo the thread name back to the client, and reading it here is the
+    only way to get it right: the previous approach re-read
+    `list_conversations(limit=1)[0]` and assumed the row it had just bumped
+    sorted first, which stops being true the moment two turns land together.
     """
     try:
         client = get_admin_client()
         if not conversation_belongs_to_user(user_id, conversation_id):
             logger.warning(f"append_qa: conversation {conversation_id} not owned by user; skipping")
-            return False
+            return {"ok": False, "title": None}
 
         count_result = client.table('messages') \
             .select('id', count='exact') \
@@ -993,10 +1000,10 @@ def append_qa_to_conversation(conversation_id: str, user_id: str, question: str,
                         .eq('id', conversation_id).eq('user_id', user_id).execute()
                 except Exception:
                     pass
-        return True
+        return {"ok": True, "title": updates.get('title')}
     except Exception as e:
         logger.error(f"Failed to append QA to conversation {conversation_id}: {e}")
-        return False
+        return {"ok": False, "title": None}
 
 
 def rename_conversation(user_id: str, conversation_id: str, title: str) -> bool:
