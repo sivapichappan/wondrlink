@@ -4,28 +4,49 @@ _In-flight work only. Durable facts live in `.claude/CLAUDE.md` and
 `.claude/rules/`; shipped detail lives in SAGE_TODO.md and auto-memory.
 Last updated: 2026-08-07._
 
-## RESUME HERE — nine commits are on `main` LOCALLY and NOTHING IS PUSHED
+## RESUME HERE — backend is LIVE in prod; the OTA has not been run yet
 
-Three defects the owner reported on 2026-08-07 (no text selection, backgrounding
-loses the answer, answers are a wall of prose) are built, tested and committed.
-`git log --oneline -9` from `c29c07e`. **The push is deliberately left to the
-owner, for one reason worth understanding before pushing:**
+The three defects reported 2026-08-07 (no text selection, backgrounding loses
+the answer, answers are a wall of prose) are built, tested, pushed and deployed.
+11 commits, `00d7662..2c91550`.
 
-**The renderer must reach phones BEFORE the prompt changes shape.** Backend
-deploys the moment `main` is pushed; the phone renderer only arrives via
-`cd mobile && eas update --channel production --platform ios`, and an installed
-build picks that up on its NEXT LAUNCH. Push both at once and the first patients
-to get lead-plus-blocks answers render them with the old card, which draws every
-`## Label` as an undifferentiated heading in the middle of the prose. So:
+**Deployed and verified 2026-08-07** (`dpl_9rRY6BCQaQzmvoqXhrYQcVXVDXjj`, holds
+the `wondrchat.vercel.app` alias). Verified by probing for routes that only
+exist in the new code rather than trusting a 200:
 
-1. `eas update --channel production --platform ios` first. Wait for real
-   launches (a day is plenty).
-2. Then `git push origin main`, and match the commit SHA in Vercel
-   `list_deployments` — a 200 on `/api/health` is the PREVIOUS deployment.
+| probe | result | meaning |
+|---|---|---|
+| `GET /api/chat/turn/probe` | **401** | route exists, wants auth |
+| `POST /api/chat/notify_when_ready` | **401** | route exists |
+| `GET /api/chat/does_not_exist` | 405 | the unknown-route quirk, as control |
+| `/api/health` | `prompt_files: 12, overlays: 10` | the rewritten prompt bundled |
 
-The `chat_turn` migration is ALREADY APPLIED to prod and verified (columns
-present, CAS probed: two claimants, one winner, probe rolled back). It is
-additive, so it is harmless ahead of the deploy.
+`FEATURE_PUSH_NOTIFICATIONS=true` is set in prod and came online with this
+deploy. That flag is global, so the reviewer approved/rejected notifications are
+now live too.
+
+### THE ONE REMAINING STEP — run the OTA
+
+```
+cd mobile && eas update --channel production --platform ios \
+  --message "Select text by long press, answers survive backgrounding, lead + labelled blocks"
+```
+
+JS-only (no package.json / lockfile / app.json change), bundle verified locally
+with `expo export:embed` (4119 modules). runtimeVersion policy is appVersion and
+the installed build 37 is 1.2.0, so it will reach it. Takes effect after TWO
+cold launches (download, then apply).
+
+**Today's state until then is safe, not broken.** An old client sends no
+`client_turn_id`, so it writes no `chat_turn` row and does no recovery: it
+behaves exactly as it did yesterday. New-shape answers render on the old card as
+semibold-16 headings, which is less polished than the hairline-separated blocks
+but perfectly readable.
+
+**Confirm the OTA landed** by long-pressing a message: the old bundle gives the
+iOS Copy menu for the whole message, the new one opens a SELECT TEXT sheet. That
+is also the one device check the entire selection fix rests on and it has never
+been run.
 
 ### What each commit did
 
