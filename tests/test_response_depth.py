@@ -162,7 +162,9 @@ class TestGuidedIsNotBrief:
         return get_response_settings(length)
 
     def test_guided_is_shorter_than_standard(self):
-        assert self._settings("guided")["max_tokens"] < self._settings("normal")["max_tokens"]
+        # Against `standard`, the chat level, not `normal` - which is now a
+        # non-chat level and frozen at its old budget.
+        assert self._settings("guided")["max_tokens"] < self._settings("standard")["max_tokens"]
 
     def test_guided_keeps_the_resources_row(self):
         assert self._settings("guided")["include_resources"] is True
@@ -188,11 +190,23 @@ class TestGuidedIsNotBrief:
     def test_guided_keeps_the_resources_row_in_the_route(self):
         assert 'if response_length != "brief":' in self.API_SRC
 
-    def test_deep_matches_detailed(self):
-        assert self._settings("deep")["max_tokens"] == self._settings("detailed")["max_tokens"]
+    def test_the_chat_levels_are_ordered(self):
+        """guided < standard < deep. They no longer mirror normal/detailed:
+        the chat answer changed shape (a lead sentence plus labelled blocks)
+        and each level got headroom for the extra structure, while
+        brief/normal/detailed stayed frozen for the non-chat callers."""
+        g = self._settings("guided")["max_tokens"]
+        s = self._settings("standard")["max_tokens"]
+        d = self._settings("deep")["max_tokens"]
+        assert g < s < d, (g, s, d)
 
-    def test_standard_matches_normal(self):
-        assert self._settings("standard")["max_tokens"] == self._settings("normal")["max_tokens"]
+    def test_each_chat_level_names_how_many_blocks_it_allows(self):
+        """A level whose instruction says "a short paragraph" cannot produce a
+        skimmable answer, however good the shape rule above it is."""
+        for level in ("guided", "standard", "deep"):
+            text = self._settings(level)["prompt_instruction"].lower()
+            assert "block" in text, level
+            assert "lead sentence" in text, level
 
     def test_the_non_chat_callers_are_untouched(self):
         """Glossary passes brief; pre-visit, visit recap, appeal and deep

@@ -108,7 +108,17 @@ class TestItRequiresTheAnswerToLeadWithTheAnswer:
         assert "no_lead_sentence" in _rules("- first point\n- second point\n")
 
     def test_a_lead_that_is_a_whole_paragraph_is_flagged(self):
-        assert "lead_too_long" in _rules(("Some long sentence. " * 15) + "\n")
+        """The measured baseline failure: 482 to 675 characters of preamble
+        before the answer arrived, on 20 of 24 cases."""
+        assert "lead_more_than_two_sentences" in _rules(("Some long sentence. " * 15) + "\n")
+
+    def test_two_sentences_are_allowed(self):
+        # "One sentence, two at the very most" is the rule, so two passes.
+        assert _score("Letrozole lowers your estrogen. That is what slows the "
+                      "cancer down.")["value"] == 1.0
+
+    def test_a_single_run_on_sentence_is_still_flagged(self):
+        assert "lead_too_long" in _rules("Letrozole " + ("and estrogen " * 40) + "works.\n")
 
     def test_a_truncated_lead_is_flagged(self):
         assert "lead_not_a_sentence" in _rules("Letrozole lowers the estrogen that\n")

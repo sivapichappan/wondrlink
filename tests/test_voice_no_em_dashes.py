@@ -133,6 +133,15 @@ class TestATruncatedAnswerDegradesToShorter:
         assert "- Is this normal?" in out
         assert ups == ["Something else?"]
 
+    def test_a_horizontal_rule_is_removed(self):
+        """The prompt forbids it and the model emits it anyway (twice in the
+        first structured run). It renders as a hard black line and says nothing
+        a heading does not. Asking is not enforcing."""
+        from llm_utils import extract_followups
+        out, _ = extract_followups("The answer.\n\n---\n\n## Next\nMore text.")
+        assert "---" not in out
+        assert "## Next" in out and "More text." in out
+
     def test_a_prose_lead_in_is_still_stripped(self):
         from llm_utils import extract_followups
         text = ("The answer.\n\nHere are some questions you might explore next:\n"

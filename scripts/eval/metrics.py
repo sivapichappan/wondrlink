@@ -405,6 +405,8 @@ _SECTION_RANGE = {
 }
 _H2 = re.compile(r"^[ \t]*##[ \t]+(.+?)[ \t]*$", re.MULTILINE)
 _BULLET = re.compile(r"^[ \t]*[-*+][ \t]+(.*)$", re.MULTILINE)
+# Sentence-ish boundary: terminal punctuation followed by space or end.
+_SENTENCE_END = re.compile(r"[.!?](?:\s|$)")
 
 
 def answer_structure(results: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -438,9 +440,16 @@ def answer_structure(results: List[Dict[str, Any]]) -> Dict[str, Any]:
             first = next((ln.strip() for ln in lines if ln.strip()), "")
 
             # 1. It has to OPEN with the answer, not a label or a list.
+            #
+            # The rule is "one sentence, two at the very most", so that is what
+            # is measured. The character cap is a backstop for a run-on, set
+            # where a real two-clause sentence with a citation marker still
+            # fits: the openings this exists to catch measured 482 to 675.
             if first.startswith("#") or first.startswith("|") or _BULLET.match(first):
                 broke.append("no_lead_sentence")
-            elif len(first) > 200:
+            elif len(_SENTENCE_END.findall(first)) > 2:
+                broke.append("lead_more_than_two_sentences")
+            elif len(first) > 300:
                 broke.append("lead_too_long")
             elif not first.endswith((".", "?", "!", ":")):
                 broke.append("lead_not_a_sentence")
@@ -451,8 +460,10 @@ def answer_structure(results: List[Dict[str, Any]]) -> Dict[str, Any]:
             if not (lo <= len(labels) <= hi):
                 broke.append(f"section_count_{len(labels)}_outside_{lo}_{hi}")
 
-            # 2. A label is something you skim, so it has to be short.
-            if any(len(lbl.split()) > 5 for lbl in labels):
+            # 2. A label is something you skim, so it has to be short. Six
+            # words, not five: "Why the distinction matters for you" is a
+            # perfectly good label and a five-word cap called it a failure.
+            if any(len(lbl.split()) > 6 for lbl in labels):
                 broke.append("label_too_long")
 
             # 3. A label with nothing under it is a truncated answer.

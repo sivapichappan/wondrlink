@@ -4,6 +4,12 @@ WondrLink Comprehensive Feature Test Script
 
 Tests all 13 clinical feedback items + KB expansion + regression.
 Generates a detailed Markdown report with automated validation checks.
+
+
+NOTE: these call assemble_prompt/call_llm DIRECTLY with response_length="standard".
+That is the middle chat level. It used to say "normal", which after the depth
+arms were split is a NON-CHAT level, so this script was exercising a path no
+patient takes.
 """
 
 import os
@@ -309,10 +315,10 @@ def run_adversarial_test(question_data, all_chunks, profile, patient_context):
         else:
             prompt, metadata = assemble_prompt(
                 message=question, retrieved=relevant_chunks, patient=profile,
-                response_length="normal", conversation_context="",
+                response_length="standard", conversation_context="",
                 patient_context=patient_context
             )
-            response, api_used = call_llm(prompt, response_length="normal",
+            response, api_used = call_llm(prompt, response_length="standard",
                                            query_type=metadata.get('query_type', 'general'))
             if not response:
                 response = ""
@@ -436,10 +442,10 @@ def run_pitch_feature_test(test_meta, all_chunks, profile, patient_context):
             retrieved = hybrid_search(q, all_chunks, top_k=5)
             prompt, _meta = assemble_prompt(
                 message=q, retrieved=retrieved, patient=profile,
-                response_length="normal", conversation_context="",
+                response_length="standard", conversation_context="",
                 patient_context=patient_context,
             )
-            raw, _api = call_llm(prompt, response_length="normal", query_type="side_effect")
+            raw, _api = call_llm(prompt, response_length="standard", query_type="side_effect")
             cleaned, cmap = postprocess_citations(raw or "", retrieved)
             answer = cleaned[:400]
             checks.append({"check": "Response not empty", "passed": bool(cleaned)})
@@ -675,7 +681,7 @@ def run_llm_test(question_data, patient_context, all_chunks, profile):
             message=question,
             retrieved=relevant_chunks,
             patient=profile,
-            response_length="normal",
+            response_length="standard",
             conversation_context="",
             patient_context=patient_context
         )
@@ -684,7 +690,7 @@ def run_llm_test(question_data, patient_context, all_chunks, profile):
         urgency_detected = metadata.get('urgency_detected', False)
         urgency_level = metadata.get('urgency_level')
 
-        response, api_used = call_llm(prompt, response_length="normal", query_type=query_type)
+        response, api_used = call_llm(prompt, response_length="standard", query_type=query_type)
 
         if not urgency_detected or urgency_level != 'emergency':
             # get_relevant_resources now returns a structured list (rendered by

@@ -262,6 +262,11 @@ import re as _re_followups
 
 
 _DANGLING_HEADING = _re_followups.compile(r'\n[ \t]*#{2,6}[ \t]+[^\n]*[ \t]*$')
+# A horizontal rule renders as a hard black line on the phone and adds nothing
+# a heading does not already say. The prompt forbids it and the model emits it
+# anyway, which is the same lesson as the em dash: asking is not enforcing.
+_HORIZONTAL_RULE = _re_followups.compile(r'^[ \t]*(?:-{3,}|\*{3,}|_{3,})[ \t]*$',
+                                         _re_followups.MULTILINE)
 
 
 def _trim_dangling_heading(text: str) -> str:
@@ -276,12 +281,17 @@ def _trim_dangling_heading(text: str) -> str:
     for whether the token budget is actually too small, which otherwise nobody
     would ever know.
     """
-    if not text or '#' not in text:
-        return text
-    trimmed = _DANGLING_HEADING.sub('', text).rstrip()
-    if trimmed != text.rstrip():
-        _tone_logger.info("trimmed a dangling section heading (answer was cut short)")
-    return trimmed
+    # Horizontal rules go first: one sitting under a final heading would
+    # otherwise make that heading look like it has content.
+    trimmed = _HORIZONTAL_RULE.sub('', text or '')
+    if '#' in trimmed:
+        after = _DANGLING_HEADING.sub('', trimmed).rstrip()
+        if after != trimmed.rstrip():
+            _tone_logger.info("trimmed a dangling section heading (answer was cut short)")
+        trimmed = after
+    # Collapse the blank runs a removed rule leaves behind.
+    trimmed = _re_followups.sub(r'\n{3,}', '\n\n', trimmed)
+    return trimmed.strip()
 
 
 def extract_followups(text: str):
@@ -915,28 +925,19 @@ STANDARD_CYCLE_GUIDANCE = {
 # TREATMENT RESPONSE STRUCTURE
 # =============================================================================
 
+# CONTENT rules only. This used to carry its own "structure your response as
+# follows: 1... 2... 3..." and was injected AFTER the shape instruction, so the
+# last word on layout was a competing numbered template. What must not change is
+# the clinical stance: every guideline option named, none ranked, none dropped.
 TREATMENT_RESPONSE_STRUCTURE = """
-TREATMENT DISCUSSION FORMAT:
-When discussing treatment options for this patient, present ALL guideline-documented options. Do NOT pick a single "best" or "primary" option. The patient and their oncologist decide what's best.
+TREATMENT DISCUSSION:
+Present ALL guideline-documented options for this patient. Do NOT pick a single "best", "preferred" or "primary" one, and do NOT omit an option that appears in the guidelines. The patient and their oncologist decide.
 
-Structure your response as follows:
+Name the options in a bulleted block, one line each: what the regimen is, and who it tends to fit or what biomarker it needs. Group them by treatment line or biomarker eligibility only when that grouping is what the person asked about.
 
-1. ORGANIZE BY TREATMENT LINE OR BIOMARKER PROFILE:
-   - Group options by treatment line (first-line, second-line, etc.) or by biomarker eligibility
-   - Present ALL options within each group with EQUAL weight - no ranking
+Keep it to the shape described in RESPONSE SHAPE. Do not write a paragraph per option, and do not expand every option unless they asked you to, offer instead to go through any one of them in detail.
 
-2. FOR EACH OPTION, briefly note:
-   - The regimen name and what it includes
-   - How it works (in simple terms)
-   - Key side effects to expect
-   - Biomarker requirements or contraindications for THIS patient
-
-3. DO NOT:
-   - Label any option as "primary", "preferred", or "best"
-   - Omit options that appear in the guidelines
-   - Narrow down to a single recommendation
-
-Remind the patient that treatment selection involves many factors and should be discussed with their oncologist.
+Note that treatment selection involves many factors and is a conversation with their oncologist.
 """
 
 
@@ -944,75 +945,44 @@ Remind the patient that treatment selection involves many factors and should be 
 # CLINICAL TRIAL RESPONSE INSTRUCTIONS
 # =============================================================================
 
+# CONTENT rules only, same as TREATMENT_RESPONSE_STRUCTURE above.
+#
+# This carried a 10-point numbered template, including a MANDATED "Questions to
+# Discuss with Your Oncologist" section, and was injected AFTER the shape
+# instruction - 70 lines of competing layout sitting closer to RESPONSE: than
+# the rule it was competing with. The template is gone; every safety-bearing
+# rule below is unchanged in substance.
+#
+# KNOWN, DELIBERATELY NOT FIXED HERE: the MSI/dMMR framing, the COLON vs RECTAL
+# section and the Colorectal Cancer Alliance link are colorectal-specific, and
+# this block is injected for EVERY cancer on every trial question. That is the
+# same class of bug as the cancer_slug overlay leak and equally invisible to
+# evals. It is a content change and belongs in its own eval window, not this
+# one, which is measuring shape.
 CLINICAL_TRIAL_RESPONSE_INSTRUCTIONS = """
-CLINICAL TRIAL RESPONSE FORMAT:
-When discussing clinical trials, follow these rules strictly:
+CLINICAL TRIALS, what the answer must and must not contain:
 
-1. TIMELINESS DISCLAIMER:
-   - Include this note in your response: "Clinical trial availability changes frequently. Always verify trial status at ClinicalTrials.gov or with your oncology team before making decisions."
-   - Never present trial availability as permanent or guaranteed.
+NEVER FABRICATE. Do not invent or guess trial names, NCT numbers, institutions, or survival statistics. Only reference specific trials that appear in the structured trial data provided to you. If asked about a trial you have no data for: "I don't have verified details on that specific trial. You can look it up at ClinicalTrials.gov." With no structured data, speak in general terms only. State uncertainty explicitly rather than guessing.
 
-2. NO FABRICATED TRIAL INFORMATION:
-   - NEVER invent or guess clinical trial names, NCT numbers, specific institutions, or survival statistics.
-   - Only reference specific trials that appear in the structured clinical trials data provided to you.
-   - If the patient asks about a specific trial you don't have data for, say: "I don't have verified details on that specific trial. You can look it up at ClinicalTrials.gov."
-   - If no structured trial data is provided, discuss clinical trials in general terms only (e.g., "Clinical trials studying immunotherapy for colorectal cancer exist").
-   - When uncertain about any fact, state your uncertainty explicitly rather than guessing.
+TIMELINESS. Include, somewhere in the answer: "Clinical trial availability changes frequently. Always verify trial status at ClinicalTrials.gov or with your oncology team before making decisions." Never present availability as permanent or guaranteed.
 
-3. TRIAL STATUS DISTINCTION:
-   - Clearly distinguish between trial statuses when you discuss them:
-     * RECRUITING: Actively seeking new participants — these are the actionable options
-     * ACTIVE, NOT RECRUITING: Trial is ongoing but not accepting new patients
-     * COMPLETED: Trial has finished — results may be published but enrollment is closed
-   - Lead with RECRUITING trials as the actionable options for the patient.
+STATUS MATTERS. Distinguish RECRUITING (actively seeking participants, the actionable ones, lead with these) from ACTIVE, NOT RECRUITING (ongoing, closed to new patients) and COMPLETED (finished, enrollment closed).
 
-4. MSI-H/dMMR vs MSS IMMUNOTHERAPY DISTINCTION:
-   - When discussing immunotherapy trials, ALWAYS clarify the patient's MSI/MMR status and what it means:
-   - For MSI-H/dMMR patients: Checkpoint inhibitors (pembrolizumab, nivolumab) are established options and the focus of many clinical trials. Highlight this alignment.
-   - For MSS/pMMR patients: Single-agent immunotherapy is generally NOT effective. However, clinical trials are investigating combination approaches (immunotherapy + targeted agents, immunotherapy + radiation) that may benefit MSS patients.
-   - If the patient's MSI status is unknown, say: "Immunotherapy eligibility depends on your tumor's microsatellite status (MSI-H vs MSS). Ask your oncologist about testing if you haven't had it done."
+MSI-H/dMMR vs MSS. When immunotherapy comes up, clarify what their status means. MSI-H/dMMR: checkpoint inhibitors (pembrolizumab, nivolumab) are established options and the focus of many trials. MSS/pMMR: single-agent immunotherapy is generally NOT effective, though trials are investigating combinations. Status unknown: "Immunotherapy eligibility depends on your tumor's microsatellite status. Ask your oncologist about testing if you haven't had it done."
 
-5. QUESTIONS FOR YOUR DOCTOR:
-   - End every clinical trial discussion with a "Questions to Discuss with Your Oncologist" section:
-     * "Am I a good candidate for a clinical trial based on my current health?"
-     * "How would this trial affect my current treatment plan?"
-     * "What are the potential risks and benefits compared to standard treatment?"
-     * "Is there a clinical trial coordinator at your center who can help me explore options?"
+ELIGIBILITY. Briefly name the factors that matter when relevant: overall health and performance status, biomarker requirements, prior lines of therapy, organ function and time since last treatment. Say plainly that many people qualify for more trials than they expect, and that a trial navigator can help.
 
-6. ELIGIBILITY EDUCATION:
-   - Briefly explain common eligibility factors when relevant:
-     * Age and overall health (performance status / ECOG score)
-     * Specific biomarker requirements (MSI-H, BRAF, KRAS, HER2)
-     * Prior treatments and how many lines of therapy you've had
-     * Organ function (lab values) and time since last treatment
-   - Emphasize: "Many patients qualify for more trials than they expect. Your oncologist or a trial navigator can help assess your eligibility."
+COST. When relevant, note briefly that trials often cover the experimental treatment and related tests, that standard-of-care costs are usually billed to insurance, that most health plans must cover routine patient costs in qualifying trials, and that the coordinator can explain out-of-pocket costs and travel grants.
 
-7. EMOTIONAL SENSITIVITY:
-   - Acknowledge that exploring clinical trials can feel overwhelming.
-   - Use empowering framing: "Clinical trials offer access to cutting-edge treatments" rather than "when standard treatments fail."
-   - Avoid language implying the patient has "run out of options" — instead say "additional treatment pathways are available."
-   - When the patient mentions treatment failure or progression, validate their feelings before providing information.
+COLON vs RECTAL. For colon cancer focus on colon-specific trials; some rectal trials involve different approaches (e.g. neoadjuvant radiation) that may not apply. If a rectal trial appears, say so. When the type is unspecified, use "colorectal cancer".
 
-8. FINANCIAL/INSURANCE INFORMATION:
-   - Include a brief note about trial costs when relevant:
-     * "Many clinical trials cover the cost of the experimental treatment and related tests."
-     * "Standard-of-care costs (routine labs, imaging) are typically billed to your insurance."
-     * "Under federal law, most health plans must cover routine patient costs in qualifying clinical trials."
-     * "Ask the trial coordinator about any out-of-pocket costs and available financial assistance or travel grants."
+PLAIN WORDS. Explain Phase I/II/III in a few words the first time. Clarify "randomized" and "placebo" in a cancer context. Never assume "open-label", "crossover" or "NCT number" is understood.
 
-9. COLON vs RECTAL CANCER:
-   - If the patient has colon cancer, focus on colon-specific trials. Some rectal cancer trials involve different approaches (e.g., neoadjuvant radiation) that may not apply.
-   - If a rectal cancer trial appears, note: "This trial may be specific to rectal cancer and could differ from colon cancer approaches."
-   - When the cancer type is unspecified, use "colorectal cancer" as the umbrella term.
+TONE. Warm and empowering: trials are access to new treatment, not a last resort. Never imply they have run out of options, and never frame it as "when standard treatments fail". If they mention progression or a treatment that stopped working, acknowledge that before anything else.
 
-10. JARGON EDUCATION (Item 7):
-   - When mentioning Phase I/II/III, briefly explain in parentheses what the phase means
-   - When mentioning "randomized" or "placebo," clarify what this means in a cancer context
-   - When mentioning eligibility criteria, emphasize: "Many patients qualify for more trials than they expect"
-   - Avoid assuming patients understand terms like "open-label," "crossover," or "NCT number" without brief explanation
+SHAPE. Follow RESPONSE SHAPE above. Do NOT bolt a "Questions to Discuss with Your Oncologist" section onto the end, the app already offers follow-up questions as tappable chips beneath your answer.
 
-TONE: Warm, informative, and empowering. Clinical trials represent hope and progress, not a last resort.
-Always include links to: ClinicalTrials.gov, the Colorectal Cancer Alliance Trial Finder, and NCI Trial Search when patients ask about finding trials.
+When someone asks how to find trials, point them to ClinicalTrials.gov, the Colorectal Cancer Alliance Trial Finder, and NCI Trial Search.
 """
 
 
@@ -2516,13 +2486,15 @@ def get_response_settings(response_length: str, query_type: str = None, cancer_s
     # so shrinking their budget would fail hard rather than shorten.
     if response_length == "guided":
         return {
-            "max_tokens": 300 if needs_boost else 220,
+            "max_tokens": 340 if needs_boost else 260,
             "temperature": 0.2 if is_clinical_trial else 0.32,
-            "system_message": base_system + "\n\nRESPONSE LENGTH: Guided. One short paragraph, "
-                              "one idea. End on a door, not a summary: the follow-up questions "
-                              "carry anything you left out. " + _VOICE,
-            "prompt_instruction": "Answer in one short paragraph, covering one idea. Leave the "
-                                  "rest to the follow-up questions. " + _VOICE,
+            "system_message": base_system + "\n\nRESPONSE LENGTH: Guided. The lead sentence, and "
+                              "AT MOST ONE labelled block. Usually no block at all. End on a door, "
+                              "not a summary: the follow-up questions carry anything you left "
+                              "out. " + _VOICE,
+            "prompt_instruction": "Answer with the lead sentence and at most one labelled block, "
+                                  "often none at all. Leave the rest to the follow-up "
+                                  "questions. " + _VOICE,
             "include_resources": True,
         }
     # `standard` and `deep` are the CHAT levels, and they get their own arms
@@ -2537,18 +2509,23 @@ def get_response_settings(response_length: str, query_type: str = None, cancer_s
     # what lets the chat answer change shape without touching any of that.
     if response_length == "standard":
         return {
-            "max_tokens": 400 if needs_boost else 250,
+            "max_tokens": 480 if needs_boost else 320,
             "temperature": 0.2 if is_clinical_trial else 0.35,
-            "system_message": base_system + "\n\nRESPONSE LENGTH: Normal. A short paragraph, two at the very most. " + _VOICE,
-            "prompt_instruction": "Answer in a short paragraph. Two at the very most. " + _VOICE,
+            "system_message": base_system + "\n\nRESPONSE LENGTH: Standard. The lead sentence, "
+                              "then UP TO TWO labelled blocks. Fewer is better. " + _VOICE,
+            "prompt_instruction": "Answer with the lead sentence and up to two labelled blocks. "
+                                  "Fewer is better. " + _VOICE,
             "include_resources": True
         }
     if response_length == "deep":
         return {
-            "max_tokens": 600 if needs_boost else 400,
+            "max_tokens": 700 if needs_boost else 480,
             "temperature": 0.2 if is_clinical_trial else 0.4,
-            "system_message": base_system + "\n\nRESPONSE LENGTH: Detailed. Up to three short paragraphs, and explain any medical word you use. " + _VOICE,
-            "prompt_instruction": "Answer in up to three short paragraphs. Explain any medical term in plain words. " + _VOICE,
+            "system_message": base_system + "\n\nRESPONSE LENGTH: Deep. The lead sentence, then "
+                              "UP TO FOUR labelled blocks. Explain any medical word you use, in "
+                              "the same breath. " + _VOICE,
+            "prompt_instruction": "Answer with the lead sentence and up to four labelled blocks. "
+                                  "Explain any medical term in plain words. " + _VOICE,
             "include_resources": True
         }
 
@@ -3021,17 +2998,15 @@ After your comfort opening, gently provide helpful information."""
         ""
     ])
 
-    # Instructions section
+    # Instructions section.
+    #
+    # THE SHAPE RULE GOES LAST, and the query-specific content blocks go first.
+    # It used to be the other way round: the length instruction was written
+    # here, and then up to 70 lines of treatment/trial content were appended
+    # after it, so the nearest thing to "RESPONSE:" was a competing template.
     prompt_parts.append("INSTRUCTIONS:")
-    prompt_parts.append(f"• {settings['prompt_instruction']}")
-    prompt_parts.append("• Use simple, everyday language - explain medical terms if you must use them")
-    prompt_parts.append("• Lead with actionable information, not disclaimers")
-    prompt_parts.append("• Be specific and practical")
 
-    if urgency_instruction:
-        prompt_parts.append(urgency_instruction)
-
-    # Query-specific instructions
+    # Query-specific content rules (what to cover), before the shape rule.
     if query_type == 'side_effect':
         prompt_parts.append("• For side effects: provide interim management tips, mention when to contact the care team")
         prompt_parts.append("• If guidelines mention multiple causes or management approaches for this side effect, list ALL of them - do not narrow to one")
@@ -3048,6 +3023,15 @@ After your comfort opening, gently provide helpful information."""
         prompt_parts.append(CLINICAL_TRIAL_RESPONSE_INSTRUCTIONS)
         prompt_parts.append("• Reference the patient's specific biomarkers and MSI status when discussing trial relevance")
         prompt_parts.append("• If structured trial data is provided below, reference those specific trials. If not, discuss trials in general terms only.")
+
+    # Shape and voice last, so it is the instruction closest to the answer.
+    prompt_parts.append(f"• {settings['prompt_instruction']}")
+    prompt_parts.append("• Use simple, everyday language - explain medical terms if you must use them")
+    prompt_parts.append("• Lead with actionable information, not disclaimers")
+    prompt_parts.append("• Be specific and practical")
+
+    if urgency_instruction:
+        prompt_parts.append(urgency_instruction)
 
     # STEP 6d — Modeler connections summary (Push 2). Internal context only:
     # the model may weave it in where directly relevant, never present it as

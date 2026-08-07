@@ -249,8 +249,13 @@ def run_prompt(prompt: Dict[str, Any], cancer: str, chunks: List[Any], mode: str
             # Production parity: run the tone softener over the answer so
             # the eval reflects what the user actually sees.
             try:
-                from llm_utils import enforce_voice, soften_tone
-                answer, _tone_meta = soften_tone(answer or "")
+                from llm_utils import enforce_voice, extract_followups, soften_tone
+                # Same order as the route. extract_followups is not optional
+                # here: besides pulling the chips out, it strips horizontal
+                # rules and a heading left dangling by a token cut, so an eval
+                # without it grades text no patient ever sees.
+                answer, _followups = extract_followups(answer or "")
+                answer, _tone_meta = soften_tone(answer)
                 answer, _dashes = enforce_voice(answer)
                 if _tone_meta.get("substitutions"):
                     result["tone_substitutions"] = _tone_meta

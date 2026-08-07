@@ -30,7 +30,31 @@ PINS = {
     # {app_name} slot (branding constant). The ASSEMBLED prompt was proven
     # byte-identical to the pre-change fingerprints across all 10 cancers,
     # so this is not a prompt-text change for eval purposes.
-    "chat_base": "701607f7771225b033b6bf29f9becd80bdf6946e85c902cff6dbf76b894792a5",
+    # chat_base RE-PINNED 2026-08-07: the answer changed SHAPE.
+    #
+    # Owner report: three paragraphs is intimidating to someone newly
+    # diagnosed. Measured before the change, on 24 cases across breast and
+    # colorectal, 20 of them opened with a paragraph of 200 to 675 characters
+    # before the answer arrived (answer_structure 16.67% on both).
+    #
+    # Three edits, and each one was a cause of that:
+    #   * RESPONSE FORMATTING became RESPONSE SHAPE: a lead sentence that
+    #     answers the question, then short labelled blocks.
+    #   * The "mandatory 3-step sequence before delivering medical content"
+    #     guaranteed the answer was never first. It is now conditional: full
+    #     validation, first, for fear and pain; a single warm clause folded
+    #     into the lead for everything else.
+    #   * COMPREHENSIVE INFORMATION RULES ("if guidelines mention 5, present
+    #     all 5", on ALL query types) was the biggest length driver and
+    #     contradicted the voice rule next to it. Now scoped to when the
+    #     person asked about options, with the options named one line each.
+    #     NOTE: that is a clinical-completeness rule, so narrowing it was a
+    #     product decision, flagged to the owner rather than made quietly.
+    #   * Plus one line telling the model the per-cancer overlay above is
+    #     reference material, not a template to copy the density of.
+    #
+    # No model change, no retrieval change, no safety change in this window.
+    "chat_base": "cb788be145adb50f2c9505cd31db4a1b94584efaeb51f0b235d8a6cb280ddd23",
     "extractor": "cf40c91c112d8ec9df71d2071aae0c67532b70f2b055c1d1fba7452513f4b5a9",
     "verifier": "16a6157963ca972f9190fb3d7833bd3376620b5eb2f8b58011f933fef419ad33",
     "subquery": "fcd46285f624d09b77867a8eaa229b506a48f744df75b8272da6cd6d3f363129",
