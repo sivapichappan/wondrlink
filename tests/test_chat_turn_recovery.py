@@ -200,6 +200,55 @@ class TestTheNotifyRace:
         assert "—" not in blob and "–" not in blob
 
 
+class TestTheNotificationLandsSomewhere:
+    """A notification that opens the app to wherever it was left is not much
+    better than no notification. Nothing listened for a tap before this."""
+
+    ROUTING = (_REPO / "mobile" / "hooks" / "useNotificationRouting.ts").read_text()
+
+    def test_a_running_app_handles_the_tap(self):
+        assert "addNotificationResponseReceivedListener" in self.ROUTING
+
+    def test_a_cold_launch_handles_it_too(self):
+        # An app started BY the tap has already missed the response event.
+        assert "getLastNotificationResponseAsync" in self.ROUTING
+
+    def test_it_waits_for_the_session_before_navigating(self):
+        """RootGate bounces an unauthenticated app to (auth)/welcome, and a cold
+        launch resolves the session a moment after the notification is read."""
+        assert "parked" in self.ROUTING
+        assert "hasSession" in self.ROUTING
+
+    def test_an_answer_notification_opens_that_conversation(self):
+        assert "answer_ready" in self.ROUTING
+        assert "/chat/${conversationId}" in self.ROUTING
+
+
+class TestThePermissionIsSpentWell:
+    """iOS gives ONE prompt per install and Settings is the only way back."""
+
+    SCREEN = (_REPO / "mobile" / "app" / "(app)" / "chat" / "[id].tsx").read_text()
+    PUSH = (_REPO / "mobile" / "lib" / "push.ts").read_text()
+
+    def test_the_offer_waits_for_a_recovery_to_actually_happen(self):
+        # Asked when the value has been proven, not predicted: they left
+        # mid-question and the answer was waiting when they came back.
+        assert "justRecovered" in self.SCREEN
+        assert "NotifyOffer" in self.SCREEN
+
+    def test_the_offer_is_made_once_either_way(self):
+        # Including "no thanks". A declined offer is a settled question.
+        assert "notifyOffer.seen === false" in self.SCREEN
+        assert "notifyOffer.markSeen()" in self.SCREEN
+
+    def test_never_asked_is_not_the_same_as_refused(self):
+        """Conflating them sends someone who was never asked to iOS Settings to
+        fix something they never touched, while the one prompt we are allowed
+        sits unspent."""
+        assert "'unasked'" in self.PUSH
+        assert "undetermined" in self.PUSH
+
+
 class TestTurnStatusEndpoint:
     def test_it_reports_answered_and_hands_back_the_conversation(self, client, auth):
         # The conversation id is the whole point for a brand-new thread: the

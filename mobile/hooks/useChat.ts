@@ -91,6 +91,7 @@ export function useChat(conversationId: string, opts: UseChatOptions = {}) {
   const turn = usePendingTurn();
   const [recovering, setRecovering] = useState(false);
   const [recoveryFailed, setRecoveryFailed] = useState(false);
+  const [justRecovered, setJustRecovered] = useState(false);
 
   const recover = useCallback(async () => {
     const pending = turn.pending;
@@ -117,6 +118,9 @@ export function useChat(conversationId: string, opts: UseChatOptions = {}) {
           }
           turn.clear();
           setRecovering(false);
+          // They left, came back, and the answer was here. That is the one
+          // moment worth spending iOS's single permission prompt on.
+          setJustRecovered(true);
           return;
         }
         await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
@@ -272,6 +276,10 @@ export function useChat(conversationId: string, opts: UseChatOptions = {}) {
     recoveryFailed,
     /** What was asked, for showing while a cold start recovers it. */
     pendingQuestion: turn.pending?.question ?? null,
+    /** A recovery just succeeded: they left and the answer was here on return.
+     *  The only moment worth spending iOS's one permission prompt on. */
+    justRecovered,
+    clearJustRecovered: () => setJustRecovered(false),
     sendMessage: (text: string) => send.mutate(text),
   };
 }

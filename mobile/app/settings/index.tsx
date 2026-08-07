@@ -3,6 +3,7 @@ import Constants from 'expo-constants';
 import { Stack, router } from 'expo-router';
 import {
   AlertOctagon,
+  BellRing,
   ChevronRight,
   FileLock,
   FileText,
@@ -67,6 +68,12 @@ export default function SettingsScreen() {
           Icon: Tag,
           title: 'Cancer focus',
           blurb: `Switch which cancer ${APP_NAME} is tailored to`,
+        },
+        {
+          href: '/settings/notifications',
+          Icon: BellRing,
+          title: 'Notifications',
+          blurb: 'Get told when an answer you waited for is ready',
         },
         { onPress: signOut, Icon: LogOut, title: 'Sign out' },
       ],

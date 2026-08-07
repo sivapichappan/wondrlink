@@ -41,15 +41,23 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export type PushPermission = 'granted' | 'denied' | 'unavailable';
+export type PushPermission = 'granted' | 'denied' | 'unasked' | 'unavailable';
 
-/** Whether iOS has already been asked, without asking. Lets a screen show the
- *  right thing instead of guessing. */
+/** Whether iOS has already been asked, WITHOUT asking. Lets a screen show the
+ *  right thing instead of guessing.
+ *
+ *  'unasked' is a separate answer from 'denied' on purpose. They look the same
+ *  to getPermissionsAsync callers who only check for 'granted', and treating
+ *  them alike sends someone who has never been asked off to iOS Settings to fix
+ *  a setting they never touched, while the one prompt we are allowed sits
+ *  unspent. */
 export async function pushPermissionStatus(): Promise<PushPermission> {
   try {
     if (!Device.isDevice) return 'unavailable';
-    const { status } = await Notifications.getPermissionsAsync();
-    return status === 'granted' ? 'granted' : 'denied';
+    const { status, canAskAgain } = await Notifications.getPermissionsAsync();
+    if (status === 'granted') return 'granted';
+    if (status === 'undetermined' || canAskAgain) return 'unasked';
+    return 'denied';
   } catch {
     return 'unavailable';
   }

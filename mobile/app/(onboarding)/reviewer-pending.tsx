@@ -137,7 +137,7 @@ export default function ReviewerPending() {
           right now is "how will I know?". Nothing here is shown until the
           device answers, so a simulator or a phone that already said yes never
           sees a dead button. */}
-      {push === 'denied' ? (
+      {push === 'unasked' ? (
         <View
           style={{
             flexDirection: 'row',
@@ -168,6 +168,17 @@ export default function ReviewerPending() {
           <Bell size={15} color={Colors.textMuted} />
           <Text style={{ flex: 1, fontSize: FontSize.sm, color: Colors.textMuted }}>
             We will send you a notification as soon as you are approved.
+          </Text>
+        </View>
+      ) : push === 'denied' ? (
+        // The button cannot help here: iOS shows its prompt once, and after a
+        // refusal only the phone's own settings can change it. Saying so beats
+        // a button that silently does nothing.
+        <View style={{ flexDirection: 'row', gap: Spacing.sm, alignItems: 'center' }}>
+          <Bell size={15} color={Colors.textMuted} />
+          <Text style={{ flex: 1, fontSize: FontSize.sm, color: Colors.textMuted }}>
+            Notifications are off for this app. Turn them on in your phone settings if you would
+            like to be told, or just open the app to check.
           </Text>
         </View>
       ) : null}

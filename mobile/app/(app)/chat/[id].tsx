@@ -17,6 +17,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { BotResponseCard } from '@/components/chat/BotResponseCard';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { FollowupChips } from '@/components/chat/FollowupChips';
+import { NotifyOffer } from '@/components/chat/NotifyOffer';
 import { SelectTextSheet } from '@/components/chat/SelectTextSheet';
 import { SourcesSheet } from '@/components/chat/SourcesSheet';
 import { MessageBubble } from '@/components/chat/MessageBubble';
@@ -30,6 +31,7 @@ import { NEW_CONVERSATION, useChat } from '@/hooks/useChat';
 import { useConversations } from '@/hooks/useConversations';
 import { useGuardedSend } from '@/hooks/useGuardedSend';
 import { useModelerTrigger } from '@/hooks/useModelerTrigger';
+import { useNotifyOfferSeen } from '@/hooks/useNotifyOfferSeen';
 import { useSelectTextHintSeen } from '@/hooks/useSelectTextHintSeen';
 import { ApiError, extractErrorMessage } from '@/lib/api/client';
 import type { ChatHistoryMessage } from '@shared/types';
@@ -56,6 +58,8 @@ export default function ChatThreadScreen() {
     recovering,
     recoveryFailed,
     pendingQuestion,
+    justRecovered,
+    clearJustRecovered,
     sendMessage,
   } = useChat(id, {
     onConversationCreated: (newId, newTitle) => {
@@ -77,6 +81,7 @@ export default function ChatThreadScreen() {
   // markdown of whichever message was long-pressed.
   const [selecting, setSelecting] = useState<{ content: string; feedback: boolean } | null>(null);
   const selectHint = useSelectTextHintSeen();
+  const notifyOffer = useNotifyOfferSeen();
   const openSelect = (content: string, feedback: boolean) => {
     selectHint.markSeen();
     setSelecting({ content, feedback });
@@ -261,6 +266,19 @@ export default function ChatThreadScreen() {
                   : sendError?.message || 'Please try again in a moment.'}
             </Text>
           </View>
+        )}
+
+        {/* Asked at the one moment the value is PROVEN rather than predicted:
+            they left mid-question and the answer was waiting. iOS gives one
+            permission prompt per install, so it is worth spending here and
+            nowhere earlier. Shown once, whichever way they answer. */}
+        {justRecovered && notifyOffer.seen === false && (
+          <NotifyOffer
+            onDismiss={() => {
+              notifyOffer.markSeen();
+              clearJustRecovered();
+            }}
+          />
         )}
 
         <ChatInput

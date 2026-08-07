@@ -18,6 +18,7 @@ import { NavOverlayProvider } from '@/components/common/NavOverlay';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { Colors } from '@/constants/theme';
 import { useAcknowledgement } from '@/hooks/useAcknowledgement';
+import { useNotificationRouting } from '@/hooks/useNotificationRouting';
 import { queryClient } from '@/lib/query';
 import { initSentry } from '@/lib/sentry';
 
@@ -41,6 +42,11 @@ function RootGate() {
   const router = useRouter();
   const segments = useSegments();
   const ack = useAcknowledgement();
+
+  // A tapped notification opens what it is about. Mounted here rather than in a
+  // screen so it also catches a cold launch, and given hasSession so it does
+  // not navigate into a route the gate below is about to redirect away from.
+  useNotificationRouting(!!ack.hasSession);
 
   useEffect(() => {
     if (ack.sessionLoading) return;
