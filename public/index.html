@@ -2797,6 +2797,42 @@
             letter-spacing: -0.005em;
             margin: 14px 0 6px;
         }
+        /* An answer is a lead sentence plus labelled blocks. The phone renders
+           the sections as separate blocks with a rule between them; the same
+           reading works here from a rule and a bit of air, without needing the
+           markdown to be parsed apart. The first heading has no rule above it,
+           and h2:first-child covers an answer whose lead was truncated away. */
+        .bubble.bot h2 {
+            border-top: 1px solid var(--border);
+            padding-top: 12px;
+            margin-top: 16px;
+        }
+        .bubble.bot h2:first-child {
+            border-top: 0;
+            padding-top: 0;
+            margin-top: 0;
+        }
+        /* Nothing forbids the model emitting these, so they get a floor rather
+           than the browser's defaults inside a chat bubble. */
+        .bubble.bot h4 { font-size: 14px; font-weight: 600; margin: 10px 0 4px; }
+        .bubble.bot h5,
+        .bubble.bot h6 { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin: 10px 0 4px; }
+        .bubble.bot hr { border: 0; border-top: 1px solid var(--border); margin: 12px 0; }
+        .bubble.bot blockquote {
+            margin: 8px 0;
+            padding: 6px 12px;
+            border-left: 3px solid var(--primary);
+            background: var(--surface-muted, rgba(0,0,0,0.03));
+        }
+        .bubble.bot pre {
+            overflow-x: auto;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .bubble.bot table { border-collapse: collapse; width: 100%; }
+        .bubble.bot th,
+        .bubble.bot td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
         .bubble.bot h1 { font-size: 17px; font-weight: 600; }
         .bubble.bot h2 { font-size: 15px; font-weight: 600; }
         .bubble.bot h3 { font-size: 14px; font-weight: 600; }

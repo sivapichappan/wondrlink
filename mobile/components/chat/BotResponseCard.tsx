@@ -1,8 +1,9 @@
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { Colors, Fonts, Radius } from '@/constants/theme';
+import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
+import { splitAnswer } from '@/lib/answer-text';
 import { PER_MESSAGE_FOOTER } from '@shared/disclaimers';
 import type { ChatHistoryMessage } from '@shared/types';
 
@@ -24,6 +25,23 @@ const Divider = () => (
   <View style={{ height: 1, backgroundColor: Colors.border, marginVertical: 4 }} />
 );
 
+// Module-level, and they must stay that way: Markdown is React.memo, and an
+// inline style object is a new identity every render, which defeats it.
+const sectionFirst = { marginTop: Spacing.xs };
+const sectionRest = {
+  marginTop: Spacing.sm,
+  paddingTop: Spacing.sm,
+  borderTopWidth: 1,
+  borderTopColor: Colors.border,
+};
+const labelStyle = {
+  fontFamily: Fonts.sansSemiBold,
+  fontSize: FontSize.sm,
+  color: Colors.textSecondary,
+  letterSpacing: 0.4,
+  marginBottom: Spacing.xs,
+};
+
 export function BotResponseCard({ message, onPickFollowup, onSelectText }: Props) {
   const [expanded, setExpanded] = useState(false);
   const meta = message.metadata ?? {};
@@ -39,6 +57,8 @@ export function BotResponseCard({ message, onPickFollowup, onSelectText }: Props
   ].filter(Boolean) as string[];
 
   const hasMore = counts.length > 0;
+
+  const { lead, sections } = useMemo(() => splitAnswer(message.content), [message.content]);
 
   return (
     <View
@@ -72,7 +92,22 @@ export function BotResponseCard({ message, onPickFollowup, onSelectText }: Props
         onLongPress={onSelectText ? () => onSelectText(message.content) : undefined}
         delayLongPress={350}
         accessibilityHint="Press and hold to copy or select text">
-        <MarkdownText>{message.content}</MarkdownText>
+        {/* The lead is the sentence that answers the question, set a step
+            larger so the eye lands on it first. Then labelled blocks, each
+            separated by a hairline, so the whole answer can be skimmed by its
+            labels or read straight down.
+
+            An answer with no "## " headings comes back as all lead and no
+            sections, which is EVERY answer already stored in the database, and
+            renders exactly as it did before. That is why the split lives here
+            rather than in the markdown styles. */}
+        {!!lead && <MarkdownText variant="lead">{lead}</MarkdownText>}
+        {sections.map((section, i) => (
+          <View key={`${section.label}-${i}`} style={i === 0 && !lead ? sectionFirst : sectionRest}>
+            <Text style={labelStyle}>{section.label}</Text>
+            <MarkdownText>{section.body}</MarkdownText>
+          </View>
+        ))}
       </Pressable>
 
       {/* "Is that right?" chips — always visible (never behind Show details). */}
