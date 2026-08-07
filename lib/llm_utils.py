@@ -261,6 +261,29 @@ Do NOT include any header text like "You might also want to ask about:" — just
 import re as _re_followups
 
 
+_DANGLING_HEADING = _re_followups.compile(r'\n[ \t]*#{2,6}[ \t]+[^\n]*[ \t]*$')
+
+
+def _trim_dangling_heading(text: str) -> str:
+    """Drop a trailing section label that has nothing underneath it.
+
+    `max_tokens` is a hard cut, and it lands wherever it lands. Under plain
+    prose that produced a slightly short answer. Under the labelled-section
+    format it can produce a heading pointing at empty space, which reads as the
+    app having failed to load something rather than as a shorter answer.
+
+    Logged rather than silently swallowed: how often this fires is the evidence
+    for whether the token budget is actually too small, which otherwise nobody
+    would ever know.
+    """
+    if not text or '#' not in text:
+        return text
+    trimmed = _DANGLING_HEADING.sub('', text).rstrip()
+    if trimmed != text.rstrip():
+        _tone_logger.info("trimmed a dangling section heading (answer was cut short)")
+    return trimmed
+
+
 def extract_followups(text: str):
     """
     Pull the trailing FOLLOWUPS: block out of an LLM response.
@@ -283,7 +306,9 @@ def extract_followups(text: str):
     # Find the FOLLOWUPS: marker (case-insensitive) and consume everything after.
     marker = _re_followups.search(r'\n\s*FOLLOWUPS:\s*\n', cleaned, _re_followups.IGNORECASE)
     if not marker:
-        return cleaned.strip(), []
+        # A truncated answer often loses the FOLLOWUPS block too, so this path
+        # is the LIKELIER place to find a heading left pointing at nothing.
+        return _trim_dangling_heading(cleaned.strip()), []
 
     tail = cleaned[marker.end():]
     cleaned = cleaned[:marker.start()].rstrip()
@@ -296,12 +321,17 @@ def extract_followups(text: str):
     # chips render as a separate row, so the promise pointed at empty space and
     # read as the app having failed to load something. The legacy pattern above
     # only caught one exact wording; this catches the shape.
+    #
+    # The `(?!#)` matters now that answers carry headings: "## Questions to ask
+    # your team" ends in the same shape as a lead-in sentence, and deleting a
+    # real section label would take the content under it with no trace.
     _LEAD_IN = _re_followups.compile(
-        r'\n[^\n]{0,120}?\b(?:questions?|things?|topics?)\b[^\n]{0,60}?'
+        r'\n(?!\s*#)[^\n]{0,120}?\b(?:questions?|things?|topics?)\b[^\n]{0,60}?'
         r'(?:explore|ask|consider|next|wonder)\b[^\n]{0,40}:\s*$',
         _re_followups.IGNORECASE,
     )
     cleaned = _LEAD_IN.sub('', cleaned).rstrip()
+    cleaned = _trim_dangling_heading(cleaned)
 
     # Parse "- item" or "• item" or numbered "1. item" lines from the tail.
     for raw_line in tail.splitlines():
@@ -1493,8 +1523,10 @@ _DASHES = "—–―"  # em dash, en dash, horizontal bar
 # A dash between two digits is a RANGE ("cycles 2-3", "5-10 minutes"), which is
 # a different word from a parenthetical. Read aloud it is "to".
 _DASH_RANGE = re.compile(rf"(?<=\d)\s*[{_DASHES}]\s*(?=\d)")
-# Start of a line: someone used it as a bullet.
-_DASH_BULLET = re.compile(rf"^[ \t]*[{_DASHES}][ \t]+", re.MULTILINE)
+# Start of a line: someone used it as a bullet. The leading whitespace is
+# CAPTURED and put back — it is the nesting depth of the list item, and
+# swallowing it promotes a sub-point to a top-level one.
+_DASH_BULLET = re.compile(rf"^([ \t]*)[{_DASHES}][ \t]+", re.MULTILINE)
 # Spaced: the common parenthetical or aside.
 _DASH_SPACED = re.compile(rf"\s+[{_DASHES}]+\s+")
 # Unspaced between words: "the results—good news—came back".
@@ -1522,16 +1554,20 @@ def enforce_voice(text: str) -> tuple:
         return text, 0
 
     out = _DASH_RANGE.sub(" to ", text)
-    out = _DASH_BULLET.sub("- ", out)
+    out = _DASH_BULLET.sub(r"\1- ", out)
     out = _DASH_SPACED.sub(", ", out)
     out = _DASH_TIGHT.sub(", ", out)
     out = _DASH_ANY.sub("", out)
 
     # Tidy what a dash sitting next to existing punctuation leaves behind.
     out = re.sub(r",\s*,+", ",", out)
-    out = re.sub(r"\s+,", ",", out)
+    out = re.sub(r"[^\S\n]+,", ",", out)
     out = re.sub(r",(\s*[.!?;:])", r"\1", out)
-    out = re.sub(r"[ \t]{2,}", " ", out)
+    # Collapse runs of spaces only BETWEEN non-space characters. An unanchored
+    # `[ \t]{2,} -> " "` also eats LEADING whitespace, which is the indentation
+    # that makes a nested bullet nested — the same sweep that once flattened
+    # the JSON examples in the prompt files, running here on the answer.
+    out = re.sub(r"(?<=\S)[ \t]{2,}(?=\S)", " ", out)
 
     after = sum(out.count(d) for d in _DASHES)
     if after:
@@ -2489,6 +2525,34 @@ def get_response_settings(response_length: str, query_type: str = None, cancer_s
                                   "rest to the follow-up questions. " + _VOICE,
             "include_resources": True,
         }
+    # `standard` and `deep` are the CHAT levels, and they get their own arms
+    # even though they start out identical to `normal` and `detailed`.
+    #
+    # They used to fall through into those. That was fine while the shapes
+    # matched, and a trap the moment they must not: brief / normal / detailed
+    # are frozen for the five non-chat callers that pass them as literals
+    # (glossary=brief; previsit, visit-recap, appeal, deep-research=detailed),
+    # and four of those parse JSON back or assert a minimum length, so a
+    # smaller budget fails hard rather than shortening. Separating them here is
+    # what lets the chat answer change shape without touching any of that.
+    if response_length == "standard":
+        return {
+            "max_tokens": 400 if needs_boost else 250,
+            "temperature": 0.2 if is_clinical_trial else 0.35,
+            "system_message": base_system + "\n\nRESPONSE LENGTH: Normal. A short paragraph, two at the very most. " + _VOICE,
+            "prompt_instruction": "Answer in a short paragraph. Two at the very most. " + _VOICE,
+            "include_resources": True
+        }
+    if response_length == "deep":
+        return {
+            "max_tokens": 600 if needs_boost else 400,
+            "temperature": 0.2 if is_clinical_trial else 0.4,
+            "system_message": base_system + "\n\nRESPONSE LENGTH: Detailed. Up to three short paragraphs, and explain any medical word you use. " + _VOICE,
+            "prompt_instruction": "Answer in up to three short paragraphs. Explain any medical term in plain words. " + _VOICE,
+            "include_resources": True
+        }
+
+    # --- FROZEN BELOW. Non-chat callers only; see the note above. ---
     if response_length == "brief":
         return {
             "max_tokens": 200 if needs_boost else 150,
@@ -2497,7 +2561,7 @@ def get_response_settings(response_length: str, query_type: str = None, cancer_s
             "prompt_instruction": "Answer in one or two sentences, plainly. " + _VOICE,
             "include_resources": False  # Don't add resources for brief responses
         }
-    elif response_length in ("detailed", "deep"):
+    elif response_length == "detailed":
         return {
             "max_tokens": 600 if needs_boost else 400,
             "temperature": 0.2 if is_clinical_trial else 0.4,

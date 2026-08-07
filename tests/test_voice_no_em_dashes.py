@@ -73,6 +73,108 @@ class TestNothingSurvives:
         assert n == 2
 
 
+class TestItDoesNotDestroyStructure:
+    """The filter runs on the ANSWER, which now carries headings and lists.
+
+    Its tidy pass used to be an unanchored `[ \\t]{2,} -> " "`, which is exactly
+    the sweep that once flattened the indentation of the JSON examples in the
+    prompt files. Same regex, now on patient-facing text: it only fires when the
+    text contains a dash, which the model emits constantly.
+    """
+
+    def test_a_nested_bullet_keeps_its_indentation(self):
+        text = "Options:\n- endocrine therapy\n    - tamoxifen — for most people\n    - an AI"
+        out, _ = enforce_voice(text)
+        assert "\n    - tamoxifen" in out, repr(out)
+        assert "\n    - an AI" in out, repr(out)
+
+    def test_a_dash_bulleted_sub_item_stays_a_sub_item(self):
+        # The bullet rule captures the leading whitespace and puts it back.
+        # Swallowing it promotes a sub-point to a top-level one.
+        out, _ = enforce_voice("- top\n    — nested\n— other top")
+        assert out == "- top\n    - nested\n- other top", repr(out)
+
+    def test_a_heading_survives(self):
+        out, _ = enforce_voice("## What to expect\nHot flashes — and stiffness.")
+        assert out.startswith("## What to expect\n")
+
+    def test_a_paragraph_break_is_not_collapsed(self):
+        out, _ = enforce_voice("First line — here.\n\nSecond paragraph.")
+        assert "\n\n" in out, repr(out)
+
+
+class TestATruncatedAnswerDegradesToShorter:
+    """max_tokens is a hard cut and lands wherever it lands. Under the labelled
+    format that can leave a heading pointing at nothing, which reads as a broken
+    card rather than a short answer."""
+
+    def test_a_dangling_trailing_heading_is_dropped(self):
+        from llm_utils import extract_followups
+        out, _ = extract_followups("The answer.\n\n## What to expect\nDetails.\n\n## Cut off")
+        assert out.endswith("Details.")
+        assert "Cut off" not in out
+
+    def test_a_heading_with_content_under_it_is_kept(self):
+        from llm_utils import extract_followups
+        text = "The answer.\n\n## When to call your team\n- Pain at night"
+        out, _ = extract_followups(text)
+        assert "## When to call your team" in out
+        assert "- Pain at night" in out
+
+    def test_a_real_questions_heading_is_not_eaten_as_a_lead_in(self):
+        """The lead-in stripper matches any trailing line about questions to ask
+        that ends in a colon. A section label has that exact shape, and deleting
+        one would take its content with it."""
+        from llm_utils import extract_followups
+        text = ("The answer.\n\n## Questions to ask your team:\n"
+                "- Is this normal?\n\nFOLLOWUPS:\n- Something else?\n")
+        out, ups = extract_followups(text)
+        assert "## Questions to ask your team" in out
+        assert "- Is this normal?" in out
+        assert ups == ["Something else?"]
+
+    def test_a_prose_lead_in_is_still_stripped(self):
+        from llm_utils import extract_followups
+        text = ("The answer.\n\nHere are some questions you might explore next:\n"
+                "\nFOLLOWUPS:\n- What now?\n")
+        out, ups = extract_followups(text)
+        assert "explore next" not in out
+        assert ups == ["What now?"]
+
+
+class TestTheChatDepthLevelsAreTheirOwn:
+    """`standard` and `deep` used to fall through into `normal` and `detailed`.
+
+    That was fine while the shapes matched and a trap the moment they must not:
+    brief/normal/detailed are frozen for five non-chat callers, four of which
+    parse JSON back or assert a minimum length, so a smaller budget fails hard
+    rather than shortening.
+    """
+
+    def test_standard_and_deep_resolve_on_their_own(self):
+        from llm_utils import get_response_settings
+        for level in ("guided", "standard", "deep"):
+            s = get_response_settings(level)
+            assert s["max_tokens"] > 0 and s["system_message"]
+
+    def test_the_frozen_levels_are_untouched(self):
+        from llm_utils import get_response_settings
+        frozen = {
+            "brief": (150, 200, False),
+            "normal": (250, 400, True),
+            "detailed": (400, 600, True),
+        }
+        for level, (plain, boosted, resources) in frozen.items():
+            assert get_response_settings(level)["max_tokens"] == plain, level
+            assert get_response_settings(level, query_type="treatment")["max_tokens"] == boosted, level
+            assert get_response_settings(level)["include_resources"] is resources, level
+
+    def test_an_unknown_level_still_falls_back_to_normal(self):
+        from llm_utils import get_response_settings
+        assert get_response_settings("nonsense")["max_tokens"] == \
+            get_response_settings("normal")["max_tokens"]
+
+
 class TestTheReplacementReadsCorrectly:
     """A filter that leaves mangled English is worse than the em dash. The
     cautionary tale is next door: soften_tone rewrites "you should" with no
