@@ -34,20 +34,44 @@ Local `.env` mirrors the overrides (commented block at the bottom).
 - Any llm-mode eval baseline from the Kimi era is now cross-model — do not
   compare numbers across 2026-08-24 without noting the voice change.
 
-## RESUME HERE — change 1 (gate inversion) is BUILT; changes 2–5 remain
+## RESUME HERE — changes 1 + 2 BUILT; change 3 is next (home-as-chat)
 
-The owner and CEO approved a full front-end redesign on 2026-08-24 after a
-test group (family members of cancer patients) found Sage "too technical and
-demanding too much." Canonical spec now IN the repo: `docs/redesign/`
-(sage-trajectory-brief.md v1.1 + sage-mockups.html; the mockup `:root` block
-is the token source of truth; its copy is canonical strings).
+**Change 2 (kill the builder) is DONE** (dd29639 + 0012266): build.tsx
+(1,014 lines) deleted with every entry point retargeted at scan/chat; the
+first-launch setup modal deleted; the trials just-in-time ask is rule-6 /
+screen-09 copy end to end (validate_trial_search_readiness + offer_scan +
+the Scan-a-report / Just-tell-me / Not-now options on the trials screen).
+The conversational machinery it relies on already existed (question_policy
+asks stage + ZIP; extraction + scanner fill the profile).
 
-**Change 1 is implemented, adversarially reviewed (28 confirmed findings, all
-fixed), and validated — in 6 LOCAL commits (49ae968..0a8b220), NOT pushed.**
-Pushing main auto-deploys it to prod; that is the owner's call because it is
-the product's biggest behavior change (default-engage). Validation: 1071
-offline tests; dry + llm engagement evals 19/19 wall_accuracy; real llm
-answers make the three-part move with the verbatim limit sentence.
+**Change 3 part 1 (design-system pivot) is DONE** (9ff441a): mockup tokens
+live in mobile/constants/theme.ts (paper ground, sage actions, ink text,
+warm patient bubble), Source Serif 4 + Instrument Sans loaded, Sage's chat
+prose is serif 16/25, patient bubbles are the one warm element. JS-only.
+
+**Change 3 remainder (NEXT): home becomes the conversation** — home route
+renders chat with the Sage wordmark + italic stage-words header; composer
+"+" sheet with exactly three rows (Scan a report / Record a visit / Since
+your last visit); dealt-card mechanism (sage accent border) with
+engagement instrumentation from day one (the brief's stated risk: if cards
+underperform, scanning starves and trials never unlock) — v1 cards: the
+wall doctor-questions card, the trials ask, the scan suggestion; then the
+nine-tool grid dies. Then changes 4 (check-ins in chat) and 5 (onboarding).
+
+**Review debt:** changes 2 + retheme have NOT had the adversarial review
+pass (subagent session limit until ~5:50pm ET 2026-08-24); run it before
+the cohesive push, together with change 3's.
+
+**Owner decision on record: NO push until all five changes land as one
+cohesive update.** Ten local commits and counting on main.
+
+### Change 1 record — gate inversion (BUILT, reviewed, validated)
+
+Spec is in `docs/redesign/` (brief v1.1 + mockups; the `:root` block is the
+token source of truth; mockup copy is canonical). Change 1 was adversarially
+reviewed (28 confirmed findings, all fixed) and validated: 1077 offline
+tests; dry + llm engagement evals 19/19 wall_accuracy; real llm answers make
+the three-part move with the verbatim limit sentence.
 
 What shipped in change 1:
 - `lib/walls.py` — deterministic wall detection (prognosis/diagnosis/dosing;
