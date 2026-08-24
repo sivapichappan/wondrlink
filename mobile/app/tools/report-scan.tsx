@@ -300,12 +300,18 @@ export default function ReportScanScreen() {
               <View style={{ gap: Spacing.xs }}>
                 <Text style={{ color: Colors.danger, fontSize: FontSize.sm, lineHeight: 19 }}>{error}</Text>
                 {typeInsteadHint && (
+                  /* The builder is gone (change 2): the fallback for a failed
+                     scan is telling Sage in chat, where extraction runs. */
                   <Pressable
-                    onPress={() => router.push('/profile/build' as never)}
+                    onPress={() =>
+                      router.push(
+                        `/chat/new?prefill=${encodeURIComponent('From my report: ')}` as never,
+                      )
+                    }
                     accessibilityRole="button"
                     style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}>
                     <Text style={{ color: Colors.primary, fontFamily: Fonts.sansSemiBold, fontSize: FontSize.sm }}>
-                      Type the values instead →
+                      Tell me what it says instead →
                     </Text>
                   </Pressable>
                 )}

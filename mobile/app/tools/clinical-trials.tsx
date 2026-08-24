@@ -339,15 +339,22 @@ function ErrorBlock({ err, onBack }: { err: unknown; onBack: () => void }) {
   let message = 'Could not search trials right now.';
   let jitQuestion: string | null = null;
   let chatPrefill: string | null = null;
+  let offerScan = false;
   if (err instanceof ApiError && err.body) {
     if (err.body.error) message = err.body.error;
-    const body = err.body as { just_in_time_question?: string; chat_prefill?: string };
+    const body = err.body as {
+      just_in_time_question?: string;
+      chat_prefill?: string;
+      offer_scan?: boolean;
+    };
     jitQuestion = body.just_in_time_question ?? null;
     chatPrefill = body.chat_prefill ?? null;
+    offerScan = body.offer_scan ?? false;
   }
 
-  // Just-in-time softening: instead of "go fill out your profile", ask the ONE
-  // missing question and hand it to chat with the composer prefilled.
+  // Rule 6 (mockup screen 09): the backend's message says why and names
+  // exactly what is missing in plain words; the three options are the ask's
+  // escape hatches — scan a paper, just say it in chat, or not now.
   if (jitQuestion) {
     return (
       <View style={{ gap: 10 }}>
@@ -358,21 +365,26 @@ function ErrorBlock({ err, onBack }: { err: unknown; onBack: () => void }) {
             backgroundColor: Colors.sidebarBg,
             gap: 8,
           }}>
-          <Text style={{ color: Colors.textPrimary, fontFamily: Fonts.sansSemiBold, fontSize: FontSize.md }}>
-            One quick question
-          </Text>
-          <Text style={{ color: Colors.textSecondary, fontSize: FontSize.base, lineHeight: 19 }}>
-            {jitQuestion}
+          <Text style={{ color: Colors.textSecondary, fontSize: FontSize.base, lineHeight: 20 }}>
+            {message}
           </Text>
         </View>
+        {offerScan && (
+          <Button
+            label="Scan a report"
+            fullWidth
+            onPress={() => router.push('/tools/report-scan' as never)}
+          />
+        )}
         <Button
-          label="Answer in chat"
+          label="Just tell me"
+          variant={offerScan ? 'secondary' : 'primary'}
           fullWidth
           onPress={() =>
             router.push(`/chat/new?prefill=${encodeURIComponent(chatPrefill ?? '')}` as never)
           }
         />
-        <Button label="Back to tools" variant="ghost" fullWidth onPress={onBack} />
+        <Button label="Not now" variant="ghost" fullWidth onPress={onBack} />
       </View>
     );
   }

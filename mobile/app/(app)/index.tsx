@@ -15,6 +15,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { APP_NAME } from '@shared/branding';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import {
@@ -31,7 +32,6 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 
 import { ChatInput } from '@/components/chat/ChatInput';
-import { WelcomeProfileModal } from '@/components/chat/WelcomeProfileModal';
 import { useNavOverlay } from '@/components/common/NavOverlay';
 import { TopBar } from '@/components/common/TopBar';
 import { ListRow } from '@/components/ui/ListRow';
@@ -39,9 +39,8 @@ import { IconCircle } from '@/components/ui/IconCircle';
 import { Screen } from '@/components/ui/Screen';
 import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useAcknowledgement } from '@/hooks/useAcknowledgement';
-import { useCareSnapshot, useHero, useProfile } from '@/hooks/useCare';
+import { useCareSnapshot, useHero } from '@/hooks/useCare';
 import { NEW_CONVERSATION } from '@/hooks/useChat';
-import { useWelcomePromptSeen } from '@/hooks/useWelcomePromptSeen';
 import { fetchCancerOptions, updateCancerSlug } from '@/lib/api/care';
 import { fetchConsentStatus } from '@/lib/api/consent';
 import { usePerspective } from '@/lib/perspective';
@@ -67,12 +66,9 @@ export default function HomeScreen() {
   const who = usePerspective();
   const hero = useHero();
   const snap = useCareSnapshot();
-  const profile = useProfile();
   const ack = useAcknowledgement();
   const qc = useQueryClient();
 
-  const hasProfile = !!profile.data?.profile;
-  const welcomePrompt = useWelcomePromptSeen();
   const { stillFinding, mark: markStillFinding } = useStillFindingOut();
 
   const consentStatus = useQuery({ queryKey: ['consent-status'], queryFn: fetchConsentStatus });
@@ -96,8 +92,6 @@ export default function HomeScreen() {
       await qc.invalidateQueries({ queryKey: ['profile'] });
     },
   });
-
-  const welcomeOpen = welcomePrompt.seen === false && !hasProfile && !profile.isLoading && !anchorMode;
 
   const firstName = hero.data?.first_name;
   const days = snap.data?.days_since_symptom;
@@ -269,9 +263,9 @@ export default function HomeScreen() {
               />
               <MenuRow
                 Icon={FileText}
-                title={`Add ${who.possessiveNamed} medical details`}
-                subtitle="A short optional form for a head start"
-                onPress={() => router.push('/profile/build')}
+                title="Scan a paper from the doctor"
+                subtitle={`${APP_NAME} reads it and explains it in plain words`}
+                onPress={() => router.push('/tools/report-scan' as never)}
               />
             </View>
           </View>
@@ -282,14 +276,6 @@ export default function HomeScreen() {
           AI support tool · not medical advice
         </Text>
 
-        <WelcomeProfileModal
-          visible={welcomeOpen}
-          onBuildProfile={() => {
-            welcomePrompt.markSeen();
-            router.push('/profile/build');
-          }}
-          onSkip={() => welcomePrompt.markSeen()}
-        />
       </Screen>
       {/* Left-edge swipe-to-open-drawer zone. */}
       <GestureDetector gesture={openEdge}>

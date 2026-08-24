@@ -22,13 +22,6 @@ export default function ProfileLayout() {
         }}
       />
       <Stack.Screen
-        name="build"
-        options={{
-          title: 'Build profile',
-          headerLeft: () => <HeaderBack label="Profile" />,
-        }}
-      />
-      <Stack.Screen
         name="cancer-switcher"
         options={{
           title: 'Cancer focus',

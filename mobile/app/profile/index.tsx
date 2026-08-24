@@ -5,9 +5,9 @@ import {
   Beaker,
   ChevronRight,
   ClipboardList,
-  Edit3,
   Heart,
   Pill,
+  ScanLine,
   Tag,
   User,
 } from 'lucide-react-native';
@@ -86,21 +86,30 @@ export default function ProfileViewScreen() {
   const symptoms = p?.symptoms ?? [];
 
   if (!p) {
+    // The six-step builder is gone (redesign change 2): Sage learns from
+    // conversation and from papers the person scans, and asks for a detail
+    // only when a goal needs it.
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: Colors.surface }} edges={['bottom']}>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
           <Text style={{ fontFamily: Fonts.serifBold, fontSize: 22, color: Colors.textPrimary }}>
-            Build your profile
+            {`${APP_NAME} learns as you talk`}
           </Text>
           <Text style={{ color: Colors.textSecondary, fontSize: 14, lineHeight: 21 }}>
-            {`Adding your diagnosis, biomarkers, and treatments lets ${APP_NAME} give answers that are specific to your situation instead of generic. It only takes a few minutes and you can edit it any time.`}
+            {`There is no form to fill out. ${APP_NAME} picks things up from your conversations, and from any paper you snap a photo of, then checks each fact with you. When something is needed, ${APP_NAME} will ask and say why.`}
           </Text>
           <Button
-            label="Start"
+            label="Scan a report"
             fullWidth
             size="lg"
-            leadingIcon={<Edit3 size={18} color={Colors.surface} />}
-            onPress={() => router.push('/profile/build')}
+            leadingIcon={<ScanLine size={18} color={Colors.surface} />}
+            onPress={() => router.push('/tools/report-scan' as never)}
+          />
+          <Button
+            label={`Talk with ${APP_NAME}`}
+            variant="secondary"
+            fullWidth
+            onPress={() => router.push('/chat/new' as never)}
           />
         </ScrollView>
       </SafeAreaView>
@@ -126,13 +135,28 @@ export default function ProfileViewScreen() {
           ) : null}
         </View>
 
-        <Button
-          label="Edit profile"
-          variant="secondary"
-          fullWidth
-          leadingIcon={<Edit3 size={16} color={Colors.primary} />}
-          onPress={() => router.push('/profile/build')}
-        />
+        <Text style={{ color: Colors.textMuted, fontSize: 13, lineHeight: 19 }}>
+          {`Something wrong or out of date? Tell ${APP_NAME} in chat and it will update, or scan a newer report.`}
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flex: 1 }}>
+            <Button
+              label="Scan a report"
+              variant="secondary"
+              fullWidth
+              leadingIcon={<ScanLine size={16} color={Colors.primary} />}
+              onPress={() => router.push('/tools/report-scan' as never)}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button
+              label={`Tell ${APP_NAME}`}
+              variant="secondary"
+              fullWidth
+              onPress={() => router.push('/chat/new' as never)}
+            />
+          </View>
+        </View>
 
         <Pressable
           onPress={() => router.push('/profile/cancer-switcher')}
@@ -177,7 +201,8 @@ export default function ProfileViewScreen() {
           <Row label="Age" value={patient.age != null ? String(patient.age) : '—'} />
           <Row label="Sex" value={patient.sex || '—'} />
           <Row label="ZIP code" value={patient.zipCode || '—'} />
-          <Row label="ECOG status" value={patient.ecog ?? '—'} />
+          {/* Plain words for the ECOG scale — the UI never says "ECOG". */}
+          <Row label="Activity level" value={patient.ecog ?? '—'} />
         </Section>
 
         <Section title="Diagnosis" Icon={Heart}>

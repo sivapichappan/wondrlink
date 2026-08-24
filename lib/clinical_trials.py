@@ -1324,14 +1324,20 @@ def validate_trial_search_readiness(patient_context: Dict[str, Any]) -> Dict[str
             "ready": False,
             "missing_critical": ["zip_code", "stage"],
             "missing_helpful": ["biomarkers", "treatment_line", "age"],
+            # Rule 6 (screen 09, canonical copy): say why, name exactly what
+            # is missing in plain words, and point at the easiest way to
+            # answer it. Never "cancer stage" (jargon), never markdown, never
+            # a dash, never a form.
             "prompt_message": (
-                "I don't have enough information to search for clinical trials yet — "
-                "I just need your zip code and cancer stage to find relevant trials near you."
+                "I can search for you. I still need two things: whether the "
+                "cancer has spread, and your ZIP code. Any paper from your "
+                "doctor probably answers the first one."
             ),
-            # Just-in-time softening: instead of sending the user to a form,
-            # the client can ask ONE question inline / route it to chat.
-            "just_in_time_question": "What's your ZIP code? I'll use it to find trials near you.",
-            "chat_prefill": "My zip code is ",
+            # Just-in-time softening: the client asks ONE question inline /
+            # routes it to chat, or offers the report scanner.
+            "just_in_time_question": "What's your ZIP code? I'll use it to find studies near you.",
+            "chat_prefill": "My ZIP code is ",
+            "offer_scan": True,
         }
 
     missing_critical = []
@@ -1363,25 +1369,39 @@ def validate_trial_search_readiness(patient_context: Dict[str, Any]) -> Dict[str
     if not gender or gender == "unspecified":
         missing_helpful.append("gender")
 
-    # Build prompt message
+    # Build prompt message — rule 6 (screen 09): why + exactly what is
+    # missing, in plain words. "Whether the cancer has spread" is the
+    # patient-words rendering of stage; the internal field stays `stage`.
     if missing_critical:
-        field_names = {
-            "zip_code": "zip code",
-            "stage": "cancer stage"
-        }
-        missing_names = [field_names.get(f, f) for f in missing_critical]
-        prompt_message = (
-            f"Before I can search for clinical trials, I just need your "
-            f"**{' and '.join(missing_names)}** — you can tell me right here in chat."
-        )
-        # One question at a time: ask for the highest-value missing field
-        # inline instead of blocking on a profile form.
-        if "zip_code" in missing_critical:
-            jit_question = "What's your ZIP code? I'll use it to find trials near you."
-            chat_prefill = "My zip code is "
+        need_stage = "stage" in missing_critical
+        need_zip = "zip_code" in missing_critical
+        if need_stage and need_zip:
+            prompt_message = (
+                "I can search for you. I still need two things: whether the "
+                "cancer has spread, and your ZIP code. Any paper from your "
+                "doctor probably answers the first one."
+            )
+        elif need_stage:
+            prompt_message = (
+                "I can search for you. I still need one thing: whether the "
+                "cancer has spread. Any paper from your doctor probably "
+                "answers it."
+            )
         else:
-            jit_question = "Has your care team told you the stage of your cancer?"
-            chat_prefill = "My cancer stage is "
+            prompt_message = (
+                "I can search for you. I still need one thing: your ZIP "
+                "code, so I can look for studies near you."
+            )
+        # One question at a time: ask for the highest-value missing field
+        # inline instead of blocking on a profile form. The scanner is
+        # offered whenever a paper could answer what's missing (spread is
+        # on reports; a ZIP code is not).
+        if need_zip:
+            jit_question = "What's your ZIP code? I'll use it to find studies near you."
+            chat_prefill = "My ZIP code is "
+        else:
+            jit_question = "Has your care team told you whether the cancer has spread?"
+            chat_prefill = "My doctor told me "
         return {
             "ready": False,
             "missing_critical": missing_critical,
@@ -1389,6 +1409,7 @@ def validate_trial_search_readiness(patient_context: Dict[str, Any]) -> Dict[str
             "prompt_message": prompt_message,
             "just_in_time_question": jit_question,
             "chat_prefill": chat_prefill,
+            "offer_scan": need_stage,
         }
 
     # Ready but with helpful fields missing
@@ -1402,8 +1423,8 @@ def validate_trial_search_readiness(patient_context: Dict[str, Any]) -> Dict[str
         }
         missing_names = [field_names.get(f, f) for f in missing_helpful]
         prompt_message = (
-            f"Tip: Adding your {', '.join(missing_names)} to your profile "
-            f"would help me find even more relevant trials for you."
+            f"Tip: if you tell me your {', '.join(missing_names)}, or scan "
+            f"a report that mentions them, I can match studies even better."
         )
 
     return {

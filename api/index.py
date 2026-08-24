@@ -2856,6 +2856,7 @@ def api_chat():
                             "missing_helpful": readiness["missing_helpful"],
                             "just_in_time_question": readiness.get("just_in_time_question"),
                             "chat_prefill": readiness.get("chat_prefill"),
+                            "offer_scan": readiness.get("offer_scan", False),
                         }
                     else:
                         # Graph-aware ranking (Push 3): the Modeler's per-patient
@@ -3400,6 +3401,7 @@ def api_clinical_trials():
                 "missing_helpful": readiness["missing_helpful"],
                 "just_in_time_question": readiness.get("just_in_time_question"),
                 "chat_prefill": readiness.get("chat_prefill"),
+                "offer_scan": readiness.get("offer_scan", False),
                 "trials": []
             }), 400
 
