@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sage — full product mockups v1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F6F7F3; --ink:#24312B; --ink-2:#5A6A61; --ink-3:#8A968E;
+  --sage:#4A7862; --sage-deep:#2F5443; --sage-mist:#E4ECE5; --sage-line:#D5DFD6;
+  --card:#FFFFFF; --line:#E2E7E0; --warm:#F1E9DC; --warm-ink:#5D4C36;
+  --serif:"Source Serif 4",Georgia,serif; --sans:"Instrument Sans",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#EDEFEA;color:var(--ink);font-family:var(--sans);padding:48px 24px 96px}
+.gallery{max-width:1320px;margin:0 auto}
+.masthead{margin-bottom:56px;max-width:720px}
+.masthead h1{font-family:var(--serif);font-weight:600;font-size:40px;letter-spacing:-0.01em}
+.masthead p{font-size:16px;color:var(--ink-2);margin-top:10px;line-height:1.6}
+.sec{font-family:var(--serif);font-weight:600;font-size:24px;margin:64px 0 8px}
+.sec-sub{font-size:15px;color:var(--ink-2);margin-bottom:28px;max-width:640px;line-height:1.6}
+.row{display:flex;flex-wrap:wrap;gap:44px}
+.shot{width:375px}
+.shot-label{font-size:15px;font-weight:600;margin-bottom:10px}
+.shot-label span{color:var(--sage);margin-right:8px}
+.shot-note{font-size:14px;color:var(--ink-2);line-height:1.55;margin-top:12px}
+.phone{width:375px;height:812px;background:var(--paper);border:1px solid #D8DCD4;border-radius:44px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 48px rgba(36,49,43,.10)}
+.status{display:flex;justify-content:space-between;align-items:center;padding:16px 28px 6px;font-size:14px;font-weight:600}
+.sig{display:flex;gap:5px;align-items:center}
+.sig i{width:14px;height:9px;border:1.5px solid var(--ink);border-radius:2px;display:inline-block;position:relative}
+.sig i::after{content:"";position:absolute;inset:1.5px;background:var(--ink);border-radius:1px;right:4px}
+.sig b{width:16px;height:10px;background:var(--ink);border-radius:2px;display:inline-block;clip-path:polygon(0 100%,100% 100%,100% 0,70% 0,70% 40%,40% 40%,40% 70%,0 70%)}
+.app{flex:1;display:flex;flex-direction:column;padding:10px 22px 26px;min-height:0}
+.hdr{display:flex;justify-content:space-between;align-items:baseline;padding:8px 2px 18px}
+.hdr .wm{font-family:var(--serif);font-weight:600;font-size:21px}
+.hdr .stage{font-family:var(--serif);font-style:italic;font-size:14.5px;color:var(--ink-2)}
+.msg{background:var(--card);border:1px solid var(--line);border-radius:18px 18px 18px 6px;padding:13px 15px;font-family:var(--serif);font-size:16px;line-height:1.55;max-width:88%;margin-bottom:12px}
+.msg.user{background:var(--warm);border-color:#E4D8C5;color:var(--warm-ink);font-family:var(--sans);font-size:15px;border-radius:18px 18px 6px 18px;margin-left:auto;max-width:82%}
+.chiprow{display:flex;flex-wrap:wrap;gap:9px;margin:4px 0 14px}
+.chip{border:1.5px solid var(--sage-line);background:var(--card);border-radius:999px;padding:9px 16px;font-size:14.5px;font-weight:500;color:var(--sage-deep)}
+.chip.quiet{border-color:transparent;background:transparent;color:var(--ink-2)}
+.composer{margin-top:auto;display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:26px;padding:9px 14px 9px 9px}
+.plus{width:34px;height:34px;border-radius:50%;background:var(--sage-mist);color:var(--sage-deep);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:500;flex:none}
+.composer span{font-size:15px;color:var(--ink-3);flex:1}
+.mic{width:22px;height:22px;flex:none;color:var(--ink-3)}
+.btn{display:block;width:100%;text-align:center;border-radius:14px;padding:15px;font-size:16px;font-weight:600}
+.btn-fill{background:var(--sage);color:#fff}
+.btn-ghost{color:var(--sage-deep)}
+.btn-sm{display:inline-block;width:auto;padding:9px 16px;font-size:14px;border-radius:11px}
+.dealt{background:var(--card);border:1px solid var(--sage-line);border-radius:18px;padding:15px;max-width:92%;margin-bottom:12px}
+.dealt .dt{display:flex;align-items:center;gap:9px;font-weight:600;font-size:15.5px;margin-bottom:5px}
+.dealt .dd{font-size:14px;color:var(--ink-2);line-height:1.5;margin-bottom:12px}
+.dealt .da{display:flex;gap:10px;align-items:center}
+.ico{width:21px;height:21px;color:var(--sage);flex:none}
+.center{flex:1;display:flex;flex-direction:column;justify-content:center}
+h2.big{font-family:var(--serif);font-weight:600;font-size:27px;line-height:1.25;letter-spacing:-0.01em}
+.sub{font-size:15.5px;color:var(--ink-2);line-height:1.6;margin-top:10px}
+.fld{margin-top:22px}
+.fld label{display:block;font-size:14px;font-weight:600;margin-bottom:8px}
+.fld .in{background:var(--card);border:1.5px solid var(--line);border-radius:13px;padding:14px 15px;font-size:16px;color:var(--ink-3);display:flex;justify-content:space-between;align-items:center}
+.fld .in.filled{color:var(--ink)}
+.check{display:flex;gap:12px;align-items:flex-start;margin-top:16px;font-size:14.5px;line-height:1.5;color:var(--ink-2)}
+.box{width:22px;height:22px;border:1.5px solid var(--sage-line);border-radius:7px;background:var(--card);flex:none;margin-top:1px}
+.box.on{background:var(--sage);border-color:var(--sage)}
+.box.on::after{content:"✓";color:#fff;display:block;text-align:center;font-size:14px;line-height:22px}
+.opt{background:var(--card);border:1.5px solid var(--line);border-radius:20px;padding:22px 20px;margin-top:16px}
+.opt h3{font-family:var(--serif);font-weight:600;font-size:20px}
+.opt p{font-size:14.5px;color:var(--ink-2);margin-top:5px;line-height:1.5}
+.scrim{flex:1;display:flex;flex-direction:column;justify-content:flex-end;background:rgba(36,49,43,.28);margin:-10px -22px -26px;padding:22px}
+.sheet{background:var(--card);border-radius:22px;padding:8px;margin-bottom:14px}
+.srow{display:flex;gap:13px;align-items:center;padding:15px 13px}
+.srow+.srow{border-top:1px solid var(--line)}
+.srow h4{font-size:15.5px;font-weight:600}
+.srow p{font-size:13.5px;color:var(--ink-2);margin-top:2px;line-height:1.45}
+.fact{display:flex;align-items:center;gap:11px;padding:13px 2px;font-size:15px;line-height:1.4}
+.fact+.fact{border-top:1px solid var(--line)}
+.tick{width:24px;height:24px;border-radius:50%;background:var(--sage-mist);color:var(--sage-deep);flex:none;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600}
+.doc{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;flex:1;display:flex;flex-direction:column;overflow:hidden}
+.doc h3{font-family:var(--serif);font-weight:600;font-size:22px}
+.doc .range{font-size:14px;color:var(--ink-2);margin-top:3px}
+.doc h5{font-size:13px;font-weight:600;letter-spacing:.04em;color:var(--sage-deep);margin:18px 0 6px;text-transform:uppercase}
+.doc li{list-style:none;font-size:15px;line-height:1.55;padding:7px 0;border-bottom:1px solid var(--line)}
+.doc li em{color:var(--ink-2);font-style:normal;font-size:13.5px}
+.quote{font-family:var(--serif);font-style:italic;font-size:17px;padding:8px 0}
+.pill{display:inline-block;background:var(--sage-mist);color:var(--sage-deep);font-size:12.5px;font-weight:600;border-radius:999px;padding:4px 11px}
+.trial{background:var(--card);border:1px solid var(--sage-line);border-radius:18px;padding:17px;margin-bottom:12px}
+.trial .eb{font-size:12.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--sage-deep)}
+.trial h4{font-family:var(--serif);font-weight:600;font-size:18px;line-height:1.35;margin:7px 0 6px}
+.trial .meta{font-size:14px;color:var(--ink-2);margin-bottom:10px}
+svg{display:block}
+@media (max-width:840px){body{padding:32px 12px 64px}.row{gap:32px;justify-content:center}}
+</style>
+</head>
+<body>
+<div class="gallery">
+
+<div class="masthead">
+  <h1>Sage — full product mockups</h1>
+  <p>v1 for approval. Twelve screens, one for each decision in the trajectory brief. Serif is Sage speaking; sans is the interface; the warm beige bubbles are the patient's own words.</p>
+</div>
+
+<div class="sec">Onboarding</div>
+<div class="sec-sub">Three screens and a conversation, replacing seven screens and a fork. Nothing is asked here that the law doesn't require.</div>
+<div class="row">
+
+<div class="shot">
+  <div class="shot-label"><span>01</span>Welcome</div>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span class="sig"><b></b><i></i></span></div>
+    <div class="app">
+      <div class="center" style="text-align:center;padding:0 10px">
+        <svg width="52" height="52" viewBox="0 0 52 52" style="margin:0 auto 18px"><path d="M26 6 C14 14 10 26 26 46 C42 26 38 14 26 6 Z" fill="none" stroke="#4A7862" stroke-width="3" stroke-linejoin="round"/><path d="M26 14 L26 40" stroke="#4A7862" stroke-width="2.5" stroke-linecap="round"/></svg>
+        <div style="font-family:var(--serif);font-weight:600;font-size:44px;letter-spacing:-0.01em">Sage</div>
+        <p class="sub" style="font-size:17px">Help through cancer, in plain words.</p>
+      </div>
+      <div style="padding:0 4px">
+        <div class="btn btn-fill">Get started</div>
+        <div class="btn btn-ghost" style="margin-top:6px">Sign in</div>
+        <p style="text-align:center;font-size:13.5px;color:var(--ink-2);margin-top:18px;line-height:1.5">Sage is a support tool, not medical advice.</p>
+        <p style="text-align:center;font-size:13.5px;color:var(--ink-3);margin-top:14px;text-decoration:underline;text-underline-offset:3px">For oncologists</p>
+      </div>
+    </div>
+  </div>
+  <div class="shot-note">The oncologist door is a footer link — the "one account cannot be both" fork is gone.</div>
+</div>
+
+<div class="shot">
+  <div class="shot-label"><span>02</span>Legal, all of it</div>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span class="sig"><b></b><i></i></span></div>
+    <div class="app">
+      <div style="padding-top:26px">
+        <h2 class="big">A few required things</h2>
+        <p class="sub">Two minutes — and this is the only form in Sage.</p>
+        <div class="fld"><label>Date of birth</label><div class="in filled">March 14, 1962</div></div>
+        <div class="fld"><label>State</label><div class="in filled">New Jersey <svg class="ico" style="color:var(--ink-3);width:16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg></div></div>
+        <div class="check"><div class="box on"></div><div>I agree to the terms of service and the privacy policy.</div></div>
+        <div class="check"><div class="box on"></div><div>I understand Sage is a support tool, not medical advice.</div></div>
+        <div class="check"><div class="box"></div><div>I agree to Sage storing my health information securely.</div></div>
+      </div>
+      <div style="margin-top:auto;padding:0 4px"><div class="btn btn-fill">Continue</div></div>
+    </div>
+  </div>
+  <div class="shot-note">Frozen consent wording drops in verbatim. Date of birth is asked once, here, never again.</div>
+</div>
+
+<div class="shot">
+  <div class="shot-label"><span>03</span>Who are you here for</div>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span class="sig"><b></b><i></i></span></div>
+    <div class="app">
+      <div class="center">
+        <h2 class="big">Who are you here for?</h2>
+        <div class="opt"><h3>Myself</h3><p>I'm going through cancer.</p></div>
+        <div class="opt"><h3>Someone I love</h3><p>I'm supporting a person with cancer.</p></div>
+      </div>
+    </div>
+  </div>
+  <div class="shot-note">The one onboarding question that survives — it re-voices the entire app. Tapping advances; no continue button.</div>
+</div>
+
+<div class="shot">
+  <div class="shot-label"><span>04</span>Chat takes over</div>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span class="sig"><b></b><i></i></span></div>
+    <div class="app">
+      <div class="hdr"><span class="wm">Sage</span></div>
+      <div class="msg">Hi. I'm Sage. What should I call you?</div>
+      <div class="msg user">Maria</div>
+      <div class="msg">It's good to meet you, Maria. What kind of cancer are you facing? If you're not sure, that's okay — we can figure it out together.</div>
+      <div class="chiprow"><span class="chip">Breast</span><span class="chip">Lung</span><span class="chip">Colon or rectal</span><span class="chip">Prostate</span><span class="chip">Something else</span><span class="chip quiet">I'm not sure</span></div>
+      <div class="composer"><div class="plus">+</div><span>Message Sage</span><svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+    </div>
+  </div>
+  <div class="shot-note">Everything else the old builder demanded moves to just-in-time. Every ask has an escape hatch.</div>
+</div>
+
+</div>
+
+<div class="sec">Home and tools</div>
+<div class="sec-sub">The nine-tool grid is gone. Home is the conversation; the "+" holds exactly three tools; everything else is a card Sage deals at the right moment.</div>
+<div class="row">
+
+<div class="shot">
+  <div class="shot-label"><span>05</span>Home — the conversation</div>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span class="sig"><b></b><i></i></span></div>
+    <div class="app">
+      <div class="hdr"><span class="wm">Sage</span><span class="stage">Getting to know you</span></div>
+      <div class="msg">Good morning, Maria. Last time you said the appointment ran long. How are you feeling today?</div>
+      <div class="msg user">Tired but okay. They gave me papers I don't understand</div>
+      <div class="msg">We can go through them together.</div>
+      <div class="dealt">
+        <div class="dt"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 8V6a2 2 0 0 1 2-2h2M4 16v2a2 2 0 0 0 2 2h2M20 8V6a2 2 0 0 0-2-2h-2M20 16v2a2 2 0 0 1-2 2h-2"/><rect x="8.5" y="9" width="7" height="6" rx="1"/></svg>Snap a photo of the papers</div>
+        <div class="dd">Sage will read them and explain what they say in plain words.</div>
+        <div class="da"><span class="btn btn-fill btn-sm">Scan them</span><span class="btn btn-ghost btn-sm">Not now</span></div>
+      </div>
+      <div class="composer"><div class="plus">+</div><span>Message Sage</span><svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+    </div>
+  </div>
+  <div class="shot-note">The stage lives in the header as quiet words — never a number, never a progress bar. The scan card is the acquisition path for everything.</div>
+</div>
+
+<div class="shot">
+  <div class="shot-label"><span>06</span>The "+" open</div>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span class="sig"><b></b><i></i></span></div>
+    <div class="app">
+      <div class="scrim">
+        <div class="sheet">
+          <div class="srow"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 8V6a2 2 0 0 1 2-2h2M4 16v2a2 2 0 0 0 2 2h2M20 8V6a2 2 0 0 0-2-2h-2M20 16v2a2 2 0 0 1-2 2h-2"/><rect x="8.5" y="9" width="7" height="6" rx="1"/></svg><div><h4>Scan a report</h4><p>A photo of any paper from your doctor</p></div></div>
+          <div class="srow"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><div><h4>Record a visit</h4><p>Sage listens and writes a plain summary</p></div></div>
+          <div class="srow"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M8 4h9a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="M9.5 9h6M9.5 12.5h6M9.5 16h3.5"/></svg><div><h4>Since your last visit</h4><p>What's changed, ready for your next appointment</p></div></div>
+        </div>
+        <div class="composer" style="margin-top:0"><div class="plus" style="background:var(--card);border:1.5px solid var(--sage-line)">×</div><span>Message Sage</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="shot-note">Exactly three. Trials and pre-visit questions are never listed here — they arrive as dealt cards.</div>
+</div>
+
+<div class="shot">
+  <div class="shot-label"><span>07</span>A check-in</div>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span class="sig"><b></b><i></i></span></div>
+    <div class="app">
+      <div class="hdr"><span class="wm">Sage</span><span class="stage">Getting to know you</span></div>
+      <div class="msg">Quick check-in — just two questions today.</div>
+      <div class="msg">Any tingling in your fingers, especially when you touch something cold?</div>
+      <div class="chiprow"><span class="chip">Yes</span><span class="chip">No</span><span class="chip quiet">Not now</span></div>
+      <div class="msg user">Yes, a little</div>
+      <div class="msg">Thanks for telling me. That can happen with your treatment. If it gets stronger, or buttons get hard to do, bring it up at Thursday's visit — I've added it to your list.</div>
+      <div class="msg">Last one: how has eating been this week?</div>
+      <div class="chiprow" style="margin-bottom:0"><span class="chip">Normal</span><span class="chip">Less than usual</span><span class="chip">Hard to eat</span></div>
+      <div class="composer"><div class="plus">+</div><span>Message Sage</span><svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+    </div>
+  </div>
+  <div class="shot-note">Two or three questions, chosen from her regimen by the engine. The prediction stays in the back. The six surveys are gone.</div>
+</div>
+
+</div>
+
+<div class="sec">Learning about you</div>
+<div class="sec-sub">The builder is dead. Sage learns from documents and conversation, confirms every fact, and says plainly what it still needs — only when a goal needs it.</div>
+<div class="row">
+
+<div class="shot">
+  <div class="shot-label"><span>08</span>After a scan</div>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span class="sig"><b></b><i></i></span></div>
+    <div class="app">
+      <div class="hdr"><span class="wm">Sage</span><span class="stage">Getting to know you</span></div>
+      <div class="msg">I read the report. Here's what I understood — tell me if anything looks wrong.</div>
+      <div class="dealt" style="max-width:100%">
+        <div class="fact"><div class="tick">✓</div><div>It's breast cancer</div></div>
+        <div class="fact"><div class="tick">✓</div><div>It has not spread to other organs</div></div>
+        <div class="fact"><div style="flex:1">The plan includes chemotherapy</div><span class="btn btn-fill btn-sm" style="padding:7px 13px;font-size:13.5px">Looks right</span><span class="btn btn-ghost btn-sm" style="padding:7px 10px;font-size:13.5px">Not right</span></div>
+      </div>
+      <div class="msg">You can change any of this later — just tell me.</div>
+      <div class="composer"><div class="plus">+</div><span>Message Sage</span><svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+    </div>
+  </div>
+  <div class="shot-note">Plain-words rendering of clinical facts, confirmed one by one. Confirmed facts are the only thing "Since your last visit" may use.</div>
+</div>
+
+<div class="shot">
+  <div class="shot-label"><span>09</span>Trials — the ask</div>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span class="sig"><b></b><i></i></span></div>
+    <div class="app">
+      <div class="hdr"><span class="wm">Sage</span><span class="stage">Getting to know you</span></div>
+      <div class="msg user">Are there any clinical trials for me?</div>
+      <div class="msg">I can search for you. I still need two things: whether the cancer has spread, and your ZIP code. Any paper from your doctor probably answers the first one.</div>
+      <div class="chiprow"><span class="chip">Scan a report</span><span class="chip">Just tell me</span><span class="chip quiet">Not now</span></div>
+      <div class="composer"><div class="plus">+</div><span>Message Sage</span><svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+    </div>
+  </div>
+  <div class="shot-note">Rule 6 verbatim: every data request says why, names exactly what's missing, and offers a way out. Trials unlock when Sage knows enough — never promised for day one.</div>
+</div>
+
+<div class="shot">
+  <div class="shot-label"><span>10</span>Trials — the match</div>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span class="sig"><b></b><i></i></span></div>
+    <div class="app">
+      <div class="hdr"><span class="wm">Sage</span><span class="stage">Trial ready</span></div>
+      <div class="msg">Two studies near you may fit. Your doctor can tell you whether either is right for you.</div>
+      <div class="trial">
+        <div class="eb">Study near you</div>
+        <h4>A new combination of medicines for breast cancer</h4>
+        <div class="meta">University Hospital, Newark · 14 miles</div>
+        <div style="margin-bottom:12px"><span class="pill">Taking new patients</span></div>
+        <div class="da"><span class="btn btn-fill btn-sm">Questions for your doctor</span><span class="btn btn-ghost btn-sm">Save for my visit</span></div>
+      </div>
+      <div class="trial" style="margin-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom:0;padding-bottom:6px">
+        <div class="eb">Study near you</div>
+        <h4>Adding immunotherapy after surgery</h4>
+      </div>
+      <div class="composer"><div class="plus">+</div><span>Message Sage</span><svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+    </div>
+  </div>
+  <div class="shot-note">Plain-words titles, distance, and one status pill. Every path leads to the doctor, not to self-enrollment.</div>
+</div>
+
+</div>
+
+<div class="sec">For the visit, and at the limit</div>
+<div class="sec-sub">The two moments that define Sage's character: what it hands you before the doctor, and what it says when it can't answer.</div>
+<div class="row">
+
+<div class="shot">
+  <div class="shot-label"><span>11</span>Since your last visit</div>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span class="sig"><b></b><i></i></span></div>
+    <div class="app">
+      <div class="doc">
+        <h3>Since your last visit</h3>
+        <div class="range">July 30 – August 24</div>
+        <h5>What happened</h5>
+        <ul>
+          <li>Started round 3 of chemotherapy <em>· Aug 4</em></li>
+          <li>Tingling in your fingers <em>· you mentioned it 3 times</em></li>
+          <li>Eating less than usual <em>· this week</em></li>
+        </ul>
+        <h5>In your words</h5>
+        <div class="quote">"Tired but okay."</div>
+        <h5>Questions you saved</h5>
+        <ul>
+          <li>Can I keep working during treatment?</li>
+          <li>What is the tingling from?</li>
+        </ul>
+        <div style="margin-top:auto;padding-top:16px"><div class="btn btn-fill">Keep this open at your visit</div>
+        <p style="font-size:13px;color:var(--ink-2);text-align:center;margin-top:12px;line-height:1.5">Only things you've confirmed. Nothing here is Sage's guess.</p></div>
+      </div>
+    </div>
+  </div>
+  <div class="shot-note">The recall aid, not a clinical document. Compiled from confirmed facts and her own words — zero interpretation, by rule 7.</div>
+</div>
+
+<div class="shot">
+  <div class="shot-label"><span>12</span>At the limit</div>
+  <div class="phone">
+    <div class="status"><span>9:41</span><span class="sig"><b></b><i></i></span></div>
+    <div class="app">
+      <div class="hdr"><span class="wm">Sage</span><span class="stage">In treatment</span></div>
+      <div class="msg user">How long do I have?</div>
+      <div class="msg">I can't answer that, and I won't guess — no one can know it from the outside. Your oncologist can talk about it honestly, because they know your whole picture. Let's make sure you get a real answer from them.</div>
+      <div class="dealt" style="max-width:100%">
+        <div class="dt"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M8 4h9a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="M9.5 9h6M9.5 12.5h6M9.5 16h3.5"/></svg>Ways to ask Dr. Rivera</div>
+        <div class="dd" style="margin-bottom:8px">Questions that tend to get clear, honest answers:</div>
+        <div class="fact" style="padding:9px 2px">What does this usually mean for people in my situation?</div>
+        <div class="fact" style="padding:9px 2px">What are we aiming for with this treatment?</div>
+        <div class="fact" style="padding:9px 2px">What would change the plan?</div>
+        <div class="da" style="margin-top:10px"><span class="btn btn-fill btn-sm">Save for my visit</span></div>
+      </div>
+      <div class="composer"><div class="plus">+</div><span>Message Sage</span><svg class="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+    </div>
+  </div>
+  <div class="shot-note">The three-part move at the hardest wall: no guess, the limit in one plain sentence, and a route to the person who can actually answer.</div>
+</div>
+
+</div>
+
+</div>
+</body>
+</html>
