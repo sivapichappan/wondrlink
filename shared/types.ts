@@ -353,6 +353,17 @@ export interface LogSymptomRequest {
  * For assistant messages, `metadata` mirrors the bot-side fields of
  * ChatResponse so we can re-render BotResponseCard from history.
  */
+/**
+ * Which wall (if any) shaped this answer — the gate inversion's only gate
+ * (prognosis / diagnosis / dosing; crisis has its own ChatSafety block).
+ * The answer text is self-sufficient; this exists for a future dealt-card
+ * UI and so reloaded threads know a wall fired.
+ */
+export interface ChatWall {
+  type: 'prognosis' | 'diagnosis' | 'dosing';
+  matched?: string;
+}
+
 export interface ChatHistoryMessage {
   /**
    * Server row id. Absent on an optimistic message that has not round-tripped.
@@ -377,6 +388,7 @@ export interface ChatHistoryMessage {
     crisis_resources?: CrisisResources | null;
     crisis_category?: string | null;
     safety?: ChatSafety | null;
+    wall?: ChatWall | null;
   };
 }
 
@@ -392,7 +404,7 @@ export interface SaveMessageRequest {
 
 export interface ChatResponse {
   answer: string;
-  api_used: 'together' | 'groq' | 'greeting-shortcircuit' | 'off-topic-filter' | string;
+  api_used: 'together' | 'groq' | 'greeting-shortcircuit' | 'wall-prognosis' | 'off-topic-filter' | string;
   retrieved_count: number;
   response_length: ResponseLength;
   patient_context_used: boolean;
@@ -417,6 +429,8 @@ export interface ChatResponse {
   crisis_resources?: CrisisResources | null;
   crisis_category?: string | null;
   safety?: ChatSafety | null;
+  /** Which wall (if any) shaped this answer. */
+  wall?: ChatWall | null;
   /** Facts awaiting "is that right?" confirmation (belief store). */
   pending_confirmations?: PendingConfirmation[] | null;
   /** The patient's lifecycle stage after this turn. */

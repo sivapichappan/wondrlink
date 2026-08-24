@@ -250,6 +250,7 @@ export function useChat(conversationId: string, opts: UseChatOptions = {}) {
           crisis_resources: resp.crisis_resources,
           crisis_category: resp.crisis_category,
           safety: resp.safety,
+          wall: resp.wall,
         },
       };
       qc.setQueryData(key, (prev: { messages: ChatHistoryMessage[] } | undefined) => ({
