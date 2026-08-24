@@ -6,6 +6,7 @@ JSON, kill switch, and the server-side caregiver patient_line rendering.
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -54,7 +55,12 @@ class _MockClient:
 def _classify(message, client, **ctx):
     ctx.setdefault("on_active_treatment", False)
     ctx.setdefault("perspective", "self")
-    with patch("llm_utils.get_groq_client", return_value=client):
+    # Pin the provider: these tests assert classifier BEHAVIOR (merge matrix,
+    # failure modes), not provider routing. The developer .env may point the
+    # classifier at Together (2026-08-24 Groq model retirement), which would
+    # route around the mock below.
+    with patch.dict(os.environ, {"MODEL_CLASSIFIER_PROVIDER": "groq"}), \
+         patch("llm_utils.get_groq_client", return_value=client):
         return classify_message(message, **ctx)
 
 
@@ -139,7 +145,8 @@ class TestKillSwitch:
             called["n"] += 1
             raise AssertionError("LLM must not be called when disabled")
 
-        with patch("llm_utils.get_groq_client", side_effect=_boom):
+        with patch.dict(os.environ, {"MODEL_CLASSIFIER_PROVIDER": "groq"}), \
+             patch("llm_utils.get_groq_client", side_effect=_boom):
             res = classify_message("chest pain", on_active_treatment=False,
                                    perspective="self")
         assert res.tier == "T1" and res.source == "rules"

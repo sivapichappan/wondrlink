@@ -94,8 +94,9 @@ The NIST AI RMF organizes AI risk management into four functions: **Govern**, **
 
 - **De-identification regression test** ([tests/test_deidentify.py](../../tests/test_deidentify.py)) — adversarial fixtures across SSN, phone, email, MRN, insurance ID, ZIP, ISO + US dates, street addresses. Runs in pytest.
 - **Accessibility CI** ([.github/workflows/accessibility.yml](../../.github/workflows/accessibility.yml)) — axe-core via Playwright against critical flows; PRs blocked on `serious` or `critical` violations.
-- **Per-cancer eval harness** ([scripts/eval/run_evals.py](../../scripts/eval/run_evals.py)) — runs 4 suites per cancer (golden, off_topic, cross_cutting, safety) against 6 metrics:
-  - `off_topic_accuracy` (Tier 1 gate effectiveness)
+- **Per-cancer eval harness** ([scripts/eval/run_evals.py](../../scripts/eval/run_evals.py)) — runs 5 suites per cancer (golden, engagement, cross_cutting, safety, safety_classifier):
+  - `wall_accuracy` (the chat gate since the 2026-08-24 inversion: prognosis/diagnosis/dosing wall detection)
+  - `off_topic_accuracy` (default-engage floor: no refusal may reappear)
   - `route_accuracy` (Tier 2 selected/general routing)
   - `retrieval_coverage` (RAG hit rate)
   - `citation_validity` (every cited source exists)

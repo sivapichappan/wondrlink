@@ -85,8 +85,9 @@ python scripts/eval/run_evals.py --cancer colorectal --suite all --report report
 
 - **wall_accuracy** — wall detection (prognosis/diagnosis/dosing/none) vs
   `expect.wall`; deterministic, graded fully in dry mode. Threshold 1.00.
-- **off_topic_accuracy** — % of prompts where the tier-1 filter's
-  reject/accept decision matches the suite's `should_reject` annotation.
+- **off_topic_accuracy** — the default-engage floor since the gate
+  inversion (2026-08-24): the pipeline never rejects, every case pins
+  `should_reject: false`, and a failure means a refusal crept back in.
 - **route_accuracy** — % of prompts where tier-2 routing matches the
   expected `route` annotation. Skips prompts that don't specify one.
 - **retrieval_coverage** — % of prompts whose retrieved sources count

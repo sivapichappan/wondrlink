@@ -44,31 +44,52 @@ WALL_DOSING = "dosing"
 WALL_TYPES = (WALL_PROGNOSIS, WALL_DIAGNOSIS, WALL_DOSING)
 
 
-def _compile(patterns: List[Tuple[str, str]]):
+def _compile(patterns):
     return [(label, re.compile(rx)) for label, rx in patterns]
 
+
+# Clause terminator for anchored patterns, and the character class for
+# same-clause windows. Windows must never chain across sentence boundaries
+# OR line breaks: chat messages are often unpunctuated and multi-line, so a
+# bare [^.?!] quietly bridges unrelated lines.
+_END = r"\s*(?:$|[?.!,])"
+_IN_CLAUSE = r"[^.?!\n]"
 
 # --- Direct personal-prognosis asks → the canned screen-12 response. ---------
 # These are the phrasings where there is no answerable part: the question IS
 # the prediction. Population-statistics proxies ("how long do people like me
 # live") count — the canned response's first doctor question is literally the
 # honest version of that ask.
+#
+# PRECISION RULES (2026-08-24 review): "how long do I have" is anchored to
+# the naked ask — "how long do I have to wait for results" is logistics and
+# must never see this card. "make it" / "my chances" are likewise anchored so
+# "will I make it to work" and "what are my chances of getting into the
+# trial" stay ordinary questions.
 _PROGNOSIS_DIRECT = _compile([
-    ("how_long_do_i_have", r"\bhow (?:long|much time) (?:do|have) i\b"),
+    ("how_long_do_i_have",
+     r"\bhow (?:long|much time) do i have(?: left| to live)?" + _END),
+    ("how_much_longer_do_i_have",
+     r"\bhow much longer do i have(?: left| to live)?" + _END),
+    ("how_long_until_death", r"\bhow long (?:until|before) (?:i die|death)\b"),
     ("am_i_dying", r"\bam i dying\b"),
     ("am_i_going_to_die", r"\bam i (?:going to|gonna) die\b"),
     ("will_i_die", r"\bwill i die\b"),
-    ("will_i_survive", r"\bwill i (?:survive|make it|beat this|be ok(?:ay)?)\b"),
-    ("am_i_going_to_make_it",
-     r"\bam i (?:going to|gonna) (?:make it|survive|be ok(?:ay)?|beat this)\b"),
-    ("what_are_my_chances", r"\bwhat are my (?:chances|odds)\b"),
-    ("my_chances_of_surviving",
-     r"\bmy (?:chances|odds) of (?:survival|surviving|making it|beating)\b"),
-    ("whats_my_prognosis", r"\bwhat(?:'s| is) my prognosis\b"),
+    ("will_i_survive", r"\bwill i (?:survive|beat this)\b"),
+    ("will_i_make_it", r"\bwill i make it(?: through this)?" + _END),
+    ("am_i_going_to_survive",
+     r"\bam i (?:going to|gonna) (?:survive|beat this)\b"),
+    ("am_i_gonna_make_it",
+     r"\bam i (?:going to|gonna) make it(?: through this)?" + _END),
+    ("what_are_my_chances",
+     r"\bwhat are my (?:chances|odds)(?: here| really| honestly| doc| doctor)?" + _END),
+    ("chances_of_surviving",
+     r"\bmy (?:chances|odds) of (?:survival|surviving|making it|beating|being cured|recovery)\b"),
+    ("whats_my_prognosis", r"\bwhat(?:'s|s| is) my prognosis\b"),
     ("my_life_expectancy", r"\bmy life expectancy\b"),
     ("will_this_kill_me", r"\b(?:will|is) (?:this|it) (?:going to )?kill me\b"),
     ("how_long_do_people_live",
-     r"\bhow long do (?:people|patients)\b[^.?!]*\blive\b"),
+     r"\bhow long do (?:people|patients)" + _IN_CLAUSE + r"{0,40}\blive\b"),
 ])
 
 # --- Indirect prognosis territory → LLM path with the wall rule. -------------
@@ -88,51 +109,63 @@ _PROGNOSIS_INDIRECT = _compile([
 
 # --- Asking Sage to conclude what they have. ---------------------------------
 # The wall is CONCLUDING a diagnosis (or remission, or recurrence) for this
-# person. Explaining what a test or term means stays fully answerable and is
-# carved out in the prompt block's ban text.
+# person. Explaining what a test or term means stays fully answerable, which
+# is why "is it cancer" is clause-anchored: "Is this cancer hereditary?" is
+# an education question from someone with a known diagnosis, not a wall.
+_CANCER_NOUNS = r"(?:cancer|carcinoma|lymphoma|leukemia|melanoma|sarcoma|myeloma)"
 _DIAGNOSIS = _compile([
-    ("do_i_have", r"\bdo i have (?:cancer|a tumor|a recurrence)\b"),
-    ("is_it_cancer", r"\bis (?:this|it|that) (?:cancer|a tumor|malignant)\b"),
+    ("do_i_have",
+     r"\bdo i have (?:\w+ )?" + _CANCER_NOUNS
+     + r"\b|\bdo i have (?:a tumor|a recurrence)\b"),
+    ("is_it_cancer",
+     r"\bis (?:this|it|that) (?:" + _CANCER_NOUNS + r"|a tumor|malignant)" + _END),
     ("could_it_be_cancer",
-     r"\bcould (?:this|it|that) be (?:cancer|a tumor|malignant)\b"),
-    ("diagnose_me", r"\b(?:can you )?diagnose (?:me|this|it)\b"),
-    ("what_do_i_have", r"\bwhat do i have\b(?!\s+to)"),
+     r"\bcould (?:this|it|that) be (?:" + _CANCER_NOUNS + r"|a tumor|malignant)" + _END),
+    ("diagnose_me",
+     r"\b(?:can you |could you |please )?diagnose me\b|\bcan you diagnose\b"),
+    ("what_do_i_have", r"\bwhat do i have" + _END),
     ("is_my_cancer_back",
      r"\bis (?:my|the) cancer (?:back|gone|spreading|growing|worse)\b"),
     ("has_it_spread", r"\bhas (?:my|the) cancer spread\b|\bhas it spread\b"),
     ("does_this_mean_i_have", r"\bdoes (?:this|that) mean i have\b"),
     ("am_i_in_remission", r"\bam i in remission\b"),
-    ("is_this_lump", r"\bis (?:this|my|the) (?:lump|mole|spot|bump|swelling)\b"),
+    ("is_this_lump",
+     r"\bis (?:this|my|the) (?:lump|mole|spot|bump|swelling)\b(?:"
+     + _IN_CLAUSE + r"{0,30}\b(?:cancer|bad|serious|normal|dangerous|malignant|something)\b|"
+     + _END + r")"),
 ])
 
 # --- Medication and dose changes. --------------------------------------------
 # Verb + medication-object within one clause, plus a few high-signal bare
 # phrases. "Should I change my diet" must NOT land here, which is why the
-# change-verbs require a medication word nearby.
-# "treatment" and "chemo" must be the verb's direct object ("pause treatment"),
-# or "quit my job during treatment" would land here; the unambiguous medication
-# words keep a loose window ("lower my dose of the medication").
+# change-verbs require a medication word nearby. Radiation and immunotherapy
+# count as treatment objects (review 2026-08-24: two primary modalities were
+# missing). Known accepted trade-off: "forgot to take my <anything>" walls a
+# few non-medication objects; recall on missed doses is worth it.
 _MEDICATION_WORDS = (
     r"(?:meds?|medications?|medicines?|pills?|tablets?|doses?|dosage|"
     r"prescriptions?)"
 )
+_TREATMENT_NOUNS = r"(?:treatments?|chemo(?:therapy)?|infusions?|radiation|immunotherapy)"
 _DOSING = _compile([
     ("stop_taking", r"\b(?:can|should|could) i (?:stop|quit|keep) taking\b"),
     ("change_my_medication",
      r"\b(?:can|should|could|do) i (?:stop|skip|quit|pause|double|halve|"
-     r"increase|decrease|lower|reduce|change|adjust)\b[^.?!]{0,40}\b"
+     r"increase|decrease|lower|reduce|change|adjust)\b" + _IN_CLAUSE + r"{0,40}\b"
      + _MEDICATION_WORDS + r"\b"),
     ("change_my_treatment",
      r"\b(?:can|should|could|do) i (?:stop|skip|quit|pause|delay) "
-     r"(?:my |the )?(?:treatments?|chemo(?:therapy)?|infusions?)\b"),
+     r"(?:my |the )?" + _TREATMENT_NOUNS + r"\b"),
     ("missed_dose",
-     r"\b(?:missed|forgot|skipped) (?:a|my|the|one|last|this)\b[^.?!]{0,20}\b"
-     r"(?:dose|pill|tablet|infusion)s?\b"),
+     r"\b(?:missed|forgot|skipped) (?:a|my|the|one|last|this)\b"
+     + _IN_CLAUSE + r"{0,20}\b(?:dose|pill|tablet|infusion)s?\b"),
     ("forgot_to_take", r"\bforgot to take my\b"),
     ("double_dose", r"\b(?:double|extra|half) (?:the |my |a )?(?:dose|pill|tablet)\b"),
-    ("wean_off", r"\bwean (?:myself |me )?off\b"),
+    ("wean_off",
+     r"\bwean (?:myself |me )?off\b" + _IN_CLAUSE + r"{0,25}\b"
+     r"(?:" + _MEDICATION_WORDS[3:-1] + r"|" + _TREATMENT_NOUNS[3:-1] + r")\b"),
     ("stop_my_treatment",
-     r"\bstop (?:my|the) (?:chemo(?:therapy)?|treatment|meds?|medications?|pills?)\b"),
+     r"\bstop (?:my|the) (?:" + _TREATMENT_NOUNS[3:-1] + r"|meds?|medications?|pills?)\b"),
 ])
 
 
@@ -149,7 +182,9 @@ def detect_wall(message: str) -> Optional[Dict[str, Any]]:
     """
     if not message:
         return None
-    q = message.lower()
+    # iOS smart punctuation types U+2019 by default, and mobile is THE
+    # product — "What's my prognosis?" must match either way.
+    q = message.lower().replace("’", "'")
     for label, rx in _PROGNOSIS_DIRECT:
         if rx.search(q):
             return {"type": WALL_PROGNOSIS, "direct": True, "matched": label}
@@ -181,9 +216,12 @@ WALL_LIMIT_SENTENCES: Dict[str, str] = {
         "right place to start."
     ),
     WALL_DOSING: (
+        # Deliberately does NOT rank itself ("the safest next step"): the
+        # answer may also carry a same-day or 911 escalation, and this
+        # sentence must never read as softening that.
         "I can't tell you to change any medicine, and I won't guess about "
         "doses. Your care team sets your doses because they know your whole "
-        "picture, and a quick call to them is the safest next step."
+        "picture, and they can tell you exactly what to do next."
     ),
 }
 
@@ -232,7 +270,9 @@ _WALL_TOPIC_BANS: Dict[str, str] = {
     WALL_DOSING: (
         "Never tell them to take more, less, none, or a different schedule "
         "of any medicine. Never confirm that a change or a skipped dose is "
-        "safe. Explaining what a medicine does in general is fine."
+        "safe. The one universal caution you may give: not to take extra "
+        "doses to catch up before speaking with their care team. Explaining "
+        "what a medicine does in general is fine."
     ),
 }
 

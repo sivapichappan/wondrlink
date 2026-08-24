@@ -240,3 +240,49 @@ class TestLogSymptomEndpoint:
             headers={"Content-Type": "application/json"},
         )
         assert resp.status_code == 401
+
+
+class TestWallLLMPath:
+    """The LLM-path wall contract: the wall rule is the LAST thing in the
+    prompt (the instruction nearest the answer wins), and enforce_wall
+    guarantees the fixed limit sentence on the way out."""
+
+    def test_wall_block_is_appended_last_and_limit_is_enforced(self, client, base_mocks):
+        from walls import WALL_LIMIT_SENTENCES, wall_prompt_block
+        prompts_seen = []
+
+        def _capture_llm(prompt, *a, **k):
+            prompts_seen.append(prompt)
+            return ("Here is a real answer.", "test")
+
+        with _engage_mocks(), \
+             patch.object(index, "call_llm", side_effect=_capture_llm), \
+             patch("safety_classifier.classify_message",
+                   return_value=_result("NONE", "", rule_matched=False)):
+            resp = _post_chat(client, "Can I stop taking my pills? They make me sick.")
+        body = resp.get_json()
+        assert resp.status_code == 200
+        assert body["wall"]["type"] == "dosing"
+        # 1. The wall rule ends the prompt.
+        assert prompts_seen, "call_llm was never reached"
+        assert prompts_seen[0].rstrip().endswith(
+            wall_prompt_block("dosing").rstrip())
+        # 2. The fixed limit sentence survived to the patient-facing answer
+        #    (the canned mock answer lacks the marker, so enforce_wall must
+        #    have appended it, and soften_tone/enforce_voice must not have
+        #    rewritten it).
+        assert WALL_LIMIT_SENTENCES["dosing"] in body["answer"]
+        assert body["answer"].startswith("Here is a real answer.")
+
+    def test_urgent_direct_prognosis_skips_the_canned_card(self, client, base_mocks):
+        """A message that is both a direct prognosis ask and a detected
+        emergency must stay on the normal path (the urgency machinery lives
+        there) — the classifier failing open to NONE must not change that."""
+        with _engage_mocks(), \
+             patch("safety_classifier.classify_message",
+                   side_effect=RuntimeError("groq rate limit")):
+            resp = _post_chat(
+                client, "I have been vomiting blood for two days. Am I dying?")
+        body = resp.get_json() or {}
+        assert resp.status_code == 200
+        assert body.get("api_used") != "wall-prognosis"

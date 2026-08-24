@@ -81,13 +81,11 @@ _DEFAULT_THRESHOLDS = {
     "answer_structure":     0.85,
 }
 
-# Dry mode lowers tier-1 accuracy expectation because retrieval-similarity
-# fallback isn't available without chunks — a few cancer-specific queries
-# (e.g. "FOLFOX vs FOLFIRI") that pass in production via retrieval are
-# expected to fall through in dry mode.
-_DRY_MODE_THRESHOLD_OVERRIDES = {
-    "off_topic_accuracy": 0.80,
-}
+# No dry-mode overrides remain: the tier-1 gate whose retrieval fallback
+# justified a lower off_topic_accuracy bar was deleted at the gate inversion
+# (2026-08-24); the metric is now a pure default-engage floor and wall_accuracy
+# is the dry-run gate signal.
+_DRY_MODE_THRESHOLD_OVERRIDES = {}
 
 # Metrics that need real LLM answer text (or the LLM judgment layer, for
 # tier_accuracy — the dry-mode keyword floor intentionally misses the
@@ -175,6 +173,16 @@ def run_prompt(prompt: Dict[str, Any], cancer: str, chunks: List[Any], mode: str
         except Exception as e:
             logger.warning("[%s] retrieval failed: %s", pid, e)
 
+    # Wall detection happens up front for METRIC bookkeeping only —
+    # production never consults walls on a crisis turn (crisis outranks),
+    # but wall_accuracy must still see what detect_wall said, or an
+    # engagement case the llm-mode classifier escalates would misreport
+    # as wall 'none'.
+    from lib.walls import (detect_wall, enforce_wall,
+                           render_prognosis_wall_response, wall_prompt_block)
+    wall = detect_wall(query)
+    wall_type = wall["type"] if wall else None
+
     if safety_tier in ("T1", "T2", "MH"):
         # Escalation card path: no chat reply, hardcoded crisis response.
         from lib.confidence import render_crisis_response
@@ -189,6 +197,7 @@ def run_prompt(prompt: Dict[str, Any], cancer: str, chunks: List[Any], mode: str
             "route": "selected",
             "tier2_reason": f"safety-classifier:{safety_info.get('category')}",
             "rejected": False,
+            "wall": wall_type,
             "sources": retrieved,
             "answer": render_crisis_response(_legacy_cat),
             "mode": mode,
@@ -202,10 +211,6 @@ def run_prompt(prompt: Dict[str, Any], cancer: str, chunks: List[Any], mode: str
     # tier NONE returns the fixed card without an LLM; every other wall
     # flows to the LLM with the wall block appended and the limit sentence
     # enforced in code (llm branch below).
-    from lib.walls import (detect_wall, enforce_wall,
-                           render_prognosis_wall_response, wall_prompt_block)
-    wall = detect_wall(query)
-    wall_type = wall["type"] if wall else None
     if (wall and wall["type"] == "prognosis" and wall.get("direct")
             and safety_tier == "NONE"):
         return {
@@ -536,7 +541,7 @@ def main() -> int:
         "--suite",
         required=True,
         help="Suite name(s) — comma-separated; or 'all'. "
-             "'all' means golden, off_topic, cross_cutting, safety, "
+             "'all' means golden, engagement, cross_cutting, safety, "
              "safety_classifier. Name these explicitly: extraction, "
              "question_policy, response_depth, answer_structure, modeler, "
              "trials_ranking.",

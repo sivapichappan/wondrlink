@@ -865,8 +865,16 @@ def api_sandbox_chat():
         try:
             from walls import detect_wall, render_prognosis_wall_response
             wall = detect_wall(message)
+            # Same urgency guard as the patient route: detected urgency
+            # keeps the turn on the normal path.
+            _wall_urgent = False
+            if wall and wall["type"] == "prognosis" and wall.get("direct"):
+                from llm_utils import detect_symptom_urgency
+                _wall_urgent = bool(
+                    (detect_symptom_urgency(message, patient_context or {}) or {}
+                     ).get('detected'))
             if (wall and wall["type"] == "prognosis" and wall.get("direct")
-                    and safety_tier == 'NONE'):
+                    and safety_tier == 'NONE' and not _wall_urgent):
                 _wall_answer = render_prognosis_wall_response()
                 sandbox.append_sandbox_turn(conversation_id, message, _wall_answer)
                 return jsonify({
@@ -2064,6 +2072,7 @@ def _replay_answered_turn(client_turn_id: str, user_id: str) -> Optional[Dict[st
             "crisis_resources": metadata.get("crisis_resources"),
             "crisis_category": metadata.get("crisis_category"),
             "safety": metadata.get("safety"),
+            "wall": metadata.get("wall"),
             "guidelines_used": [],
             "has_guidelines": bool(metadata.get("sources")),
             "retrieved_count": len(metadata.get("sources", [])),
@@ -2542,8 +2551,20 @@ def api_chat():
         try:
             from walls import detect_wall, render_prognosis_wall_response
             wall = detect_wall(message)
+            # The deterministic symptom-urgency net must survive the
+            # short-circuit: a classifier outage fails open to tier NONE,
+            # and a message can be both a prognosis ask and an emergency
+            # ("I've been vomiting blood for two days, am I dying?"). Any
+            # detected urgency keeps the turn on the normal path, where the
+            # urgency machinery lives.
+            _wall_urgent = False
+            if wall and wall["type"] == "prognosis" and wall.get("direct"):
+                from llm_utils import detect_symptom_urgency
+                _wall_urgent = bool(
+                    (detect_symptom_urgency(message, patient_context or {}) or {}
+                     ).get('detected'))
             if (wall and wall["type"] == "prognosis" and wall.get("direct")
-                    and safety_tier == 'NONE'):
+                    and safety_tier == 'NONE' and not _wall_urgent):
                 logger.info(f"Wall short-circuit: prognosis-direct ({wall['matched']})")
                 _wall_answer = render_prognosis_wall_response()
                 _wall_info = {"type": "prognosis", "matched": wall["matched"]}
@@ -2872,7 +2893,12 @@ def api_chat():
             # lead-in so the cards become the primary content. We also drop
             # follow-ups and resources for this case — the cards carry their
             # own context, footer links, and CTAs.
-            if (clinical_trials_data and isinstance(clinical_trials_data, dict)
+            # Never on a wall turn: replacing the answer here would delete
+            # the code-enforced limit sentence ("Should I stop my chemo and
+            # enroll in a trial?" must keep the dosing wall, not become a
+            # trials pitch). The cards still attach below the wall answer.
+            if (wall is None
+                    and clinical_trials_data and isinstance(clinical_trials_data, dict)
                     and clinical_trials_data.get("trials")
                     and not clinical_trials_data.get("error")):
                 final_answer = (

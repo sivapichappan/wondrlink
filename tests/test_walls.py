@@ -229,3 +229,101 @@ class TestTemplateCopy:
         for wall_type in WALL_TYPES:
             low = WALL_LIMIT_SENTENCES[wall_type].lower()
             assert "care team" in low or "oncologist" in low
+
+
+class TestReviewRegressions:
+    """Every case the 2026-08-24 adversarial review confirmed, pinned.
+
+    The critical one first: 'how long do I have to X' logistics questions
+    were getting the canned death card.
+    """
+
+    def test_logistics_how_long_is_never_the_death_card(self):
+        for q in [
+            "How long do I have to wait for the biopsy results?",
+            "How long do I have to take letrozole?",
+            "how long do I have to decide about surgery",
+            "How long do I have between infusions?",
+        ]:
+            assert detect_wall(q) is None, q
+
+    def test_naked_how_long_still_hits(self):
+        for q in [
+            "How long do I have?",
+            "how long do I have left",
+            "How much time do I have to live?",
+            "How much longer do I have?",
+            "how long until I die",
+        ]:
+            assert _wall(q) == (WALL_PROGNOSIS, True), q
+
+    def test_capability_questions_are_not_prognosis(self):
+        for q in [
+            "Will I be okay to drive after chemo?",
+            "Will I make it to my appointment on Thursday?",
+            "am I going to make it to the wedding in June",
+        ]:
+            hit = detect_wall(q)
+            assert not (hit and hit["direct"]), q
+
+    def test_chances_of_nonsurvival_things_are_not_prognosis(self):
+        for q in [
+            "What are my chances of getting into the trial?",
+            "what are my chances of losing my hair",
+        ]:
+            assert detect_wall(q) is None, q
+
+    def test_naked_chances_still_hits(self):
+        assert _wall("What are my chances?") == (WALL_PROGNOSIS, True)
+        assert _wall("what are my odds here") == (WALL_PROGNOSIS, True)
+
+    def test_cancer_as_subject_noun_is_education(self):
+        for q in [
+            "Is this cancer hereditary?",
+            "Is this cancer treatable in most people?",
+            "is that cancer common in younger women",
+        ]:
+            assert detect_wall(q) is None, q
+
+    def test_site_named_diagnosis_asks_hit_the_wall(self):
+        for q in [
+            "Do I have lymphoma?",
+            "do I have breast cancer",
+            "Do I have melanoma or is it just a mole?",
+        ]:
+            assert _wall(q) == (WALL_DIAGNOSIS, False), q
+
+    def test_radiation_and_immunotherapy_are_dosing_objects(self):
+        for q in [
+            "can I skip my radiation today",
+            "should I pause immunotherapy for the trip",
+            "I want to stop the radiation",
+        ]:
+            hit = detect_wall(q)
+            assert hit and hit["type"] == WALL_DOSING, q
+
+    def test_ios_curly_apostrophe_matches(self):
+        assert _wall("What’s my prognosis?") == (WALL_PROGNOSIS, True)
+
+    def test_trial_spot_and_options_phrasings_are_not_diagnosis(self):
+        for q in [
+            "is my spot in the trial confirmed?",
+            "what do I have for options here",
+            "Can you help me diagnose the problem with my insurance claim?",
+        ]:
+            hit = detect_wall(q)
+            assert not (hit and hit["type"] == WALL_DIAGNOSIS), q
+
+    def test_weaning_a_baby_is_not_a_dosing_wall(self):
+        assert detect_wall("any tips for weaning my baby off breastfeeding") is None
+
+    def test_windows_do_not_cross_line_breaks(self):
+        # 'lower' and an unrelated 'dose' on the next line must not chain.
+        q = "should I lower the head of my bed\nthe nurse mentioned my dose schedule"
+        hit = detect_wall(q)
+        assert not (hit and hit["matched"] == "change_my_medication"), hit
+
+    def test_dosing_route_does_not_rank_itself(self):
+        # The limit block must never read as softening a same-day or 911
+        # escalation that the same answer carries.
+        assert "safest next step" not in WALL_LIMIT_SENTENCES[WALL_DOSING]

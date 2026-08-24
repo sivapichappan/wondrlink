@@ -1,22 +1,21 @@
 """
-Confidence scoring and off-topic detection for hallucination mitigation.
+Confidence scoring and legacy off-topic detection.
 
-Two-tier filter for the multi-cancer expansion:
-  Tier 1 — `is_in_oncology_domain(query, retrieved)` — hard gate. "Is this
-           query about oncology / cancer care at all?" Keyword + retrieval-
-           similarity check. Rejects genuinely off-topic input (non-medical,
-           unrelated diseases). Cancer-agnostic.
-  Tier 2 — `route_to_corpus(query, retrieved, selected_cancer)` — soft
-           routing. "Should we answer from the selected cancer's corpus,
-           the general cross-cutting corpus, or flag a different-cancer
-           query for switching?"
+GATE INVERSION (2026-08-24, Trajectory Brief change 1): /api/chat NO LONGER
+calls the Tier 1 gate — chat is default-engage, and the only chat gate is
+lib/walls.py. What remains here still has callers:
 
-Back-compat shim: `is_on_topic(...)` is preserved as an alias for
-`is_in_oncology_domain(...)` so older call sites keep working without edits.
+  Tier 1 — `is_in_oncology_domain(query, retrieved)` — now used ONLY by the
+           deep-research endpoint (api/index.py /api/deep_research), whose
+           off-topic contract three clients still branch on; the tool itself
+           is slated for the change-3 decision.
+  Tier 2 — `route_to_corpus(query, retrieved, selected_cancer)` — telemetry
+           and the eval harness's route_accuracy metric.
 
-The internal confidence values produced here are NOT shown to end users.
-They gate response behavior — off-topic refusal, hedging, stricter
-verification thresholds.
+Back-compat shim: `is_on_topic(...)` is an alias for
+`is_in_oncology_domain(...)`; it and OFF_TOPIC_RESPONSE keep older tests and
+scripts importable. The crisis-response block further down is FROZEN
+machinery, untouched by the inversion.
 """
 
 import logging

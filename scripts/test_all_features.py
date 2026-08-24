@@ -689,6 +689,8 @@ def run_llm_test(question_data, patient_context, all_chunks, profile):
     category = question_data["category"]
 
     try:
+        from walls import detect_wall, enforce_wall, render_prognosis_wall_response, wall_prompt_block
+
         relevant_chunks = search_chunks(question, all_chunks, top_k=5)
         prompt, metadata = assemble_prompt(
             message=question,
@@ -703,7 +705,20 @@ def run_llm_test(question_data, patient_context, all_chunks, profile):
         urgency_detected = metadata.get('urgency_detected', False)
         urgency_level = metadata.get('urgency_level')
 
-        response, api_used = call_llm(prompt, response_length="standard", query_type=query_type)
+        # THE WALLS (gate inversion 2026-08-24) — mirror of /api/chat: a
+        # direct prognosis ask (with no detected urgency) gets the fixed
+        # card; other wall contact gets the block appended + code-enforced
+        # limit sentence.
+        wall = detect_wall(question)
+        if (wall and wall["type"] == "prognosis" and wall.get("direct")
+                and not urgency_detected):
+            response, api_used = render_prognosis_wall_response(), "wall-prognosis"
+        else:
+            if wall:
+                prompt = prompt + "\n\n" + wall_prompt_block(wall["type"])
+            response, api_used = call_llm(prompt, response_length="standard", query_type=query_type)
+            if wall and response:
+                response, _ = enforce_wall(response, wall["type"])
 
         if not urgency_detected or urgency_level != 'emergency':
             # get_relevant_resources now returns a structured list (rendered by
