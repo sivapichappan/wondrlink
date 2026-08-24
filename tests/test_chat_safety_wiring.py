@@ -1,14 +1,18 @@
 # test_chat_safety_wiring.py
 """
-Flask test-client wiring tests for the safety classifier in /api/chat
-(Phase 4): T1/T2/MH short-circuit with the escalation card payload, T3
-bypasses the tier-1 domain gate, NONE keeps today's behavior, and a
-classifier outage falls open. The classifier itself is mocked — its own
-behavior is covered by tests/test_safety_classifier.py.
+Flask test-client wiring tests for the safety classifier in /api/chat:
+T1/T2/MH short-circuit with the escalation card payload, and — since the
+2026-08-24 gate inversion — the wall interaction: a direct prognosis ask
+gets the fixed card only at tier NONE, T3 stays on the normal path so its
+banner survives, everything else default-engages, and a classifier outage
+falls open to engagement. The classifier itself is mocked — its own
+behavior is covered by tests/test_safety_classifier.py; the wall detector
+is real (lib/walls.py) and covered by tests/test_walls.py.
 """
 
 import json
 import sys
+from contextlib import ExitStack
 from pathlib import Path
 from unittest.mock import patch
 
@@ -109,48 +113,93 @@ class TestShortCircuit:
         assert "988" in body["answer"]
 
 
-class TestGateInteraction:
-    def test_t3_bypasses_domain_gate(self, client, base_mocks):
-        """T3 must NOT be off-topic-rejected even with zero oncology vocab
-        and zero retrieval. The pipeline continues past the gate (deep
-        pipeline failures are irrelevant here — the assertion is that the
-        off-topic filter did not fire)."""
-        gate_calls = []
+def _engage_mocks():
+    """Make the full post-gate pipeline hermetic for default-engage tests:
+    canned LLM, no verifier call, no belief writes, no lifecycle or
+    conversation writes. Everything here is a module attribute of index or
+    an in-handler import, so no real network is touched."""
+    stack = ExitStack()
+    stack.enter_context(patch.object(index, "get_llm_status",
+                                     return_value={"primary_api": "test"}))
+    stack.enter_context(patch.object(index, "call_llm",
+                                     return_value=("Here is a real answer.", "test")))
+    stack.enter_context(patch.object(index, "extract_profile_updates_from_query",
+                                     return_value={}))
+    stack.enter_context(patch("verify.verify_response", return_value={
+        "verified": True, "recommended_action": "pass", "verifier_used": "mock"}))
+    stack.enter_context(patch.dict("os.environ", {
+        "FEATURE_BELIEFS_WRITE": "false", "FEATURE_EXTRACTION_SHADOW": "false"}))
+    stack.enter_context(patch("supabase_storage.save_model_state",
+                              return_value=True))
+    stack.enter_context(patch("supabase_storage.update_lifecycle_stage_column",
+                              return_value=True))
+    stack.enter_context(patch("supabase_storage.append_patient_event",
+                              return_value=True))
+    stack.enter_context(patch.object(index, "append_qa_to_conversation",
+                                     return_value={"ok": True, "title": None}))
+    stack.enter_context(patch.object(index, "create_conversation",
+                                     return_value="conv-1"))
+    return stack
 
-        def _spy_gate(message, retrieved):
-            gate_calls.append(message)
-            return False, "no-keyword-no-retrieval"
 
-        with patch("safety_classifier.classify_message",
-                   return_value=_result("T3", "intake", rule_matched=False)), \
-             patch("confidence.is_in_oncology_domain", side_effect=_spy_gate):
-            resp = _post_chat(client, "barely eaten for days")
-        body = resp.get_json() or {}
-        assert body.get("api_used") != "off-topic-filter"
-        assert body.get("off_topic") is not True
-        assert gate_calls == []  # gate never consulted for non-NONE tiers
+class TestWallInteraction:
+    """The gate inversion (Trajectory Brief change 1): default-engage, with
+    wall detection as the only remaining gate. Ordering is the contract —
+    the crisis machinery always outranks a wall."""
 
-    def test_none_still_hits_domain_gate(self, client, base_mocks):
+    def test_none_direct_prognosis_gets_the_fixed_card(self, client, base_mocks):
         with patch("safety_classifier.classify_message",
                    return_value=_result("NONE", "", rule_matched=False)), \
-             patch("confidence.is_in_oncology_domain",
-                   return_value=(False, "no-keyword-no-retrieval")):
-            resp = _post_chat(client, "who won the game last night?")
+             patch.object(index, "append_qa_to_conversation",
+                          return_value={"ok": True, "title": None}), \
+             patch.object(index, "create_conversation", return_value="conv-1"):
+            resp = _post_chat(client, "How long do I have?")
         body = resp.get_json()
-        assert body["api_used"] == "off-topic-filter"
-        assert body["off_topic"] is True
+        assert body["api_used"] == "wall-prognosis"
+        assert body["wall"]["type"] == "prognosis"
+        assert "whole picture" in body["answer"]
         assert base_mocks["logged"] == []  # NONE is never logged
+
+    def test_t3_direct_prognosis_stays_on_the_normal_path(self, client, base_mocks):
+        """A T3 verdict must never be short-circuited by the wall card: the
+        T3 banner rides on the normal path, and the canned card would
+        silently drop it."""
+        with _engage_mocks(), \
+             patch("safety_classifier.classify_message",
+                   return_value=_result("T3", "intake", rule_matched=False)):
+            resp = _post_chat(client, "I have barely eaten for days. Am I dying?")
+        body = resp.get_json() or {}
+        assert resp.status_code == 200
+        assert body.get("api_used") != "wall-prognosis"
+        assert (body.get("safety") or {}).get("tier") == "T3"
+
+    def test_everyday_life_is_engaged_not_refused(self, client, base_mocks):
+        """The old off-topic refusal is gone: food, work, kids, money, and
+        last night's game get real answers."""
+        with _engage_mocks(), \
+             patch("safety_classifier.classify_message",
+                   return_value=_result("NONE", "", rule_matched=False)):
+            resp = _post_chat(client, "who won the game last night?")
+        body = resp.get_json() or {}
+        assert resp.status_code == 200
+        assert body.get("api_used") != "off-topic-filter"
+        assert body.get("off_topic") is None
+        assert body.get("wall") is None
+        assert body.get("answer") == "Here is a real answer."
 
 
 class TestFailureModes:
-    def test_classifier_crash_falls_open_to_gate(self, client, base_mocks):
-        with patch("safety_classifier.classify_message",
-                   side_effect=RuntimeError("boom")), \
-             patch("confidence.is_in_oncology_domain",
-                   return_value=(False, "no-keyword-no-retrieval")):
+    def test_classifier_crash_falls_open_to_engagement(self, client, base_mocks):
+        """A classifier outage degrades to default-engage (tier NONE), never
+        to a refusal — the same fail-open direction the old gate had."""
+        with _engage_mocks(), \
+             patch("safety_classifier.classify_message",
+                   side_effect=RuntimeError("boom")):
             resp = _post_chat(client, "who won the game last night?")
-        body = resp.get_json()
-        assert body["api_used"] == "off-topic-filter"
+        body = resp.get_json() or {}
+        assert resp.status_code == 200
+        assert body.get("api_used") not in ("off-topic-filter", "wall-prognosis")
+        assert body.get("answer") == "Here is a real answer."
 
 
 class TestLogSymptomEndpoint:

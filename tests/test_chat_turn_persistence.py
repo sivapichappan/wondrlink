@@ -2,7 +2,8 @@
 """Every reply /api/chat returns is also filed in the conversation.
 
 Three paths used to return 200 and write nothing at all: the greeting
-short-circuit, the T1/T2/MH safety escalation, and the off-topic refusal. The
+short-circuit, the T1/T2/MH safety escalation, and the off-topic refusal
+(replaced by the wall card at the 2026-08-24 gate inversion). The
 answer existed only in the HTTP body, so a patient who backgrounded the app
 while one was in flight lost it outright, and reloading the thread afterwards
 showed no sign it had ever happened. The safety escalation is the one that
@@ -149,15 +150,20 @@ class TestSafetyEscalation:
         assert body["conversation_id"] == NEW_CONV
 
 
-class TestOffTopic:
-    def test_refusal_is_persisted(self, client, storage):
+class TestWall:
+    def test_prognosis_card_is_persisted(self, client, storage):
+        """The wall short-circuit (gate inversion, 2026-08-24) files its
+        turn like every other reply, with the wall stamped in metadata so a
+        reloaded thread knows a wall fired, not an ordinary answer."""
         with patch("llm_utils.is_greeting", return_value=False), \
-             patch("safety_classifier.classify_message", return_value=_safety("NONE")), \
-             patch("confidence.is_in_oncology_domain", return_value=(False, "no signal")):
-            body = _post(client, "who won the game last night").get_json()
-        assert body["off_topic"] is True
+             patch("safety_classifier.classify_message", return_value=_safety("NONE")):
+            body = _post(client, "How long do I have?").get_json()
+        assert body["api_used"] == "wall-prognosis"
+        assert body["wall"]["type"] == "prognosis"
         assert len(storage["appended"]) == 1
-        assert storage["appended"][0]["metadata"]["api_used"] == "off-topic-filter"
+        meta = storage["appended"][0]["metadata"]
+        assert meta["api_used"] == "wall-prognosis"
+        assert meta["wall"]["type"] == "prognosis"
         assert body["conversation_id"] == NEW_CONV
 
 

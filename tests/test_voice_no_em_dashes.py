@@ -258,9 +258,21 @@ class TestOurOwnCannedStringsAreClean:
             assert not any(d in greeting_response(name) for d in DASHES)
 
     def test_the_off_topic_refusal_has_none(self):
+        # Chat no longer refuses off-topic (gate inversion 2026-08-24), but
+        # deep research still renders this copy, so it stays pinned clean.
         from confidence import render_off_topic_response
         for slug in ("breast", "colorectal", None):
             assert not any(d in render_off_topic_response(slug) for d in DASHES)
+
+    def test_the_wall_copy_has_none(self):
+        """Wall responses skip enforce_voice on the canned path (like the
+        crisis cards), so the copy itself must be clean by construction."""
+        from walls import (WALL_LIMIT_SENTENCES, WALL_TYPES,
+                           render_prognosis_wall_response, wall_prompt_block)
+        assert not any(d in render_prognosis_wall_response() for d in DASHES)
+        for wall_type in WALL_TYPES:
+            assert not any(d in WALL_LIMIT_SENTENCES[wall_type] for d in DASHES)
+            assert not any(d in wall_prompt_block(wall_type) for d in DASHES)
 
     def test_the_crisis_responses_have_none(self):
         from confidence import render_crisis_response

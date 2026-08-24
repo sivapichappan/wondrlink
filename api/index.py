@@ -856,6 +856,33 @@ def api_sandbox_chat():
                 },
             })
 
+        # The walls run for the reviewer exactly as they do for a patient —
+        # same detection, same canned prognosis card, same enforced limit —
+        # because probing them is part of what a physician reviews. Same
+        # tier-NONE condition as the patient route: a T3 verdict keeps the
+        # message on the normal path.
+        wall = None
+        try:
+            from walls import detect_wall, render_prognosis_wall_response
+            wall = detect_wall(message)
+            if (wall and wall["type"] == "prognosis" and wall.get("direct")
+                    and safety_tier == 'NONE'):
+                _wall_answer = render_prognosis_wall_response()
+                sandbox.append_sandbox_turn(conversation_id, message, _wall_answer)
+                return jsonify({
+                    "status": "ok",
+                    "answer": _wall_answer,
+                    "api_used": "wall-prognosis",
+                    "conversation_id": conversation_id,
+                    "sandbox": True,
+                    "wall": {"type": "prognosis", "matched": wall["matched"]},
+                    "sources": [], "citations": {}, "resources": [], "followups": [],
+                    "guidelines_used": [], "has_guidelines": False,
+                })
+        except Exception:
+            logger.exception("Sandbox wall detection failed (continuing)")
+            wall = None
+
         history = sandbox.sandbox_history(conversation_id)
         conversation_context = format_conversation_context(history)
 
@@ -871,6 +898,12 @@ def api_sandbox_chat():
         prompt, prompt_metadata = assemble_prompt(
             message, retrieved, profile, response_length,
             conversation_context, patient_context)
+        if wall is not None:
+            try:
+                from walls import wall_prompt_block
+                prompt = prompt + "\n\n" + wall_prompt_block(wall["type"])
+            except Exception:
+                logger.exception("Sandbox wall prompt injection failed (continuing)")
         # The guard scans PHI-bearing components. There is none here, and popping
         # the key keeps the metadata shape identical to the patient path.
         prompt_metadata.pop('pii_guard_payload', None)
@@ -897,6 +930,9 @@ def api_sandbox_chat():
         try:
             from llm_utils import enforce_voice, extract_followups, soften_tone
             answer, followups = extract_followups(answer)
+            if wall is not None:
+                from walls import enforce_wall
+                answer, _ = enforce_wall(answer, wall["type"])
             answer, _tone = soften_tone(answer)
             answer, _ = enforce_voice(answer)
         except Exception:
@@ -919,6 +955,8 @@ def api_sandbox_chat():
             "guidelines_used": guidelines_used,
             "has_guidelines": len(guidelines_used) > 0,
             "safety": {"tier": safety_tier} if safety_tier != 'NONE' else None,
+            "wall": ({"type": wall["type"], "matched": wall["matched"]}
+                     if wall else None),
         })
     except Exception:
         logger.exception("sandbox chat error")
@@ -2487,35 +2525,51 @@ def api_chat():
                 },
             })
 
-        # Off-topic detection — refuse with redirect if query is outside scope.
-        # Any non-NONE safety tier (i.e. T3 here) is in-domain BY DEFINITION:
-        # symptom-described emergencies without oncology vocab ("passing a lot
-        # of blood from my rectum") used to die on this gate.
+        # THE WALLS (Trajectory Brief v1.1, change 1) — default-engage.
+        # The off-topic refusal is gone: food, work, kids, and money are
+        # on-topic because cancer lives inside a whole life. The gate's only
+        # remaining job is detecting contact with the enumerated walls
+        # (prognosis, diagnosis, dosing; crisis is the fourth and already ran
+        # above — T1/T2/MH returned before this line, and crisis always
+        # outranks a wall). A DIRECT personal-prognosis ask gets the fixed
+        # template (mockup screen 12), but only at tier NONE: a T3 message
+        # must keep riding the normal path so its banner is never dropped.
+        # Every other wall contact flows to the LLM with the wall rule
+        # appended to the prompt and the limit sentence enforced in code
+        # below. Detection failure fails open into the full pipeline, same
+        # as the old gate did.
+        wall = None
         try:
-            from confidence import is_in_oncology_domain, render_off_topic_response
-            if safety_tier == 'NONE':
-                on_topic, ot_reason = is_in_oncology_domain(message, retrieved)
-                if not on_topic:
-                    logger.info(f"Off-topic query refused: {ot_reason}")
-                    _ot_answer = render_off_topic_response(cancer_slug)
-                    active_conversation_id, _ot_title = _persist_turn(
-                        user_id, active_conversation_id, message, _ot_answer,
-                        {"api_used": "off-topic-filter"}, client_turn_id,
-                    )
-                    return jsonify({
-                        "status": "ok",
-                        "answer": _ot_answer,
-                        "api_used": "off-topic-filter",
-                        "retrieved_count": 0,
-                        "off_topic": True,
-                        "sources": [],
-                        "guidelines_used": [],
-                        "has_guidelines": False,
-                        "conversation_id": active_conversation_id,
-                        "title": _ot_title,
-                    })
+            from walls import detect_wall, render_prognosis_wall_response
+            wall = detect_wall(message)
+            if (wall and wall["type"] == "prognosis" and wall.get("direct")
+                    and safety_tier == 'NONE'):
+                logger.info(f"Wall short-circuit: prognosis-direct ({wall['matched']})")
+                _wall_answer = render_prognosis_wall_response()
+                _wall_info = {"type": "prognosis", "matched": wall["matched"]}
+                active_conversation_id, _wall_title = _persist_turn(
+                    user_id, active_conversation_id, message, _wall_answer,
+                    {"api_used": "wall-prognosis", "wall": _wall_info},
+                    client_turn_id,
+                )
+                return jsonify({
+                    "status": "ok",
+                    "answer": _wall_answer,
+                    "api_used": "wall-prognosis",
+                    "retrieved_count": 0,
+                    "wall": _wall_info,
+                    "sources": [],
+                    "citations": {},
+                    "resources": [],
+                    "followups": [],
+                    "guidelines_used": [],
+                    "has_guidelines": False,
+                    "conversation_id": active_conversation_id,
+                    "title": _wall_title,
+                })
         except Exception:
-            logger.exception("Off-topic detection failed (continuing with normal flow)")
+            logger.exception("Wall detection failed (continuing with normal flow)")
+            wall = None
 
         # --- Lifecycle question policy: pick at most ONE gentle "getting to
         # know you" topic for this turn. Pure python (no LLM); assemble_prompt
@@ -2556,6 +2610,15 @@ def api_chat():
         except Exception:
             logger.exception("Question policy failed (continuing without a question)")
 
+        # A wall turn never carries the gentle getting-to-know-you ask
+        # (bolting "one more question..." onto a limit answer is tone-deaf),
+        # and never weaves in the Modeler's trajectory summary (rule 5:
+        # predictions stay in the back). Coverage above still feeds the
+        # post-answer lifecycle bookkeeping.
+        if wall is not None:
+            question_directive = None
+            connections_summary = None
+
         # Assemble prompt
         if mismatch_detected:
             message_with_note = f"{message}\n\n[SYSTEM NOTE: User asked about different cancer type than their profile]"
@@ -2568,6 +2631,16 @@ def api_chat():
                                     conversation_context, patient_context,
                                     question_directive=question_directive,
                                     connections_summary=connections_summary)
+
+        # The wall rule goes LAST: the instruction nearest the answer wins,
+        # and this one has to beat the completeness rules and any per-cancer
+        # overlay language about the same topic.
+        if wall is not None:
+            try:
+                from walls import wall_prompt_block
+                prompt = prompt + "\n\n" + wall_prompt_block(wall["type"])
+            except Exception:
+                logger.exception("Wall prompt injection failed (continuing)")
 
         # Check LLM availability
         llm_status = get_llm_status()
@@ -2702,6 +2775,18 @@ def api_chat():
             except Exception:
                 logger.exception("Follow-up extraction failed; continuing without chips")
                 followups = []
+
+            # Wall guarantee — the fixed limit sentence is template, not a
+            # request. Runs before the voice filters; the template contains
+            # no forbidden phrases and no em dashes, so both pass it through.
+            if wall is not None:
+                try:
+                    from walls import enforce_wall
+                    final_answer, _wall_appended = enforce_wall(final_answer, wall["type"])
+                    if _wall_appended:
+                        logger.info(f"Wall limit appended in code ({wall['type']})")
+                except Exception:
+                    logger.exception("Wall enforcement failed (continuing)")
 
             # Tone softener — belt-and-suspenders for "you should / you must".
             # The system prompt forbids these phrases but LLMs slip ~5-22% of the
@@ -2970,6 +3055,12 @@ def api_chat():
                 "clinical_trials": clinical_trials_data,
                 "pending_confirmations": pending_confirmations or None,
                 "lifecycle_stage": lifecycle_stage,
+                # Which wall (if any) shaped this answer. The client needs no
+                # special UI for it — the answer text is self-sufficient — but
+                # a future dealt-card render keys off it, and it must persist
+                # so reloaded threads know a wall fired.
+                "wall": ({"type": wall["type"], "matched": wall["matched"]}
+                         if wall else None),
                 "urgency": t3_urgency or ({
                     "detected": prompt_metadata.get('urgency_detected', False),
                     "level": prompt_metadata.get('urgency_level'),
@@ -3015,6 +3106,7 @@ def api_chat():
                 "clinical_trials": response_data.get("clinical_trials"),
                 "pending_confirmations": response_data.get("pending_confirmations"),
                 "api_used": response_data.get("api_used"),
+                "wall": response_data.get("wall"),
                 # Which machinery fired on this turn. Non-PHI: a query
                 # type, a verifier verdict, retrieval confidence and
                 # counts. Persisted because reading fifty answers back
