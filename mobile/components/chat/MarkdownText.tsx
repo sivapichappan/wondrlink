@@ -28,9 +28,11 @@ const markdownEngine = MarkdownIt({ typographer: false });
 // pure black, tables draw black borders, code blocks are a #CCCCCC/#f5f5f5 box,
 // and `heading4` is 16px — LARGER than the heading3 above it.
 const base = {
-  body: { color: Colors.textPrimary, fontSize: 15, lineHeight: 21, fontFamily: Fonts.sans },
+  // Sage speaking — serif is the voice (semantic typography, redesign
+  // 2026-08-24). Labels/headings stay sans: they are interface, not voice.
+  body: { color: Colors.textPrimary, fontSize: 16, lineHeight: 25, fontFamily: Fonts.serif },
   paragraph: { marginTop: 0, marginBottom: 8 },
-  strong: { fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary },
+  strong: { fontFamily: Fonts.serifSemiBold, color: Colors.textPrimary },
   em: { fontStyle: 'italic' as const },
   s: { textDecorationLine: 'line-through' as const },
 
@@ -42,7 +44,7 @@ const base = {
   bullet_list_content: { flex: 1 },
   ordered_list_content: { flex: 1 },
 
-  heading1: { fontFamily: Fonts.serifBold, fontSize: 19, marginTop: 8, marginBottom: 4, color: Colors.textPrimary },
+  heading1: { fontFamily: Fonts.serifSemiBold, fontSize: 19, marginTop: 8, marginBottom: 4, color: Colors.textPrimary },
   heading2: { fontFamily: Fonts.sansSemiBold, fontSize: 16, marginTop: 8, marginBottom: 4, color: Colors.textPrimary },
   heading3: { fontFamily: Fonts.sansSemiBold, fontSize: 15, marginTop: 6, marginBottom: 2, color: Colors.textPrimary },
   heading4: { fontFamily: Fonts.sansSemiBold, fontSize: 14, marginTop: 6, marginBottom: 2, color: Colors.textPrimary },
@@ -98,7 +100,7 @@ const base = {
 // larger so the eye lands on it before anything else on the card.
 const leadStyles = {
   ...base,
-  body: { ...base.body, fontSize: 17, lineHeight: 25 },
+  body: { ...base.body, fontSize: 17, lineHeight: 26 },
   paragraph: { marginTop: 0, marginBottom: 6 },
 };
 

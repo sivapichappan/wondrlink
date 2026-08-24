@@ -1,6 +1,6 @@
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts as useFraunces, Fraunces_400Regular, Fraunces_700Bold } from '@expo-google-fonts/fraunces';
-import { useFonts as useGeist, Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold } from '@expo-google-fonts/geist';
+import { useFonts as useInstrumentSans, InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_600SemiBold, InstrumentSans_700Bold } from '@expo-google-fonts/instrument-sans';
+import { useFonts as useSourceSerif, SourceSerif4_400Regular, SourceSerif4_400Regular_Italic, SourceSerif4_600SemiBold, SourceSerif4_700Bold } from '@expo-google-fonts/source-serif-4';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -30,7 +30,7 @@ const navTheme = {
   colors: {
     ...DefaultTheme.colors,
     primary: Colors.primary,
-    background: Colors.surface,
+    background: Colors.paper,
     card: Colors.surface,
     text: Colors.textPrimary,
     border: Colors.border,
@@ -173,17 +173,21 @@ function RootGate() {
 }
 
 export default function RootLayout() {
-  const [geistLoaded] = useGeist({
-    Geist_400Regular,
-    Geist_500Medium,
-    Geist_600SemiBold,
-    Geist_700Bold,
+  // Semantic typography (redesign 2026-08-24): Source Serif 4 is Sage's
+  // voice, Instrument Sans is the interface.
+  const [sansLoaded] = useInstrumentSans({
+    InstrumentSans_400Regular,
+    InstrumentSans_500Medium,
+    InstrumentSans_600SemiBold,
+    InstrumentSans_700Bold,
   });
-  const [frauncesLoaded] = useFraunces({
-    Fraunces_400Regular,
-    Fraunces_700Bold,
+  const [serifLoaded] = useSourceSerif({
+    SourceSerif4_400Regular,
+    SourceSerif4_400Regular_Italic,
+    SourceSerif4_600SemiBold,
+    SourceSerif4_700Bold,
   });
-  const fontsLoaded = geistLoaded && frauncesLoaded;
+  const fontsLoaded = sansLoaded && serifLoaded;
 
   useEffect(() => {
     if (fontsLoaded) SplashScreen.hideAsync().catch(() => {});

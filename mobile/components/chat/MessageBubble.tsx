@@ -21,15 +21,20 @@ export function MessageBubble({ role, content, onSelectText }: Props) {
         delayLongPress={350}
         accessibilityHint="Press and hold to copy or select text"
         style={{ alignSelf: 'flex-end', maxWidth: '88%' }}>
+        {/* The patient's own words — the ONLY warm element on screen
+            (redesign 2026-08-24), set in the interface sans, not the voice
+            serif: typography says who is speaking. */}
         <View
           style={{
-            backgroundColor: Colors.primary,
+            backgroundColor: Colors.warmBubble,
+            borderWidth: 1,
+            borderColor: Colors.warmBubbleBorder,
             paddingHorizontal: 14,
             paddingVertical: 10,
             borderRadius: Radius.lg,
-            borderBottomRightRadius: 4,
+            borderBottomRightRadius: 6,
           }}>
-          <Text style={{ color: Colors.surface, fontSize: 15, lineHeight: 22, fontFamily: Fonts.sans }}>
+          <Text style={{ color: Colors.warmBubbleInk, fontSize: 15, lineHeight: 22, fontFamily: Fonts.sans }}>
             {content}
           </Text>
         </View>

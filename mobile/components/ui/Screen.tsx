@@ -79,7 +79,8 @@ export function Screen({
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.surface }}>
+    // The page ground is paper; cards sit on it in white.
+    <View style={{ flex: 1, backgroundColor: Colors.paper }}>
       {header}
       {middle}
     </View>
