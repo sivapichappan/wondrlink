@@ -54,7 +54,14 @@ PINS = {
     #     reference material, not a template to copy the density of.
     #
     # No model change, no retrieval change, no safety change in this window.
-    "chat_base": "cb788be145adb50f2c9505cd31db4a1b94584efaeb51f0b235d8a6cb280ddd23",
+    # chat_base RE-PINNED 2026-08-24: the gate inversion (Trajectory Brief
+    # v1.1, change 1). Guideline 4 flipped from be-honest-about-prognosis to
+    # the prognosis wall; SAFETY RULES gained rule 5 (the three walls + the
+    # three-part move) and rule 6 (default-engage: never refuse a question
+    # as off-topic). Shipped in the same eval window as lib/walls.py, whose
+    # wall blocks these rules cooperate with; no model change, no retrieval
+    # change, no crisis-machinery change in this window.
+    "chat_base": "326982bd8cedb102526a935fd73b18352eb3a8458b5239bfb66d592e5f93eea6",
     "extractor": "cf40c91c112d8ec9df71d2071aae0c67532b70f2b055c1d1fba7452513f4b5a9",
     "verifier": "16a6157963ca972f9190fb3d7833bd3376620b5eb2f8b58011f933fef419ad33",
     "subquery": "fcd46285f624d09b77867a8eaa229b506a48f744df75b8272da6cd6d3f363129",

@@ -1039,27 +1039,15 @@ ABOUT FIT (FECAL IMMUNOCHEMICAL TEST):
 
 
 # =============================================================================
-# STAGE PROGNOSIS CONTEXT (V4 Step 7)
-# =============================================================================
-
-STAGE_PROGNOSIS_CONTEXT = {
-    'IIIA': "Stage IIIA colon cancer has excellent outcomes with appropriate treatment. Five-year survival rates are favorable. Your care team can give you specific numbers based on your pathology.",
-    'IIIB': "Stage IIIB colon cancer has meaningful cure rates with surgery and adjuvant chemotherapy. Your care team can discuss your specific prognosis based on your pathology, biomarkers, and treatment response.",
-    'IIIC': "Stage IIIC represents more advanced local disease but remains potentially curable. Discuss your specific outlook with your oncology team.",
-    'IV': "Stage IV colon cancer is serious, and it's completely understandable to have questions about prognosis. Treatment options continue to expand, and many people live well for years with Stage IV disease. Your oncologist can discuss three kinds of questions: (1) What does the data say about people with a similar situation? (2) What are your own goals for treatment? (3) What does quality of life look like on each path? Palliative care can be involved alongside active treatment — it focuses on living as well as possible, not giving up on treatment."
-}
-
-STAGE_IV_PALLIATIVE_CONTEXT = """
-STAGE IV / ADVANCED DISEASE GUIDANCE:
-- Palliative care is NOT hospice — it is specialized support for symptom management and quality of life, offered alongside active cancer treatment
-- Use the SPIKES-adapted approach: Ask what the patient already understands before providing new information
-- Offer perception check: "Before I share what I know, can I ask what your oncologist has told you so far?"
-- Frame prognosis in three scenarios when asked directly: best-case, expected, and if-disease-progresses
-- Validate that asking about prognosis is a sign of strength, not giving up
-- Always mention: Advance Care Planning is a gift to family — it ensures YOUR wishes are followed
-- Introduce hospice only when contextually appropriate: "Hospice is not about giving up hope — it's about changing what you hope for."
-- Resources: palliativecare.org, getpalliativecare.org, prepareforyourcare.org
-"""
+# STAGE PROGNOSIS CONTEXT — REMOVED at the 2026-08-24 gate inversion.
+#
+# STAGE_PROGNOSIS_CONTEXT / STAGE_IV_PALLIATIVE_CONTEXT injected survival
+# framing ("five-year survival rates are favorable", "frame prognosis in
+# three scenarios") into the prompt for stage questions. Rule 5 of the
+# trajectory brief ends that: predictions stay in the back, and no output
+# sentence may describe the patient's future course — lib/walls.py is the
+# mechanism now. The block was also colorectal-only content applied to
+# every cancer, the same bug class as the 2026-08 overlay leak.
 
 
 # =============================================================================
@@ -2761,26 +2749,9 @@ This is a reasonable question to bring to their next appointment. It doesn't mea
         fit_test_context = "\n\n" + FIT_TEST_GUIDANCE
 
     # ==========================================================================
-    # STEP 4g: Add prognosis context for stage questions (V4 Step 7 + Item 13)
+    # STEP 4g: (removed 2026-08-24) stage-prognosis injection — see the
+    # note above the deleted constants. Walls handle prognosis now.
     # ==========================================================================
-    prognosis_context = ""
-    stage_keywords = ['stage iii', 'stage 3', 'what stage', 'my stage', 'stage iiib', 'stage 3b',
-                      'stage iv', 'stage 4', 'prognosis', 'how long', 'survival', 'cure',
-                      'palliative', 'hospice', 'end of life', 'advanced']
-    is_stage_question = any(kw in message_lower for kw in stage_keywords)
-    stage = patient_context.get('stage', '')
-    stage_upper = str(stage).upper()
-
-    # Detect Stage IV
-    is_stage_iv = any(x in stage_upper for x in ['IV', '4']) or 'METASTATIC' in stage_upper
-
-    if is_stage_iv and (is_stage_question or query_type == 'prognosis'):
-        prognosis_context = f"\n\n{STAGE_IV_PALLIATIVE_CONTEXT}"
-        if 'IV' in STAGE_PROGNOSIS_CONTEXT:
-            prognosis_context += f"\n\nPROGNOSIS CONTEXT:\n{STAGE_PROGNOSIS_CONTEXT['IV']}"
-    elif is_stage_question and stage:
-        if stage_upper in STAGE_PROGNOSIS_CONTEXT:
-            prognosis_context = f"\n\nPROGNOSIS CONTEXT:\n{STAGE_PROGNOSIS_CONTEXT[stage_upper]}"
 
     # ==========================================================================
     # STEP 4i: Stress-immune education (Item 8)
@@ -2957,10 +2928,6 @@ After your comfort opening, gently provide helpful information."""
     if fit_test_context:
         prompt_parts.append(fit_test_context)
 
-    # Add prognosis context if relevant (V4 Step 7)
-    if prognosis_context:
-        prompt_parts.append(prognosis_context)
-
     # Add Phase 3 contexts (Items 8, 10, 12, 9, 11)
     if stress_education_context:
         prompt_parts.append(stress_education_context)
@@ -3013,7 +2980,7 @@ After your comfort opening, gently provide helpful information."""
     elif query_type == 'emotional':
         prompt_parts.append("• For emotional concerns: validate feelings, mention oncology social workers and support groups")
     elif query_type == 'prognosis':
-        prompt_parts.append("• If guidelines mention multiple prognostic factors or outcomes, present ALL of them rather than a single estimate")
+        prompt_parts.append("• For prognosis topics: explain what factors matter in general terms only. Never give this person numbers, timeframes, or predictions about their future course; their oncologist can, because they know the whole picture")
     elif query_type == 'diagnosis':
         prompt_parts.append("• If guidelines mention multiple diagnostic approaches or tests, list ALL of them - do not pick just one")
     elif query_type == 'treatment':
