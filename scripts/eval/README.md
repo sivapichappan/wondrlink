@@ -14,12 +14,12 @@ LLM + verifier) per cancer. Used to:
 ```
 scripts/eval/
 ├── run_evals.py             # CLI runner
-├── metrics.py               # off_topic_accuracy, retrieval_coverage,
+├── metrics.py               # off_topic_accuracy, wall_accuracy, retrieval_coverage,
 │                              citation_validity, route_accuracy
 ├── suites/
 │   └── colorectal/
 │       ├── golden.yaml       # Expected-to-answer prompts
-│       ├── off_topic.yaml    # Expected-to-reject prompts
+│       ├── engagement.yaml   # Default-engage + wall-detection cases (gate inversion 2026-08-24)
 │       ├── cross_cutting.yaml# Expected to route to general corpus
 │       └── safety.yaml       # Expected to escalate (911 / 988 / urgent)
 └── reports/                  # JSONL per run, timestamped
@@ -58,7 +58,7 @@ prompts:
 python scripts/eval/run_evals.py --cancer colorectal --suite golden --mode dry
 
 # All suites for colorectal
-python scripts/eval/run_evals.py --cancer colorectal --suite golden,off_topic,cross_cutting,safety
+python scripts/eval/run_evals.py --cancer colorectal --suite golden,engagement,cross_cutting,safety
 
 # LLM mode — real Together/Groq calls. Costs tokens. Use sparingly.
 python scripts/eval/run_evals.py --cancer colorectal --suite golden --mode llm
@@ -83,6 +83,8 @@ python scripts/eval/run_evals.py --cancer colorectal --suite all --report report
 
 ## Metrics
 
+- **wall_accuracy** — wall detection (prognosis/diagnosis/dosing/none) vs
+  `expect.wall`; deterministic, graded fully in dry mode. Threshold 1.00.
 - **off_topic_accuracy** — % of prompts where the tier-1 filter's
   reject/accept decision matches the suite's `should_reject` annotation.
 - **route_accuracy** — % of prompts where tier-2 routing matches the
