@@ -90,7 +90,9 @@ class TestPatientCopyFollowsThePerspective:
     """The strings the owner actually reported, plus their neighbours."""
 
     CASES = [
-        ("app/(app)/index.tsx", "medical details"),
+        # The "Add ... medical details" builder row died with the builder
+        # (change 2); the trials row still carries perspective copy.
+        ("app/(app)/index.tsx", "Find clinical trials"),
         ("app/(app)/care.tsx", "titleFor"),
         ("app/profile/index.tsx", "About"),
         ("app/tools/screening.tsx", "felt physically"),
