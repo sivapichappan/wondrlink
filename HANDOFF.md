@@ -34,92 +34,87 @@ Local `.env` mirrors the overrides (commented block at the bottom).
 - Any llm-mode eval baseline from the Kimi era is now cross-model — do not
   compare numbers across 2026-08-24 without noting the voice change.
 
-## RESUME HERE — changes 1 + 2 BUILT; change 3 is next (home-as-chat)
+## RESUME HERE — ALL FIVE CHANGES BUILT; review + push are what remain
 
-**Change 2 (kill the builder) is DONE** (dd29639 + 0012266): build.tsx
-(1,014 lines) deleted with every entry point retargeted at scan/chat; the
-first-launch setup modal deleted; the trials just-in-time ask is rule-6 /
-screen-09 copy end to end (validate_trial_search_readiness + offer_scan +
-the Scan-a-report / Just-tell-me / Not-now options on the trials screen).
-The conversational machinery it relies on already existed (question_policy
-asks stage + ZIP; extraction + scanner fill the profile).
+The whole redesign is implemented locally: **17 commits, nothing pushed**
+(owner decision on record: one cohesive update, not five). 1104 offline
+tests, mobile tsc clean, EAS bundle repro green after every mobile change.
 
-**Change 3 part 1 (design-system pivot) is DONE** (9ff441a): mockup tokens
-live in mobile/constants/theme.ts (paper ground, sage actions, ink text,
-warm patient bubble), Source Serif 4 + Instrument Sans loaded, Sage's chat
-prose is serif 16/25, patient bubbles are the one warm element. JS-only.
+| # | Change | Commits | State |
+|---|--------|---------|-------|
+| 1 | Gate inversion (walls, default-engage) | 85b7777..0a8b220 | built + adversarially reviewed (28 findings fixed) + evals green |
+| 2 | Kill the builder | dd29639, 0012266 | built |
+| 3 | Design system + Home is the conversation | 9ff441a, 4115af4 | built |
+| 4 | Check-ins as chat questions | 7a80114 | built |
+| 5 | Onboarding = 3 screens + conversation | c1c8941 | built |
 
-**Change 3 remainder (NEXT): home becomes the conversation** — home route
-renders chat with the Sage wordmark + italic stage-words header; composer
-"+" sheet with exactly three rows (Scan a report / Record a visit / Since
-your last visit); dealt-card mechanism (sage accent border) with
-engagement instrumentation from day one (the brief's stated risk: if cards
-underperform, scanning starves and trials never unlock) — v1 cards: the
-wall doctor-questions card, the trials ask, the scan suggestion; then the
-nine-tool grid dies. Then changes 4 (check-ins in chat) and 5 (onboarding).
+**Next steps, in order:**
+1. The adversarial review of changes 2-5 (six lenses: onboarding gate,
+   conversation surface, cards/check-in, trials/builder aftermath, theme
+   contrast, copy rules) — running as of this writing; fix what it confirms.
+2. **DEVICE TESTING before the push.** Nothing in the redesign has run on a
+   handset. Highest-risk unwitnessed paths: first-launch onboarding through
+   the name card; Home rendering a long existing thread; the check-in card;
+   contrast of the new palette in daylight.
+3. Push (auto-deploys backend + web) and OTA the mobile JS
+   (`cd mobile && eas update --channel production --platform ios`). The
+   fonts are new JS packages, NOT native modules, so OTA is still valid.
+4. Physician review of BOTH data files, now: `config/safety/` (the standing
+   launch blocker) and the new `config/check_in/questions.json` (marked
+   DRAFT, not physician reviewed).
 
-**Review debt:** changes 2 + retheme have NOT had the adversarial review
-pass (subagent session limit until ~5:50pm ET 2026-08-24); run it before
-the cohesive push, together with change 3's.
+**Carried, deliberately not done:**
+- The drawer's "All tools" launcher still exists. The brief cuts the nine-tool
+  HOME grid, which is gone; the launcher stays until cards cover the tools it
+  holds (previsit, glossary, appeal, deep research, check-up schedule),
+  because deleting it now would strand real features.
+- `/api/screening/save` and the screening tables stay server-side for the web
+  SPA's parity pass; only the mobile questionnaires were deleted.
+- Deep research keeps its own off-topic gate (its status contract is consumed
+  by three surfaces); revisit when its tool decision is made.
+- Rule 1's sixth-grade readability check in CI is NOT built. Copy was written
+  to the standard and is guarded by tests for dashes/directives/jargon, but
+  there is no automated readability gate yet.
+- "Since your last visit" compiler, the allowlisted ingestion pipeline and
+  appointment-date awareness (the brief's below-the-top-five items) are
+  untouched.
 
-**Owner decision on record: NO push until all five changes land as one
-cohesive update.** Ten local commits and counting on main.
+### The five changes as built
 
-### Change 1 record — gate inversion (BUILT, reviewed, validated)
-
-Spec is in `docs/redesign/` (brief v1.1 + mockups; the `:root` block is the
-token source of truth; mockup copy is canonical). Change 1 was adversarially
-reviewed (28 confirmed findings, all fixed) and validated: 1077 offline
-tests; dry + llm engagement evals 19/19 wall_accuracy; real llm answers make
-the three-part move with the verbatim limit sentence.
-
-What shipped in change 1:
-- `lib/walls.py` — deterministic wall detection (prognosis/diagnosis/dosing;
-  crisis stays frozen and always outranks). Direct personal-prognosis asks →
-  the fixed screen-12 card (tier NONE + no detected urgency only). All other
-  wall contact → LLM with the wall rule appended LAST + `enforce_wall()`
-  guaranteeing the fixed limit sentence in code. Patterns are clause-anchored
-  ("how long do I have TO WAIT" is logistics, never the card).
-- Off-topic refusal deleted from `/api/chat` + sandbox mirror; deep research
-  keeps its old gate pending the change-3 tool decision.
-- `chat_base.md` re-pinned: walls + default-engage rules; STAGE_PROGNOSIS
-  injection deleted (rule 5 + it was colorectal-only leak); pancreatic
-  overlay reworded.
-- Evals: `off_topic.yaml` → `engagement.yaml` (×10 cancers), new
-  deterministic `wall_accuracy` metric (threshold 1.00, dry-mode-real),
-  harness re-mirrored; `ChatWall` in shared/types.ts + mobile whitelist
-  (client change is JS-only → OTA when pushed).
-
-### The remaining changes, in order
-
-2. **Kill the 6-step builder.** Learn from scans + conversation; every data
-   request says why, names exactly what is missing, offers an escape hatch;
-   trials unlock "when Sage knows enough."
-3. **Home becomes the conversation.** "+" holds exactly three tools (Scan a
-   report / Record a visit / Since your last visit); everything else arrives
-   as dealt cards in-stream. Instrument card engagement from day one — if
-   cards underperform, scanning starves and trials never unlock.
-4. **Check-ins become 2–3 engine-chosen plain questions in chat** (from the
-   patient's regimen). The six questionnaires die, including PREMM5 — a named,
-   accepted cost.
-5. **Onboarding shrinks to 3 screens + a conversation.** Welcome (oncologist
-   = footer link) → one legal screen (DOB once, state, three frozen
-   checkboxes) → "Who are you here for?" → chat asks the rest.
-
-Below the top five: the "Since your last visit" compiler (confirmed facts
-only), the allowlisted ingestion pipeline (NCI/ACS/NCCN-patient/MedlinePlus,
-diff-and-re-review; the refusal log is the monthly acquisition list),
-appointment-date awareness in the patient model.
+1. **Gate inversion.** `lib/walls.py` — deterministic prognosis/diagnosis/
+   dosing detection; direct personal-prognosis asks get the fixed screen-12
+   card (tier NONE + no detected urgency); everything else gets the wall rule
+   appended LAST to the prompt plus `enforce_wall()` guaranteeing the limit
+   sentence in code. Off-topic refusal deleted from chat + sandbox.
+   `engagement.yaml` (x10 cancers) + `wall_accuracy` metric replace the
+   off_topic suite.
+2. **Builder dead.** build.tsx (1014 lines) + the first-launch setup modal
+   deleted; entry points point at scan/chat; trials ask is screen-09 copy
+   with Scan a report / Just tell me / Not now.
+3. **Design system + Home.** Mockup tokens in `mobile/constants/theme.ts`;
+   Source Serif 4 is Sage's voice, Instrument Sans the interface; the
+   patient's bubble is the one warm element. `ConversationSurface` shared by
+   Home and /chat/:id; `DealtCard` + `/api/events/card` telemetry; the "+"
+   sheet holds exactly Scan a report / Record a visit / Since your last visit.
+4. **Check-ins.** `config/check_in/questions.json` (clinician-reviewable
+   bank, caregiver variants written out) + `lib/check_in.py` (<=3 questions,
+   treatment-tied first, 7-day cooldowns, decline counts) +
+   `/api/checkin/due|record` + CheckInCard. Answers go through /api/chat ON
+   PURPOSE — that is where PHQ-9 Q9's self-harm detection went.
+5. **Onboarding.** Fork + basics form deleted; "For oncologists" footer link
+   carries the reviewer intent so a clinician still never sees the patient
+   consent; NameCard asks the name in the conversation; new
+   `/api/account/perspective` + `perspective_set` so the gate waits on the
+   question rather than on a name.
 
 ### Cross-cutting
 
 - The 9 communication rules (memory `project_trajectory_pivot` has them
-  compressed; the brief is authoritative). Rule 1 = sixth-grade readability
-  enforced in CI, not review-time taste.
-- **Full retheme**: `mobile/constants/theme.ts` moves to the mockup tokens —
-  paper `#F6F7F3`, sage `#4A7862`, warm `#F1E9DC` reserved for the patient's
-  own bubbles; Source Serif 4 = Sage's voice, Instrument Sans = interface.
-  Typography is semantic: it tells the patient who is speaking.
+  compressed; the brief is authoritative). Rule 1's CI readability gate is
+  still UNBUILT — see "Carried, deliberately not done" above.
+- **Full retheme: DONE** (9ff441a) — mockup tokens in
+  `mobile/constants/theme.ts`, Source Serif 4 as Sage's voice, Instrument
+  Sans as the interface, warm `#F1E9DC` reserved for the patient's own words.
 - `soften_tone`'s grammar-blindness ("you shouldn't" → "it might help ton't")
   becomes load-bearing under rule 3's fixed templates — fix it early.
 - The frozen legal layer is explicitly out of scope for the redesign.
