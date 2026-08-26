@@ -205,13 +205,3 @@ def record_check_in(model_state: Dict[str, Any],
     del log[50:]
     model_state["last_check_in_at"] = stamp
     return model_state
-
-
-def follow_up_for(question_id: str, perspective: str = "self") -> Optional[str]:
-    """Sage's plain acknowledgement for a question, from the bank."""
-    caregiver = str(perspective).lower() == "caregiver"
-    for q in load_bank().get("questions") or []:
-        if isinstance(q, dict) and q.get("id") == question_id:
-            follow = (q.get("follow_caregiver") or q.get("follow")) if caregiver else q.get("follow")
-            return follow if isinstance(follow, str) and follow else None
-    return None

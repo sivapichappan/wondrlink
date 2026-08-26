@@ -260,7 +260,12 @@ function QuickActionsSheet({ open, onClose }: { open: boolean; onClose: () => vo
       icon: <ClipboardList size={20} color={Colors.primary} />,
       title: 'Since your last visit',
       body: "What's changed, ready for your next appointment",
-      onPress: () => go('/care'),
+      // The compiler this row is named for is not built yet (it is below
+      // the brief's top five). Pre-visit questions is the surface that
+      // actually answers "what do I bring to the appointment", so the row
+      // opens something that keeps its promise rather than the My Care hub,
+      // which does not.
+      onPress: () => go('/tools/previsit'),
     },
   ];
 

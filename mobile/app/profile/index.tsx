@@ -201,8 +201,10 @@ export default function ProfileViewScreen() {
           <Row label="Age" value={patient.age != null ? String(patient.age) : '—'} />
           <Row label="Sex" value={patient.sex || '—'} />
           <Row label="ZIP code" value={patient.zipCode || '—'} />
-          {/* Plain words for the ECOG scale — the UI never says "ECOG". */}
-          <Row label="Activity level" value={patient.ecog ?? '—'} />
+          {/* Plain words for the ECOG scale, LABEL AND VALUE. The UI never
+              says "ECOG", and a bare "2" says even less to a patient than
+              the acronym did. */}
+          <Row label="Activity level" value={activityLevel(patient.ecog)} />
         </Section>
 
         <Section title="Diagnosis" Icon={Heart}>
@@ -322,6 +324,19 @@ function Section({
       <View style={{ padding: 14, gap: 4 }}>{children}</View>
     </View>
   );
+}
+
+/** The ECOG scale in the words the check-in card would use. */
+function activityLevel(ecog?: string): string {
+  const key = String(ecog ?? '').trim();
+  const WORDS: Record<string, string> = {
+    '0': 'Fully active',
+    '1': 'Up and about, lighter activity',
+    '2': 'Up more than half the day',
+    '3': 'Resting more than half the day',
+    '4': 'In bed or a chair all day',
+  };
+  return WORDS[key] ?? '—';
 }
 
 function Row({ label, value }: { label: string; value: string }) {

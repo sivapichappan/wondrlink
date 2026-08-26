@@ -1,6 +1,7 @@
 import { Activity, TrendingDown, TrendingUp, Minus } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
+import { APP_NAME } from '@shared/branding';
 import { Colors, Fonts, Radius } from '@/constants/theme';
 import type { CareSnapshotResponse, Phq9Trend } from '@shared/types';
 
@@ -51,12 +52,12 @@ export function CareSnapshot({ snapshot }: Props) {
         <View style={{ alignItems: 'center', gap: 6 }}>
           <Sparkline values={scores} width={260} height={68} />
           <Text style={{ color: Colors.textMuted, fontSize: 11 }}>
-            PHQ-9 trend · {snapshot.phq9_count} entr{snapshot.phq9_count === 1 ? 'y' : 'ies'}
+            How you've been feeling · {snapshot.phq9_count} check-in{snapshot.phq9_count === 1 ? '' : 's'}
           </Text>
         </View>
       ) : (
         <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
-          No PHQ-9 check-ins yet. Take one from the wellness card above to start a trend.
+          No check-ins yet. {APP_NAME} asks a couple of plain questions in the conversation, and what you say builds up here.
         </Text>
       )}
 

@@ -495,12 +495,33 @@ class TestTheAppKnowsWhereToSendAReviewer:
 
         # The gate branches on the intent, and only the non-clinician path
         # reaches consent.
-        assert "reviewerIntent" in self.GATE
+        assert "REVIEWER_INTENT_KEY" in self.GATE
         assert "'/(onboarding)/reviewer-apply'" in self.GATE
         assert "'/(onboarding)/consent'" in self.GATE
-        intent_at = self.GATE.index("if (reviewerIntent)")
-        consent_at = self.GATE.index("'/(onboarding)/consent'")
-        assert intent_at < consent_at, "consent must sit on the else branch"
+
+    def test_the_intent_is_read_when_the_decision_is_made(self):
+        """The regression this replaced: the flag was read in a mount effect.
+
+        RootGate mounts before the welcome screen it renders, so a value
+        cached at mount is always the one from BEFORE the tap — false on
+        every fresh install, which is every install that matters. Reading
+        it inside the branch is the fix, and this test is what stops it
+        drifting back to a cached read.
+        """
+        branch_at = self.GATE.index("if (data.needs_consent)")
+        read_at = self.GATE.index("AsyncStorage.getItem(REVIEWER_INTENT_KEY)")
+        assert read_at > branch_at, "the intent must be read inside the branch"
+        assert "useState<boolean | null>(null)" not in self.GATE
+
+    def test_a_patient_who_tapped_it_by_mistake_can_get_out(self):
+        """reviewer-apply is entered with replace() and has no back button,
+        so without an exit a curious patient is stuck on a form demanding
+        an MD. Leaving also clears the flag, or the next launch lands here
+        again."""
+        form = (self.MOBILE / "app" / "(onboarding)" / "reviewer-apply.tsx").read_text()
+        assert "I am here as a patient" in form
+        assert "removeItem(REVIEWER_INTENT_KEY)" in form
+        assert "'/(onboarding)/consent'" in form
 
     def test_the_deleted_fork_is_really_gone(self):
         assert not (self.MOBILE / "app" / "(onboarding)" / "account-type.tsx").exists()

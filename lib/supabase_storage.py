@@ -1589,6 +1589,7 @@ def get_account_basics(user_id: str) -> Dict[str, Any]:
     try:
         client = get_admin_client()
         account_row: Optional[Dict[str, Any]] = None
+        accounts_available = True
         try:
             acct = client.table('accounts') \
                 .select('holder_name, perspective, relationship') \
@@ -1599,6 +1600,7 @@ def get_account_basics(user_id: str) -> Dict[str, Any]:
                 account_row = acct.data[0]
         except Exception:
             account_row = None  # table missing pre-migration — legacy path
+            accounts_available = False
 
         result = client.table('patient_profiles') \
             .select('perspective, relationship, account_holder_name, raw_profile') \
@@ -1624,8 +1626,17 @@ def get_account_basics(user_id: str) -> Dict[str, Any]:
         # the redesign (change 5) that question is answered BEFORE a name
         # exists, so it can no longer be inferred from needs_basics: the app
         # opens with no name and asks for it in the conversation.
-        perspective_set = bool(
-            (account_row or {}).get('perspective') or row.get('perspective'))
+        #
+        # It cannot be read off the perspective VALUE either: both source
+        # columns are NOT NULL DEFAULT 'self', so an unanswered account and
+        # one that answered "myself" are byte-identical. The signal is the
+        # accounts ROW existing at all — only save_account_perspective and
+        # save_account_basics create it. Older accounts that predate the
+        # table are treated as answered (they completed the old onboarding),
+        # and if the table is missing entirely nobody is sent round the
+        # loop, because a false negative here means asking again forever.
+        perspective_set = (
+            bool(account_row) or has_basics or not accounts_available)
         return {
             'exists': True,
             'perspective_set': perspective_set,
@@ -1738,11 +1749,25 @@ def save_account_basics(user_id: str, perspective: str,
         return False
 
 
+# model_state keys owned by a DIFFERENT writer than the chat turn. A chat
+# request loads the profile once and writes model_state back tens of seconds
+# later, so anything written in between (a check-in recorded from the card
+# while the answer's own turn was still in flight) would be overwritten by a
+# snapshot that predates it. These keys are merged from the fresh row instead
+# of being replaced.
+_MODEL_STATE_MERGE_KEYS = ("check_in_log", "last_check_in_at")
+
+
 def save_model_state(user_id: str, model_state: Dict[str, Any]) -> bool:
     """
     Targeted persist of raw_profile.model_state (question-policy bookkeeping).
     Loads fresh and touches ONLY model_state so it can never clobber profile
     writes made elsewhere in the same request (e.g. the extraction pipeline).
+
+    Keys in _MODEL_STATE_MERGE_KEYS are additionally preserved from the FRESH
+    row when the caller's snapshot does not carry them: the check-in cooldown
+    is written by its own endpoint mid-request, and losing it means asking the
+    same questions again tomorrow.
     """
     try:
         client = get_admin_client()
@@ -1752,6 +1777,26 @@ def save_model_state(user_id: str, model_state: Dict[str, Any]) -> bool:
             .limit(1) \
             .execute()
         profile = (result.data[0].get('raw_profile') if result.data else None) or {}
+        fresh_state = profile.get('model_state') or {}
+        model_state = dict(model_state or {})
+        for key in _MODEL_STATE_MERGE_KEYS:
+            fresh_value = fresh_state.get(key)
+            if fresh_value in (None, [], {}):
+                continue
+            mine = model_state.get(key)
+            if mine in (None, [], {}):
+                model_state[key] = fresh_value
+            elif key == "check_in_log" and isinstance(mine, list) and isinstance(fresh_value, list):
+                # Union by (id, at); the log is newest-first and capped.
+                seen = {(e.get("id"), e.get("at")) for e in mine if isinstance(e, dict)}
+                merged = list(mine)
+                for entry in fresh_value:
+                    if isinstance(entry, dict) and (entry.get("id"), entry.get("at")) not in seen:
+                        merged.append(entry)
+                merged.sort(key=lambda e: str(e.get("at") or ""), reverse=True)
+                model_state[key] = merged[:50]
+            elif key == "last_check_in_at":
+                model_state[key] = max(str(mine), str(fresh_value))
         profile['model_state'] = model_state
         client.table('patient_profiles') \
             .update({'raw_profile': profile}) \

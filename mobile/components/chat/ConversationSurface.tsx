@@ -44,8 +44,11 @@ interface Props {
   prefill?: string;
   /** Dealt cards, rendered in-stream under the last message. Receives the
    *  guarded send so a card can answer INTO the conversation (the check-in
-   *  card does exactly that) rather than writing to storage behind it. */
-  cards?: (send: (text: string) => void) => React.ReactNode;
+   *  card does exactly that) rather than writing to storage behind it, plus
+   *  whether a send is already in flight — a card that can fire several in
+   *  a row must respect the same one-at-a-time rule as the composer, since
+   *  only one turn is remembered on disk for recovery. */
+  cards?: (send: (text: string) => void, sending: boolean) => React.ReactNode;
   /** Shown above the composer when the conversation is empty. */
   emptyState?: React.ReactNode;
   disabled?: boolean;
@@ -169,6 +172,11 @@ export function ConversationSurface({
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      {/* PINNED, not a list header. This is the per-session AI disclosure
+          three state laws require (see SessionMeta), and Home now opens
+          into an existing conversation and scrolls straight to the bottom,
+          so as a header it was auto-scrolled out of sight every launch. */}
+      <SessionMeta />
       <FlatList
         ref={listRef}
         data={messages}
@@ -182,7 +190,6 @@ export function ConversationSurface({
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
         ListHeaderComponent={
           <View>
-            <SessionMeta />
             {/* "What is this built on?" is a question about the whole
                 conversation, so it sits with the session line rather than
                 under each answer or buried in the composer's sheet. */}
@@ -209,7 +216,9 @@ export function ConversationSurface({
         // Cards are dealt INTO the conversation, under the last thing said.
         ListFooterComponent={
           cards ? (
-            <View style={{ paddingHorizontal: 12, paddingTop: 6, gap: 10 }}>{cards(sendAndCount)}</View>
+            <View style={{ paddingHorizontal: 12, paddingTop: 6, gap: 10 }}>
+              {cards(sendAndCount, isSending || recovering)}
+            </View>
           ) : null
         }
         ListEmptyComponent={

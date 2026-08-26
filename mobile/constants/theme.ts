@@ -16,13 +16,19 @@ export const Colors = {
   primary: '#4A7862', // --sage: the primary action color
   primaryLight: '#5D8A74', // derived hover/soft-emphasis tint
   primaryPressed: '#2F5443', // --sage-deep: pressed states, text on tints
-  primarySoft: '#E4ECE5', // --sage-mist: selected/tinted fills
+  // A step deeper than sage-mist. The mockup has one tint; the app needs
+  // two, because a SELECTED option and a plain tinted panel sit side by side
+  // (trial match tiers, chips, dashed tiles) and collapsing them to one hex
+  // erases the distinction they exist to draw.
+  primarySoft: '#D7E4D9',
   accent: '#E89260', // legacy urgent-calm accent; SOS pill only
 
   // Surfaces
   paper: '#F6F7F3', // --paper: the page ground
   surface: '#FFFFFF', // --card
-  surfaceMuted: '#F6F7F3', // muted fills align with paper
+  // A hair off paper, deliberately: Screen paints the ground with `paper`,
+  // so a muted region set to the same hex has no edge at all.
+  surfaceMuted: '#EFF2EC',
   sidebarBg: '#E4ECE5', // --sage-mist
 
   // The patient's own words — the ONLY warm element on screen.
@@ -33,7 +39,14 @@ export const Colors = {
   // Text — the ink scale
   textPrimary: '#24312B', // --ink
   textSecondary: '#5A6A61', // --ink-2
-  textMuted: '#8A968E', // --ink-3
+  // NOT the mockup's --ink-3 (#8A968E). That value is a placeholder and
+  // disabled-glyph tint in the mockups; in this app textMuted carries real
+  // content — list subtitles, timestamps, hints — at 12 and 13px, where
+  // #8A968E measures 3.07:1 on white and 2.55:1 on the sage-mist rows in
+  // the drawer. Darkened to clear WCAG AA (4.5:1) on every ground the app
+  // actually paints. Hierarchy comes from size and weight instead of a
+  // third value step.
+  textMuted: '#5F6D64',
 
   // System
   border: '#E2E7E0', // --line: hairlines

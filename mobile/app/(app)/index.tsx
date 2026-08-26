@@ -20,7 +20,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { APP_NAME } from '@shared/branding';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ScanLine } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
@@ -37,6 +37,7 @@ import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { useHero, useProfile } from '@/hooks/useCare';
 import { NEW_CONVERSATION } from '@/hooks/useChat';
 import { useConversations } from '@/hooks/useConversations';
+import { useReviewerSession } from '@/hooks/useReviewerSession';
 import { CheckInCard } from '@/components/chat/CheckInCard';
 import { NameCard } from '@/components/chat/NameCard';
 import { fetchCheckIn, logCardEvent } from '@/lib/api/cards';
@@ -83,7 +84,8 @@ export default function HomeScreen() {
   const profile = useProfile();
   const hero = useHero();
   const qc = useQueryClient();
-  const { conversations } = useConversations();
+  const { conversations, isLoading: conversationsLoading } = useConversations();
+  const { isReviewer } = useReviewerSession();
 
   const { stillFinding, mark: markStillFinding } = useStillFindingOut();
   const scanCard = useDismissed(SCAN_CARD_KEY);
@@ -114,6 +116,22 @@ export default function HomeScreen() {
   // one. Adopting the id the server assigns keeps the composer pointed at the
   // same thread after the first send.
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  // "New chat" from the drawer or the thread header. Home continues the
+  // most recent conversation by default, so starting a fresh one has to be
+  // asked for explicitly or the button does nothing at all.
+  const params = useLocalSearchParams<{ new?: string }>();
+  useEffect(() => {
+    if (params.new !== '1') return;
+    setActiveId(NEW_CONVERSATION);
+    setNameDone((done) => done);
+    router.setParams({ new: undefined });
+  }, [params.new]);
+  // Wait for Recents before deciding. Without the guard the first render
+  // resolves to the "new" sentinel, which flashes the empty-state greeting
+  // over an existing conversation and, on a fast send, starts a second
+  // thread beside the one the person was already in.
+  const conversationsReady = !conversationsLoading;
   const conversationId = activeId ?? conversations[0]?.id ?? NEW_CONVERSATION;
 
   const { openDrawer } = useNavOverlay();
@@ -145,17 +163,34 @@ export default function HomeScreen() {
   // name, which on a caregiver account belongs to someone else entirely:
   // greeting Mary's daughter with "Hi Mary" is the bug this guards.
   const holderName = who.isCaregiver ? who.holderFirstName : hero.data?.first_name;
+  const opener = who.isCaregiver ? "Tell me how they're doing" : "Tell me how you're feeling";
+  // The name card introduces Sage itself, so the empty state must not do it
+  // a second time three lines above ("Hi. I'm Sage." twice on the very
+  // first screen).
   const greeting = holderName
-    ? `Hi ${holderName}. I'm ${APP_NAME}. ${who.isCaregiver ? "Tell me how they're doing" : "Tell me how you're feeling"}, or ask me anything.`
-    : `Hi. I'm ${APP_NAME}. ${who.isCaregiver ? "Tell me how they're doing" : "Tell me how you're feeling"}, or ask me anything.`;
+    ? `Hi ${holderName}. ${opener}, or ask me anything.`
+    : needsName
+      ? ''
+      : `Hi. I'm ${APP_NAME}. ${opener}, or ask me anything.`;
 
   // Cards Sage deals into the stream. Order is precedence: the anchor
   // question first (nothing else is worth asking before Sage knows what this
   // is), then the check-in, then the scan suggestion.
-  const cards = (send: (text: string) => void) => (
+  // A reviewer may never hold a patient profile (DB trigger, both
+  // directions), so every card here would either fail to save or ask them
+  // about a cancer they do not have. Their chat is a sandbox demo.
+  const cards = isReviewer ? undefined : (send: (text: string) => void, sending: boolean) => (
     <>
       {needsName && (
-        <NameCard isCaregiver={who.isCaregiver} onDone={() => setNameDone(true)} />
+        // Perspective from the SAME query the gate reads. usePerspective
+        // keys on ['acknowledgement'] and useAcknowledgement on
+        // ['acknowledgement', userId] — two caches, and the wrong one can
+        // still be undefined here, which would file a caregiver as the
+        // patient.
+        <NameCard
+          isCaregiver={ack.data?.perspective === 'caregiver'}
+          onDone={() => setNameDone(true)}
+        />
       )}
 
       {!needsName && needsCancerPick && readyOptions.length > 0 && (
@@ -213,6 +248,7 @@ export default function HomeScreen() {
         <CheckInCard
           questions={checkIn.data.questions}
           onAnswer={send}
+          sending={sending}
           onDone={() => setCheckInDone(true)}
         />
       )}
@@ -248,23 +284,29 @@ export default function HomeScreen() {
         }
       />
 
+      {conversationsReady ? (
       <ConversationSurface
         conversationId={conversationId}
         onConversationCreated={(newId) => setActiveId(newId)}
         cards={cards}
         disabled={chatDisabled}
         emptyState={
-          <Text
-            style={{
-              fontFamily: Fonts.serif,
-              fontSize: FontSize.xl,
-              lineHeight: 26,
-              color: Colors.textPrimary,
-            }}>
-            {greeting}
-          </Text>
+          greeting ? (
+            <Text
+              style={{
+                fontFamily: Fonts.serif,
+                fontSize: FontSize.xl,
+                lineHeight: 26,
+                color: Colors.textPrimary,
+              }}>
+              {greeting}
+            </Text>
+          ) : null
         }
       />
+      ) : (
+        <View style={{ flex: 1 }} />
+      )}
 
       {/* Left-edge swipe-to-open-drawer zone. */}
       <GestureDetector gesture={openEdge}>

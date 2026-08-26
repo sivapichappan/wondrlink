@@ -19,7 +19,6 @@ from check_in import (  # noqa: E402
     COOLDOWN_DAYS,
     MAX_QUESTIONS,
     check_in_due,
-    follow_up_for,
     load_bank,
     record_check_in,
     select_check_in,
@@ -134,11 +133,15 @@ class TestTheCopyIsPatientFacing:
     BANK = json.loads((_REPO / "config" / "check_in" / "questions.json").read_text())
 
     def _all_copy(self):
+        # EVERY patient-facing string, including the caregiver variants —
+        # they reach a real person exactly like the self ones do, and an
+        # unchecked variant is how a dash or a "you should" gets in.
         for q in self.BANK["questions"]:
             yield q["text"]
             yield from q.get("chips", [])
-            if q.get("follow"):
-                yield q["follow"]
+            for key in ("text_caregiver",):
+                if q.get(key):
+                    yield q[key]
 
     def test_no_dashes(self):
         for text in self._all_copy():
@@ -172,9 +175,13 @@ class TestTheCopyIsPatientFacing:
         ids = [q["id"] for q in self.BANK["questions"]]
         assert len(ids) == len(set(ids))
 
-    def test_follow_up_lookup_works_and_degrades(self):
-        assert follow_up_for("neuropathy_cold")
-        assert follow_up_for("no-such-question") is None
+    def test_the_bank_ships_no_canned_acknowledgement(self):
+        """An answer is sent into the conversation like any message, so
+        Sage's own reply acknowledges it. A `follow` string here would be
+        reviewed as if it shipped, and never reach anyone."""
+        for q in self.BANK["questions"]:
+            assert "follow" not in q, q["id"]
+            assert "follow_caregiver" not in q, q["id"]
 
 
 class TestCaregiverPerspective:
@@ -196,6 +203,3 @@ class TestCaregiverPerspective:
         qs = select_check_in(_profile("FOLFOX"), {}, NOW, perspective="nonsense")
         assert any("your fingers" in q["text"] for q in qs)
 
-    def test_follow_ups_have_a_caregiver_variant(self):
-        assert "their treatment" in (follow_up_for("neuropathy_cold", "caregiver") or "")
-        assert "your treatment" in (follow_up_for("neuropathy_cold") or "")

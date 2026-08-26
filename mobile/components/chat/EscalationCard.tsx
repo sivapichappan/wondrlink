@@ -129,7 +129,10 @@ export function EscalationCard({ safety, crisisResources }: Props) {
   const en = safety.emergency_number || '911';
   const isMH = safety.tier === 'MH';
   const bg = isMH ? Colors.primarySoft : Colors.emergencyBg;
-  const accent = isMH ? Colors.primary : Colors.danger;
+  // Deep sage, not sage: this text is the mental-health crisis line, set at
+  // 14px on a tint. The lighter sage measured 4.2:1 on it after the
+  // retheme, under AA. This is the last card that may be hard to read.
+  const accent = isMH ? Colors.primaryPressed : Colors.danger;
 
   return (
     <View

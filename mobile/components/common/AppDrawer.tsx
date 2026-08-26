@@ -102,12 +102,13 @@ export function AppDrawer() {
     closeDrawer();
   };
 
-  // New chat = a fresh Home. Home's composer starts the new thread; whatever
-  // conversation was open is already saved (every message persists on send)
-  // and stays reachable in Recents. navigate() pops back to the existing '/'
-  // instead of stacking a duplicate.
+  // New chat = Home, told explicitly to start a fresh thread. Home
+  // continues the most recent conversation now, so a bare navigate('/')
+  // would drop the person back into the thread they were already in and
+  // the button would appear broken. Whatever was open is already saved
+  // (every message persists on send) and stays in Recents.
   const newChat = () => {
-    router.navigate('/' as never);
+    router.navigate('/?new=1' as never);
     closeDrawer();
   };
 

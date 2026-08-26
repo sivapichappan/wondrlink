@@ -56,7 +56,7 @@ export default function AllToolsScreen() {
 
         {/* Ask-in-chat helper */}
         <Pressable onPress={() => router.push('/chat/new' as never)} accessibilityRole="button" accessibilityLabel="Ask in chat" style={{ width: '48%' }}>
-          <View style={{ borderWidth: 1.5, borderColor: Colors.primarySoft, borderStyle: 'dashed', borderRadius: Radius.lg, padding: Spacing.md, gap: 6, minHeight: 96, justifyContent: 'center', backgroundColor: Colors.sidebarBg }}>
+          <View style={{ borderWidth: 1.5, borderColor: Colors.primary, borderStyle: 'dashed', borderRadius: Radius.lg, padding: Spacing.md, gap: 6, minHeight: 96, justifyContent: 'center', backgroundColor: Colors.sidebarBg }}>
             <Sparkles size={18} color={Colors.primary} />
             <Text style={{ fontSize: FontSize.sm, lineHeight: 18, color: Colors.textSecondary }}>
               Not sure which tool? <Text style={{ fontFamily: Fonts.sansSemiBold, color: Colors.primary }}>Just ask in chat.</Text>

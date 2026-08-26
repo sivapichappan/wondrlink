@@ -17,7 +17,6 @@ import { TopBar } from '@/components/common/TopBar';
 import { Card } from '@/components/ui/Card';
 import { IconCircle } from '@/components/ui/IconCircle';
 import { ListRow } from '@/components/ui/ListRow';
-import { Pill } from '@/components/ui/Pill';
 import { Screen } from '@/components/ui/Screen';
 import { Colors, FontSize, Fonts, Spacing } from '@/constants/theme';
 import { useAcknowledgement } from '@/hooks/useAcknowledgement';
@@ -72,9 +71,6 @@ export default function MyCareScreen() {
     : `Profile ${pct}% complete`;
   const stageLabel = LIFECYCLE_LABELS[profile.data?.lifecycle_stage ?? 'getting_to_know_you'];
 
-  const days = snap.data?.days_since_symptom;
-  const checkinDue = days == null || days >= 7;
-
   return (
     <Screen header={<TopBar leading="back" backLabel="Home" title={who.titleFor('Care')} />}>
       {/* Profile card */}
@@ -124,7 +120,9 @@ export default function MyCareScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
           <Activity size={16} color={Colors.primary} />
           <Text style={{ flex: 1, fontSize: FontSize.md, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary }}>Wellness check-ins</Text>
-          {checkinDue && <Pill tone="accent">DUE</Pill>}
+          {/* No DUE pill: it was computed from SYMPTOM questionnaire rows,
+              which nothing writes since check-ins moved into the
+              conversation, so it could only ever be stuck on. */}
         </View>
         <ListRow
           fill="sidebar"

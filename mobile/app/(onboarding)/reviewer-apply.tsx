@@ -15,6 +15,7 @@
  * instead of surfacing a constraint name.
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -22,6 +23,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
+import { REVIEWER_INTENT_KEY } from '../(auth)/welcome';
 import { TextField } from '@/components/ui/TextField';
 import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 import { ApiError, extractErrorMessage } from '@/lib/api/client';
@@ -179,6 +181,31 @@ export default function ReviewerApply() {
       <Text style={{ fontSize: FontSize.xs, lineHeight: 17, color: Colors.textMuted }}>
         Someone on our team checks every request by hand. You will not be able to review or
         approve anything until they do.
+      </Text>
+
+      {/* The way back out. This screen is reached by tapping "For
+          oncologists" on the welcome screen, and it is entered with
+          `replace`, so without this a patient who tapped it out of
+          curiosity would be stuck on a form demanding an MD. It also
+          clears the flag, so the next launch does not land here again. */}
+      <Text
+        onPress={async () => {
+          try {
+            await AsyncStorage.removeItem(REVIEWER_INTENT_KEY);
+          } catch {
+            // Best effort: the consent screen is still the right place to go.
+          }
+          router.replace('/(onboarding)/consent' as never);
+        }}
+        accessibilityRole="link"
+        style={{
+          textAlign: 'center',
+          color: Colors.textSecondary,
+          fontSize: FontSize.sm,
+          paddingVertical: Spacing.sm,
+          textDecorationLine: 'underline',
+        }}>
+        I am here as a patient
       </Text>
     </Screen>
   );

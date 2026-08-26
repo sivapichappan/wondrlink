@@ -40,9 +40,10 @@ export default function ChatThreadScreen() {
         subtitle={ack.data?.cancer_display ?? undefined}
         trailing={
           <Pressable
-            // New chat = back to Home, which is the live conversation.
-            // This thread is already saved; it lives in Recents.
-            onPress={() => router.navigate('/' as never)}
+            // New chat = Home, told to start a fresh thread (Home
+            // continues the most recent one otherwise). This thread is
+            // already saved; it lives in Recents.
+            onPress={() => router.navigate('/?new=1' as never)}
             accessibilityRole="button"
             accessibilityLabel="New chat"
             hitSlop={8}

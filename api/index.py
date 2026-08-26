@@ -3500,7 +3500,9 @@ def api_surveillance():
 
         if not stage or not surgery_date:
             return jsonify({"status": "ok", "schedule": None,
-                           "message": "Stage and surgery date needed for surveillance schedule"})
+                           "message": ("To build your check-up schedule, I still need "
+                                       "two things: whether the cancer has spread, and "
+                                       "the date of your surgery.")})
 
         try:
             from profile_validator import derive_universal_core as _derive_core
@@ -3543,8 +3545,18 @@ def api_clinical_trials():
         # Load patient profile from Supabase
         profile = load_profile(user_id)
         if not profile:
+            # Rule 6, and there is no profile builder to send anyone to any
+            # more: say what is missing in plain words and offer both ways
+            # to answer it.
             return jsonify({
-                "error": "No patient profile found. Please build your profile first.",
+                "error": ("I can search for you. I still need two things: "
+                          "whether the cancer has spread, and your ZIP code. "
+                          "Any paper from your doctor probably answers the "
+                          "first one."),
+                "missing_critical": ["zip_code", "stage"],
+                "just_in_time_question": "What's your ZIP code? I'll use it to find studies near you.",
+                "chat_prefill": "My ZIP code is ",
+                "offer_scan": True,
                 "trials": []
             }), 400
 

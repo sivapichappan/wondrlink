@@ -29,9 +29,11 @@ interface Props {
   onAnswer: (text: string) => void;
   /** The card is finished: answered through, or waved off. */
   onDone: () => void;
+  /** A send is already in flight; chips must not queue another. */
+  sending?: boolean;
 }
 
-export function CheckInCard({ questions, onAnswer, onDone }: Props) {
+export function CheckInCard({ questions, onAnswer, onDone, sending }: Props) {
   const [index, setIndex] = useState(0);
   const logged = useRef(false);
   const asked = useRef<string[]>([]);
@@ -56,6 +58,10 @@ export function CheckInCard({ questions, onAnswer, onDone }: Props) {
         : null;
 
   const answer = (chip: string) => {
+    // One question at a time, for the same reason the composer holds:
+    // only one turn is remembered on disk, so a second send in flight
+    // would overwrite the first one's recovery address.
+    if (sending) return;
     asked.current = [...asked.current, question.id];
     // The answer carries the question with it, so the thread reads as a
     // conversation rather than a bare "Yes" with no referent.
@@ -106,7 +112,7 @@ export function CheckInCard({ questions, onAnswer, onDone }: Props) {
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.xs }}>
         {question.chips.map((chip) => (
-          <CardChip key={chip} label={chip} onPress={() => answer(chip)} />
+          <CardChip key={chip} label={chip} disabled={sending} onPress={() => answer(chip)} />
         ))}
         <CardChip label="Not now" quiet onPress={decline} />
       </View>

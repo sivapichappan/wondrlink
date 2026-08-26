@@ -6,7 +6,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
@@ -46,15 +46,6 @@ function RootGate() {
   const segments = useSegments();
   const ack = useAcknowledgement();
 
-  // Whether this account came in through the welcome screen's "For
-  // oncologists" door. Read once; null means "not known yet", which is not
-  // the same as false and must not route anyone while it loads.
-  const [reviewerIntent, setReviewerIntent] = useState<boolean | null>(null);
-  useEffect(() => {
-    AsyncStorage.getItem(REVIEWER_INTENT_KEY)
-      .then((v) => setReviewerIntent(v === '1'))
-      .catch(() => setReviewerIntent(false));
-  }, []);
 
   // A tapped notification opens what it is about. Mounted here rather than in a
   // screen so it also catches a cold launch, and given hasSession so it does
@@ -64,7 +55,6 @@ function RootGate() {
   useEffect(() => {
     if (ack.sessionLoading) return;
     if (ack.hasSession && ack.isLoading) return;
-    if (reviewerIntent === null) return;
 
     const segs = segments as readonly string[];
     const top = segs[0];
@@ -132,11 +122,21 @@ function RootGate() {
       // records the intent, and it routes them past this screen instead.
       // Anything inside (onboarding) is left alone so the branch can navigate.
       if (top === '(onboarding)') return;
-      if (reviewerIntent) {
-        router.replace('/(onboarding)/reviewer-apply' as never);
-      } else {
-        router.replace('/(onboarding)/consent' as never);
-      }
+      // Read at DECISION time, never cached at mount: this gate mounts
+      // before the welcome screen it renders, so a flag captured in a
+      // mount effect is always the value from BEFORE the tap, and every
+      // clinician would land on the patient consent.
+      void (async () => {
+        let intent = false;
+        try {
+          intent = (await AsyncStorage.getItem(REVIEWER_INTENT_KEY)) === '1';
+        } catch {
+          intent = false;
+        }
+        router.replace(
+          (intent ? '/(onboarding)/reviewer-apply' : '/(onboarding)/consent') as never,
+        );
+      })();
       return;
     }
 
@@ -160,7 +160,6 @@ function RootGate() {
     ack.hasSession,
     ack.isLoading,
     ack.data,
-    reviewerIntent,
     segments,
     router,
   ]);
