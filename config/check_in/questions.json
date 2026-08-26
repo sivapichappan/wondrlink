@@ -2,9 +2,10 @@
   "version": "0.1",
   "note": "Check-in question bank (redesign change 4). DATA, not code: every question here is meant to be read and edited by a clinician, exactly like config/safety/. A question earns its place by being traceable to a real effect of the treatment it is attached to, and by being answerable by a tired person in one tap. Plain words only: no scale names, no scores, no clinical terms. `match` entries are lowercase substrings tested against the patient's active regimen, treatment category, and drug names. There is no canned acknowledgement here: an answer is sent into the conversation like any message, so Sage's own reply is the acknowledgement. Every question carries a caregiver variant (`text_caregiver`): a caregiver account is held by one person and is ABOUT another, and asking the daughter about her own fingers is the bug. The variants are written out rather than generated, because no mechanical rewrite of these sentences stays grammatical.",
   "review": {
-    "status": "DRAFT — not physician reviewed",
-    "owner": "unassigned",
-    "reviewed_at": null
+    "status": "approved",
+    "approved_by": "owner",
+    "reviewed_at": "2026-08-26",
+    "note": "Approved by the product owner for launch. This is an owner approval, not a physician sign-off: if the safety-rules review establishes that patient-facing question banks need a clinician's signature too, this file needs its own pass."
   },
   "questions": [
     {

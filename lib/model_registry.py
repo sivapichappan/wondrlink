@@ -14,7 +14,7 @@ classifier  Pre-chat safety tiering of every inbound message (Groq, fast).
 fallback    Chat fallback when Together is unavailable (Groq).
 modeler     Connections-layer Modeler (background reasoning, Together).
 
-Chat-model swap procedure (e.g. evaluating moonshotai/Kimi-K2.6)
+Chat-model swap procedure (e.g. evaluating a new voice)
 ----------------------------------------------------------------
 1. Set MODEL_CHAT=<candidate> in a Vercel PREVIEW environment only.
 2. Against the preview, run:
@@ -34,21 +34,31 @@ from typing import Dict
 
 # segment -> (provider, default model id, env override var)
 _SEGMENTS: Dict[str, Dict[str, str]] = {
-    # Sage voice (final decision 2026-07-18): Kimi-K2.6 on Together — the
-    # strongest conversational model on the platform at interactive speed.
-    # The Anthropic path stays built + dormant: MODEL_CHAT_PROVIDER=anthropic
-    # + MODEL_CHAT=claude-sonnet-5 + ANTHROPIC_API_KEY re-enables it with no
-    # deploy. Rollback to the previous voice: MODEL_CHAT=meta-llama/Llama-3.3-70B-Instruct-Turbo.
+    # Sage voice. Llama-3.3-70B on Together (owner decision 2026-08-26).
+    #
+    # Kimi-K2.6 was the voice from 2026-07-18 until 2026-08-24, when Together
+    # moved it to dedicated endpoints only and serverless calls began
+    # returning 400 model_not_available. Prod chat was down until the
+    # rollback. Keeping the pre-Kimi voice is the owner's call rather than a
+    # temporary patch, so it is the DEFAULT here, not just an env override:
+    # a default that 400s is a trap for every preview deploy and every fresh
+    # environment.
+    #
+    # Restoring Kimi requires a paid dedicated endpoint, then
+    # MODEL_CHAT=moonshotai/Kimi-K2.6 (its reasoning-token handling in
+    # try_together is still in place). The Anthropic path also stays built +
+    # dormant: MODEL_CHAT_PROVIDER=anthropic + MODEL_CHAT=claude-sonnet-5 +
+    # ANTHROPIC_API_KEY re-enables it with no deploy.
     "chat": {
         "provider": "together",
-        "default": "moonshotai/Kimi-K2.6",
+        "default": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
         "env": "MODEL_CHAT",
     },
     # The Together-side chat model when the primary chat provider is NOT
     # together (e.g. anthropic primary -> this is the first fallback voice).
     "chat_together": {
         "provider": "together",
-        "default": "moonshotai/Kimi-K2.6",
+        "default": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
         "env": "MODEL_CHAT_TOGETHER",
     },
     "extractor": {
@@ -56,9 +66,13 @@ _SEGMENTS: Dict[str, Dict[str, str]] = {
         "default": "openai/gpt-oss-120b",
         "env": "MODEL_EXTRACTOR",
     },
+    # Groq retired its entire Llama line on 2026-08-24 (llama-3.1-8b-instant
+    # and llama-3.3-70b-versatile both 404 model_not_found), so the Groq-side
+    # segments below moved to the gpt-oss models, which are what that account
+    # can actually reach.
     "verifier": {
         "provider": "groq",
-        "default": "llama-3.1-8b-instant",
+        "default": "openai/gpt-oss-20b",
         "env": "MODEL_VERIFIER",
     },
     # Pre-chat safety classifier (supervisor mandate 2026-07-21): tiers every
@@ -69,9 +83,15 @@ _SEGMENTS: Dict[str, Dict[str, str]] = {
     # PER-MODEL, so this rides the 70b-versatile 12k-TPM bucket, separate
     # from the 8B verifier. Alternate via MODEL_CLASSIFIER_PROVIDER=together
     # + MODEL_CLASSIFIER=meta-llama/Llama-3.3-70B-Instruct-Turbo.
+    # Moved to Together 2026-08-24 (the Groq Llama retirement): this is the
+    # SAME model that won the 2026-07-21 bake-off, on the platform that still
+    # serves it, and it was re-validated before shipping at 12/12 tier
+    # accuracy with zero under-escalation on the safety_classifier suite.
+    # gpt-oss-120b was tried first and REJECTED: it missed
+    # fever-on-treatment, which is an under-escalation and a hard fail.
     "classifier": {
-        "provider": "groq",
-        "default": "llama-3.3-70b-versatile",
+        "provider": "together",
+        "default": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
         "env": "MODEL_CLASSIFIER",
     },
     # Glossary term explanations ("My terms"): quality parity with the chat
@@ -80,14 +100,14 @@ _SEGMENTS: Dict[str, Dict[str, str]] = {
     # classifier (12k TPM).
     "glossary": {
         "provider": "groq",
-        "default": "llama-3.3-70b-versatile",
+        "default": "openai/gpt-oss-120b",
         "env": "MODEL_GLOSSARY",
     },
     # Emergency chat backup when Together is down. 70B on Groq is still
     # near-instant, so the backup is no longer a quality cliff (2026-07-18).
     "fallback": {
         "provider": "groq",
-        "default": "llama-3.3-70b-versatile",
+        "default": "openai/gpt-oss-120b",
         "env": "MODEL_FALLBACK",
     },
     # Reserved for the future connections-layer Modeler (background reasoning
