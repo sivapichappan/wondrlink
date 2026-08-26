@@ -35,11 +35,23 @@ Still worth knowing:
 - Any llm-mode eval baseline from the Kimi era is now cross-model — do not
   compare numbers across 2026-08-24 without noting the voice change.
 
-## RESUME HERE — ALL FIVE CHANGES BUILT; review + push are what remain
+## RESUME HERE — THE REDESIGN IS SHIPPED; device testing is the next step
 
-The whole redesign is implemented locally: **19 commits, nothing pushed**
-(owner decision on record: one cohesive update, not five). 1104 offline
-tests, mobile tsc clean, EAS bundle repro green after every mobile change.
+**SHIPPED 2026-08-26** as one cohesive update, per the owner's decision.
+
+- Backend: `a579c1e` pushed to main, Vercel deployment `wondrchat-c43lf588e`
+  Ready. Verified on prod, not assumed: the three new routes answer 401
+  against a 405 unknown-route control, "How long do I have?" returns
+  `api_used: wall-prognosis` with the fixed card, and "Can I still go to my
+  granddaughter's birthday party?" (previously refused as off-topic) returns
+  a real answer.
+- Mobile: OTA published to channel `production`, runtime 1.2.0, commit
+  `a579c1e`, update group `b8697fa5-09a4-4070-89c1-c32c12386dcd`. It is the
+  newest update on the branch. **No TestFlight build was needed** — the
+  redesign is JS + font assets, app.json untouched, and build #37 is runtime
+  1.2.0. Two cold launches pick it up.
+
+1105 offline tests, mobile tsc clean, EAS bundle repro green.
 
 | # | Change | Commits | State |
 |---|--------|---------|-------|
@@ -59,27 +71,30 @@ tests, mobile tsc clean, EAS bundle repro green after every mobile change.
    ever being a reviewer), the per-session AI disclosure scrolling out of
    sight at launch, "New chat" becoming a no-op, and the mockup's lightest
    ink failing WCAG AA wherever this app uses it for real text.
-2. **SHIP IT — backend first, then the phone.** The two halves cannot go
-   separately: the new app calls `/api/checkin/due`, `/api/events/card` and
-   `/api/account/perspective`, none of which exist in prod yet.
-   a. `git push origin main` → Vercel auto-deploys (~40s). Verify by the
-      commit SHA, never by a 200 on `/api/health`.
-   b. `cd mobile && eas update --channel production --platform ios`.
-      **No TestFlight build is needed**: app.json's runtimeVersion policy is
-      `appVersion` (1.2.0) and the last good build is runtime 1.2.0 on the
-      production channel, so the OTA reaches the installed TestFlight app.
-      Everything in the redesign is JS + font assets; app.json is untouched
-      and no native module was added. A build is only needed if the app is
-      no longer installed.
-   c. Two cold launches on the phone to pick the update up.
-3. **DEVICE TESTING** (the owner can only see it on a phone). Highest-risk
-   unwitnessed paths: first launch through the name card; Home rendering a
-   long existing thread; the check-in card's one-at-a-time sends; the new
-   palette in daylight; and the walls (ask "How long do I have?").
+2. ~~Ship it~~ DONE 2026-08-26 (see above). Order was strict and stays
+   strict for any future wave: **backend before OTA**. An OTA in front of an
+   old backend is not a graceful degradation — the app reads
+   `perspective_set`, an old server omits it, so every existing user is
+   routed to "Who are you here for?" and then cannot save, because
+   `/api/account/perspective` would not exist. A locked-out app for
+   everyone.
+3. **DEVICE TESTING — the next real step.** Nothing has been witnessed on a
+   handset. Highest-risk unwitnessed paths: first launch through the name
+   card; Home rendering a long existing thread; the check-in card's
+   one-at-a-time sends; the new palette in daylight; the walls (ask "How
+   long do I have?"); and whether the two new font families actually render
+   (if their assets fail to download the app falls back to system faces
+   rather than a blank screen — ab03bac — so "it looks wrong" and "it is
+   broken" are different failures here).
 4. Physician review of `config/safety/` — still the standing launch blocker.
    `config/check_in/questions.json` is OWNER-APPROVED (2026-08-26); if the
    safety review establishes that patient-facing question banks need a
    clinician's signature too, that file needs its own pass.
+5. **Watch the card telemetry.** `patient_events` type `card_engagement`
+   now records shown/acted/dismissed per card kind. The brief's stated risk
+   is that if cards underperform, scanning starves, the model stays
+   ignorant, and trials never unlock. This is the instrument for it, and it
+   has no reader yet — a weekly count by kind and action would answer it.
 
 **Carried, deliberately not done:**
 - The drawer's "All tools" launcher still exists. The brief cuts the nine-tool
