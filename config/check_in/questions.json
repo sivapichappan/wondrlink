@@ -1,0 +1,286 @@
+{
+  "version": "0.1",
+  "note": "Check-in question bank (redesign change 4). DATA, not code: every question here is meant to be read and edited by a clinician, exactly like config/safety/. A question earns its place by being traceable to a real effect of the treatment it is attached to, and by being answerable by a tired person in one tap. Plain words only: no scale names, no scores, no clinical terms. `match` entries are lowercase substrings tested against the patient's active regimen, treatment category, and drug names. Every question carries a caregiver variant (`text_caregiver`): a caregiver account is held by one person and is ABOUT another, and asking the daughter about her own fingers is the bug. The variants are written out rather than generated, because no mechanical rewrite of these sentences stays grammatical.",
+  "review": {
+    "status": "DRAFT — not physician reviewed",
+    "owner": "unassigned",
+    "reviewed_at": null
+  },
+  "questions": [
+    {
+      "id": "neuropathy_cold",
+      "topic": "neuropathy",
+      "match": [
+        "oxaliplatin",
+        "folfox",
+        "capox",
+        "xelox"
+      ],
+      "text": "Any tingling in your fingers, especially when you touch something cold?",
+      "chips": [
+        "Yes",
+        "No"
+      ],
+      "why": "Cold-triggered tingling is the classic early sign of oxaliplatin neuropathy, and catching it early is what lets the team adjust before it becomes lasting.",
+      "follow": "Thanks for telling me. That can happen with your treatment. If it gets stronger, or buttons get hard to do, it is worth bringing up at your next visit.",
+      "text_caregiver": "Any tingling in their fingers, especially when they touch something cold?",
+      "follow_caregiver": "Thanks for telling me. That can happen with their treatment. If it gets stronger, or buttons get hard to do, it is worth bringing up at the next visit."
+    },
+    {
+      "id": "neuropathy_taxane",
+      "topic": "neuropathy",
+      "match": [
+        "paclitaxel",
+        "docetaxel",
+        "taxane",
+        "taxol",
+        "taxotere",
+        "nab-paclitaxel"
+      ],
+      "text": "Any numbness or tingling in your fingers or toes?",
+      "chips": [
+        "Yes",
+        "No"
+      ],
+      "why": "Numbness in the hands and feet is the most common lasting effect of taxane chemotherapy.",
+      "follow": "Thanks for telling me. That is worth mentioning at your next visit, especially if it is getting stronger.",
+      "text_caregiver": "Any numbness or tingling in their fingers or toes?",
+      "follow_caregiver": "Thanks for telling me. That is worth mentioning at their next visit, especially if it is getting stronger."
+    },
+    {
+      "id": "eating",
+      "topic": "nutrition",
+      "match": [
+        "chemo",
+        "chemotherapy",
+        "folfox",
+        "folfiri",
+        "capox",
+        "carboplatin",
+        "cisplatin",
+        "doxorubicin",
+        "cyclophosphamide"
+      ],
+      "text": "How has eating been this week?",
+      "chips": [
+        "Normal",
+        "Less than usual",
+        "Hard to eat"
+      ],
+      "why": "Eating less is one of the earliest signs that side effects are building up, and it is easy to miss day to day.",
+      "follow": "Thank you. Eating less for more than a few days is worth telling your care team about, and there are things that help.",
+      "text_caregiver": "How has their eating been this week?",
+      "follow_caregiver": "Thank you. Eating less for more than a few days is worth telling their care team about, and there are things that help."
+    },
+    {
+      "id": "nausea",
+      "topic": "nausea",
+      "match": [
+        "chemo",
+        "chemotherapy",
+        "cisplatin",
+        "carboplatin",
+        "doxorubicin",
+        "folfox",
+        "folfiri"
+      ],
+      "text": "Has nausea been a problem since your last treatment?",
+      "chips": [
+        "Not at all",
+        "A little",
+        "A lot"
+      ],
+      "why": "Nausea that is not controlled is one of the most treatable things there is, and people often assume they have to put up with it.",
+      "follow": "Thank you. Nausea that keeps coming back can usually be managed better, and that is worth a call to your care team.",
+      "text_caregiver": "Has nausea been a problem for them since the last treatment?",
+      "follow_caregiver": "Thank you. Nausea that keeps coming back can usually be managed better, and that is worth a call to their care team."
+    },
+    {
+      "id": "mouth_sores",
+      "topic": "mouth_sores",
+      "match": [
+        "5-fu",
+        "fluorouracil",
+        "capecitabine",
+        "xeloda",
+        "methotrexate",
+        "folfox",
+        "folfiri"
+      ],
+      "text": "Any soreness in your mouth, or trouble swallowing?",
+      "chips": [
+        "No",
+        "A little",
+        "Yes"
+      ],
+      "why": "Mouth sores from these medicines can make eating and drinking hard fast, and simple care helps a lot early.",
+      "follow": "Thank you. Mouth soreness is worth mentioning early, because there is a lot that helps.",
+      "text_caregiver": "Any soreness in their mouth, or trouble swallowing?",
+      "follow_caregiver": "Thank you. Mouth soreness is worth mentioning early, because there is a lot that helps."
+    },
+    {
+      "id": "hand_foot",
+      "topic": "hand_foot",
+      "match": [
+        "capecitabine",
+        "xeloda",
+        "5-fu",
+        "fluorouracil",
+        "regorafenib",
+        "sunitinib"
+      ],
+      "text": "Any redness, soreness, or peeling on your hands or feet?",
+      "chips": [
+        "No",
+        "A little",
+        "Yes"
+      ],
+      "why": "Hand-foot skin reaction is a known effect of these medicines, and dose timing is often adjusted when it shows up.",
+      "follow": "Thank you. That is worth showing your care team at your next visit.",
+      "text_caregiver": "Any redness, soreness, or peeling on their hands or feet?",
+      "follow_caregiver": "Thank you. That is worth showing their care team at the next visit."
+    },
+    {
+      "id": "joint_aches",
+      "topic": "joint_aches",
+      "match": [
+        "letrozole",
+        "anastrozole",
+        "exemestane",
+        "aromatase",
+        "tamoxifen",
+        "endocrine"
+      ],
+      "text": "Have your joints been aching or stiff?",
+      "chips": [
+        "No",
+        "A little",
+        "A lot"
+      ],
+      "why": "Joint aches are the most common reason people stop endocrine therapy early, and there is a lot that helps.",
+      "follow": "Thank you. Joint aches are common with this medicine and there are things that help, so it is worth raising.",
+      "text_caregiver": "Have their joints been aching or stiff?",
+      "follow_caregiver": "Thank you. Joint aches are common with this medicine and there are things that help, so it is worth raising."
+    },
+    {
+      "id": "hot_flashes",
+      "topic": "hot_flashes",
+      "match": [
+        "letrozole",
+        "anastrozole",
+        "exemestane",
+        "tamoxifen",
+        "endocrine",
+        "leuprolide",
+        "goserelin"
+      ],
+      "text": "Have hot flashes been bothering you?",
+      "chips": [
+        "Not really",
+        "Some",
+        "A lot"
+      ],
+      "why": "Hot flashes are very common on hormone treatment and often go unmentioned because people assume nothing can be done.",
+      "follow": "Thank you. Hot flashes are common with this treatment, and there are real options for easing them.",
+      "text_caregiver": "Have hot flashes been bothering them?",
+      "follow_caregiver": "Thank you. Hot flashes are common with this treatment, and there are real options for easing them."
+    },
+    {
+      "id": "skin_rash_io",
+      "topic": "rash",
+      "match": [
+        "pembrolizumab",
+        "nivolumab",
+        "atezolizumab",
+        "durvalumab",
+        "ipilimumab",
+        "immunotherapy"
+      ],
+      "text": "Any new rash or itching on your skin?",
+      "chips": [
+        "No",
+        "A little",
+        "Yes"
+      ],
+      "why": "Skin changes are the most common immune-related effect and usually the first one to appear.",
+      "follow": "Thank you. New skin changes on this treatment are worth telling your care team about promptly.",
+      "text_caregiver": "Any new rash or itching on their skin?",
+      "follow_caregiver": "Thank you. New skin changes on this treatment are worth telling their care team about promptly."
+    },
+    {
+      "id": "diarrhea_io",
+      "topic": "diarrhea",
+      "match": [
+        "pembrolizumab",
+        "nivolumab",
+        "atezolizumab",
+        "durvalumab",
+        "ipilimumab",
+        "immunotherapy",
+        "irinotecan",
+        "folfiri"
+      ],
+      "text": "Have you had more loose stools than usual?",
+      "chips": [
+        "No",
+        "A few",
+        "Many"
+      ],
+      "why": "Diarrhea on these treatments can escalate quickly, and how early it is reported changes what is needed.",
+      "follow": "Thank you for telling me. If it becomes many times a day, that is a same-day call to your care team.",
+      "text_caregiver": "Have they had more loose stools than usual?",
+      "follow_caregiver": "Thank you for telling me. If it becomes many times a day, that is a same-day call to their care team."
+    },
+    {
+      "id": "tiredness",
+      "topic": "fatigue",
+      "match": [
+        "*"
+      ],
+      "text": "How have your energy levels been this week?",
+      "chips": [
+        "About the same",
+        "Lower than usual",
+        "Very low"
+      ],
+      "why": "Fatigue is the single most reported effect across cancer treatment, and a change in it is often the first sign of something else.",
+      "follow": "Thank you. A drop in energy is worth mentioning, because some causes of it are treatable.",
+      "text_caregiver": "How have their energy levels been this week?",
+      "follow_caregiver": "Thank you. A drop in energy is worth mentioning, because some causes of it are treatable."
+    },
+    {
+      "id": "sleep",
+      "topic": "sleep",
+      "match": [
+        "*"
+      ],
+      "text": "How have you been sleeping?",
+      "chips": [
+        "Fine",
+        "Not great",
+        "Badly"
+      ],
+      "why": "Sleep affects everything else and is rarely raised in a short appointment.",
+      "follow": "Thank you. Sleep is worth raising at your next visit, and there are things that help.",
+      "text_caregiver": "How have they been sleeping?",
+      "follow_caregiver": "Thank you. Sleep is worth raising at the next visit, and there are things that help."
+    },
+    {
+      "id": "mood",
+      "topic": "mood",
+      "match": [
+        "*"
+      ],
+      "text": "How have you been feeling in yourself lately?",
+      "chips": [
+        "Okay",
+        "Up and down",
+        "Not good"
+      ],
+      "why": "Asking plainly, without a scale, is what the redesign replaced the mood questionnaire with. Anything worrying in a free-text reply is caught by the safety layer, exactly as it is anywhere else in chat.",
+      "follow": "Thank you for telling me. However you are feeling is worth saying out loud, and your care team can help with this part too.",
+      "text_caregiver": "How have they been feeling in themselves lately?",
+      "follow_caregiver": "Thank you for telling me. However they are feeling is worth saying out loud, and their care team can help with this part too."
+    }
+  ]
+}

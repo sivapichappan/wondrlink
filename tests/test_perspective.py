@@ -96,7 +96,6 @@ class TestPatientCopyFollowsThePerspective:
         ("app/(app)/index.tsx", "are they facing"),
         ("app/(app)/care.tsx", "titleFor"),
         ("app/profile/index.tsx", "About"),
-        ("app/tools/screening.tsx", "felt physically"),
         ("app/tools/trends.tsx", "check-ins are tracking"),
         ("components/chat/EscalationCard.tsx", "care team"),
     ]
@@ -110,10 +109,24 @@ class TestPatientCopyFollowsThePerspective:
     def test_no_screen_still_hardcodes_add_my_medical_details(self):
         assert 'title="Add my medical details"' not in screen("app/(app)/index.tsx")
 
-    def test_the_symptom_checkin_does_not_say_you(self):
-        src = screen("app/tools/screening.tsx")
-        assert "How you’ve felt physically" not in src
-        assert "How you've felt physically" not in src
+    def test_the_check_in_asks_a_caregiver_about_the_patient(self):
+        """The six questionnaires died with change 4 and check-ins became
+        engine-chosen questions, but the bug they guarded against did not:
+        "any tingling in YOUR fingers" asks the daughter about her own hands.
+        The bank carries a written caregiver variant for every question,
+        because these sentences have no mechanical rewrite that stays
+        grammatical."""
+        import json
+        bank = json.loads((_REPO / "config" / "check_in" / "questions.json").read_text())
+        for q in bank["questions"]:
+            assert q.get("text_caregiver"), q["id"]
+            assert "your" not in q["text_caregiver"].lower(), q["id"]
+            if q.get("follow"):
+                assert q.get("follow_caregiver"), q["id"]
+
+    def test_the_check_in_endpoint_reads_the_perspective(self):
+        api = (_REPO / "api" / "index.py").read_text()
+        assert "select_check_in(profile, model_state, perspective=perspective)" in api
 
     def test_the_home_greeting_addresses_the_holder(self):
         # hero.first_name is the PATIENT's name. Greeting a caregiver with it

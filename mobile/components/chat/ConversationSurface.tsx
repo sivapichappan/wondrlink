@@ -42,8 +42,10 @@ interface Props {
   onAutoSendHandled?: () => void;
   /** Composer prefill (never sends) — e.g. "My ZIP code is ". */
   prefill?: string;
-  /** Dealt cards, rendered in-stream under the last message. */
-  cards?: React.ReactNode;
+  /** Dealt cards, rendered in-stream under the last message. Receives the
+   *  guarded send so a card can answer INTO the conversation (the check-in
+   *  card does exactly that) rather than writing to storage behind it. */
+  cards?: (send: (text: string) => void) => React.ReactNode;
   /** Shown above the composer when the conversation is empty. */
   emptyState?: React.ReactNode;
   disabled?: boolean;
@@ -206,7 +208,9 @@ export function ConversationSurface({
         }
         // Cards are dealt INTO the conversation, under the last thing said.
         ListFooterComponent={
-          cards ? <View style={{ paddingHorizontal: 12, paddingTop: 6, gap: 10 }}>{cards}</View> : null
+          cards ? (
+            <View style={{ paddingHorizontal: 12, paddingTop: 6, gap: 10 }}>{cards(sendAndCount)}</View>
+          ) : null
         }
         ListEmptyComponent={
           !isLoading ? (

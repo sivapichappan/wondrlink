@@ -25,7 +25,6 @@ interface Tool {
 
 const TOOLS: Tool[] = [
   { href: '/tools/clinical-trials', title: 'Clinical trials', Icon: Microscope },
-  { href: '/tools/screening', title: 'Wellness check-in', Icon: Activity },
   { href: '/tools/previsit', title: 'Pre-visit questions', Icon: ClipboardList },
   { href: '/tools/visit-recap', title: 'Visit recap', Icon: NotebookPen },
   { href: '/tools/glossary', title: 'My terms', Icon: BookOpen },

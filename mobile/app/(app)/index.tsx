@@ -37,7 +37,8 @@ import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { useHero, useProfile } from '@/hooks/useCare';
 import { NEW_CONVERSATION } from '@/hooks/useChat';
 import { useConversations } from '@/hooks/useConversations';
-import { logCardEvent } from '@/lib/api/cards';
+import { CheckInCard } from '@/components/chat/CheckInCard';
+import { fetchCheckIn, logCardEvent } from '@/lib/api/cards';
 import { fetchCancerOptions, updateCancerSlug } from '@/lib/api/care';
 import { fetchConsentStatus } from '@/lib/api/consent';
 import { usePerspective } from '@/lib/perspective';
@@ -122,6 +123,15 @@ export default function HomeScreen() {
       if (e.translationX > 40 || e.velocityX > 500) runOnJS(openDrawer)();
     });
 
+  // What Sage would ask right now. Never throws; an unavailable check-in is
+  // simply not offered.
+  const checkIn = useQuery({
+    queryKey: ['check-in'],
+    queryFn: fetchCheckIn,
+    staleTime: 5 * 60_000,
+  });
+  const [checkInDone, setCheckInDone] = useState(false);
+
   const stageLabel = LIFECYCLE_LABELS[profile.data?.lifecycle_stage ?? 'getting_to_know_you'];
   const hasProfile = !!profile.data?.profile;
 
@@ -133,9 +143,10 @@ export default function HomeScreen() {
     ? `Hi ${holderName}. I'm ${APP_NAME}. ${who.isCaregiver ? "Tell me how they're doing" : "Tell me how you're feeling"}, or ask me anything.`
     : `Hi. I'm ${APP_NAME}. ${who.isCaregiver ? "Tell me how they're doing" : "Tell me how you're feeling"}, or ask me anything.`;
 
-  // Cards Sage deals into the stream. The anchor question comes first when it
-  // applies: nothing else is worth asking before Sage knows what this is.
-  const cards = (
+  // Cards Sage deals into the stream. Order is precedence: the anchor
+  // question first (nothing else is worth asking before Sage knows what this
+  // is), then the check-in, then the scan suggestion.
+  const cards = (send: (text: string) => void) => (
     <>
       {needsCancerPick && readyOptions.length > 0 && (
         <DealtCard
@@ -182,6 +193,17 @@ export default function HomeScreen() {
           actionLabel="Scan them"
           onAction={() => router.push('/tools/report-scan' as never)}
           onDismiss={scanCard.dismiss}
+        />
+      )}
+
+      {/* The check-in: two or three plain questions from this person's own
+          treatment, replacing the six questionnaires. Answers go INTO the
+          conversation, so they pass the safety layer like any message. */}
+      {!needsCancerPick && checkIn.data?.due && !checkInDone && (
+        <CheckInCard
+          questions={checkIn.data.questions}
+          onAnswer={send}
+          onDone={() => setCheckInDone(true)}
         />
       )}
     </>

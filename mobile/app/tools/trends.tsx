@@ -66,11 +66,13 @@ export default function TrendsScreen() {
           ))
         )}
 
+        {/* Check-ins are asked in the conversation now (redesign change 4),
+            so there is nowhere to send someone but back to it. */}
         <Button
-          label="Take a check-in"
+          label="Back to the conversation"
           variant="secondary"
           fullWidth
-          onPress={() => router.push('/tools/screening')}
+          onPress={() => router.navigate('/' as never)}
         />
       </ScrollView>
     </SafeAreaView>

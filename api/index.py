@@ -73,10 +73,11 @@ RATE_LIMIT_PRIVACY_APPEAL = (3, 86400)  # 3 per day
 RATE_LIMIT_MODELER       = (6, 60)      # abuse guard; the real gate is the debounce
 RATE_LIMIT_TRIALS_FEEDBACK = (60, 60)   # save/remove/view pings while browsing
 RATE_LIMIT_CARD_EVENTS = (120, 60)      # dealt-card shown/acted/dismissed pings
+RATE_LIMIT_CHECK_IN = (30, 60)          # check-in fetch + answer bookkeeping
 
 # Every dealt card the client may report on. Adding a card means adding
 # it here, which is the point: the set stays small and reviewable.
-CARD_KINDS = frozenset({"anchor_cancer", "scan_suggestion", "trials_ask"})
+CARD_KINDS = frozenset({"anchor_cancer", "scan_suggestion", "trials_ask", "check_in"})
 
 
 def feature_enabled(flag_name: str) -> bool:
@@ -1297,6 +1298,92 @@ def api_modeler_cron():
             skipped += 1
     return jsonify({"candidates": len(candidates), "ran": ran, "skipped": skipped,
                     "errors": errors, "elapsed_ms": int((_time.time() - started) * 1000)})
+
+
+@app.route("/api/checkin/due", methods=["GET"])
+@require_auth
+def api_check_in_due():
+    """The check-in Sage would ask for right now (redesign change 4).
+
+    Replaces the six standalone questionnaires. Returns at most three plain
+    questions chosen from what this patient is actually being treated with,
+    or due: false. The reasoning behind the choice never leaves the server
+    (rule 5: predictions stay in the back).
+    """
+    try:
+        user_id = request.user["user_id"]
+        from rate_limit import check_rate_limit
+        allowed, _remaining = check_rate_limit(user_id, 'check_in', *RATE_LIMIT_CHECK_IN)
+        if not allowed:
+            return jsonify({"error": "Too many requests"}), 429
+
+        from check_in import check_in_due, select_check_in
+        profile = load_profile(user_id) or {}
+        model_state = (profile.get("model_state") or {}) if isinstance(profile, dict) else {}
+        if not check_in_due(model_state):
+            return jsonify({"status": "ok", "due": False, "questions": []})
+
+        perspective = 'self'
+        try:
+            from supabase_storage import get_account_basics
+            perspective = (get_account_basics(user_id) or {}).get('perspective', 'self')
+        except Exception:
+            logger.exception("check-in perspective lookup failed (defaulting to self)")
+        questions = select_check_in(profile, model_state, perspective=perspective)
+        return jsonify({
+            "status": "ok",
+            "due": bool(questions),
+            "questions": questions,
+        })
+    except Exception:
+        logger.exception("check-in due error")
+        # A check-in that cannot be built is simply not offered.
+        return jsonify({"status": "ok", "due": False, "questions": []})
+
+
+@app.route("/api/checkin/record", methods=["POST"])
+@require_auth
+def api_check_in_record():
+    """Put the offered questions on cooldown, whether they were answered or
+    waved off — "Not now" has to mean it, or the escape hatch is a snooze
+    button that asks again tomorrow.
+
+    The ANSWERS do not come here: each one is sent as a normal chat turn, so
+    it passes the frozen safety layer and the belief store like anything else
+    a patient types. That is deliberate — PHQ-9's question 9 used to be the
+    structured self-harm detector, and this is where that job went.
+    """
+    try:
+        user_id = request.user["user_id"]
+        from rate_limit import check_rate_limit
+        allowed, _remaining = check_rate_limit(user_id, 'check_in', *RATE_LIMIT_CHECK_IN)
+        if not allowed:
+            return jsonify({"error": "Too many requests"}), 429
+
+        body = request.get_json(silent=True) or {}
+        ids = body.get("question_ids")
+        outcome = str(body.get("outcome") or "answered").strip()
+        if not isinstance(ids, list) or outcome not in ("answered", "declined"):
+            return jsonify({"error": "Invalid check-in record"}), 400
+        # Ids come from the bank, so anything unrecognized is dropped rather
+        # than written: the cooldown log is not a place for client free text.
+        from check_in import load_bank, record_check_in
+        known = {q.get("id") for q in (load_bank().get("questions") or [])}
+        clean = [str(i) for i in ids if str(i) in known]
+
+        profile = load_profile(user_id) or {}
+        model_state = profile.get("model_state") or {}
+        record_check_in(model_state, clean)
+
+        from supabase_storage import append_patient_event, save_model_state
+        save_model_state(user_id, model_state)
+        append_patient_event(user_id, "check_in",
+                             payload={"questions": clean, "outcome": outcome},
+                             source="client")
+        return jsonify({"status": "ok"})
+    except Exception:
+        logger.exception("check-in record error")
+        return jsonify({"status": "ok"})
 
 
 @app.route("/api/events/card", methods=["POST"])

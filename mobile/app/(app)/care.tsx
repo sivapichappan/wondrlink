@@ -129,9 +129,9 @@ export default function MyCareScreen() {
         <ListRow
           fill="sidebar"
           icon={<IconCircle size={30} bg={Colors.surface}><Activity size={15} color={Colors.primary} /></IconCircle>}
-          title="Start a check-in"
-          subtitle="Symptom, mood, sleep & stress"
-          onPress={() => router.push('/tools/screening')}
+          title="Answer a check-in"
+          subtitle={`${APP_NAME} asks a couple of plain questions in the conversation`}
+          onPress={() => router.navigate('/' as never)}
         />
         <ListRow
           fill="sidebar"
