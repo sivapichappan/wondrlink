@@ -227,7 +227,9 @@ class TestTheNotificationLandsSomewhere:
 class TestThePermissionIsSpentWell:
     """iOS gives ONE prompt per install and Settings is the only way back."""
 
-    SCREEN = (_REPO / "mobile" / "app" / "(app)" / "chat" / "[id].tsx").read_text()
+    # The conversation surface moved out of the route file when Home became
+    # the conversation (redesign change 3); Home and /chat/:id now share it.
+    SCREEN = (_REPO / "mobile" / "components" / "chat" / "ConversationSurface.tsx").read_text()
     PUSH = (_REPO / "mobile" / "lib" / "push.ts").read_text()
 
     def test_the_offer_waits_for_a_recovery_to_actually_happen(self):

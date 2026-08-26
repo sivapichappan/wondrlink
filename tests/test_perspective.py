@@ -90,9 +90,10 @@ class TestPatientCopyFollowsThePerspective:
     """The strings the owner actually reported, plus their neighbours."""
 
     CASES = [
-        # The "Add ... medical details" builder row died with the builder
-        # (change 2); the trials row still carries perspective copy.
-        ("app/(app)/index.tsx", "Find clinical trials"),
+        # The builder row died with the builder (change 2) and the tool grid
+        # died when Home became the conversation (change 3); the anchor card
+        # and the greeting carry Home's perspective copy now.
+        ("app/(app)/index.tsx", "are they facing"),
         ("app/(app)/care.tsx", "titleFor"),
         ("app/profile/index.tsx", "About"),
         ("app/tools/screening.tsx", "felt physically"),

@@ -16,7 +16,9 @@ export default function SurveillanceScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.surface }} edges={['bottom']}>
-      <Stack.Screen options={{ title: 'Surveillance', headerBackTitle: 'Tools' }} />
+      {/* "Surveillance" is cut as a patient-facing word (brief section 3);
+          the route and the API keep the old identifier. */}
+      <Stack.Screen options={{ title: 'Your check-up schedule', headerBackTitle: 'Tools' }} />
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
         {q.isLoading && <ActivityIndicator color={Colors.primary} />}
 
@@ -32,7 +34,7 @@ export default function SurveillanceScreen() {
             </Text>
             <Text style={{ color: Colors.textSecondary, fontSize: 13, lineHeight: 19, marginTop: 4 }}>
               {q.data.message ||
-                'We need your stage and surgery date to build a surveillance schedule.'}
+                'To build your check-up schedule, I still need two things: whether the cancer has spread, and the date of your surgery.'}
             </Text>
           </View>
         )}

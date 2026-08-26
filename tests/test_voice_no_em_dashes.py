@@ -420,7 +420,8 @@ class TestTheChatCardShowsWhatItPromises:
         other sections, while the answer announced them). Then out of the CARD:
         they read on the whole thread rather than one answer, and at card width
         they were clipped mid-question ("...HER2 status mea...")."""
-        thread = (_REPO / "mobile" / "app" / "(app)" / "chat" / "[id].tsx").read_text()
+        # Home and /chat/:id share one surface now (redesign change 3).
+        thread = (_REPO / "mobile" / "components" / "chat" / "ConversationSurface.tsx").read_text()
         assert "FollowupChips" in thread
         assert "FollowupChips" not in self.CARD
 

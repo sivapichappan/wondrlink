@@ -29,9 +29,11 @@ interface TopBarProps {
   subtitle?: string;
   /** Extra control on the right (e.g. a new-chat button on the thread). */
   trailing?: React.ReactNode;
+  /** Replaces the centered title entirely (Home's wordmark + stage words). */
+  center?: React.ReactNode;
 }
 
-export function TopBar({ leading = 'menu', backLabel = 'Back', onBack, title, subtitle, trailing }: TopBarProps) {
+export function TopBar({ leading = 'menu', backLabel = 'Back', onBack, title, subtitle, trailing, center }: TopBarProps) {
   const insets = useSafeAreaInsets();
   const { openDrawer } = useNavOverlay();
 
@@ -46,7 +48,7 @@ export function TopBar({ leading = 'menu', backLabel = 'Back', onBack, title, su
         gap: Spacing.xs,
         borderBottomWidth: title ? 1 : 0,
         borderBottomColor: Colors.border,
-        backgroundColor: Colors.surface,
+        backgroundColor: Colors.paper,
       }}>
       {/* Leading */}
       {leading === 'menu' ? (
@@ -72,11 +74,16 @@ export function TopBar({ leading = 'menu', backLabel = 'Back', onBack, title, su
         </Pressable>
       )}
 
-      {/* Center title */}
+      {/* Center: a custom node (Home's wordmark + stage words) wins over the
+          plain title, and it lays out across the full width rather than
+          centered, matching the mockup's baseline-aligned header. */}
+      {center ? (
+        <View style={{ flex: 1 }}>{center}</View>
+      ) : (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         {title ? (
           <>
-            <Text numberOfLines={1} style={{ fontFamily: Fonts.serifBold, fontSize: FontSize.xl, color: Colors.textPrimary, maxWidth: 220 }}>
+            <Text numberOfLines={1} style={{ fontFamily: Fonts.serifSemiBold, fontSize: FontSize.xl, color: Colors.textPrimary, maxWidth: 220 }}>
               {title}
             </Text>
             {subtitle ? (
@@ -87,6 +94,7 @@ export function TopBar({ leading = 'menu', backLabel = 'Back', onBack, title, su
           </>
         ) : null}
       </View>
+      )}
 
       {/* Trailing */}
       {trailing ?? <View style={{ width: 38 }} />}

@@ -30,7 +30,7 @@ const TOOLS: Tool[] = [
   { href: '/tools/visit-recap', title: 'Visit recap', Icon: NotebookPen },
   { href: '/tools/glossary', title: 'My terms', Icon: BookOpen },
   { href: '/tools/report-scan', title: 'Scan a report', Icon: ScanLine },
-  { href: '/tools/surveillance', title: 'Surveillance', Icon: CalendarClock },
+  { href: '/tools/surveillance', title: 'Your check-up schedule', Icon: CalendarClock },
   { href: '/tools/deep-research', title: 'Deep research', Icon: Search },
   { href: '/tools/insurance-appeal', title: 'Insurance appeal', Icon: FileText },
 ];

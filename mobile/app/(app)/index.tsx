@@ -1,51 +1,49 @@
 /**
- * Home — Sage's first conversation + permanent home (doc screens 3 / 3b).
+ * Home — the conversation (redesign change 3, mockup screen 05).
  *
- * Two modes:
- *  ANCHOR — no cancer focus picked yet: Sage asks the one question that shapes
- *  everything ("what type of cancer?") right here, chat-style, with chips and
- *  two honest escape hatches ("We're still finding out" reorders the menu and
- *  lets trials wait; "Something else" opens the full picker).
- *  MENU — the personalized capability menu ("Find clinical trials for breast
- *  cancer") plus "or just talk to me" and the composer. Buttons inject an
- *  opening line into chat rather than opening forms.
+ * Before: a nine-tool grid plus a DUE TODAY strip, where every capability was
+ * a door the patient had to know to open. After: home IS the conversation.
+ * The header carries the wordmark and the lifecycle stage as quiet italic
+ * words (never a number, never a progress bar); the composer's "+" holds
+ * exactly three tools; everything else arrives as a card Sage deals into the
+ * stream at the moment it is relevant.
  *
- * Kept from the previous home: care strip from REAL signals only, left-edge
- * swipe for the drawer, crisis guardrail in-thread (single choke point).
+ * Home continues the most recent thread rather than starting a fresh one each
+ * launch — the conversation is the product, and it should still be there
+ * tomorrow. Older threads live in the drawer's Recents.
+ *
+ * Kept: the left-edge swipe for the drawer, the consent gate on the composer,
+ * and the anchor question — now dealt as a card instead of owning a whole
+ * screen mode.
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { APP_NAME } from '@shared/branding';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import {
-  Activity,
-  BookOpen,
-  CalendarClock,
-  FileText,
-  Microscope,
-  NotebookPen,
-} from 'lucide-react-native';
+import { ScanLine } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 
-import { ChatInput } from '@/components/chat/ChatInput';
+import { ConversationSurface } from '@/components/chat/ConversationSurface';
+import { CardChip, DealtCard } from '@/components/chat/DealtCard';
+import { LIFECYCLE_LABELS } from '@/components/common/LifecycleStageLine';
 import { useNavOverlay } from '@/components/common/NavOverlay';
 import { TopBar } from '@/components/common/TopBar';
-import { ListRow } from '@/components/ui/ListRow';
-import { IconCircle } from '@/components/ui/IconCircle';
-import { Screen } from '@/components/ui/Screen';
-import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
+import { Colors, FontSize, Fonts, Spacing } from '@/constants/theme';
 import { useAcknowledgement } from '@/hooks/useAcknowledgement';
-import { useCareSnapshot, useHero } from '@/hooks/useCare';
+import { useHero, useProfile } from '@/hooks/useCare';
 import { NEW_CONVERSATION } from '@/hooks/useChat';
+import { useConversations } from '@/hooks/useConversations';
+import { logCardEvent } from '@/lib/api/cards';
 import { fetchCancerOptions, updateCancerSlug } from '@/lib/api/care';
 import { fetchConsentStatus } from '@/lib/api/consent';
 import { usePerspective } from '@/lib/perspective';
 
 const STILL_FINDING_KEY = 'sage:still_finding_out';
+const SCAN_CARD_KEY = 'sage:scan_card_dismissed';
 
 /** "We're still finding out" is remembered so the anchor question doesn't nag. */
 function useStillFindingOut() {
@@ -62,50 +60,61 @@ function useStillFindingOut() {
   return { stillFinding: state, mark };
 }
 
+/** A dismissed card stays dismissed — "Not now" has to mean it. */
+function useDismissed(key: string) {
+  const [state, setState] = useState<boolean | null>(null);
+  useEffect(() => {
+    AsyncStorage.getItem(key)
+      .then((v) => setState(v === '1'))
+      .catch(() => setState(false));
+  }, [key]);
+  const dismiss = () => {
+    setState(true);
+    AsyncStorage.setItem(key, '1').catch(() => {});
+  };
+  return { dismissed: state, dismiss };
+}
+
 export default function HomeScreen() {
   const who = usePerspective();
-  const hero = useHero();
-  const snap = useCareSnapshot();
   const ack = useAcknowledgement();
+  const profile = useProfile();
+  const hero = useHero();
   const qc = useQueryClient();
+  const { conversations } = useConversations();
 
   const { stillFinding, mark: markStillFinding } = useStillFindingOut();
+  const scanCard = useDismissed(SCAN_CARD_KEY);
 
   const consentStatus = useQuery({ queryKey: ['consent-status'], queryFn: fetchConsentStatus });
   const chatDisabled = consentStatus.data?.chat_disabled ?? false;
 
-  const cancerDisplay = ack.data?.cancer_display ?? null;
   const needsCancerPick = (ack.data?.needs_cancer_pick ?? false) && stillFinding === false;
-  const anchorMode = needsCancerPick && !ack.isLoading;
 
-  // Anchor mode needs the pickable cancer list.
+  // The anchor card needs the pickable cancer list.
   const options = useQuery({
     queryKey: ['cancer-options'],
     queryFn: () => fetchCancerOptions(),
-    enabled: anchorMode,
+    enabled: needsCancerPick,
     staleTime: 5 * 60_000,
   });
   const pickCancer = useMutation({
     mutationFn: (slug: string) => updateCancerSlug(slug),
     onSuccess: async () => {
+      void logCardEvent('anchor_cancer', 'acted');
       await qc.invalidateQueries({ queryKey: ['acknowledgement'] });
       await qc.invalidateQueries({ queryKey: ['profile'] });
     },
   });
+  const readyOptions = (options.data?.options ?? []).filter((o) => o.ready);
 
-  const firstName = hero.data?.first_name;
-  const days = snap.data?.days_since_symptom;
-  const checkinDue = days == null || days >= 7;
-  const pendingFollowups = hero.data?.last_visit?.pending_followups ?? 0;
-  const lastVisitPretty = hero.data?.last_visit?.when_pretty;
-  const hasStrip = !anchorMode && (checkinDue || pendingFollowups > 0 || !!lastVisitPretty);
+  // Continue the most recent conversation; a brand-new account starts a new
+  // one. Adopting the id the server assigns keeps the composer pointed at the
+  // same thread after the first send.
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const conversationId = activeId ?? conversations[0]?.id ?? NEW_CONVERSATION;
 
   const { openDrawer } = useNavOverlay();
-
-  const startThread = (text: string) => {
-    router.push(`/chat/${NEW_CONVERSATION}?q=${encodeURIComponent(text)}` as never);
-  };
-
   const openEdge = Gesture.Pan()
     .activeOffsetX([15, 9999])
     .failOffsetY([-20, 20])
@@ -113,226 +122,122 @@ export default function HomeScreen() {
       if (e.translationX > 40 || e.velocityX > 500) runOnJS(openDrawer)();
     });
 
-  const readyOptions = (options.data?.options ?? []).filter((o) => o.ready);
+  const stageLabel = LIFECYCLE_LABELS[profile.data?.lifecycle_stage ?? 'getting_to_know_you'];
+  const hasProfile = !!profile.data?.profile;
+
+  // Greet whoever is HOLDING the phone. hero.first_name is the PATIENT's
+  // name, which on a caregiver account belongs to someone else entirely:
+  // greeting Mary's daughter with "Hi Mary" is the bug this guards.
+  const holderName = who.isCaregiver ? who.holderFirstName : hero.data?.first_name;
+  const greeting = holderName
+    ? `Hi ${holderName}. I'm ${APP_NAME}. ${who.isCaregiver ? "Tell me how they're doing" : "Tell me how you're feeling"}, or ask me anything.`
+    : `Hi. I'm ${APP_NAME}. ${who.isCaregiver ? "Tell me how they're doing" : "Tell me how you're feeling"}, or ask me anything.`;
+
+  // Cards Sage deals into the stream. The anchor question comes first when it
+  // applies: nothing else is worth asking before Sage knows what this is.
+  const cards = (
+    <>
+      {needsCancerPick && readyOptions.length > 0 && (
+        <DealtCard
+          kind="anchor_cancer"
+          title={
+            who.isCaregiver
+              ? 'What kind of cancer are they facing?'
+              : 'What kind of cancer are you facing?'
+          }
+          body="If you're not sure, that's okay. We can figure it out together."
+          onDismiss={markStillFinding}
+          dismissLabel="We're still finding out">
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }}>
+            {readyOptions.slice(0, 6).map((o) => (
+              <CardChip
+                key={o.slug}
+                label={o.short_name}
+                disabled={pickCancer.isPending}
+                onPress={() => pickCancer.mutate(o.slug)}
+              />
+            ))}
+            <CardChip
+              label="Something else"
+              onPress={() => router.push('/profile/cancer-switcher')}
+            />
+          </View>
+          {pickCancer.isError ? (
+            <Text style={{ fontSize: FontSize.sm, color: Colors.warning }}>
+              Could not save that just now. Please try again.
+            </Text>
+          ) : null}
+        </DealtCard>
+      )}
+
+      {/* The scanner is the acquisition backbone: it feeds trials, the patient
+          model, and "Since your last visit". Offered once Sage knows what this
+          is, until it is used or waved off. */}
+      {!needsCancerPick && !hasProfile && scanCard.dismissed === false && (
+        <DealtCard
+          kind="scan_suggestion"
+          icon={<ScanLine size={20} color={Colors.primary} />}
+          title="Snap a photo of the papers"
+          body={`${APP_NAME} will read them and explain what they say in plain words.`}
+          actionLabel="Scan them"
+          onAction={() => router.push('/tools/report-scan' as never)}
+          onDismiss={scanCard.dismiss}
+        />
+      )}
+    </>
+  );
 
   return (
-    <View style={{ flex: 1 }}>
-      <Screen
-        header={<TopBar leading="menu" />}
-        footer={<ChatInput onSend={startThread} disabled={chatDisabled} />}
-        keyboardAvoiding
-        grow
-        gap={Spacing.lg}>
-        {/* Greeting. Menu mode centers vertically: this marginTop auto pairs
-            with the AI note's marginTop auto below, splitting the free space. */}
-        <View style={{ paddingTop: Spacing.xs, marginTop: anchorMode ? 0 : 'auto' }}>
-          {anchorMode ? (
-            <>
-              <Text style={{ fontFamily: Fonts.serifBold, fontSize: FontSize.h1, lineHeight: 36, color: Colors.textPrimary }}>
-                {/* Greet whoever is holding the phone. hero.first_name is the
-                    PATIENT's name, which on a caregiver account is someone else. */}
-                {who.isCaregiver
-                  ? (who.holderFirstName ? `Hi ${who.holderFirstName},` : 'Hi there,')
-                  : firstName ? `Hi ${firstName},` : 'Hi there,'}
-              </Text>
-              <Text style={{ fontFamily: Fonts.serif, fontSize: FontSize.h1, lineHeight: 36, color: Colors.textSecondary }}>
-                I&apos;m glad you&apos;re here.
-              </Text>
-            </>
-          ) : (
-            <Text style={{ fontFamily: Fonts.serifBold, fontSize: FontSize.h1, lineHeight: 36, color: Colors.textPrimary }}>
-              {who.isCaregiver
-                ? `Tell me how ${who.subjectAre} feeling`
-                : firstName
-                  ? `Tell me how you're feeling, ${firstName}`
-                  : "Tell me how you're feeling"}
-            </Text>
-          )}
-        </View>
-
-        {anchorMode ? (
-          /* ---- First conversation: the anchor question ---- */
-          <View style={{ gap: Spacing.md }}>
-            <View
+    <View style={{ flex: 1, backgroundColor: Colors.paper }}>
+      <TopBar
+        leading="menu"
+        center={
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: Spacing.sm }}>
+            <Text
               style={{
-                backgroundColor: Colors.surfaceMuted,
-                borderRadius: Radius.lg,
-                padding: Spacing.lg,
+                fontFamily: Fonts.serifSemiBold,
+                fontSize: FontSize.h3,
+                color: Colors.textPrimary,
               }}>
-              <Text style={{ fontSize: FontSize.lg, lineHeight: 23, color: Colors.textPrimary }}>
-                To help you best, can I ask: what type of cancer are you facing?
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }}>
-              {readyOptions.slice(0, 6).map((o) => (
-                <Pressable
-                  key={o.slug}
-                  disabled={pickCancer.isPending}
-                  onPress={() => pickCancer.mutate(o.slug)}
-                  accessibilityRole="button"
-                  accessibilityLabel={o.display_name}>
-                  <View
-                    style={{
-                      paddingHorizontal: 14,
-                      paddingVertical: 9,
-                      borderRadius: Radius.pill,
-                      borderWidth: 1,
-                      borderColor: Colors.border,
-                      backgroundColor: Colors.surface,
-                      opacity: pickCancer.isPending ? 0.5 : 1,
-                    }}>
-                    <Text style={{ fontSize: FontSize.base, color: Colors.textPrimary }}>{o.short_name}</Text>
-                  </View>
-                </Pressable>
-              ))}
-              <Pressable
-                onPress={() => router.push('/profile/cancer-switcher')}
-                accessibilityRole="button"
-                accessibilityLabel="Something else">
-                <View
-                  style={{
-                    paddingHorizontal: 14,
-                    paddingVertical: 9,
-                    borderRadius: Radius.pill,
-                    borderWidth: 1,
-                    borderColor: Colors.primary,
-                    backgroundColor: Colors.primarySoft,
-                  }}>
-                  <Text style={{ fontSize: FontSize.base, color: Colors.primaryPressed }}>Something else</Text>
-                </View>
-              </Pressable>
-            </View>
-            <Pressable onPress={markStillFinding} accessibilityRole="button" accessibilityLabel="We're still finding out">
-              <Text style={{ fontSize: FontSize.sm, color: Colors.textMuted, paddingVertical: 4 }}>
-                We&apos;re still finding out
-              </Text>
-            </Pressable>
-            {pickCancer.isError ? (
-              <Text style={{ fontSize: FontSize.sm, color: Colors.warning }}>
-                Could not save that just now. Please try again.
-              </Text>
-            ) : null}
+              {APP_NAME}
+            </Text>
+            {/* The stage, as quiet words. Never a number, never a bar. */}
+            <Text
+              numberOfLines={1}
+              style={{
+                flex: 1,
+                fontFamily: Fonts.serifItalic,
+                fontSize: FontSize.md,
+                color: Colors.textSecondary,
+              }}>
+              {stageLabel}
+            </Text>
           </View>
-        ) : (
-          /* ---- Permanent home: the capability menu ---- */
-          <View style={{ gap: Spacing.md }}>
-            {hasStrip && (
-              <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-                {checkinDue ? (
-                  <StripCard tone="accent" label="DUE TODAY" Icon={Activity} title="Wellness check-in" onPress={() => router.push('/tools/screening')} />
-                ) : (
-                  <StripCard label="LATEST CHECK-IN" Icon={Activity} title={days === 0 ? 'Today' : `${days}d ago`} onPress={() => router.push('/care')} />
-                )}
-                {pendingFollowups > 0 ? (
-                  <StripCard label="FROM LAST VISIT" Icon={CalendarClock} title={`${pendingFollowups} follow-up${pendingFollowups > 1 ? 's' : ''}`} onPress={() => router.push('/tools/previsit')} />
-                ) : lastVisitPretty ? (
-                  <StripCard label="LAST VISIT" Icon={CalendarClock} title={lastVisitPretty} onPress={() => router.push('/care')} />
-                ) : (
-                  <View style={{ flex: 1 }} />
-                )}
-              </View>
-            )}
+        }
+      />
 
-            <View style={{ gap: Spacing.sm }}>
-              <MenuRow
-                Icon={NotebookPen}
-                title="Sum up a doctor visit"
-                subtitle="Turn visit notes into plain words and next steps"
-                onPress={() => router.push('/tools/visit-recap')}
-              />
-              {cancerDisplay ? (
-                <MenuRow
-                  Icon={Microscope}
-                  title={`Find clinical trials for ${cancerDisplay.toLowerCase()}`}
-                  subtitle={`Matched to ${who.object}, explained in plain words`}
-                  onPress={() => router.push('/tools/clinical-trials')}
-                />
-              ) : (
-                <MenuRow
-                  Icon={Microscope}
-                  title={`Set ${who.possessive} cancer focus`}
-                  subtitle={`Unlocks trial matching when ${who.subject} are ready`}
-                  onPress={() => router.push('/profile/cancer-switcher')}
-                />
-              )}
-              <MenuRow
-                Icon={BookOpen}
-                title="Ask about a term or phrase"
-                subtitle="Understand technical terms"
-                onPress={() => router.push('/tools/glossary' as never)}
-              />
-              <MenuRow
-                Icon={FileText}
-                title="Scan a paper from the doctor"
-                subtitle={`${APP_NAME} reads it and explains it in plain words`}
-                onPress={() => router.push('/tools/report-scan' as never)}
-              />
-            </View>
-          </View>
-        )}
+      <ConversationSurface
+        conversationId={conversationId}
+        onConversationCreated={(newId) => setActiveId(newId)}
+        cards={cards}
+        disabled={chatDisabled}
+        emptyState={
+          <Text
+            style={{
+              fontFamily: Fonts.serif,
+              fontSize: FontSize.xl,
+              lineHeight: 26,
+              color: Colors.textPrimary,
+            }}>
+            {greeting}
+          </Text>
+        }
+      />
 
-        {/* Discreet AI note — full verbatim disclosure lands in-thread via SessionMeta. */}
-        <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, textAlign: 'center', marginTop: 'auto' }}>
-          AI support tool · not medical advice
-        </Text>
-
-      </Screen>
       {/* Left-edge swipe-to-open-drawer zone. */}
       <GestureDetector gesture={openEdge}>
         <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 28 }} />
       </GestureDetector>
     </View>
-  );
-}
-
-function MenuRow({
-  Icon,
-  title,
-  subtitle,
-  onPress,
-}: {
-  Icon: typeof Activity;
-  title: string;
-  subtitle: string;
-  onPress: () => void;
-}) {
-  return (
-    <ListRow
-      icon={
-        <IconCircle size={34} bg={Colors.sidebarBg}>
-          <Icon size={17} color={Colors.primary} />
-        </IconCircle>
-      }
-      title={title}
-      subtitle={subtitle}
-      fill="muted"
-      onPress={onPress}
-      accessibilityLabel={title}
-    />
-  );
-}
-
-function StripCard({ label, title, Icon, tone, onPress }: { label: string; title: string; Icon: typeof Activity; tone?: 'accent'; onPress: () => void }) {
-  const accent = tone === 'accent';
-  return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${label}: ${title}`} style={{ flex: 1 }}>
-      <View
-        style={{
-          borderRadius: Radius.lg,
-          padding: Spacing.md,
-          gap: Spacing.sm,
-          backgroundColor: accent ? Colors.sosBg : Colors.sidebarBg,
-          borderWidth: accent ? 1 : 0,
-          borderColor: accent ? Colors.sosBorder : 'transparent',
-        }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Icon size={15} color={accent ? Colors.warning : Colors.primary} />
-          <Text style={{ fontSize: FontSize.xs, fontFamily: Fonts.sansSemiBold, letterSpacing: 0.4, color: accent ? Colors.warning : Colors.textMuted }}>
-            {label}
-          </Text>
-        </View>
-        <Text style={{ fontSize: FontSize.md, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary }}>{title}</Text>
-      </View>
-    </Pressable>
   );
 }

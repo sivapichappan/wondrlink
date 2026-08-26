@@ -14,7 +14,7 @@ import {
   useSpeechRecognitionEvent,
 } from 'expo-speech-recognition';
 import { router } from 'expo-router';
-import { Activity, AudioLines, ClipboardList, FileText, Microscope, Mic, Plus, Send, Square, X } from 'lucide-react-native';
+import { AudioLines, ClipboardList, Mic, Plus, ScanLine, Send, Square, X } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -30,7 +30,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconCircle } from '@/components/ui/IconCircle';
 import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
-import { useCareSnapshot } from '@/hooks/useCare';
 import { APP_NAME } from '@shared/branding';
 
 const MAX_CHARS = 2000;
@@ -39,17 +38,15 @@ interface Props {
   onSend: (text: string) => void;
   disabled?: boolean;
   placeholder?: string;
-  /** Pre-fill the composer (e.g. "My zip code is ") without sending. */
+  /** Pre-fill the composer (e.g. "My ZIP code is ") without sending. */
   prefill?: string;
-  /** Opens the thread's sources sheet. Omitted where there is no thread. */
-  onSources?: () => void;
 }
 
 function joinParts(...parts: string[]): string {
   return parts.map((p) => p.trim()).filter(Boolean).join(' ');
 }
 
-export function ChatInput({ onSend, disabled, placeholder = "Let's talk", prefill, onSources }: Props) {
+export function ChatInput({ onSend, disabled, placeholder = "Let's talk", prefill }: Props) {
   const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
   const [recording, setRecording] = useState(false);
@@ -175,22 +172,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Let's talk", prefil
         <SendButton canSend={canSend} onPress={submit} />
       </View>
 
-      <QuickActionsSheet
-        open={actionsOpen}
-        onClose={() => setActionsOpen(false)}
-        onVoice={() => {
-          setActionsOpen(false);
-          startListening();
-        }}
-        onSources={
-          onSources
-            ? () => {
-                setActionsOpen(false);
-                onSources();
-              }
-            : undefined
-        }
-      />
+      <QuickActionsSheet open={actionsOpen} onClose={() => setActionsOpen(false)} />
     </View>
   );
 }
@@ -243,27 +225,43 @@ function SendButton({ canSend, onPress }: { canSend: boolean; onPress: () => voi
   );
 }
 
-function QuickActionsSheet({ open, onClose, onVoice, onSources }: { open: boolean; onClose: () => void; onVoice: () => void; onSources?: () => void }) {
+function QuickActionsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const insets = useSafeAreaInsets();
-  const snap = useCareSnapshot();
-  const days = snap.data?.days_since_symptom;
-  const checkinDue = days == null || days >= 7;
 
   const go = (path: string) => {
     onClose();
     setTimeout(() => router.push(path as never), 60);
   };
 
-  const items: { key: string; icon: React.ReactNode; title: string; accent?: boolean; onPress: () => void }[] = [
-    { key: 'checkin', icon: <Activity size={18} color={checkinDue ? Colors.warning : Colors.primary} />, accent: checkinDue, title: 'Wellness check-in', onPress: () => go('/tools/screening') },
-    { key: 'trials', icon: <Microscope size={18} color={Colors.primary} />, title: 'Find trials', onPress: () => go('/tools/clinical-trials') },
-    { key: 'previsit', icon: <ClipboardList size={18} color={Colors.primary} />, title: 'Pre-visit questions', onPress: () => go('/tools/previsit') },
-    { key: 'voice', icon: <AudioLines size={18} color={Colors.primary} />, title: 'Voice conversation', onPress: onVoice },
-    // Sources live here rather than under every answer: the question is "what
-    // is this built on", which is about the whole conversation.
-    ...(onSources
-      ? [{ key: 'sources', icon: <FileText size={18} color={Colors.primary} />, title: 'Sources used', onPress: onSources }]
-      : []),
+  // EXACTLY THREE (mockup screen 06). Trials and pre-visit questions are
+  // never listed here — they arrive as cards Sage deals when they are
+  // relevant, which is the whole point of killing the tool grid. The
+  // wellness check-in is not a tool either: it becomes questions asked in
+  // chat (change 4). Voice is the composer's own mic; "Sources used" moved
+  // to the session line at the top of the thread, where the question
+  // ("what is this built on?") actually gets asked.
+  const items: { key: string; icon: React.ReactNode; title: string; body: string; onPress: () => void }[] = [
+    {
+      key: 'scan',
+      icon: <ScanLine size={20} color={Colors.primary} />,
+      title: 'Scan a report',
+      body: 'A photo of any paper from your doctor',
+      onPress: () => go('/tools/report-scan'),
+    },
+    {
+      key: 'record',
+      icon: <AudioLines size={20} color={Colors.primary} />,
+      title: 'Record a visit',
+      body: `${APP_NAME} listens and writes a plain summary`,
+      onPress: () => go('/tools/visit-recap'),
+    },
+    {
+      key: 'since',
+      icon: <ClipboardList size={20} color={Colors.primary} />,
+      title: 'Since your last visit',
+      body: "What's changed, ready for your next appointment",
+      onPress: () => go('/care'),
+    },
   ];
 
   return (
@@ -284,35 +282,37 @@ function QuickActionsSheet({ open, onClose, onVoice, onSources }: { open: boolea
           gap: Spacing.md,
         }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={{ flex: 1, fontFamily: Fonts.sansSemiBold, fontSize: FontSize.xs, letterSpacing: 0.6, color: Colors.textMuted }}>
-            QUICK ACTIONS
-          </Text>
+          <View style={{ flex: 1 }} />
           <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" hitSlop={8}>
             <IconCircle size={30} bg={Colors.primary}>
               <X size={17} color={Colors.surface} />
             </IconCircle>
           </Pressable>
         </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }}>
-          {items.map((it) => (
-            <Pressable key={it.key} onPress={it.onPress} accessibilityRole="button" accessibilityLabel={it.title} style={{ width: '48%' }}>
+        <View>
+          {items.map((it, i) => (
+            <Pressable key={it.key} onPress={it.onPress} accessibilityRole="button" accessibilityLabel={it.title}>
               <View
                 style={{
-                  backgroundColor: Colors.surfaceMuted,
-                  borderWidth: 1,
-                  borderColor: Colors.border,
-                  borderRadius: Radius.lg,
-                  padding: Spacing.md,
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: Spacing.sm,
+                  gap: Spacing.md,
+                  paddingVertical: Spacing.lg,
+                  paddingHorizontal: Spacing.sm,
+                  borderTopWidth: i === 0 ? 0 : 1,
+                  borderTopColor: Colors.border,
                 }}>
-                <IconCircle size={34} bg={it.accent ? Colors.sosBg : Colors.sidebarBg}>
+                <IconCircle size={38} bg={Colors.sidebarBg}>
                   {it.icon}
                 </IconCircle>
-                <Text numberOfLines={2} style={{ flex: 1, fontSize: FontSize.base, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary }}>
-                  {it.title}
-                </Text>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={{ fontSize: FontSize.lg, fontFamily: Fonts.sansSemiBold, color: Colors.textPrimary }}>
+                    {it.title}
+                  </Text>
+                  <Text style={{ fontSize: FontSize.base, color: Colors.textSecondary, lineHeight: 19 }}>
+                    {it.body}
+                  </Text>
+                </View>
               </View>
             </Pressable>
           ))}

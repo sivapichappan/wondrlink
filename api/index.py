@@ -72,6 +72,11 @@ RATE_LIMIT_DEEP_RESEARCH = (3, 300)
 RATE_LIMIT_PRIVACY_APPEAL = (3, 86400)  # 3 per day
 RATE_LIMIT_MODELER       = (6, 60)      # abuse guard; the real gate is the debounce
 RATE_LIMIT_TRIALS_FEEDBACK = (60, 60)   # save/remove/view pings while browsing
+RATE_LIMIT_CARD_EVENTS = (120, 60)      # dealt-card shown/acted/dismissed pings
+
+# Every dealt card the client may report on. Adding a card means adding
+# it here, which is the point: the set stays small and reviewable.
+CARD_KINDS = frozenset({"anchor_cancer", "scan_suggestion", "trials_ask"})
 
 
 def feature_enabled(flag_name: str) -> bool:
@@ -1292,6 +1297,45 @@ def api_modeler_cron():
             skipped += 1
     return jsonify({"candidates": len(candidates), "ran": ran, "skipped": skipped,
                     "errors": errors, "elapsed_ms": int((_time.time() - started) * 1000)})
+
+
+@app.route("/api/events/card", methods=["POST"])
+@require_auth
+def api_card_event():
+    """Dealt-card engagement telemetry (redesign change 3).
+
+    The brief makes this a build requirement, not a nice-to-have: cards are
+    the only way anything reaches a patient once the tool grid is gone, so
+    "if cards underperform, scanning starves, the model stays ignorant, and
+    trials never unlock" has to be MEASURABLE from day one.
+
+    Payload is non-PHI by construction: a card kind from a fixed allowlist
+    and one of three actions. Anything else is rejected rather than stored,
+    so a future card cannot quietly start logging free text.
+    """
+    try:
+        user_id = request.user["user_id"]
+        from rate_limit import check_rate_limit
+        allowed, _remaining = check_rate_limit(user_id, 'card_events',
+                                               *RATE_LIMIT_CARD_EVENTS)
+        if not allowed:
+            return jsonify({"error": "Too many requests"}), 429
+
+        body = request.get_json(silent=True) or {}
+        card = str(body.get("card") or "").strip()
+        action = str(body.get("action") or "").strip()
+        if card not in CARD_KINDS or action not in ("shown", "acted", "dismissed"):
+            return jsonify({"error": "Invalid card event"}), 400
+
+        from supabase_storage import append_patient_event
+        append_patient_event(user_id, "card_engagement",
+                             payload={"card": card, "action": action},
+                             source="client")
+        return jsonify({"status": "ok"})
+    except Exception:
+        logger.exception("card event error")
+        # Telemetry must never break the surface it measures.
+        return jsonify({"status": "ok"})
 
 
 @app.route("/api/trials/feedback", methods=["POST"])
