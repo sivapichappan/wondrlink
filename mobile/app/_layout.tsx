@@ -196,25 +196,31 @@ function RootGate() {
 export default function RootLayout() {
   // Semantic typography (redesign 2026-08-24): Source Serif 4 is Sage's
   // voice, Instrument Sans is the interface.
-  const [sansLoaded] = useInstrumentSans({
+  const [sansLoaded, sansError] = useInstrumentSans({
     InstrumentSans_400Regular,
     InstrumentSans_500Medium,
     InstrumentSans_600SemiBold,
     InstrumentSans_700Bold,
   });
-  const [serifLoaded] = useSourceSerif({
+  const [serifLoaded, serifError] = useSourceSerif({
     SourceSerif4_400Regular,
     SourceSerif4_400Regular_Italic,
     SourceSerif4_600SemiBold,
     SourceSerif4_700Bold,
   });
-  const fontsLoaded = sansLoaded && serifLoaded;
+  // A FAILED font load must not hold the app hostage. These two families
+  // arrive as new assets in the first OTA that carries the redesign, and
+  // `loaded` never becomes true if their download fails — which, with a
+  // bare `if (!fontsLoaded) return null`, is a permanently blank app that
+  // no amount of relaunching fixes. React Native falls back to the system
+  // face for a missing family, so an ugly screen beats no screen.
+  const fontsSettled = (sansLoaded || !!sansError) && (serifLoaded || !!serifError);
 
   useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync().catch(() => {});
-  }, [fontsLoaded]);
+    if (fontsSettled) SplashScreen.hideAsync().catch(() => {});
+  }, [fontsSettled]);
 
-  if (!fontsLoaded) return null;
+  if (!fontsSettled) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
