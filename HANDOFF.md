@@ -24,13 +24,14 @@ verifier → `openai/gpt-oss-20b` on Groq. Verified in prod: real chat answer
 (api_used together) AND the fever-on-treatment case tiers T2 with the card.
 Local `.env` mirrors the overrides (commented block at the bottom).
 
-**Decisions this leaves the owner:**
-- Sage currently speaks with the PRE-Kimi voice. Options: pay for a Together
-  dedicated Kimi-K2.6 endpoint, pick a new serverless voice (own eval window),
-  or keep the rollback. Note `gpt-oss-120b` was tried as classifier first and
-  REJECTED: reasoning burn + it missed fever-on-treatment (under-escalation).
-- The verifier (`gpt-oss-20b`) shipped unvalidated (it fails open harmlessly);
-  worth a spot-check. Glossary on `gpt-oss-120b` likewise unvalidated.
+**DECIDED 2026-08-26 (owner): keep the pre-Kimi voice.** Llama-3.3-70B on
+Together is now the registry DEFAULT, not just an env override (1bae699), so
+a fresh environment no longer resolves to a model that 400s. Restoring Kimi
+needs a paid dedicated endpoint plus `MODEL_CHAT=moonshotai/Kimi-K2.6`.
+
+Still worth knowing:
+- The verifier (`gpt-oss-20b`) and glossary (`gpt-oss-120b`) shipped
+  unvalidated (both fail open harmlessly); worth a spot-check.
 - Any llm-mode eval baseline from the Kimi era is now cross-model — do not
   compare numbers across 2026-08-24 without noting the voice change.
 
@@ -58,16 +59,27 @@ tests, mobile tsc clean, EAS bundle repro green after every mobile change.
    ever being a reviewer), the per-session AI disclosure scrolling out of
    sight at launch, "New chat" becoming a no-op, and the mockup's lightest
    ink failing WCAG AA wherever this app uses it for real text.
-2. **DEVICE TESTING before the push.** Nothing in the redesign has run on a
-   handset. Highest-risk unwitnessed paths: first-launch onboarding through
-   the name card; Home rendering a long existing thread; the check-in card;
-   contrast of the new palette in daylight.
-3. Push (auto-deploys backend + web) and OTA the mobile JS
-   (`cd mobile && eas update --channel production --platform ios`). The
-   fonts are new JS packages, NOT native modules, so OTA is still valid.
-4. Physician review of BOTH data files, now: `config/safety/` (the standing
-   launch blocker) and the new `config/check_in/questions.json` (marked
-   DRAFT, not physician reviewed).
+2. **SHIP IT — backend first, then the phone.** The two halves cannot go
+   separately: the new app calls `/api/checkin/due`, `/api/events/card` and
+   `/api/account/perspective`, none of which exist in prod yet.
+   a. `git push origin main` → Vercel auto-deploys (~40s). Verify by the
+      commit SHA, never by a 200 on `/api/health`.
+   b. `cd mobile && eas update --channel production --platform ios`.
+      **No TestFlight build is needed**: app.json's runtimeVersion policy is
+      `appVersion` (1.2.0) and the last good build is runtime 1.2.0 on the
+      production channel, so the OTA reaches the installed TestFlight app.
+      Everything in the redesign is JS + font assets; app.json is untouched
+      and no native module was added. A build is only needed if the app is
+      no longer installed.
+   c. Two cold launches on the phone to pick the update up.
+3. **DEVICE TESTING** (the owner can only see it on a phone). Highest-risk
+   unwitnessed paths: first launch through the name card; Home rendering a
+   long existing thread; the check-in card's one-at-a-time sends; the new
+   palette in daylight; and the walls (ask "How long do I have?").
+4. Physician review of `config/safety/` — still the standing launch blocker.
+   `config/check_in/questions.json` is OWNER-APPROVED (2026-08-26); if the
+   safety review establishes that patient-facing question banks need a
+   clinician's signature too, that file needs its own pass.
 
 **Carried, deliberately not done:**
 - The drawer's "All tools" launcher still exists. The brief cuts the nine-tool
