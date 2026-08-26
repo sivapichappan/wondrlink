@@ -36,7 +36,7 @@ Local `.env` mirrors the overrides (commented block at the bottom).
 
 ## RESUME HERE — ALL FIVE CHANGES BUILT; review + push are what remain
 
-The whole redesign is implemented locally: **17 commits, nothing pushed**
+The whole redesign is implemented locally: **19 commits, nothing pushed**
 (owner decision on record: one cohesive update, not five). 1104 offline
 tests, mobile tsc clean, EAS bundle repro green after every mobile change.
 
@@ -47,11 +47,17 @@ tests, mobile tsc clean, EAS bundle repro green after every mobile change.
 | 3 | Design system + Home is the conversation | 9ff441a, 4115af4 | built |
 | 4 | Check-ins as chat questions | 7a80114 | built |
 | 5 | Onboarding = 3 screens + conversation | c1c8941 | built |
+| — | Review fixes across 2-5 | 2635c9d | 31 confirmed findings fixed |
 
 **Next steps, in order:**
-1. The adversarial review of changes 2-5 (six lenses: onboarding gate,
-   conversation surface, cards/check-in, trials/builder aftermath, theme
-   contrast, copy rules) — running as of this writing; fix what it confirms.
+1. ~~Adversarial review of changes 2-5~~ DONE (2635c9d): six lenses, 42
+   findings, 31 confirmed and all fixed. It caught a CRITICAL bug in change
+   5 (the reviewer-intent flag was cached at mount, before the tap that
+   sets it could happen, so every clinician would have been shown the
+   PATIENT consent — and completing it permanently bars the account from
+   ever being a reviewer), the per-session AI disclosure scrolling out of
+   sight at launch, "New chat" becoming a no-op, and the mockup's lightest
+   ink failing WCAG AA wherever this app uses it for real text.
 2. **DEVICE TESTING before the push.** Nothing in the redesign has run on a
    handset. Highest-risk unwitnessed paths: first-launch onboarding through
    the name card; Home rendering a long existing thread; the check-in card;
