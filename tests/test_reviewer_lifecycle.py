@@ -477,13 +477,36 @@ class TestTheAppKnowsWhereToSendAReviewer:
         assert chat.count("isReviewer ?") + chat.count("isReviewer ?") >= 1
         assert "sendSandboxMessage" in chat and "fetchSandboxMessages" in chat
 
-    def test_the_account_type_fork_comes_before_patient_consent(self):
-        # The consent on that screen is a PATIENT agreeing to have their health
-        # data processed. A clinician is not agreeing to that.
-        assert "'/(onboarding)/account-type'" in self.GATE
-        fork = (self.MOBILE / "app" / "(onboarding)" / "account-type.tsx").read_text()
-        assert "/(onboarding)/consent" in fork
-        assert "/(onboarding)/reviewer-apply" in fork
+    def test_a_clinician_is_never_shown_the_patient_consent(self):
+        """The invariant survived the redesign; its mechanism changed.
+
+        The consent screen is a PATIENT agreeing to have their health data
+        processed, and a clinician reviewing wording is not agreeing to
+        that. That used to be enforced by asking EVERY patient which kind
+        of account they wanted, before they could start (the account-type
+        fork). Change 5 deleted the fork: the welcome screen carries a
+        "For oncologists" link that records the intent, and the gate
+        routes on it instead — same protection, one less screen between a
+        frightened person and the app.
+        """
+        welcome = (self.MOBILE / "app" / "(auth)" / "welcome.tsx").read_text()
+        assert "For oncologists" in welcome
+        assert "REVIEWER_INTENT_KEY" in welcome
+
+        # The gate branches on the intent, and only the non-clinician path
+        # reaches consent.
+        assert "reviewerIntent" in self.GATE
+        assert "'/(onboarding)/reviewer-apply'" in self.GATE
+        assert "'/(onboarding)/consent'" in self.GATE
+        intent_at = self.GATE.index("if (reviewerIntent)")
+        consent_at = self.GATE.index("'/(onboarding)/consent'")
+        assert intent_at < consent_at, "consent must sit on the else branch"
+
+    def test_the_deleted_fork_is_really_gone(self):
+        assert not (self.MOBILE / "app" / "(onboarding)" / "account-type.tsx").exists()
+        # The ROUTE, not the word: the gate explains in a comment why the
+        # fork is gone, and that comment should stay.
+        assert "'/(onboarding)/account-type'" not in self.GATE
 
 
 class TestApplyFormRefusesNonPhysiciansBeforeSubmitting:

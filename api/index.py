@@ -77,7 +77,8 @@ RATE_LIMIT_CHECK_IN = (30, 60)          # check-in fetch + answer bookkeeping
 
 # Every dealt card the client may report on. Adding a card means adding
 # it here, which is the point: the set stays small and reviewable.
-CARD_KINDS = frozenset({"anchor_cancer", "scan_suggestion", "trials_ask", "check_in"})
+CARD_KINDS = frozenset({"anchor_cancer", "scan_suggestion", "trials_ask",
+                        "check_in", "name_ask"})
 
 
 def feature_enabled(flag_name: str) -> bool:
@@ -1300,6 +1301,34 @@ def api_modeler_cron():
                     "errors": errors, "elapsed_ms": int((_time.time() - started) * 1000)})
 
 
+@app.route("/api/account/perspective", methods=["POST"])
+@require_auth
+def api_account_perspective():
+    """Answer "Who are you here for?" before anything else is known.
+
+    Onboarding shrank to three screens (redesign change 5): the name is
+    asked in the conversation afterwards, so the perspective has to be
+    storable on its own. /api/account/basics still requires a name and is
+    unchanged, because the web SPA and the name card both send one.
+    """
+    try:
+        user_id = request.user["user_id"]
+        data = request.get_json(silent=True) or {}
+        perspective = str(data.get("perspective", "")).lower()
+        if perspective not in ("self", "caregiver"):
+            return jsonify({"error": "perspective must be self or caregiver"}), 400
+        relationship = (str(data.get("relationship", "")).strip()[:40] or None) \
+            if perspective == "caregiver" else None
+
+        from supabase_storage import save_account_perspective
+        if not save_account_perspective(user_id, perspective, relationship):
+            return jsonify({"error": "Could not save. Please try again."}), 500
+        return jsonify({"status": "ok"})
+    except Exception:
+        logger.exception("account perspective error")
+        return jsonify({"error": "Something went wrong. Please try again."}), 500
+
+
 @app.route("/api/checkin/due", methods=["GET"])
 @require_auth
 def api_check_in_due():
@@ -1642,6 +1671,9 @@ def api_check_acknowledgement():
             "cancer_display": cancer_display,
             "needs_cancer_pick": cancer_slug is None,
             "needs_basics": bool(basics.get('needs_basics', False)),
+            # "Who are you here for?" is answered before a name exists now
+            # (redesign change 5), so the gate needs its own signal.
+            "perspective_set": bool(basics.get('perspective_set', False)),
             "perspective": basics.get('perspective', 'self'),
             "account_holder_name": basics.get('account_holder_name'),
             # Who the app is ABOUT. Differs from account_holder_name on a

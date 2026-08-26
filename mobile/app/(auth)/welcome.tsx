@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,6 +7,9 @@ import { Button } from '@/components/ui/Button';
 import { Colors, Fonts } from '@/constants/theme';
 import { APP_NAME } from '@shared/branding';
 import { WELCOME_INTRO } from '@shared/disclaimers';
+
+/** Set when someone enters through the "For oncologists" door. */
+export const REVIEWER_INTENT_KEY = 'sage:reviewer_intent';
 
 export default function Welcome() {
   return (
@@ -52,6 +56,27 @@ export default function Welcome() {
               paddingVertical: 4,
             }}>
             New here with email? Create an account
+          </Text>
+          {/* The oncologist door (mockup 01). It was a full fork screen
+              asking every patient which kind of account they wanted; it is
+              a footer link now, and the patient app never mentions
+              oncologists again. The intent is remembered so the gate can
+              send a clinician past the PATIENT consent, which is what the
+              fork existed to prevent them from being shown. */}
+          <Text
+            onPress={() => {
+              AsyncStorage.setItem(REVIEWER_INTENT_KEY, '1').catch(() => {});
+              router.push('/(auth)/register');
+            }}
+            accessibilityRole="link"
+            style={{
+              textAlign: 'center',
+              color: Colors.textMuted,
+              fontSize: 13,
+              paddingVertical: 6,
+              textDecorationLine: 'underline',
+            }}>
+            For oncologists
           </Text>
         </View>
       </View>

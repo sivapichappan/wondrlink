@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts as useInstrumentSans, InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_600SemiBold, InstrumentSans_700Bold } from '@expo-google-fonts/instrument-sans';
 import { useFonts as useSourceSerif, SourceSerif4_400Regular, SourceSerif4_400Regular_Italic, SourceSerif4_600SemiBold, SourceSerif4_700Bold } from '@expo-google-fonts/source-serif-4';
@@ -5,11 +6,13 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+import { REVIEWER_INTENT_KEY } from './(auth)/welcome';
 
 import '../global.css';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
@@ -43,6 +46,16 @@ function RootGate() {
   const segments = useSegments();
   const ack = useAcknowledgement();
 
+  // Whether this account came in through the welcome screen's "For
+  // oncologists" door. Read once; null means "not known yet", which is not
+  // the same as false and must not route anyone while it loads.
+  const [reviewerIntent, setReviewerIntent] = useState<boolean | null>(null);
+  useEffect(() => {
+    AsyncStorage.getItem(REVIEWER_INTENT_KEY)
+      .then((v) => setReviewerIntent(v === '1'))
+      .catch(() => setReviewerIntent(false));
+  }, []);
+
   // A tapped notification opens what it is about. Mounted here rather than in a
   // screen so it also catches a cold launch, and given hasSession so it does
   // not navigate into a route the gate below is about to redirect away from.
@@ -51,6 +64,7 @@ function RootGate() {
   useEffect(() => {
     if (ack.sessionLoading) return;
     if (ack.hasSession && ack.isLoading) return;
+    if (reviewerIntent === null) return;
 
     const segs = segments as readonly string[];
     const top = segs[0];
@@ -109,22 +123,29 @@ function RootGate() {
     }
 
     if (data.needs_consent) {
-      // account-type comes before consent, because the consent being asked for
-      // is a PATIENT's consent to have their health data processed. A clinician
-      // signing up to review content is not agreeing to that, and should not be
-      // shown it. One extra tap for a patient; the only honest order for the
-      // other path. Anything inside (onboarding) is left alone so the branch
-      // itself can navigate.
-      if (top !== '(onboarding)') router.replace('/(onboarding)/account-type' as never);
+      // The account-type FORK is gone (redesign change 5): every patient used
+      // to be asked which kind of account they wanted before they could
+      // start. What it protected is still real, though — the consent being
+      // asked for is a PATIENT's consent to have their health data
+      // processed, and a clinician signing up to review wording is not
+      // agreeing to that. So the welcome screen's "For oncologists" link
+      // records the intent, and it routes them past this screen instead.
+      // Anything inside (onboarding) is left alone so the branch can navigate.
+      if (top === '(onboarding)') return;
+      if (reviewerIntent) {
+        router.replace('/(onboarding)/reviewer-apply' as never);
+      } else {
+        router.replace('/(onboarding)/consent' as never);
+      }
       return;
     }
 
-    // Sage onboarding: consent is done but we don't know who this account is
-    // for yet — the who-for + basics screens come before the app.
-    if (data.needs_basics) {
-      const inBasicsFlow =
-        top === '(onboarding)' && (second === 'who-for' || second === 'basics');
-      if (!inBasicsFlow) router.replace('/(onboarding)/who-for' as never);
+    // The ONE surviving onboarding question. Everything the "just four
+    // things" form used to ask is learned in the conversation now, so this
+    // gate waits on the question itself rather than on a name existing.
+    if (!data.perspective_set) {
+      const onWhoFor = top === '(onboarding)' && second === 'who-for';
+      if (!onWhoFor) router.replace('/(onboarding)/who-for' as never);
       return;
     }
 
@@ -139,6 +160,7 @@ function RootGate() {
     ack.hasSession,
     ack.isLoading,
     ack.data,
+    reviewerIntent,
     segments,
     router,
   ]);

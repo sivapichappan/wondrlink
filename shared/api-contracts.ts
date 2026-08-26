@@ -19,6 +19,7 @@ export const ENDPOINTS = {
   authPhoneSend: '/api/auth/phone/send',
   authPhoneVerify: '/api/auth/phone/verify',
   accountBasics: '/api/account/basics',
+  accountPerspective: '/api/account/perspective',
 
   // --- Consent / Compliance ---
   checkAcknowledgement: '/api/check_acknowledgement',

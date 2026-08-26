@@ -15,7 +15,12 @@ import { env } from '../env';
 import { supabase } from '../supabase';
 
 /** Must match CARD_KINDS in api/index.py. */
-export type CardKind = 'anchor_cancer' | 'scan_suggestion' | 'trials_ask' | 'check_in';
+export type CardKind =
+  | 'anchor_cancer'
+  | 'scan_suggestion'
+  | 'trials_ask'
+  | 'check_in'
+  | 'name_ask';
 export type CardAction = 'shown' | 'acted' | 'dismissed';
 
 export async function logCardEvent(card: CardKind, action: CardAction): Promise<void> {

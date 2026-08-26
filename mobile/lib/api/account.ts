@@ -13,7 +13,19 @@ import type {
 
 import { apiFetch } from './client';
 
-/** Sage onboarding basics (who-for + the four facts). */
+/**
+ * "Who are you here for?" on its own — the one surviving onboarding
+ * question (redesign change 5). The name comes later, from the
+ * conversation, so this cannot wait for one.
+ */
+export function saveAccountPerspective(perspective: 'self' | 'caregiver', relationship?: string) {
+  return apiFetch<{ status: 'ok' }>(ENDPOINTS.accountPerspective, {
+    method: 'POST',
+    body: { perspective, relationship },
+  });
+}
+
+/** Sage onboarding basics (name + optional facts). */
 export function saveAccountBasics(basics: AccountBasicsRequest) {
   return apiFetch<{ status: 'ok' }>(ENDPOINTS.accountBasics, {
     method: 'POST',

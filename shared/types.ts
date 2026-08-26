@@ -64,6 +64,8 @@ export interface CheckAcknowledgementResponse {
   needs_cancer_pick?: boolean;
   /** Sage onboarding: who-for + basics screens still needed (absent on older servers). */
   needs_basics?: boolean;
+  /** "Who are you here for?" has been answered (asked before a name exists). */
+  perspective_set?: boolean;
   perspective?: 'self' | 'caregiver';
   /** The account holder's own name. On a caregiver account this is the
    *  caregiver, NOT the person being cared for. */

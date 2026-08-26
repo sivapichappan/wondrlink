@@ -1606,7 +1606,7 @@ def get_account_basics(user_id: str) -> Dict[str, Any]:
             .limit(1) \
             .execute()
         if not result.data and account_row is None:
-            return {'exists': False, 'needs_basics': True}
+            return {'exists': False, 'needs_basics': True, 'perspective_set': False}
         row = result.data[0] if result.data else {}
         patient = ((row.get('raw_profile') or {}).get('patient')) or {}
 
@@ -1620,8 +1620,15 @@ def get_account_basics(user_id: str) -> Dict[str, Any]:
             relationship = row.get('relationship')
 
         has_basics = bool(holder) or bool(patient.get('firstName'))
+        # Whether "Who are you here for?" has actually been answered. Since
+        # the redesign (change 5) that question is answered BEFORE a name
+        # exists, so it can no longer be inferred from needs_basics: the app
+        # opens with no name and asks for it in the conversation.
+        perspective_set = bool(
+            (account_row or {}).get('perspective') or row.get('perspective'))
         return {
             'exists': True,
+            'perspective_set': perspective_set,
             # The person the app is ABOUT, which on a caregiver account is not
             # the person holding it. Screens need it to stop saying "my medical
             # details" to someone managing their mother's care. First name only:
@@ -1637,7 +1644,44 @@ def get_account_basics(user_id: str) -> Dict[str, Any]:
         # Transient failure: don't block the gate — treat basics as done so
         # existing users aren't re-onboarded.
         logger.warning(f"get_account_basics failed: {e}")
-        return {'exists': True, 'needs_basics': False}
+        return {'exists': True, 'needs_basics': False, 'perspective_set': True}
+
+
+def save_account_perspective(user_id: str, perspective: str,
+                             relationship: Optional[str] = None) -> bool:
+    """
+    Persist ONLY "Who are you here for?" (redesign change 5).
+
+    The name now arrives later, from the conversation, so the perspective
+    has to be storable without one. Deliberately does not touch
+    raw_profile.patient or holder_name: this must never blank a name that
+    a returning user already has.
+    """
+    try:
+        client = get_admin_client()
+        try:
+            client.table('accounts').upsert({
+                'id': user_id,
+                'perspective': perspective,
+                'relationship': relationship,
+            }, on_conflict='id').execute()
+        except Exception:
+            logger.warning("accounts upsert failed (pre-migration?); legacy columns only")
+
+        payload = {'perspective': perspective, 'relationship': relationship}
+        result = client.table('patient_profiles') \
+            .select('user_id') \
+            .eq('user_id', user_id) \
+            .limit(1) \
+            .execute()
+        if result.data:
+            client.table('patient_profiles').update(payload).eq('user_id', user_id).execute()
+        else:
+            client.table('patient_profiles').insert({'user_id': user_id, **payload}).execute()
+        return True
+    except Exception as e:
+        logger.warning(f"save_account_perspective failed: {e}")
+        return False
 
 
 def save_account_basics(user_id: str, perspective: str,

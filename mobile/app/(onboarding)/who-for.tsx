@@ -1,28 +1,25 @@
 /**
- * Who are you here for? (Sage doc screen 2) — the one branch that shapes the
- * voice of every screen after it. Own uncluttered screen, one tap, no wrong
- * answers. The choice rides to the basics screen and is saved there.
+ * Who are you here for? (mockup screen 03) — the ONE onboarding question
+ * that survived the redesign, because it re-voices the entire app.
+ *
+ * It used to hand the answer to a "just four things" form; that form is
+ * gone (change 5) and the answer is saved right here. Everything else,
+ * starting with what to call this person, is asked in the conversation.
+ * Tapping advances; there is no continue button and no wrong answer.
  */
 
+import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { Activity, HeartHandshake, MessageCircle, Microscope, NotebookPen, User } from 'lucide-react-native';
+import { HeartHandshake, User } from 'lucide-react-native';
+import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { IconCircle } from '@/components/ui/IconCircle';
 import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
+import { saveAccountPerspective } from '@/lib/api/account';
 import { APP_NAME } from '@shared/branding';
 
-function Tip({ Icon, text }: { Icon: typeof Activity; text: string }) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.sm }}>
-      <Icon size={16} color={Colors.primary} style={{ marginTop: 2 }} />
-      <Text style={{ flex: 1, fontSize: FontSize.sm, lineHeight: 19, color: Colors.textSecondary }}>
-        {text}
-      </Text>
-    </View>
-  );
-}
 
 function Choice({
   title,
@@ -63,15 +60,31 @@ function Choice({
 }
 
 export default function WhoFor() {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const choose = async (perspective: 'self' | 'caregiver') => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await saveAccountPerspective(perspective);
+      // The gate reads this to know the question is answered.
+      await qc.invalidateQueries({ queryKey: ['acknowledgement'] });
+      router.replace('/');
+    } catch {
+      setError('Could not save that just now. Please try again.');
+      setBusy(false);
+    }
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Colors.surface }}>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ flexGrow: 1, padding: Spacing.xl, justifyContent: 'center', gap: Spacing.lg }}
         showsVerticalScrollIndicator={false}>
-        {/* What-is-this intro + how to use it well: the first screen after
-            consent is where a new person learns what the app does and the
-            habits that make it useful (check-ins, visit recaps, details). */}
         <View style={{ gap: 6 }}>
           <Text
             style={{
@@ -89,23 +102,11 @@ export default function WhoFor() {
               color: Colors.textSecondary,
               textAlign: 'center',
             }}>
-            {`${APP_NAME} helps you make sense of cancer care, in plain words. Here is how to get the most from it:`}
+            {`${APP_NAME} helps you make sense of cancer care, in plain words.`}
           </Text>
         </View>
 
-        <View
-          style={{
-            gap: Spacing.sm,
-            backgroundColor: Colors.surfaceMuted,
-            borderRadius: Radius.lg,
-            padding: Spacing.lg,
-            marginBottom: Spacing.md,
-          }}>
-          <Tip Icon={MessageCircle} text="Just talk. Ask anything, anytime, like you would ask a nurse." />
-          <Tip Icon={Activity} text="Do the wellness check-in when it appears. It tracks how you feel from week to week, so changes get noticed." />
-          <Tip Icon={NotebookPen} text="After appointments, use Sum up a doctor visit to turn notes into plain words and next steps." />
-          <Tip Icon={Microscope} text={`Share details when you're ready. The more ${APP_NAME} knows, the better it can match clinical trials to you.`} />
-        </View>
+        
         <View style={{ gap: 6, marginBottom: Spacing.md }}>
           <Text
             style={{
@@ -131,14 +132,20 @@ export default function WhoFor() {
           title="Myself"
           subtitle="I am the patient"
           icon={<User size={20} color={Colors.primaryPressed} />}
-          onPress={() => router.push('/(onboarding)/basics?perspective=self' as never)}
+          onPress={() => choose('self')}
         />
         <Choice
           title="A loved one"
           subtitle="I am caring for someone"
           icon={<HeartHandshake size={20} color={Colors.primaryPressed} />}
-          onPress={() => router.push('/(onboarding)/basics?perspective=caregiver' as never)}
+          onPress={() => choose('caregiver')}
         />
+
+        {error ? (
+          <Text style={{ fontSize: FontSize.sm, color: Colors.warning, textAlign: 'center' }}>
+            {error}
+          </Text>
+        ) : null}
 
         <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, textAlign: 'center', marginTop: Spacing.md }}>
           You can change this later in Settings.

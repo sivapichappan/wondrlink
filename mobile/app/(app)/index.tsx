@@ -38,6 +38,7 @@ import { useHero, useProfile } from '@/hooks/useCare';
 import { NEW_CONVERSATION } from '@/hooks/useChat';
 import { useConversations } from '@/hooks/useConversations';
 import { CheckInCard } from '@/components/chat/CheckInCard';
+import { NameCard } from '@/components/chat/NameCard';
 import { fetchCheckIn, logCardEvent } from '@/lib/api/cards';
 import { fetchCancerOptions, updateCancerSlug } from '@/lib/api/care';
 import { fetchConsentStatus } from '@/lib/api/consent';
@@ -123,6 +124,11 @@ export default function HomeScreen() {
       if (e.translationX > 40 || e.velocityX > 500) runOnJS(openDrawer)();
     });
 
+  // The opening question of the conversation (mockup screen 04): the app
+  // now starts before it knows what to call anyone.
+  const [nameDone, setNameDone] = useState(false);
+  const needsName = (ack.data?.needs_basics ?? false) && !nameDone;
+
   // What Sage would ask right now. Never throws; an unavailable check-in is
   // simply not offered.
   const checkIn = useQuery({
@@ -148,7 +154,11 @@ export default function HomeScreen() {
   // is), then the check-in, then the scan suggestion.
   const cards = (send: (text: string) => void) => (
     <>
-      {needsCancerPick && readyOptions.length > 0 && (
+      {needsName && (
+        <NameCard isCaregiver={who.isCaregiver} onDone={() => setNameDone(true)} />
+      )}
+
+      {!needsName && needsCancerPick && readyOptions.length > 0 && (
         <DealtCard
           kind="anchor_cancer"
           title={
@@ -184,7 +194,7 @@ export default function HomeScreen() {
       {/* The scanner is the acquisition backbone: it feeds trials, the patient
           model, and "Since your last visit". Offered once Sage knows what this
           is, until it is used or waved off. */}
-      {!needsCancerPick && !hasProfile && scanCard.dismissed === false && (
+      {!needsName && !needsCancerPick && !hasProfile && scanCard.dismissed === false && (
         <DealtCard
           kind="scan_suggestion"
           icon={<ScanLine size={20} color={Colors.primary} />}
@@ -199,7 +209,7 @@ export default function HomeScreen() {
       {/* The check-in: two or three plain questions from this person's own
           treatment, replacing the six questionnaires. Answers go INTO the
           conversation, so they pass the safety layer like any message. */}
-      {!needsCancerPick && checkIn.data?.due && !checkInDone && (
+      {!needsName && !needsCancerPick && checkIn.data?.due && !checkInDone && (
         <CheckInCard
           questions={checkIn.data.questions}
           onAnswer={send}
