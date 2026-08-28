@@ -22,7 +22,7 @@ import Animated, { LinearTransition } from 'react-native-reanimated';
 
 import { CardChip } from '@/components/chat/DealtCard';
 import { Duration, Ease, cardEnter, cardExit, messageEnter } from '@/constants/motion';
-import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
+import { Colors, Elevation, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 import { logCardEvent, recordCheckIn, type CheckInQuestion } from '@/lib/api/cards';
 
 interface Props {
@@ -97,6 +97,7 @@ export function CheckInCard({ questions, onAnswer, onDone, sending }: Props) {
         borderRadius: Radius.lg,
         padding: Spacing.lg,
         gap: Spacing.sm,
+        ...Elevation.lifted,
       }}>
       {!!lead && (
         <Text style={{ color: Colors.textSecondary, fontSize: FontSize.md, lineHeight: 21 }}>

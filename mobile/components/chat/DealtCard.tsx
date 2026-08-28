@@ -21,7 +21,7 @@ import Animated from 'react-native-reanimated';
 
 import { PressableScale } from '@/components/ui/PressableScale';
 import { cardEnter, cardExit } from '@/constants/motion';
-import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
+import { Colors, Elevation, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 import * as haptics from '@/lib/haptics';
 import { logCardEvent, type CardKind } from '@/lib/api/cards';
 
@@ -73,6 +73,9 @@ export function DealtCard({
         borderRadius: Radius.lg,
         padding: Spacing.lg,
         gap: Spacing.sm,
+        // Once the page has a light source, the things above it cast
+        // something. The hairline stays for high-contrast settings.
+        ...Elevation.lifted,
       }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
         {icon}
@@ -113,6 +116,7 @@ export function DealtCard({
                   paddingHorizontal: Spacing.lg,
                   paddingVertical: 10,
                   borderRadius: Radius.md,
+                  ...Elevation.active,
                 }}>
                 <Text
                   style={{

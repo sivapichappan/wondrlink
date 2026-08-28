@@ -1,75 +1,82 @@
 /**
- * Sage design tokens — the redesign palette (approved 2026-08-24).
+ * Sage design tokens — "Paper and Lamplight" (approved 2026-08-28).
  *
- * Source of truth: the `:root` block of docs/redesign/sage-mockups.html.
- * Green-tinted paper (deliberately not cream), sage actions, an ink scale
- * for text, and ONE warm element on screen: the patient's own words.
+ * Source of truth: docs/redesign/sage-mockups-v4.html.
+ *
+ * The paper foundation of the 2026-08-24 design, kept, with depth added and
+ * the accent moved from sage green to ink blue. Three things carry the
+ * character:
+ *
+ *   1. PAPER WITH SOMEWHERE FOR LIGHT TO FALL. The ground is a soft wash
+ *      rather than a flat fill (see components/ui/Bloom.tsx), so the page
+ *      recedes instead of sitting there.
+ *   2. DEPTH INSTEAD OF OUTLINES. Cards lift on a real shadow rather than
+ *      sitting behind a hairline. Elevation below is the scale.
+ *   3. THE PATIENT'S OWN WORDS ARE THE ONE LIGHT IN THE ROOM. Kept verbatim
+ *      from the approved design, which had it right; only the hue moved,
+ *      warm beige to pale blue, so that one accent family serves both the
+ *      day and night grounds.
+ *
+ * The night ground (#0C131C, lit from below) is defined in theme.night.ts
+ * and is not wired up yet — see that file for what switching it on takes.
  *
  * Typography is semantic (it tells the patient who is speaking before they
  * read a word): Source Serif 4 is Sage's voice — chat messages, the
  * wordmark, the italic stage words, document titles. Instrument Sans is the
  * interface — buttons, chips, labels, and the patient's own bubbles.
+ *
+ * The previous approved palette is preserved verbatim in theme.v1.ts and at
+ * the tag design-v1-approved-mockups; reverting is one `cp`.
  */
 
 export const Colors = {
-  // Brand — sage
-  primary: '#4A7862', // --sage: the primary action color
-  primaryLight: '#5D8A74', // derived hover/soft-emphasis tint
-  primaryPressed: '#2F5443', // --sage-deep: pressed states, text on tints
-  // A step deeper than sage-mist. The mockup has one tint; the app needs
-  // two, because a SELECTED option and a plain tinted panel sit side by side
-  // (trial match tiers, chips, dashed tiles) and collapsing them to one hex
-  // erases the distinction they exist to draw.
-  primarySoft: '#D7E4D9',
+  // Brand — ink blue. The one change a returning user notices immediately.
+  primary: '#24486B',
+  primaryLight: '#3A6191',
+  primaryPressed: '#1B3550', // deep ink: text on tints, pressed states
+  primarySoft: '#CFDEEE', // selected fills, distinct from sidebarBg
   accent: '#E89260', // legacy urgent-calm accent; SOS pill only
 
   // Surfaces
-  paper: '#F6F7F3', // --paper: the page ground
-  surface: '#FFFFFF', // --card
-  // A hair off paper, deliberately: Screen paints the ground with `paper`,
-  // so a muted region set to the same hex has no edge at all.
-  surfaceMuted: '#EFF2EC',
-  sidebarBg: '#E4ECE5', // --sage-mist
+  paper: '#F4F6F8', // the page ground; Bloom washes it lighter at the top
+  surface: '#FFFFFF', // cards, which now lift rather than outline
+  surfaceMuted: '#EDF0F3', // a hair off paper so muted regions still read
+  sidebarBg: '#E4EDF7', // the blue tint: drawer rows, icon circles
 
-  // The patient's own words — the ONLY warm element on screen.
-  warmBubble: '#F1E9DC', // --warm
-  warmBubbleBorder: '#E4D8C5',
-  warmBubbleInk: '#5D4C36', // --warm-ink
+  // The patient's own words — the one light in the room.
+  warmBubble: '#E4EDF7',
+  warmBubbleBorder: '#CFDEEE',
+  warmBubbleInk: '#1B3550',
 
-  // Text — the ink scale
-  textPrimary: '#24312B', // --ink
-  textSecondary: '#5A6A61', // --ink-2
-  // NOT the mockup's --ink-3 (#8A968E). That value is a placeholder and
-  // disabled-glyph tint in the mockups; in this app textMuted carries real
-  // content — list subtitles, timestamps, hints — at 12 and 13px, where
-  // #8A968E measures 3.07:1 on white and 2.55:1 on the sage-mist rows in
-  // the drawer. Darkened to clear WCAG AA (4.5:1) on every ground the app
-  // actually paints. Hierarchy comes from size and weight instead of a
-  // third value step.
-  textMuted: '#5F6D64',
+  // Text — the ink scale, now blue-black rather than green-black
+  textPrimary: '#16202B',
+  textSecondary: '#55636F',
+  // Darkened from the mockup's muted value for the same reason as before:
+  // this token carries real content at 12 and 13pt, and the lighter tint
+  // fails AA on the grounds this app actually paints. 5.7:1 on paper.
+  textMuted: '#55636F',
 
   // System
-  border: '#E2E7E0', // --line: hairlines
-  accentBorder: '#D5DFD6', // --sage-line: dealt cards, chips
+  border: '#DCE3EA',
+  accentBorder: '#CFDEEE',
   danger: '#B3261E',
   dangerPressed: '#8B1E18',
   warning: '#92400E',
-  success: '#4A7862',
+  success: '#24486B',
 
   // Status backgrounds
   warningBg: '#FEF3C7',
   emergencyBg: '#FFEDEC',
   dangerLight: '#FEE2E2',
 
-  // SOS / Help pill (persistent top-bar affordance) — semantic crisis
-  // affordance, deliberately outside the sage palette so it reads
-  // urgent-but-calm. fg reuses `warning` (#92400E).
+  // SOS / Help pill. Deliberately OUTSIDE the blue family: it is the one
+  // affordance that must not read as part of the calm palette.
   sosBg: 'rgba(232,146,96,0.16)',
   sosBorder: 'rgba(232,146,96,0.45)',
   sosSolid: '#E89260',
 
-  // Overlay scrim behind the drawer + bottom sheets (ink-based).
-  scrim: 'rgba(36,49,43,0.45)',
+  // Overlay scrim behind the drawer + bottom sheets.
+  scrim: 'rgba(16,32,43,0.45)',
 } as const;
 
 export const Fonts = {
@@ -81,6 +88,44 @@ export const Fonts = {
   serifItalic: 'SourceSerif4_400Regular_Italic', // the stage words
   serifSemiBold: 'SourceSerif4_600SemiBold',
   serifBold: 'SourceSerif4_700Bold',
+} as const;
+
+/**
+ * Elevation.
+ *
+ * The approved design separated everything with hairlines and carried no
+ * shadow at all — a deliberate anti-vibecoded decision, and the right one
+ * against a flat ground. "Paper and Lamplight" gives the page a light
+ * source, and once light has a direction, things above the page cast
+ * something.
+ *
+ * Two levels only, and both are soft and blue-tinted rather than grey: a
+ * neutral drop shadow on a warm-blue paper reads as dirt. Anything that
+ * needs more than `lifted` is probably a sheet and should be presented as
+ * one.
+ */
+export const Elevation = {
+  /** A card sitting on the page: dealt cards, list cards, the composer. */
+  lifted: {
+    shadowColor: '#16202B',
+    shadowOpacity: 0.07,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  /** Something the user is acting on right now: a primary button. */
+  active: {
+    shadowColor: '#24486B',
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  /** Explicitly flat. Named so a call site can say it MEANT no shadow. */
+  flat: {
+    shadowOpacity: 0,
+    elevation: 0,
+  },
 } as const;
 
 export const Spacing = {

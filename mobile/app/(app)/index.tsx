@@ -29,6 +29,7 @@ import { runOnJS } from 'react-native-reanimated';
 
 import { ConversationSurface } from '@/components/chat/ConversationSurface';
 import { CardChip, DealtCard } from '@/components/chat/DealtCard';
+import { Bloom } from '@/components/ui/Bloom';
 import { ConversationSkeleton } from '@/components/ui/Skeleton';
 import { LIFECYCLE_LABELS } from '@/components/common/LifecycleStageLine';
 import { useNavOverlay } from '@/components/common/NavOverlay';
@@ -257,7 +258,9 @@ export default function HomeScreen() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.paper }}>
+    // The page has a light source now: a soft wash from the top rather than
+    // a flat fill. Static, behind everything, no per-frame cost.
+    <Bloom>
       <TopBar
         leading="menu"
         center={
@@ -317,6 +320,6 @@ export default function HomeScreen() {
       <GestureDetector gesture={openEdge}>
         <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 28 }} />
       </GestureDetector>
-    </View>
+    </Bloom>
   );
 }

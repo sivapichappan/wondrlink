@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { ConversationSurface } from '@/components/chat/ConversationSurface';
+import { Bloom } from '@/components/ui/Bloom';
 import { TopBar } from '@/components/common/TopBar';
 import { Colors, FontSize, Fonts } from '@/constants/theme';
 import { useAcknowledgement } from '@/hooks/useAcknowledgement';
@@ -32,7 +33,7 @@ export default function ChatThreadScreen() {
   }, [known]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.paper }}>
+    <Bloom>
       <TopBar
         leading="back"
         backLabel="Home"
@@ -75,6 +76,6 @@ export default function ChatThreadScreen() {
           </Text>
         }
       />
-    </View>
+    </Bloom>
   );
 }

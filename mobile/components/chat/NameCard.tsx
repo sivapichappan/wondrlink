@@ -18,7 +18,7 @@ import Animated, { LinearTransition } from 'react-native-reanimated';
 
 import { Button } from '@/components/ui/Button';
 import { Duration, Ease, cardEnter, cardExit } from '@/constants/motion';
-import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
+import { Colors, Elevation, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 import { saveAccountBasics } from '@/lib/api/account';
 import { logCardEvent } from '@/lib/api/cards';
 import { APP_NAME } from '@shared/branding';
@@ -82,6 +82,7 @@ export function NameCard({ isCaregiver, onDone }: Props) {
         borderRadius: Radius.lg,
         padding: Spacing.lg,
         gap: Spacing.sm,
+        ...Elevation.lifted,
       }}>
       {/* Sage asking — the serif voice. */}
       <Text

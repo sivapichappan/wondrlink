@@ -21,8 +21,10 @@ export function MessageBubble({ role, content, onSelectText }: Props) {
         delayLongPress={350}
         accessibilityHint="Press and hold to copy or select text"
         style={{ alignSelf: 'flex-end', maxWidth: '88%' }}>
-        {/* The patient's own words — the ONLY warm element on screen
-            (redesign 2026-08-24), set in the interface sans, not the voice
+        {/* The patient's own words — the one light in the room. Kept from
+            the approved design, which had the idea right; only the hue
+            moved, warm beige to pale blue, so one accent family serves both
+            the day and the night ground. Interface sans, not the voice
             serif: typography says who is speaking. */}
         <View
           style={{
@@ -33,6 +35,12 @@ export function MessageBubble({ role, content, onSelectText }: Props) {
             paddingVertical: 10,
             borderRadius: Radius.lg,
             borderBottomRightRadius: 6,
+            // A faint bloom, not a glow: a coloured halo is the tell this
+            // product should sit furthest from.
+            shadowColor: Colors.primary,
+            shadowOpacity: 0.1,
+            shadowRadius: 14,
+            shadowOffset: { width: 0, height: 2 },
           }}>
           <Text style={{ color: Colors.warmBubbleInk, fontSize: 15, lineHeight: 22, fontFamily: Fonts.sans }}>
             {content}

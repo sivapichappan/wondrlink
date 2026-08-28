@@ -166,10 +166,9 @@ function RootGate() {
 
   if (ack.sessionLoading || (ack.hasSession && ack.isLoading)) {
     // Paper, not white. This is the app's cold-launch frame, and it used to
-    // paint #FFFFFF against a product whose ground is #F6F7F3 — so every
-    // single launch flashed white before settling. A launch is three steps
-    // (splash, this, first screen) and each one that changes colour reads
-    // as a stutter.
+    // paint pure white against a product whose ground is paper, so every
+    // single launch flashed. A launch is three steps (splash, this, first
+    // screen) and each one that changes colour reads as a stutter.
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.paper }}>
         <ActivityIndicator color={Colors.primary} />
