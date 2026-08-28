@@ -35,66 +35,54 @@ Still worth knowing:
 - Any llm-mode eval baseline from the Kimi era is now cross-model — do not
   compare numbers across 2026-08-24 without noting the voice change.
 
-## RESUME HERE — THE REDESIGN IS SHIPPED; device testing is the next step
+## RESUME HERE — device testing; night mode is the next build of work
 
-**SHIPPED 2026-08-26** as one cohesive update, per the owner's decision.
+**SHIPPED 2026-08-28: "Paper and Lamplight" + the motion pass.**
+OTA `3683c29` on channel production, runtime 1.2.0, newest on the branch.
+Client-only (no backend, no native config), so no TestFlight build was
+needed. Two cold launches picks it up.
 
-- Backend: `a579c1e` pushed to main, Vercel deployment `wondrchat-c43lf588e`
-  Ready. Verified on prod, not assumed: the three new routes answer 401
-  against a 405 unknown-route control, "How long do I have?" returns
-  `api_used: wall-prognosis` with the fixed card, and "Can I still go to my
-  granddaughter's birthday party?" (previously refused as off-topic) returns
-  a real answer.
-- Mobile: OTA published to channel `production`, runtime 1.2.0, commit
-  `a579c1e`, update group `b8697fa5-09a4-4070-89c1-c32c12386dcd`. It is the
-  newest update on the branch. **No TestFlight build was needed** — the
-  redesign is JS + font assets, app.json untouched, and build #37 is runtime
-  1.2.0. Two cold launches pick it up.
+What went out, on top of the 2026-08-26 redesign:
+- **The palette.** Ink blue `#24486B` replaces sage; paper `#F4F6F8`; the
+  patient's bubble is pale blue `#E4EDF7`, still the one light in the room.
+  Depth via `Elevation` (soft, blue-tinted: a neutral shadow on blue paper
+  reads as dirt) and `ui/Bloom.tsx`, one static SVG wash behind the
+  conversation. Source of truth: `docs/redesign/sage-mockups-v4.html`.
+- **Motion.** `constants/motion.ts` holds every curve and duration;
+  `ui/PressableScale.tsx` gives all 88 tappables a press state (60 had
+  none, and the iOS send button did nothing at all); `lib/haptics.ts` is
+  named by moment and fires on NOTHING in the crisis path; the dealt cards
+  enter and exit; the check-in crossfades between questions; skeletons
+  replace blank screens; the launch no longer flashes white.
+- **The emoji fix.** `stripEmoji` in `lib/answer-text.ts` + UrgencyBanner.
+  The server still injects `🚨` (`lib/llm_utils.py:417`, `:3206`); this is a
+  CLIENT defuse, mirroring what the web has always done, chosen so the
+  safety prompts keep their eval window closed.
 
-1105 offline tests, mobile tsc clean, EAS bundle repro green.
+**Next, in order:**
+1. **Device testing.** The 49-check walkthrough is updated for the new look
+   and republished:
+   https://claude.ai/code/artifact/d107db38-ea5b-41a8-9d0c-4748b5921888
+   Section K covers the new material.
+2. **Night mode — the real remaining work.** `constants/theme.night.ts`
+   holds contrast-checked values and is NOT wired. Two honest routes: a
+   `useColors()` hook plus a sweep of ~60 static `Colors` imports, or
+   `DynamicColorIOS`, which needs no call-site changes but is unproven
+   where this app passes colours into lucide icon props (they reach
+   react-native-svg, and a platform colour may not resolve — every icon
+   going black is the failure mode). Either way it needs `app.json` off
+   `userInterfaceStyle: "light"`, which is native, so **a real build, not
+   an OTA**, and its own device pass.
+3. Physician review of `config/safety/` — still the standing launch
+   blocker. `config/check_in/questions.json` is owner-approved 2026-08-26.
+4. **Card telemetry has no reader.** `patient_events` type
+   `card_engagement` records shown/acted/dismissed per card kind. The
+   brief's stated risk is that underperforming cards starve scanning and
+   trials never unlock; a weekly count by kind would answer it.
 
-| # | Change | Commits | State |
-|---|--------|---------|-------|
-| 1 | Gate inversion (walls, default-engage) | 85b7777..0a8b220 | built + adversarially reviewed (28 findings fixed) + evals green |
-| 2 | Kill the builder | dd29639, 0012266 | built |
-| 3 | Design system + Home is the conversation | 9ff441a, 4115af4 | built |
-| 4 | Check-ins as chat questions | 7a80114 | built |
-| 5 | Onboarding = 3 screens + conversation | c1c8941 | built |
-| — | Review fixes across 2-5 | 2635c9d | 31 confirmed findings fixed |
-
-**Next steps, in order:**
-1. ~~Adversarial review of changes 2-5~~ DONE (2635c9d): six lenses, 42
-   findings, 31 confirmed and all fixed. It caught a CRITICAL bug in change
-   5 (the reviewer-intent flag was cached at mount, before the tap that
-   sets it could happen, so every clinician would have been shown the
-   PATIENT consent — and completing it permanently bars the account from
-   ever being a reviewer), the per-session AI disclosure scrolling out of
-   sight at launch, "New chat" becoming a no-op, and the mockup's lightest
-   ink failing WCAG AA wherever this app uses it for real text.
-2. ~~Ship it~~ DONE 2026-08-26 (see above). Order was strict and stays
-   strict for any future wave: **backend before OTA**. An OTA in front of an
-   old backend is not a graceful degradation — the app reads
-   `perspective_set`, an old server omits it, so every existing user is
-   routed to "Who are you here for?" and then cannot save, because
-   `/api/account/perspective` would not exist. A locked-out app for
-   everyone.
-3. **DEVICE TESTING — the next real step.** Nothing has been witnessed on a
-   handset. Highest-risk unwitnessed paths: first launch through the name
-   card; Home rendering a long existing thread; the check-in card's
-   one-at-a-time sends; the new palette in daylight; the walls (ask "How
-   long do I have?"); and whether the two new font families actually render
-   (if their assets fail to download the app falls back to system faces
-   rather than a blank screen — ab03bac — so "it looks wrong" and "it is
-   broken" are different failures here).
-4. Physician review of `config/safety/` — still the standing launch blocker.
-   `config/check_in/questions.json` is OWNER-APPROVED (2026-08-26); if the
-   safety review establishes that patient-facing question banks need a
-   clinician's signature too, that file needs its own pass.
-5. **Watch the card telemetry.** `patient_events` type `card_engagement`
-   now records shown/acted/dismissed per card kind. The brief's stated risk
-   is that if cards underperform, scanning starves, the model stays
-   ignorant, and trials never unlock. This is the instrument for it, and it
-   has no reader yet — a weekly count by kind and action would answer it.
+**Design revert stays one command:** `mobile/constants/theme.v1.ts` holds
+the 2026-08-24 approved palette verbatim, and the tag
+`design-v1-approved-mockups` is the whole app at that point.
 
 **Carried, deliberately not done:**
 - The drawer's "All tools" launcher still exists. The brief cuts the nine-tool
