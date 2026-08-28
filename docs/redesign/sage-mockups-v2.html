@@ -1,0 +1,407 @@
+<title>Three Directions for Sage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Instrument+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
+
+<style>
+  /* Document chrome is deliberately neutral: three palettes are being
+     compared inside the phones, and a coloured page would contaminate the
+     comparison. */
+  :root {
+    --page: #EFEFED;
+    --panel: #FFFFFF;
+    --ink: #1C1F1E;
+    --ink-2: #5C6462;
+    --ink-3: #878E8C;
+    --line: #DFE1DF;
+    --mark: #3A6B54;
+    --sans: "Instrument Sans", system-ui, sans-serif;
+    --serif: "Source Serif 4", Georgia, serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page: #141614;
+      --panel: #1D211F;
+      --ink: #E9EDEB;
+      --ink-2: #A5ADAA;
+      --ink-3: #7E8683;
+      --line: #2B302E;
+      --mark: #86BBA0;
+    }
+  }
+  :root[data-theme="dark"] {
+    --page: #141614; --panel: #1D211F; --ink: #E9EDEB; --ink-2: #A5ADAA;
+    --ink-3: #7E8683; --line: #2B302E; --mark: #86BBA0;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--page); color: var(--ink); font-family: var(--sans);
+    margin: 0; padding: 0 0 6rem; line-height: 1.5; -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 78rem; margin: 0 auto; padding: 0 1.5rem; }
+
+  header.top { padding: 3.5rem 0 1rem; max-width: 42rem; }
+  h1 {
+    font-family: var(--serif); font-weight: 600; font-size: clamp(2rem, 5vw, 2.9rem);
+    letter-spacing: -0.02em; line-height: 1.1; margin: 0; text-wrap: balance;
+  }
+  .lede { color: var(--ink-2); font-size: 1.05rem; margin: 1rem 0 0; }
+  .note {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 1rem 1.15rem; margin: 1.75rem 0 0; max-width: 42rem;
+    font-size: 0.95rem; color: var(--ink-2);
+  }
+  .note strong { color: var(--ink); }
+
+  section.dir { margin-top: 4.5rem; }
+  .dir-head { max-width: 42rem; }
+  .eyebrow {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--mark); margin: 0 0 0.4rem;
+  }
+  h2 {
+    font-family: var(--serif); font-weight: 600; font-size: 1.9rem; margin: 0;
+    letter-spacing: -0.015em; text-wrap: balance;
+  }
+  .why { color: var(--ink-2); font-size: 1rem; margin: 0.7rem 0 0; }
+  .why b { color: var(--ink); font-weight: 600; }
+  .specs {
+    display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 1rem 0 0; padding: 0; list-style: none;
+  }
+  .specs li {
+    font-size: 0.78rem; color: var(--ink-2); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 999px; padding: 0.28rem 0.7rem;
+  }
+  .cost { font-size: 0.9rem; color: var(--ink-2); margin: 1rem 0 0; }
+  .cost b { color: var(--ink); }
+
+  .screens { display: flex; flex-wrap: wrap; gap: 2.5rem; margin-top: 2rem; }
+  figure { margin: 0; width: 340px; }
+  figcaption { font-size: 0.85rem; color: var(--ink-2); margin-top: 0.8rem; line-height: 1.5; }
+  figcaption b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- the phone ---------- */
+  .phone {
+    width: 340px; height: 700px; border-radius: 40px; overflow: hidden;
+    display: flex; flex-direction: column; border: 1px solid rgba(0,0,0,.14);
+    box-shadow: 0 20px 44px rgba(20,26,23,.16);
+  }
+  .status {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 24px 4px; font-size: 12.5px; font-weight: 600; flex: none;
+  }
+  .app { flex: 1; display: flex; flex-direction: column; padding: 6px 16px 18px; min-height: 0; }
+  .hdr { display: flex; align-items: baseline; gap: 8px; padding: 6px 2px 12px; flex: none; }
+  .wm { font-weight: 600; }
+  .stage { font-style: italic; }
+  .thread { flex: 1; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+  .said { max-width: 88%; }
+  .mine { margin-left: auto; max-width: 80%; }
+  .card { }
+  .card .ct { font-weight: 600; margin-bottom: 4px; }
+  .card .cb { margin-bottom: 10px; }
+  .acts { display: flex; gap: 8px; align-items: center; }
+  .btn { font-weight: 600; }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .composer { margin-top: auto; display: flex; align-items: center; gap: 9px; flex: none; }
+  .composer .field { flex: 1; }
+  .plus, .send { flex: none; display: flex; align-items: center; justify-content: center; }
+
+  /* =======================================================
+     A — PAPER, FINISHED
+     ======================================================= */
+  .a .phone { background: #F6F7F3; color: #24312B; }
+  .a .app, .a .status { font-family: "Instrument Sans", sans-serif; }
+  .a .wm { font-family: var(--serif); font-size: 20px; letter-spacing: -0.2px; color: #24312B; }
+  .a .stage { font-family: var(--serif); font-size: 14px; color: #5A6A61; }
+  .a .said {
+    font-family: var(--serif); font-size: 17px; line-height: 1.55; color: #24312B;
+    background: #FFF; border: 1px solid #E2E7E0; border-radius: 16px 16px 16px 5px; padding: 11px 13px;
+  }
+  .a .mine {
+    background: #F1E9DC; border: 1px solid #E4D8C5; color: #5D4C36;
+    border-radius: 16px 16px 5px 16px; padding: 10px 13px; font-size: 16px;
+  }
+  .a .card { background: #FFF; border: 1px solid #D5DFD6; border-radius: 18px; padding: 14px; }
+  .a .card .ct { font-size: 16px; }
+  .a .card .cb { font-size: 15px; color: #5A6A61; line-height: 1.5; }
+  .a .btn { background: #4A7862; color: #FFF; border-radius: 11px; padding: 9px 15px; font-size: 15px; }
+  .a .btn.ghost { background: transparent; color: #2F5443; }
+  .a .chip { border: 1.5px solid #D5DFD6; background: #FFF; color: #2F5443; border-radius: 999px; padding: 8px 15px; font-size: 15px; font-weight: 500; }
+  .a .composer .field { background: #FFF; border: 1px solid #E2E7E0; border-radius: 22px; padding: 11px 15px; color: #8A968E; font-size: 16px; }
+  .a .plus { width: 34px; height: 34px; border-radius: 50%; background: #E4ECE5; color: #2F5443; font-size: 21px; }
+  .a .send { width: 36px; height: 36px; border-radius: 50%; background: #4A7862; color: #FFF; font-size: 15px; }
+
+  /* =======================================================
+     B — NIGHT WARD
+     ======================================================= */
+  .b .phone { background: #121714; color: #E7EDE9; border-color: rgba(255,255,255,.09); }
+  .b .wm { font-family: var(--serif); font-size: 20px; letter-spacing: -0.2px; color: #E7EDE9; }
+  .b .stage { font-family: var(--serif); font-size: 14px; color: #94A79C; }
+  .b .said {
+    font-family: var(--serif); font-size: 17px; line-height: 1.6; color: #E7EDE9;
+    background: #1B221E; border: 1px solid #28322C; border-radius: 16px 16px 16px 5px; padding: 11px 13px;
+  }
+  .b .mine {
+    background: #3A2E1F; border: 1px solid #4C3D28; color: #F0DFC4;
+    border-radius: 16px 16px 5px 16px; padding: 10px 13px; font-size: 16px;
+  }
+  .b .card { background: #1B221E; border: 1px solid #35473D; border-radius: 18px; padding: 14px; }
+  .b .card .ct { font-size: 16px; color: #E7EDE9; }
+  .b .card .cb { font-size: 15px; color: #94A79C; line-height: 1.5; }
+  .b .btn { background: #7FB299; color: #101512; border-radius: 11px; padding: 9px 15px; font-size: 15px; }
+  .b .btn.ghost { background: transparent; color: #A6CDB6; }
+  .b .chip { border: 1.5px solid #35473D; background: #1B221E; color: #A6CDB6; border-radius: 999px; padding: 8px 15px; font-size: 15px; font-weight: 500; }
+  .b .composer .field { background: #1B221E; border: 1px solid #28322C; border-radius: 22px; padding: 11px 15px; color: #7E8B84; font-size: 16px; }
+  .b .plus { width: 34px; height: 34px; border-radius: 50%; background: #26332C; color: #A6CDB6; font-size: 21px; }
+  .b .send { width: 36px; height: 36px; border-radius: 50%; background: #7FB299; color: #101512; font-size: 15px; }
+
+  /* =======================================================
+     C — LARGE PRINT
+     ======================================================= */
+  .c .phone { background: #FBFAF7; color: #161A18; }
+  .c .app { padding: 6px 18px 18px; }
+  .c .wm { font-family: "Newsreader", Georgia, serif; font-size: 23px; letter-spacing: -0.3px; }
+  .c .stage { font-family: "Newsreader", Georgia, serif; font-size: 15px; color: #4A544F; }
+  .c .said {
+    font-family: "Newsreader", Georgia, serif; font-size: 21px; line-height: 1.55; color: #161A18;
+    background: transparent; border: 0; padding: 2px 0 6px;
+  }
+  .c .mine {
+    background: #EDE3D2; border: 0; color: #43371F;
+    border-radius: 18px; padding: 12px 15px; font-size: 19px; line-height: 1.4;
+  }
+  .c .card { background: #FFF; border: 2px solid #161A18; border-radius: 16px; padding: 16px; }
+  .c .card .ct { font-size: 19px; }
+  .c .card .cb { font-size: 17px; color: #3B4340; line-height: 1.45; }
+  .c .btn { background: #161A18; color: #FBFAF7; border-radius: 10px; padding: 13px 18px; font-size: 18px; }
+  .c .btn.ghost { background: transparent; color: #161A18; text-decoration: underline; }
+  .c .chip { border: 2px solid #161A18; background: #FFF; color: #161A18; border-radius: 12px; padding: 12px 17px; font-size: 18px; font-weight: 600; }
+  .c .composer .field { background: #FFF; border: 2px solid #161A18; border-radius: 14px; padding: 14px 16px; color: #6A736F; font-size: 18px; }
+  .c .plus { width: 40px; height: 40px; border-radius: 12px; background: #161A18; color: #FBFAF7; font-size: 23px; }
+  .c .send { width: 42px; height: 42px; border-radius: 12px; background: #161A18; color: #FBFAF7; font-size: 17px; }
+
+  footer { margin-top: 5rem; color: var(--ink-3); font-size: 0.85rem; max-width: 42rem; }
+  @media (max-width: 820px) { .screens { justify-content: center; } }
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <h1>Three directions for Sage</h1>
+  <p class="lede">
+    The same two moments rendered three ways: the conversation with a card dealt into it,
+    and the hardest question the product ever gets asked. Each direction is grounded in a
+    claim about who is holding the phone, not in a mood.
+  </p>
+  <div class="note">
+    <strong>What is already true regardless of which you pick.</strong> The motion work has
+    shipped into the branch: every surface now answers to touch, the cards actually deal
+    rather than blink into existence, the check-in crossfades between questions, and the
+    launch no longer flashes white. None of that changes with the palette, which is why it
+    was built first.
+  </div>
+</header>
+
+<!-- ===================== A ===================== -->
+<section class="dir a">
+  <div class="dir-head">
+    <p class="eyebrow">Direction A</p>
+    <h2>Paper, finished</h2>
+    <p class="why">
+      The approved direction, taken to the end it was already pointing at. Same paper ground,
+      same sage, same rule that the warm bubble is only ever <b>your</b> words. What changes is
+      the craft the build dropped: the negative tracking the mockups specified, a real leading
+      scale, and body type up from 15 to 17.
+    </p>
+    <ul class="specs">
+      <li>Body 17pt</li><li>Source Serif 4 · Instrument Sans</li><li>Paper #F6F7F3</li><li>Light only</li>
+    </ul>
+    <p class="cost"><b>The cost:</b> it is not really a new direction. If the current app feels
+      flat to you, this will feel like the current app with better manners.</p>
+  </div>
+  <div class="screens">
+    <figure>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>▂▄▆ ▮</span></div>
+        <div class="app">
+          <div class="hdr"><span class="wm">Sage</span><span class="stage">Understanding your treatment</span></div>
+          <div class="thread">
+            <div class="said">Good morning, Maria. Last time you said the appointment ran long. How are you feeling today?</div>
+            <div class="mine">Tired but okay. They gave me papers I don't understand</div>
+            <div class="said">We can go through them together.</div>
+            <div class="card">
+              <div class="ct">Snap a photo of the papers</div>
+              <div class="cb">Sage will read them and explain what they say in plain words.</div>
+              <div class="acts"><span class="btn">Scan them</span><span class="btn ghost">Not now</span></div>
+            </div>
+          </div>
+          <div class="composer">
+            <span class="plus">+</span><span class="field">Message Sage</span><span class="send">↑</span>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Home.</b> The card carries the sage accent border that separates a thing to act on from Sage speaking.</figcaption>
+    </figure>
+    <figure>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>▂▄▆ ▮</span></div>
+        <div class="app">
+          <div class="hdr"><span class="wm">Sage</span><span class="stage">In treatment</span></div>
+          <div class="thread">
+            <div class="mine">How long do I have?</div>
+            <div class="said">I can't answer that, and I won't guess. No one can know it from the outside. Your oncologist can talk about it honestly, because they know your whole picture.</div>
+            <div class="card">
+              <div class="ct">Ways to ask Dr. Rivera</div>
+              <div class="cb">Questions that tend to get clear, honest answers:</div>
+              <div class="cb">What does this usually mean for people in my situation?</div>
+              <div class="acts"><span class="btn">Save for my visit</span></div>
+            </div>
+          </div>
+          <div class="composer">
+            <span class="plus">+</span><span class="field">Message Sage</span><span class="send">↑</span>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>The wall.</b> Fixed copy, unchanged across all three directions.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ===================== B ===================== -->
+<section class="dir b">
+  <div class="dir-head">
+    <p class="eyebrow">Direction B</p>
+    <h2>Night ward</h2>
+    <p class="why">
+      Grounded in a fact about this product rather than a taste: <b>the app is pinned to light
+      mode and a great many of these conversations happen at two in the morning.</b> Someone
+      awake in bed, frightened, holding a phone at full brightness, is a real and frequent user
+      and the current design has nothing for them. Dark first, warm rather than blue-black, and
+      the patient's own words are the one warm light on the screen.
+    </p>
+    <ul class="specs">
+      <li>Body 17pt</li><li>Dark first, light follows</li><li>Ground #121714</li><li>Warm bubble glows</li>
+    </ul>
+    <p class="cost"><b>The cost:</b> two palettes to maintain, every screen checked twice, and
+      the contrast work has to be redone from scratch. Roughly double the visual QA.</p>
+  </div>
+  <div class="screens">
+    <figure>
+      <div class="phone">
+        <div class="status"><span>2:14</span><span>▂▄▆ ▮</span></div>
+        <div class="app">
+          <div class="hdr"><span class="wm">Sage</span><span class="stage">Understanding your treatment</span></div>
+          <div class="thread">
+            <div class="said">You're up late. I'm here.</div>
+            <div class="mine">I can't sleep. I keep thinking about Thursday</div>
+            <div class="said">That's a very normal thing to be carrying the night before a scan. Would it help to write down what you want to ask?</div>
+            <div class="card">
+              <div class="ct">Questions for Thursday</div>
+              <div class="cb">I'll keep them together, ready on your phone at the visit.</div>
+              <div class="acts"><span class="btn">Start a list</span><span class="btn ghost">Not now</span></div>
+            </div>
+          </div>
+          <div class="composer">
+            <span class="plus">+</span><span class="field">Message Sage</span><span class="send">↑</span>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Home at 2am.</b> The moment this direction is designed for, and the one the light-only app currently serves worst.</figcaption>
+    </figure>
+    <figure>
+      <div class="phone">
+        <div class="status"><span>2:31</span><span>▂▄▆ ▮</span></div>
+        <div class="app">
+          <div class="hdr"><span class="wm">Sage</span><span class="stage">In treatment</span></div>
+          <div class="thread">
+            <div class="mine">How long do I have?</div>
+            <div class="said">I can't answer that, and I won't guess. No one can know it from the outside. Your oncologist can talk about it honestly, because they know your whole picture.</div>
+            <div class="card">
+              <div class="ct">Ways to ask Dr. Rivera</div>
+              <div class="cb">Questions that tend to get clear, honest answers:</div>
+              <div class="cb">What does this usually mean for people in my situation?</div>
+              <div class="acts"><span class="btn">Save for my visit</span></div>
+            </div>
+          </div>
+          <div class="composer">
+            <span class="plus">+</span><span class="field">Message Sage</span><span class="send">↑</span>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>The wall, at night.</b> This question gets asked in the dark more than anywhere else.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ===================== C ===================== -->
+<section class="dir c">
+  <div class="dir-head">
+    <p class="eyebrow">Direction C</p>
+    <h2>Large print</h2>
+    <p class="why">
+      The most literal answer to the brief's own thesis, that the app demanded too much of a
+      stressed patient. Body type at <b>21pt</b>, chips big enough for an unsteady hand, ink on
+      near-white at maximum contrast, and Sage's messages set as plain text rather than in
+      bubbles, because the conversation is the page. Chemotherapy affects concentration and
+      vision; this direction treats that as the design constraint rather than an accessibility
+      setting.
+    </p>
+    <ul class="specs">
+      <li>Body 21pt</li><li>Newsreader · Instrument Sans</li><li>Near-black on #FBFAF7</li><li>Fewer elements per screen</li>
+    </ul>
+    <p class="cost"><b>The cost:</b> much less fits on a screen, so more scrolling and harder
+      layout decisions everywhere. It will read as an app for old people to some, which is a
+      real product risk worth saying out loud.</p>
+  </div>
+  <div class="screens">
+    <figure>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>▂▄▆ ▮</span></div>
+        <div class="app">
+          <div class="hdr"><span class="wm">Sage</span><span class="stage">Getting to know you</span></div>
+          <div class="thread">
+            <div class="said">Good morning, Maria. How are you feeling today?</div>
+            <div class="mine">Tired. They gave me papers I don't understand</div>
+            <div class="card">
+              <div class="ct">Snap a photo</div>
+              <div class="cb">I'll read them and explain what they say.</div>
+              <div class="acts"><span class="btn">Scan them</span><span class="btn ghost">Not now</span></div>
+            </div>
+          </div>
+          <div class="composer">
+            <span class="plus">+</span><span class="field">Message Sage</span><span class="send">↑</span>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Home.</b> Sage speaks as text on the page; only your words get a bubble.</figcaption>
+    </figure>
+    <figure>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>▂▄▆ ▮</span></div>
+        <div class="app">
+          <div class="hdr"><span class="wm">Sage</span><span class="stage">Getting to know you</span></div>
+          <div class="thread">
+            <div class="said">Quick check-in, just two questions today.</div>
+            <div class="said">Any tingling in your fingers, especially when you touch something cold?</div>
+            <div class="chips"><span class="chip">Yes</span><span class="chip">No</span><span class="chip">Not now</span></div>
+          </div>
+          <div class="composer">
+            <span class="plus">+</span><span class="field">Message Sage</span><span class="send">↑</span>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>The check-in.</b> Chips sized for a hand that shakes; this is where the extra size earns its cost.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<footer>
+  Rendered for a decision, not for production. Whichever direction wins becomes a token swap in
+  <code>mobile/constants/theme.ts</code>; the approved 2026-08-24 palette is preserved verbatim at
+  <code>mobile/constants/theme.v1.ts</code> and at the tag <code>design-v1-approved-mockups</code>,
+  so reverting stays one command. Copy shown is the real, shipped copy.
+</footer>
+
+</div>
