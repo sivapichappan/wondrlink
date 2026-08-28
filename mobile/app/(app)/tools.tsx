@@ -7,7 +7,7 @@
  */
 
 import { router } from 'expo-router';
-import { Activity, BookOpen, CalendarClock, ClipboardList, FileText, Microscope, NotebookPen, ScanLine, Search, Sparkles } from 'lucide-react-native';
+import { Activity, BookOpen, CalendarClock, ClipboardList, FileText, Microscope, MessageCircle, NotebookPen, ScanLine, Search } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { TopBar } from '@/components/common/TopBar';
@@ -57,7 +57,9 @@ export default function AllToolsScreen() {
         {/* Ask-in-chat helper */}
         <Pressable onPress={() => router.push('/chat/new' as never)} accessibilityRole="button" accessibilityLabel="Ask in chat" style={{ width: '48%' }}>
           <View style={{ borderWidth: 1.5, borderColor: Colors.primary, borderStyle: 'dashed', borderRadius: Radius.lg, padding: Spacing.md, gap: 6, minHeight: 96, justifyContent: 'center', backgroundColor: Colors.sidebarBg }}>
-            <Sparkles size={18} color={Colors.primary} />
+            {/* The tile is about asking in chat, so the icon says chat. A
+                sparkle here said nothing except that an AI wrote the UI. */}
+            <MessageCircle size={18} color={Colors.primary} />
             <Text style={{ fontSize: FontSize.sm, lineHeight: 18, color: Colors.textSecondary }}>
               Not sure which tool? <Text style={{ fontFamily: Fonts.sansSemiBold, color: Colors.primary }}>Just ask in chat.</Text>
             </Text>

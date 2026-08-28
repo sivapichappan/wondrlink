@@ -6,7 +6,6 @@
  * progress bar or journey UI (locked decision: subtle stage cue only).
  */
 
-import { Sparkles } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 import { Colors, FontSize, Spacing } from '@/constants/theme';
@@ -23,7 +22,6 @@ export function LifecycleStageLine({ stage }: { stage?: LifecycleStage | null })
   const label = LIFECYCLE_LABELS[stage ?? 'getting_to_know_you'] ?? LIFECYCLE_LABELS.getting_to_know_you;
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: Spacing.sm }}>
-      <Sparkles size={12} color={Colors.textMuted} />
       <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>{label}</Text>
     </View>
   );

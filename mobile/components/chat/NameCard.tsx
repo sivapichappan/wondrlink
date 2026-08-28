@@ -14,8 +14,10 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 
 import { Button } from '@/components/ui/Button';
+import { Duration, Ease, cardEnter, cardExit } from '@/constants/motion';
 import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 import { saveAccountBasics } from '@/lib/api/account';
 import { logCardEvent } from '@/lib/api/cards';
@@ -69,7 +71,10 @@ export function NameCard({ isCaregiver, onDone }: Props) {
   };
 
   return (
-    <View
+    <Animated.View
+      entering={cardEnter()}
+      exiting={cardExit()}
+      layout={LinearTransition.duration(Duration.state).easing(Ease.out)}
       style={{
         backgroundColor: Colors.surface,
         borderWidth: 1,
@@ -118,7 +123,7 @@ export function NameCard({ isCaregiver, onDone }: Props) {
       <Text style={{ fontSize: FontSize.sm, color: Colors.textMuted, lineHeight: 19 }}>
         You can change this any time in Settings.
       </Text>
-    </View>
+    </Animated.View>
   );
 }
 

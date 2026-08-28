@@ -29,6 +29,7 @@ import { runOnJS } from 'react-native-reanimated';
 
 import { ConversationSurface } from '@/components/chat/ConversationSurface';
 import { CardChip, DealtCard } from '@/components/chat/DealtCard';
+import { ConversationSkeleton } from '@/components/ui/Skeleton';
 import { LIFECYCLE_LABELS } from '@/components/common/LifecycleStageLine';
 import { useNavOverlay } from '@/components/common/NavOverlay';
 import { TopBar } from '@/components/common/TopBar';
@@ -305,7 +306,10 @@ export default function HomeScreen() {
         }
       />
       ) : (
-        <View style={{ flex: 1 }} />
+        // Was a blank <View style={{flex:1}} />, so the whole conversation
+        // popped in at once after a beat of nothing. A skeleton shaped like
+        // a thread says what is coming.
+        <ConversationSkeleton />
       )}
 
       {/* Left-edge swipe-to-open-drawer zone. */}

@@ -1,4 +1,3 @@
-import { Sparkles } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
 import { Colors, Fonts } from '@/constants/theme';
@@ -14,7 +13,6 @@ export function FollowupChips({ followups, onPick }: Props) {
   return (
     <View style={{ gap: 4 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-        <Sparkles size={10} color={Colors.textMuted} />
         <Text
           style={{
             color: Colors.textMuted,

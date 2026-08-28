@@ -18,8 +18,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 
 import { CardChip } from '@/components/chat/DealtCard';
+import { Duration, Ease, cardEnter, cardExit, messageEnter } from '@/constants/motion';
 import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 import { logCardEvent, recordCheckIn, type CheckInQuestion } from '@/lib/api/cards';
 
@@ -84,7 +86,10 @@ export function CheckInCard({ questions, onAnswer, onDone, sending }: Props) {
   };
 
   return (
-    <View
+    <Animated.View
+      entering={cardEnter()}
+      exiting={cardExit()}
+      layout={LinearTransition.duration(Duration.state).easing(Ease.out)}
       style={{
         backgroundColor: Colors.surface,
         borderWidth: 1,
@@ -99,23 +104,32 @@ export function CheckInCard({ questions, onAnswer, onDone, sending }: Props) {
         </Text>
       )}
 
-      {/* Sage asking — the serif voice, same as any other thing Sage says. */}
-      <Text
-        style={{
-          color: Colors.textPrimary,
-          fontFamily: Fonts.serif,
-          fontSize: 16,
-          lineHeight: 25,
-        }}>
-        {question.text}
-      </Text>
+      {/* Sage asking — the serif voice, same as any other thing Sage says.
+          Keyed on the question id so moving to the next one crossfades in
+          place rather than hard-cutting the text and the whole chip row
+          underneath the reader's thumb. */}
+      <Animated.View
+        key={question.id}
+        entering={messageEnter()}
+        layout={LinearTransition.duration(Duration.state).easing(Ease.out)}
+        style={{ gap: Spacing.sm }}>
+        <Text
+          style={{
+            color: Colors.textPrimary,
+            fontFamily: Fonts.serif,
+            fontSize: 16,
+            lineHeight: 25,
+          }}>
+          {question.text}
+        </Text>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.xs }}>
-        {question.chips.map((chip) => (
-          <CardChip key={chip} label={chip} disabled={sending} onPress={() => answer(chip)} />
-        ))}
-        <CardChip label="Not now" quiet onPress={decline} />
-      </View>
-    </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginTop: Spacing.xs }}>
+          {question.chips.map((chip) => (
+            <CardChip key={chip} label={chip} disabled={sending} onPress={() => answer(chip)} />
+          ))}
+          <CardChip label="Not now" quiet onPress={decline} />
+        </View>
+      </Animated.View>
+    </Animated.View>
   );
 }

@@ -2,6 +2,7 @@ import { AlertCircle, Phone } from 'lucide-react-native';
 import { Linking, Pressable, Text, View } from 'react-native';
 
 import { Colors, Fonts, Radius } from '@/constants/theme';
+import { stripEmoji } from '@/lib/answer-text';
 import type { ChatUrgency } from '@shared/types';
 
 interface Props {
@@ -32,7 +33,11 @@ export function UrgencyBanner({ urgency }: Props) {
           {urgency.level ?? 'Urgent'}
         </Text>
         <Text style={{ color: Colors.textPrimary, fontSize: 13, lineHeight: 19 }}>
-          {urgency.guidance || 'Please contact your care team or seek emergency help if symptoms are severe.'}
+          {/* The server's guidance string carries the same injected siren
+              emoji the answer body does, and this banner IS the designed
+              urgency marker — it does not need a cartoon of one. */}
+          {stripEmoji(urgency.guidance || '') ||
+            'Please contact your care team or seek emergency help if symptoms are severe.'}
         </Text>
         {isEmergency && (
           <Pressable

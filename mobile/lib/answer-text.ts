@@ -11,6 +11,44 @@
  * on whatever the model happened to emit.
  */
 
+/**
+ * Emoji the backend put in a patient-facing answer.
+ *
+ * The server injects pictographs into its highest-stakes strings — the
+ * emergency guidance opens "🚨 EMERGENCY: Fever during chemotherapy…"
+ * (lib/llm_utils.py) — and the model copies the register and adds more. The
+ * legacy web client has swapped these for icons since it shipped; mobile
+ * rendered them raw, so the most serious message this product ever sends
+ * arrived with a siren cartoon on it.
+ *
+ * The words are kept and only the pictograph is dropped: "EMERGENCY:" says
+ * everything the siren did, and the actual urgency marker is a designed
+ * element (EscalationCard for a safety tier, UrgencyBanner otherwise), not
+ * a character in the prose.
+ *
+ * Ranges rather than \p{Extended_Pictographic}: Hermes' regex support is
+ * not the place to discover a gap at runtime on someone's phone.
+ */
+const EMOJI_CLASS =
+  '[\\u{1F000}-\\u{1FAFF}\\u{2600}-\\u{27BF}\\u{2B00}-\\u{2BFF}\\u{FE00}-\\u{FE0F}\\u{1F1E6}-\\u{1F1FF}\\u{2190}-\\u{21FF}\\u{2300}-\\u{23FF}]';
+
+/**
+ * One or more emoji PLUS the spaces that followed them, consumed together.
+ *
+ * Removing the pictograph on its own and then tidying whitespace is the
+ * tempting version and it is wrong: any sweep that touches leading
+ * whitespace re-flattens indented bullets, which is exactly how the prompt
+ * files lost the indentation of their JSON examples. Taking the trailing
+ * space in the SAME match means "🚨 EMERGENCY" becomes "EMERGENCY" while
+ * "    - nested" is never looked at.
+ */
+const EMOJI_RUN = new RegExp(`(?:${EMOJI_CLASS})+[ \\t]*`, 'gu');
+
+export function stripEmoji(text: string): string {
+  if (!text) return text;
+  return text.replace(EMOJI_RUN, '').replace(/[ \t]+$/gm, '');
+}
+
 /** One labelled block of an answer. */
 export interface AnswerSection {
   label: string;
@@ -39,6 +77,7 @@ const SECTION_HEADING = /^[ \t]*##[ \t]+(.+?)[ \t]*$/;
  * them.
  */
 export function toPlainText(markdown: string): string {
+  markdown = stripEmoji(markdown);
   if (!markdown) return '';
 
   const lines = markdown.split('\n').map((line) => {
@@ -83,6 +122,7 @@ export function toPlainText(markdown: string): string {
  * the split lives here rather than in the markdown renderer.
  */
 export function splitAnswer(markdown: string): SplitAnswer {
+  markdown = stripEmoji(markdown);
   const empty: SplitAnswer = { lead: markdown ?? '', sections: [] };
   if (!markdown || !markdown.includes('#')) return empty;
 

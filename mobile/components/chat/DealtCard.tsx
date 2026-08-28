@@ -16,9 +16,13 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
+import { PressableScale } from '@/components/ui/PressableScale';
+import { cardEnter, cardExit } from '@/constants/motion';
 import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
+import * as haptics from '@/lib/haptics';
 import { logCardEvent, type CardKind } from '@/lib/api/cards';
 
 interface Props {
@@ -55,7 +59,13 @@ export function DealtCard({
   }, [kind]);
 
   return (
-    <View
+    // It is called a dealt card, so it should arrive like one: a short rise
+    // and settle rather than blinking into existence beside the answer it
+    // belongs to. Exits the way it entered, so dismissing reads as the
+    // reverse of arriving rather than as the card vanishing.
+    <Animated.View
+      entering={cardEnter()}
+      exiting={cardExit()}
       style={{
         backgroundColor: Colors.surface,
         borderWidth: 1,
@@ -88,7 +98,7 @@ export function DealtCard({
       {(onAction || onDismiss) && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginTop: Spacing.xs }}>
           {onAction && !!actionLabel && (
-            <Pressable
+            <PressableScale
               onPress={() => {
                 void logCardEvent(kind, 'acted');
                 onAction();
@@ -113,12 +123,15 @@ export function DealtCard({
                   {actionLabel}
                 </Text>
               </View>
-            </Pressable>
+            </PressableScale>
           )}
           {onDismiss && (
-            <Pressable
+            <PressableScale
               onPress={() => {
                 void logCardEvent(kind, 'dismissed');
+                // Something snapping home. One per action, and never on a
+                // crisis surface — this is a card being put away.
+                haptics.snap();
                 onDismiss();
               }}
               accessibilityRole="button"
@@ -133,11 +146,11 @@ export function DealtCard({
                   {dismissLabel}
                 </Text>
               </View>
-            </Pressable>
+            </PressableScale>
           )}
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -154,7 +167,23 @@ export function CardChip({
   disabled?: boolean;
 }) {
   return (
-    <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={label}>
+    // The single most-tapped element in the new chat flow: every check-in
+    // answer and every cancer-picker choice goes through it. It previously
+    // had no press state at all, only a disabled dim, so answering a
+    // check-in felt like tapping a picture of a button.
+    <PressableScale
+      onPress={() => {
+        // A chip is a value ticking past a step, which is the lightest
+        // haptic there is. Fired here, at the causal moment, rather than
+        // after the send resolves.
+        haptics.selection();
+        onPress();
+      }}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      // The visual is under 44pt tall; grow the target, not the chip.
+      hitSlop={8}>
       <View
         style={{
           paddingHorizontal: 16,
@@ -174,6 +203,6 @@ export function CardChip({
           {label}
         </Text>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }

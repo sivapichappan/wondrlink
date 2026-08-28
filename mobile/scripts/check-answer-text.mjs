@@ -38,7 +38,7 @@ try {
   process.exit(1);
 }
 
-const { toPlainText, splitAnswer } = await import(pathToFileURL(bundle).href);
+const { toPlainText, splitAnswer, stripEmoji } = await import(pathToFileURL(bundle).href);
 
 let passed = 0;
 const check = (name, fn) => {
@@ -138,4 +138,58 @@ check('a sub-heading inside a section stays in the body', () => {
 });
 
 rmSync(out, { recursive: true, force: true });
+console.log('\nstripEmoji');
+
+check('the emergency siren goes, the word EMERGENCY stays', () => {
+  // The highest-stakes string the product sends. The backend injects the
+  // pictograph (lib/llm_utils.py); the words carry the meaning and the
+  // designed escalation card carries the urgency.
+  assert.equal(
+    stripEmoji('🚨 EMERGENCY: Fever during chemotherapy needs same-day care.'),
+    'EMERGENCY: Fever during chemotherapy needs same-day care.',
+  );
+});
+
+check('a warning emoji mid-paragraph leaves no double space', () => {
+  assert.equal(stripEmoji('Hot flashes 💊 are common.'), 'Hot flashes are common.');
+});
+
+check('an emoji opening a line does not eat the newline', () => {
+  assert.equal(
+    stripEmoji('\n\n⚠️ If you notice this, call your team.'),
+    '\n\nIf you notice this, call your team.',
+  );
+});
+
+check('INDENTATION SURVIVES', () => {
+  // The whole reason the emoji and its trailing spaces are consumed in one
+  // match. A separate leading-whitespace tidy is what flattened the nested
+  // examples in the prompt files, and it would do the same to a bullet list.
+  assert.equal(
+    stripEmoji('- top\n    - nested item\n        - deeper'),
+    '- top\n    - nested item\n        - deeper',
+  );
+});
+
+check('clean text is returned untouched', () => {
+  const clean = '## What to expect\nEndocrine therapy lowers estrogen [1].';
+  assert.equal(stripEmoji(clean), clean);
+});
+
+check('citation markers are never touched', () => {
+  assert.equal(stripEmoji('Confirmed [1, 3].'), 'Confirmed [1, 3].');
+});
+
+check('empty string is safe', () => {
+  assert.equal(stripEmoji(''), '');
+});
+
+check('the rendered answer path strips it too', () => {
+  // splitAnswer feeds the card the patient actually reads.
+  const r = splitAnswer('🚨 EMERGENCY: call now.\n\n## What to do\n- 💊 Take nothing new');
+  assert.ok(!r.lead.includes('🚨'), 'lead still has an emoji');
+  assert.ok(!r.sections[0].body.includes('💊'), 'section body still has an emoji');
+  assert.ok(r.lead.startsWith('EMERGENCY:'));
+});
+
 console.log(`\n${passed} assertions passed`);

@@ -1,11 +1,25 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View, type PressableProps } from 'react-native';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  View,
+  type PressableProps,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
+import { PressableScale } from '@/components/ui/PressableScale';
 import { Colors, Fonts, Radius } from '@/constants/theme';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type Size = 'sm' | 'md' | 'lg';
 
-interface Props extends Omit<PressableProps, 'children'> {
+// 'style' is re-declared rather than inherited: a Pressable's style may be a
+// FUNCTION, and that function is exactly what NativeWind strips. Callers pass
+// layout here (flex, alignSelf) and it lands on the outer container, which is
+// where position-in-parent belongs.
+interface Props extends Omit<PressableProps, 'children' | 'style'> {
+  style?: StyleProp<ViewStyle>;
   label: string;
   onPress?: () => void;
   variant?: Variant;
@@ -74,6 +88,7 @@ export function Button({
   leadingIcon,
   trailingIcon,
   fullWidth,
+  style,
   ...rest
 }: Props) {
   const isDisabled = disabled || loading;
@@ -93,8 +108,8 @@ export function Button({
       : null;
 
   // All visual styling lives on the outer View (NativeWind doesn't touch
-  // static View styles). The Pressable inside only handles tap + an opacity
-  // dim for press feedback — its style function can stay simple.
+  // static View styles). PressableScale handles the touch and carries only
+  // transform + opacity, so there is nothing for NativeWind to strip.
   return (
     <View
       style={[
@@ -107,15 +122,13 @@ export function Button({
           overflow: 'hidden',
         },
         shadow,
+        style,
       ]}>
-      <Pressable
+      <PressableScale
         onPress={onPress}
         disabled={isDisabled}
         accessibilityRole="button"
         accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
-        style={({ pressed }) => ({
-          opacity: pressed && !isDisabled ? 0.85 : 1,
-        })}
         {...rest}>
         <View
           style={[
@@ -126,19 +139,26 @@ export function Button({
               minHeight: s.minHeight,
             },
           ]}>
+          {/* The label stays mounted while loading and the spinner sits on
+              top of it. Swapping one for the other changed the button's
+              intrinsic width, so buttons visibly resized under the thumb
+              at the exact moment the user was waiting on them. */}
+          <View style={[styles.row, { opacity: loading ? 0 : 1 }]}>
+            {leadingIcon}
+            <Text style={{ color: t.fg, fontFamily: Fonts.sansSemiBold, fontSize: s.font }}>
+              {label}
+            </Text>
+            {trailingIcon}
+          </View>
           {loading ? (
-            <ActivityIndicator size="small" color={t.fg} />
-          ) : (
-            <>
-              {leadingIcon}
-              <Text style={{ color: t.fg, fontFamily: Fonts.sansSemiBold, fontSize: s.font }}>
-                {label}
-              </Text>
-              {trailingIcon}
-            </>
-          )}
+            <View style={StyleSheet.absoluteFill} pointerEvents="none">
+              <View style={[styles.row, { flex: 1 }]}>
+                <ActivityIndicator size="small" color={t.fg} />
+              </View>
+            </View>
+          ) : null}
         </View>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

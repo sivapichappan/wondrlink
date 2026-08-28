@@ -13,7 +13,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, { LinearTransition } from 'react-native-reanimated';
 
 import { BotResponseCard } from '@/components/chat/BotResponseCard';
 import { ChatInput } from '@/components/chat/ChatInput';
@@ -25,6 +25,7 @@ import { SessionMeta } from '@/components/chat/SessionMeta';
 import { SourcesSheet } from '@/components/chat/SourcesSheet';
 import { TypingIndicator } from '@/components/chat/TypingIndicator';
 import { CrisisModal } from '@/components/common/CrisisModal';
+import { Duration, Ease, messageEnter } from '@/constants/motion';
 import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useChat } from '@/hooks/useChat';
 import { useGuardedSend } from '@/hooks/useGuardedSend';
@@ -102,12 +103,18 @@ export function ConversationSurface({
     guardedSend(text);
   };
 
-  useEffect(() => {
-    if (messages.length > 0) {
-      const t = setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
-      return () => clearTimeout(t);
-    }
-  }, [messages.length]);
+  // ONE scroll owner, not two. This used to be an animated scrollToEnd on a
+  // 50ms timeout racing an unanimated one on onContentSizeChange: the list
+  // teleported to the bottom the instant a row laid out, and then the new
+  // message faded in at a position it had already jumped to. Content size
+  // is the right trigger (it fires exactly when new content lands), so the
+  // effect is gone and only the ordering question remains: the first layout
+  // of an existing thread must not animate through the whole history.
+  const settled = useRef(false);
+  const onContentSizeChange = () => {
+    listRef.current?.scrollToEnd({ animated: settled.current });
+    settled.current = true;
+  };
 
   const firstBotIndex = messages.findIndex((m) => m.role === 'assistant');
 
@@ -124,7 +131,7 @@ export function ConversationSurface({
   const renderItem = ({ item, index }: { item: ChatHistoryMessage; index: number }) => {
     if (item.role === 'user') {
       return (
-        <Animated.View entering={FadeIn.duration(180)} style={{ paddingHorizontal: 12, paddingVertical: 4 }}>
+        <Animated.View entering={messageEnter()} style={{ paddingHorizontal: 12, paddingVertical: 4 }}>
           <MessageBubble
             role="user"
             content={item.content}
@@ -143,7 +150,7 @@ export function ConversationSurface({
     const tier = item.metadata?.safety?.tier;
     const rateable = !tier || tier === 'T3';
     return (
-      <Animated.View entering={FadeIn.duration(180)} style={{ paddingHorizontal: 12, paddingVertical: 6, gap: 8 }}>
+      <Animated.View entering={messageEnter()} style={{ paddingHorizontal: 12, paddingVertical: 6, gap: 8 }}>
         <BotResponseCard
           message={item}
           onPickFollowup={(t) => sendAndCount(t)}
@@ -187,7 +194,7 @@ export function ConversationSurface({
         keyExtractor={(m, i) => m.id ?? `${m.role}-${m.created_at}-${i}`}
         contentContainerStyle={{ paddingVertical: 10 }}
         keyboardShouldPersistTaps="handled"
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+        onContentSizeChange={onContentSizeChange}
         ListHeaderComponent={
           <View>
             {/* "What is this built on?" is a question about the whole
@@ -216,9 +223,11 @@ export function ConversationSurface({
         // Cards are dealt INTO the conversation, under the last thing said.
         ListFooterComponent={
           cards ? (
-            <View style={{ paddingHorizontal: 12, paddingTop: 6, gap: 10 }}>
+            <Animated.View
+              layout={LinearTransition.duration(Duration.state).easing(Ease.out)}
+              style={{ paddingHorizontal: 12, paddingTop: 6, gap: 10 }}>
               {cards(sendAndCount, isSending || recovering)}
-            </View>
+            </Animated.View>
           ) : null
         }
         ListEmptyComponent={
