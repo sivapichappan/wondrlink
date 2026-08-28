@@ -1,0 +1,293 @@
+<title>Paper and Lamplight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --page: #ECEEF1; --panel: #FFFFFF; --ink: #16202B; --ink-2: #55636F;
+    --ink-3: #808C97; --line: #D9DEE3; --mark: #24486B;
+    --sans: "Instrument Sans", system-ui, sans-serif;
+    --serif: "Source Serif 4", Georgia, serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page: #0F151C; --panel: #18202A; --ink: #E9EEF3; --ink-2: #A2AEB9;
+      --ink-3: #7C8892; --line: #263039; --mark: #8FB6DE;
+    }
+  }
+  :root[data-theme="dark"] {
+    --page: #0F151C; --panel: #18202A; --ink: #E9EEF3; --ink-2: #A2AEB9;
+    --ink-3: #7C8892; --line: #263039; --mark: #8FB6DE;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--page); color: var(--ink); font-family: var(--sans);
+    margin: 0; padding: 0 0 6rem; line-height: 1.5; -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 80rem; margin: 0 auto; padding: 0 1.5rem; }
+
+  header.top { padding: 4rem 0 0; max-width: 44rem; }
+  h1 {
+    font-family: var(--serif); font-weight: 600; font-size: clamp(2.2rem, 5.5vw, 3.3rem);
+    line-height: 1.06; letter-spacing: -0.02em; margin: 0; text-wrap: balance;
+  }
+  h1 em { font-style: italic; font-weight: 400; color: var(--mark); }
+  .lede { color: var(--ink-2); font-size: 1.06rem; margin: 1.1rem 0 0; max-width: 40rem; }
+  .heard {
+    border-left: 2px solid var(--mark); padding: 0.15rem 0 0.15rem 1rem;
+    margin: 1.6rem 0 0; font-size: 0.96rem; color: var(--ink-2); max-width: 40rem;
+  }
+  .heard b { color: var(--ink); }
+
+  .swatches { display: flex; flex-wrap: wrap; gap: 0.7rem; margin: 1.9rem 0 0; }
+  .sw { width: 5.4rem; }
+  .sw i { display: block; height: 3rem; border-radius: 9px; border: 1px solid rgba(0,0,0,.10); }
+  .sw b { display: block; font-size: 0.72rem; font-weight: 600; margin-top: 0.35rem; }
+  .sw span { display: block; font-size: 0.68rem; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+  section.band { margin-top: 4.5rem; }
+  .band-head { max-width: 44rem; }
+  .eyebrow {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.11em; text-transform: uppercase;
+    color: var(--mark); margin: 0 0 0.35rem;
+  }
+  h2 { font-family: var(--serif); font-weight: 600; font-size: 1.85rem; margin: 0; letter-spacing: -0.012em; }
+  .why { color: var(--ink-2); font-size: 1rem; margin: 0.75rem 0 0; }
+  .why b { color: var(--ink); font-weight: 600; }
+
+  .screens { display: flex; flex-wrap: wrap; gap: 2.5rem; margin-top: 2rem; }
+  figure { margin: 0; width: 340px; }
+  figcaption { font-size: 0.85rem; color: var(--ink-2); margin-top: 0.85rem; line-height: 1.5; }
+  figcaption b { color: var(--ink); font-weight: 600; }
+
+  .phone {
+    width: 340px; height: 706px; border-radius: 42px; overflow: hidden;
+    display: flex; flex-direction: column; box-shadow: 0 22px 50px rgba(16,32,43,.20);
+  }
+  .status { display: flex; justify-content: space-between; padding: 15px 26px 4px; font-size: 12px; font-weight: 600; flex: none; }
+  .app { flex: 1; display: flex; flex-direction: column; padding: 6px 18px 18px; min-height: 0; }
+  .hdr { display: flex; align-items: baseline; gap: 9px; padding: 8px 2px 14px; flex: none; }
+  .wm { font-family: var(--serif); font-weight: 600; font-size: 21px; letter-spacing: -0.3px; }
+  .stage { font-family: var(--serif); font-style: italic; font-size: 14px; }
+  .thread { flex: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+  .said { font-family: var(--serif); font-size: 17px; line-height: 27px; max-width: 93%; }
+  .mine { margin-left: auto; max-width: 78%; font-size: 15.5px; line-height: 22px; padding: 11px 14px; }
+  .card { border-radius: 18px; padding: 14px; }
+  .ct { font-weight: 600; font-size: 15.5px; margin-bottom: 5px; }
+  .cb { font-family: var(--serif); font-size: 16px; line-height: 24px; margin-bottom: 12px; }
+  .acts { display: flex; gap: 9px; align-items: center; }
+  .btn { padding: 10px 16px; border-radius: 11px; font-size: 14.5px; font-weight: 600; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { border-radius: 999px; padding: 9px 15px; font-size: 14.5px; font-weight: 500; }
+  .composer { margin-top: auto; display: flex; align-items: center; gap: 10px; flex: none; }
+  .field { flex: 1; border-radius: 22px; padding: 12px 16px; font-size: 15.5px; }
+  .plus, .send { flex: none; display: flex; align-items: center; justify-content: center; }
+  .plus { width: 32px; height: 32px; border-radius: 50%; font-size: 21px; }
+  .send { width: 36px; height: 36px; border-radius: 50%; font-size: 15px; }
+
+  /* ══════════════ DAY — paper, with the bloom kept ══════════════ */
+  .day .phone {
+    /* Lamplight's move, inverted: the light comes from the top on paper,
+       so the page has somewhere to fall away to rather than being flat. */
+    background: radial-gradient(115% 48% at 50% -6%, #FFFFFF 0%, #F4F6F8 55%, #EDF0F3 100%), #F4F6F8;
+    color: #16202B;
+  }
+  .day .stage { color: #55636F; }
+  .day .said { color: #16202B; }
+  .day .mine {
+    background: #E4EDF7; color: #1B3550;
+    border-radius: 17px 17px 5px 17px; border: 1px solid #CFDEEE;
+    box-shadow: 0 2px 14px rgba(36,72,107,.10);
+  }
+  .day .card {
+    background: #FFFFFF; border: 1px solid #DCE3EA;
+    box-shadow: 0 4px 18px rgba(22,32,43,.07), 0 1px 2px rgba(22,32,43,.05);
+  }
+  .day .ct { color: #16202B; }
+  .day .cb { color: #55636F; }
+  .day .btn { background: #24486B; color: #FFFFFF; box-shadow: 0 2px 10px rgba(36,72,107,.22); }
+  .day .btn.ghost { background: transparent; color: #24486B; box-shadow: none; }
+  .day .chip { border: 1.5px solid #CFDEEE; background: #FFFFFF; color: #24486B; }
+  .day .field { background: #FFFFFF; border: 1px solid #DCE3EA; color: #808C97; box-shadow: 0 2px 12px rgba(22,32,43,.06); }
+  .day .plus { background: #E4EDF7; color: #24486B; }
+  .day .send { background: #24486B; color: #FFFFFF; box-shadow: 0 2px 12px rgba(36,72,107,.26); }
+
+  /* ══════════════ NIGHT — the same design, lamp on ══════════════ */
+  .night .phone {
+    background: radial-gradient(125% 52% at 50% 108%, #1B2C41 0%, #101A26 58%, #0C131C 100%), #0C131C;
+    color: #E9EEF3;
+  }
+  .night .stage { color: #93A3B2; }
+  .night .said { color: #E9EEF3; }
+  .night .mine {
+    background: #D7E6F7; color: #12222F;
+    border-radius: 17px 17px 5px 17px;
+    box-shadow: 0 0 30px rgba(215,230,247,.20);
+  }
+  .night .card { background: rgba(233,238,243,.055); border: 1px solid #27384A; }
+  .night .ct { color: #E9EEF3; }
+  .night .cb { color: #93A3B2; }
+  .night .btn { background: #A9C9EA; color: #10202E; }
+  .night .btn.ghost { background: transparent; color: #93A3B2; }
+  .night .chip { border: 1px solid #2E4055; background: rgba(233,238,243,.045); color: #A9C9EA; }
+  .night .field { background: rgba(233,238,243,.05); border: 1px solid #27384A; color: #7A8896; }
+  .night .plus { background: rgba(169,201,234,.14); color: #A9C9EA; }
+  .night .send { background: #A9C9EA; color: #10202E; }
+
+  footer { margin-top: 5rem; color: var(--ink-3); font-size: 0.86rem; max-width: 44rem; }
+  footer code { font-family: ui-monospace, Menlo, monospace; font-size: 0.92em; }
+  @media (max-width: 820px) { .screens { justify-content: center; } }
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <h1>Paper and <em>Lamplight</em></h1>
+  <p class="lede">
+    The paper foundation you liked, with Lamplight's atmosphere kept, in blue and white.
+    One design with two grounds: paper in daylight, deep blue when the lamp is the only thing on.
+  </p>
+  <p class="heard">
+    <b>What changed from the amber version.</b> Yellow on black is gone. The single light in the
+    room is now the patient's own words in pale blue, which reads as calm rather than as a
+    warning, and it means one accent family works on both grounds instead of two.
+  </p>
+  <p class="heard">
+    <b>Why two grounds rather than a light theme with a dark option.</b> The 2am argument was the
+    strongest thing in Lamplight, and it does not need its own design to be true. This is the
+    same layout, the same type, the same components, lit differently.
+  </p>
+
+  <div class="swatches">
+    <div class="sw"><i style="background:#F4F6F8"></i><b>Paper</b><span>#F4F6F8</span></div>
+    <div class="sw"><i style="background:#FFFFFF"></i><b>Card</b><span>#FFFFFF</span></div>
+    <div class="sw"><i style="background:#16202B"></i><b>Ink</b><span>#16202B</span></div>
+    <div class="sw"><i style="background:#24486B"></i><b>Ink blue</b><span>#24486B</span></div>
+    <div class="sw"><i style="background:#E4EDF7"></i><b>Your words</b><span>#E4EDF7</span></div>
+    <div class="sw"><i style="background:#0C131C"></i><b>Night</b><span>#0C131C</span></div>
+    <div class="sw"><i style="background:#A9C9EA"></i><b>Lamp blue</b><span>#A9C9EA</span></div>
+    <div class="sw"><i style="background:#D7E6F7"></i><b>Night words</b><span>#D7E6F7</span></div>
+  </div>
+</header>
+
+<!-- ═══════════ DAY ═══════════ -->
+<section class="band day">
+  <div class="band-head">
+    <p class="eyebrow">Daylight</p>
+    <h2>Paper, with somewhere for the light to fall</h2>
+    <p class="why">
+      The ground is still paper and Sage still speaks in serif, so it is recognisably the design
+      that was approved. What Lamplight contributes is <b>depth</b>: a soft wash from the top of
+      the screen instead of a flat fill, cards that lift on a real shadow rather than sitting
+      behind a hairline, and the patient's bubble carrying a faint bloom so their own words are
+      the warmest thing on the page. The sage green becomes ink blue, which is the one thing
+      here that a returning user will notice immediately.
+    </p>
+  </div>
+  <div class="screens">
+    <figure>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>▂▄▆ ▮</span></div>
+        <div class="app">
+          <div class="hdr"><span class="wm">Sage</span><span class="stage">Understanding your treatment</span></div>
+          <div class="thread">
+            <div class="said">Good morning, Maria. Last time you said the appointment ran long. How are you feeling today?</div>
+            <div class="mine">Tired but okay. They gave me papers I don't understand</div>
+            <div class="said">We can go through them together.</div>
+            <div class="card">
+              <div class="ct">Snap a photo of the papers</div>
+              <div class="cb">Sage will read them and explain what they say in plain words.</div>
+              <div class="acts"><span class="btn">Scan them</span><span class="btn ghost">Not now</span></div>
+            </div>
+          </div>
+          <div class="composer"><span class="plus">+</span><span class="field">Message Sage</span><span class="send">↑</span></div>
+        </div>
+      </div>
+      <figcaption><b>Home.</b> Same structure as the approved design; the card now floats instead of being outlined.</figcaption>
+    </figure>
+    <figure>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>▂▄▆ ▮</span></div>
+        <div class="app">
+          <div class="hdr"><span class="wm">Sage</span><span class="stage">In treatment</span></div>
+          <div class="thread">
+            <div class="mine">How long do I have?</div>
+            <div class="said">I can't answer that, and I won't guess. No one can know it from the outside. Your oncologist can talk about it honestly, because they know your whole picture.</div>
+            <div class="card">
+              <div class="ct">Ways to ask Dr. Rivera</div>
+              <div class="cb">What does this usually mean for people in my situation?<br>What are we aiming for with this treatment?</div>
+              <div class="acts"><span class="btn">Save for my visit</span></div>
+            </div>
+          </div>
+          <div class="composer"><span class="plus">+</span><span class="field">Message Sage</span><span class="send">↑</span></div>
+        </div>
+      </div>
+      <figcaption><b>The wall.</b> No shadow theatrics here on purpose: the hardest moment gets the calmest surface.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ═══════════ NIGHT ═══════════ -->
+<section class="band night">
+  <div class="band-head">
+    <p class="eyebrow">Lamp on</p>
+    <h2>The same app, at two in the morning</h2>
+    <p class="why">
+      Not a separate design — the same components, lit from below instead of above. The ground is
+      a deep blue rather than black, so it never goes to a dead flat void, and
+      <b>the one light in the room is still the patient's own words</b>, now in pale blue. Sage
+      speaks in near-white serif. Everything else recedes.
+    </p>
+  </div>
+  <div class="screens">
+    <figure>
+      <div class="phone">
+        <div class="status"><span>2:14</span><span>▂▄▆ ▮</span></div>
+        <div class="app">
+          <div class="hdr"><span class="wm">Sage</span><span class="stage">Understanding your treatment</span></div>
+          <div class="thread">
+            <div class="said">You're up late. I'm here.</div>
+            <div class="mine">I can't sleep. I keep thinking about Thursday</div>
+            <div class="said">That's a very normal thing to be carrying the night before a scan. Would it help to write down what you want to ask?</div>
+            <div class="card">
+              <div class="ct">Questions for Thursday</div>
+              <div class="cb">I'll keep them together, ready on your phone at the visit.</div>
+              <div class="acts"><span class="btn">Start a list</span><span class="btn ghost">Not now</span></div>
+            </div>
+          </div>
+          <div class="composer"><span class="plus">+</span><span class="field">Message Sage</span><span class="send">↑</span></div>
+        </div>
+      </div>
+      <figcaption><b>Home at 2am.</b> The bloom sits at the bottom of the screen, where a lamp beside a bed actually is.</figcaption>
+    </figure>
+    <figure>
+      <div class="phone">
+        <div class="status"><span>2:31</span><span>▂▄▆ ▮</span></div>
+        <div class="app">
+          <div class="hdr"><span class="wm">Sage</span><span class="stage">Getting to know you</span></div>
+          <div class="thread">
+            <div class="said">Quick check-in, just two questions today.</div>
+            <div class="said">Any tingling in your fingers, especially when you touch something cold?</div>
+            <div class="chips"><span class="chip">Yes</span><span class="chip">No</span><span class="chip">Not now</span></div>
+            <div class="said">Thanks for telling me. That can happen with your treatment.</div>
+          </div>
+          <div class="composer"><span class="plus">+</span><span class="field">Message Sage</span><span class="send">↑</span></div>
+        </div>
+      </div>
+      <figcaption><b>The check-in.</b> Chips read as quiet outlines at night and as solid cards by day, from one component.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<footer>
+  Every pair checked against WCAG AA on the ground it is actually painted on. The bloom is a
+  background wash and a soft shadow, deliberately not a coloured glow: a neon halo is the tell
+  this product should be furthest from. Building this is a token swap in
+  <code>mobile/constants/theme.ts</code> plus a second set for the night ground; the approved
+  2026-08-24 palette stays verbatim at <code>mobile/constants/theme.v1.ts</code> and at the tag
+  <code>design-v1-approved-mockups</code>.
+</footer>
+
+</div>
