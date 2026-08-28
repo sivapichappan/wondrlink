@@ -29,6 +29,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconCircle } from '@/components/ui/IconCircle';
+import { PressableScale } from '@/components/ui/PressableScale';
 import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 import { APP_NAME } from '@shared/branding';
 
@@ -138,11 +139,11 @@ export function ChatInput({ onSend, disabled, placeholder = "Let's talk", prefil
     <View style={[styles.bar, { marginBottom: insets.bottom }]}>
       <View style={styles.row}>
         {/* + / quick actions */}
-        <Pressable onPress={() => setActionsOpen(true)} disabled={disabled} accessibilityRole="button" accessibilityLabel="Quick actions" hitSlop={8}>
+        <PressableScale onPress={() => setActionsOpen(true)} disabled={disabled} accessibilityRole="button" accessibilityLabel="Quick actions" hitSlop={8}>
           <View style={styles.plusCircle}>
             <Plus size={21} color={Colors.primary} strokeWidth={2} />
           </View>
-        </Pressable>
+        </PressableScale>
 
         {/* Input */}
         <View style={styles.inputCol}>
@@ -179,7 +180,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Let's talk", prefil
 
 function MicButton({ recording, disabled, onPress }: { recording: boolean; disabled?: boolean; onPress: () => void }) {
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
@@ -192,13 +193,24 @@ function MicButton({ recording, disabled, onPress }: { recording: boolean; disab
       ) : (
         <Mic size={18} color={Colors.textMuted} strokeWidth={2} />
       )}
-    </Pressable>
+    </PressableScale>
   );
 }
 
 function SendButton({ canSend, onPress }: { canSend: boolean; onPress: () => void }) {
+  // The pressable used to be an absolute overlay INSIDE the circle, which
+  // meant it had nothing to animate — on iOS the send button did nothing
+  // visually when tapped, on the most-pressed control in the product. The
+  // circle itself is the pressable now.
   return (
-    <View
+    <PressableScale
+      onPress={onPress}
+      disabled={!canSend}
+      accessibilityRole="button"
+      accessibilityLabel="Send message"
+      accessibilityState={{ disabled: !canSend }}
+      hitSlop={8}
+      android_ripple={{ color: 'rgba(255,255,255,0.25)', borderless: true }}
       style={[
         styles.sendCircle,
         {
@@ -211,17 +223,7 @@ function SendButton({ canSend, onPress }: { canSend: boolean; onPress: () => voi
       <View style={styles.iconCenter} pointerEvents="none">
         <Send size={19} color={canSend ? Colors.surface : Colors.textMuted} strokeWidth={2.4} style={{ marginLeft: -2 }} />
       </View>
-      <Pressable
-        onPress={onPress}
-        disabled={!canSend}
-        accessibilityRole="button"
-        accessibilityLabel="Send message"
-        accessibilityState={{ disabled: !canSend }}
-        hitSlop={8}
-        style={styles.pressOverlay}
-        android_ripple={{ color: 'rgba(255,255,255,0.25)', borderless: true }}
-      />
-    </View>
+    </PressableScale>
   );
 }
 

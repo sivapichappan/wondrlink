@@ -16,7 +16,7 @@ import { ChevronLeft, Menu } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Colors, FontSize, Fonts, Spacing } from '@/constants/theme';
+import { Colors, FontSize, Fonts, Spacing, Tracking } from '@/constants/theme';
 import { useNavOverlay } from './NavOverlay';
 
 interface TopBarProps {
@@ -83,7 +83,7 @@ export function TopBar({ leading = 'menu', backLabel = 'Back', onBack, title, su
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         {title ? (
           <>
-            <Text numberOfLines={1} style={{ fontFamily: Fonts.serifSemiBold, fontSize: FontSize.xl, color: Colors.textPrimary, maxWidth: 220 }}>
+            <Text numberOfLines={1} style={{ fontFamily: Fonts.serifSemiBold, fontSize: FontSize.xl, letterSpacing: Tracking.title, color: Colors.textPrimary, maxWidth: 220 }}>
               {title}
             </Text>
             {subtitle ? (

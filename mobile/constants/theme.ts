@@ -115,6 +115,54 @@ export const FontSize = {
   h1: 28,
 } as const;
 
+/**
+ * Tracking (letter-spacing), which is SIZE-SPECIFIC and never one value.
+ *
+ * Letters read too far apart as type grows, so display sizes want negative
+ * tracking; small uppercase labels want positive tracking or they set as a
+ * solid block. A single fixed value is wrong somewhere by definition.
+ *
+ * This is not a new opinion: the approved mockups specify exactly this
+ * (`letter-spacing:-0.01em` on the wordmark and page titles, `.04–.05em` on
+ * the uppercase eyebrows) and the implementation dropped all of it. React
+ * Native takes points rather than em, so these are the em values resolved
+ * against the sizes they are used at.
+ */
+export const Tracking = {
+  /** h1/h2 display type. About -0.01em at 24–28pt. */
+  display: -0.3,
+  /** Card and screen titles at 17–20pt. */
+  title: -0.2,
+  /** Body copy. Near zero, deliberately. */
+  body: 0,
+  /** Small uppercase labels and eyebrows. About +0.04em at 11–12pt. */
+  eyebrow: 0.5,
+} as const;
+
+/**
+ * Leading (line-height), which tracks size INVERSELY: tight on large
+ * headings, looser on body copy.
+ *
+ * The app had 148 hardcoded line-heights across 12 distinct numbers. These
+ * are multipliers, applied as `Math.round(size * Leading.x)`, so they stay
+ * correct when the type scale moves.
+ */
+export const Leading = {
+  /** Large display type. */
+  tight: 1.2,
+  /** Titles and short labels. */
+  snug: 1.35,
+  /** Body copy and anything read in quantity. */
+  body: 1.5,
+  /** Sage's own voice, which is read the longest and deserves the most air. */
+  reading: 1.55,
+} as const;
+
+/** Resolve a leading multiplier against a size, rounded to whole points. */
+export function leading(size: number, ratio: number = Leading.body): number {
+  return Math.round(size * ratio);
+}
+
 export const Radius = {
   sm: 8,
   md: 12,

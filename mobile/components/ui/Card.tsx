@@ -8,6 +8,7 @@
 
 import { Pressable, View } from 'react-native';
 
+import { PressableScale } from '@/components/ui/PressableScale';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 
 interface CardProps {
@@ -48,8 +49,8 @@ export function Card({
 
   if (!onPress) return surface;
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel}>
+    <PressableScale onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel}>
       {surface}
-    </Pressable>
+    </PressableScale>
   );
 }

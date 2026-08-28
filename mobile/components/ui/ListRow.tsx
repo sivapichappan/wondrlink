@@ -8,6 +8,7 @@
 import { ChevronRight } from 'lucide-react-native';
 import { Pressable, Text, View } from 'react-native';
 
+import { PressableScale } from '@/components/ui/PressableScale';
 import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 
 interface ListRowProps {
@@ -78,8 +79,8 @@ export function ListRow({
 
   if (!onPress) return body;
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? title}>
+    <PressableScale onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? title}>
       {body}
-    </Pressable>
+    </PressableScale>
   );
 }

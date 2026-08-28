@@ -33,7 +33,7 @@ import { ConversationSkeleton } from '@/components/ui/Skeleton';
 import { LIFECYCLE_LABELS } from '@/components/common/LifecycleStageLine';
 import { useNavOverlay } from '@/components/common/NavOverlay';
 import { TopBar } from '@/components/common/TopBar';
-import { Colors, FontSize, Fonts, Spacing } from '@/constants/theme';
+import { Colors, FontSize, Fonts, Spacing, Tracking } from '@/constants/theme';
 import { useAcknowledgement } from '@/hooks/useAcknowledgement';
 import { useHero, useProfile } from '@/hooks/useCare';
 import { NEW_CONVERSATION } from '@/hooks/useChat';
@@ -266,6 +266,7 @@ export default function HomeScreen() {
               style={{
                 fontFamily: Fonts.serifSemiBold,
                 fontSize: FontSize.h3,
+                letterSpacing: Tracking.title,
                 color: Colors.textPrimary,
               }}>
               {APP_NAME}
