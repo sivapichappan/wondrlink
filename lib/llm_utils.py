@@ -244,6 +244,13 @@ Suggest 2-3 related questions the patient might want to ask next, covering DIFFE
 - A question about side effect management or quality of life
 - A question about practical concerns or emotional support
 
+WRITE THEM IN PLAIN WORDS. A chip is YOU offering a question, not the patient
+asking one, so it must never introduce vocabulary they did not use: no
+abbreviations, no gene or marker names, no test names, no scale names. Say
+"the results of your tests" rather than naming one, and "how your cancer
+responds to treatment" rather than a marker. A chip containing an
+abbreviation is DISCARDED by the server and the patient never sees it.
+
 At the very end of your response, on its own line after a blank line, output exactly this block (the server parses it and renders the questions as interactive chips):
 
 FOLLOWUPS:
@@ -259,6 +266,39 @@ Do NOT include any header text like "You might also want to ask about:" — just
 # rendered text and returns the list separately so the frontend can render
 # them as interactive chips below the message.
 import re as _re_followups
+
+
+# A chip is Sage OFFERING a question, not the patient asking one, and rule 2
+# of the trajectory brief is explicit: "Adapt up, never lead up... Acronyms
+# never appear in titles, buttons, or push notifications." The prompt asks
+# for plain words; this is the guarantee, because asking is not enforcing.
+#
+# The reported case was a chip reading "How does my HER2 status affect my
+# treatment options?" offered to someone who had never said HER2.
+#
+# Roman numerals are exempt: "Stage IV" is not an abbreviation, it is how
+# staging is written everywhere including on the patient's own paperwork.
+_CHIP_ACRONYM = _re_followups.compile(
+    r'\b(?![IVX]{1,4}\b)[A-Z][A-Z0-9]{1,}(?:-[A-Z0-9]+)?\b'
+)
+
+# Jargon a pattern cannot catch because it is written in lower case. Kept
+# short on purpose: this filter drops chips, and over-filtering leaves the
+# patient with nothing to tap.
+_CHIP_JARGON = (
+    'biomarker', 'histology', 'immunohistochem', 'neoadjuvant', 'adjuvant',
+    'metastasis', 'metastases', 'cytotoxic', 'prognostic', 'contraindicat',
+)
+
+
+def _chip_is_plain(question: str) -> bool:
+    """Whether a follow-up chip is plain enough to offer unprompted."""
+    if not question:
+        return False
+    if _CHIP_ACRONYM.search(question):
+        return False
+    low = question.lower()
+    return not any(term in low for term in _CHIP_JARGON)
 
 
 _DANGLING_HEADING = _re_followups.compile(r'\n[ \t]*#{2,6}[ \t]+[^\n]*[ \t]*$')
@@ -358,6 +398,12 @@ def extract_followups(text: str):
         # Defensive max length
         if len(line) > 200:
             line = line[:200].rstrip() + '?'
+        # Drop rather than rewrite: rewriting needs another model call, and
+        # a patient is better served by two plain chips than three where one
+        # speaks a language they were never given.
+        if not _chip_is_plain(line):
+            logger.info("Follow-up chip dropped for jargon")
+            continue
         followups.append(line)
         if len(followups) >= 3:
             break

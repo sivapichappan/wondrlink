@@ -370,7 +370,9 @@ class TestTheAnswerDoesNotPromiseWhatTheScreenHides:
         from llm_utils import extract_followups
         out, ups = extract_followups(
             "Some advice here.\n\nHere are some questions you might explore next:"
-            "\n\nFOLLOWUPS:\n- What does HR mean?\n- How do I manage side effects?")
+            # Was "What does HR mean?"; the chip-jargon filter now drops
+            # acronyms, and this test is about the LEAD-IN, not the chips.
+            "\n\nFOLLOWUPS:\n- What helps with tiredness?\n- How do I manage side effects?")
         assert out == "Some advice here."
         assert len(ups) == 2
 
@@ -563,3 +565,61 @@ class TestTheCorpusIsNotRedownloadedEveryTurn:
         chat = (_REPO / "mobile" / "lib" / "api" / "chat.ts").read_text()
         block = chat.split("export function warmUp()")[1]
         assert ".catch(() => {})" in block
+
+
+class TestChipsNeverSpeakJargon:
+    """A follow-up chip is Sage OFFERING a question, not the patient asking
+    one, so rule 2 of the trajectory brief applies at its strictest:
+    "Adapt up, never lead up... Acronyms never appear in titles, buttons, or
+    push notifications."
+
+    Reported from a real screenshot: a patient who had never typed the word
+    was offered "How does my HER2 status affect my treatment options?"
+    """
+
+    def test_the_reported_chip_is_dropped(self):
+        from llm_utils import extract_followups
+        body = ("Fatigue is common.\n\nFOLLOWUPS:\n"
+                "- How does my HER2 status affect my treatment options?\n"
+                "- What are some ways to manage stress during treatment?\n")
+        _clean, ups = extract_followups(body)
+        assert all('HER2' not in u for u in ups)
+        assert ups == ['What are some ways to manage stress during treatment?']
+
+    def test_markers_scales_and_scans_are_all_dropped(self):
+        from llm_utils import _chip_is_plain
+        for q in [
+            'What does my MSI result mean?',
+            'What are my PD-L1 levels?',
+            'What is my ECOG score?',
+            'Should I have a BRCA test?',
+            'What will the MRI show?',
+            'What are the biomarker results?',
+        ]:
+            assert _chip_is_plain(q) is False, q
+
+    def test_plain_questions_survive(self):
+        from llm_utils import _chip_is_plain
+        for q in [
+            'What are some ways to manage stress during treatment?',
+            'Are there lifestyle changes to boost my energy?',
+            'How will we know if the treatment is working?',
+            'Can I still work during treatment?',
+            "I'm worried about money, what help is there?",
+        ]:
+            assert _chip_is_plain(q) is True, q
+
+    def test_stage_numerals_are_not_acronyms(self):
+        """"Stage IV" is how staging is written on the patient's own
+        paperwork. Dropping it would be over-correction."""
+        from llm_utils import _chip_is_plain
+        assert _chip_is_plain('What does stage IV mean for me?') is True
+        assert _chip_is_plain('Is stage III different from stage II?') is True
+
+    def test_dropping_never_empties_the_answer(self):
+        """The chips are optional; the ANSWER must survive losing all of them."""
+        from llm_utils import extract_followups
+        body = "The answer text.\n\nFOLLOWUPS:\n- What is my HER2 status?\n- What is my ECOG score?\n"
+        clean, ups = extract_followups(body)
+        assert ups == []
+        assert clean.strip() == 'The answer text.'
