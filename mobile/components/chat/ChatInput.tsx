@@ -30,7 +30,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IconCircle } from '@/components/ui/IconCircle';
 import { PressableScale } from '@/components/ui/PressableScale';
-import { Colors, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
+import { useKeyboardVisible } from '@/hooks/useKeyboardVisible';
+import { Colors, Elevation, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 import { APP_NAME } from '@shared/branding';
 
 const MAX_CHARS = 2000;
@@ -49,6 +50,7 @@ function joinParts(...parts: string[]): string {
 
 export function ChatInput({ onSend, disabled, placeholder = "Let's talk", prefill }: Props) {
   const insets = useSafeAreaInsets();
+  const keyboardUp = useKeyboardVisible();
   const [text, setText] = useState('');
   const [recording, setRecording] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -136,7 +138,12 @@ export function ChatInput({ onSend, disabled, placeholder = "Let's talk", prefil
   };
 
   return (
-    <View style={[styles.bar, { marginBottom: insets.bottom }]}>
+    // The bottom inset and the keyboard claim the same strip of screen.
+    // KeyboardAvoidingView already pads by the full keyboard height, and
+    // that height includes the safe area, so carrying the inset as well
+    // parked the composer a home indicator's height above the keys. Keep
+    // the inset only while the keyboard is down.
+    <View style={[styles.bar, { marginBottom: keyboardUp ? Spacing.xs : insets.bottom }]}>
       <View style={styles.row}>
         {/* + / quick actions */}
         <PressableScale onPress={() => setActionsOpen(true)} disabled={disabled} accessibilityRole="button" accessibilityLabel="Quick actions" hitSlop={8}>
@@ -340,11 +347,10 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
     borderWidth: 1,
     borderColor: Colors.border,
-    shadowColor: '#0F201C',
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    // Was a hardcoded green-black from the old palette; the shared token is
+    // blue-tinted, which is what keeps a shadow from reading as dirt on
+    // this ground.
+    ...Elevation.lifted,
   },
   row: {
     flexDirection: 'row',
