@@ -1,0 +1,31 @@
+SURGICAL PATHOLOGY ADDENDUM
+
+Patient Name: Denise Kowalczyk
+DOB: 11/03/1968
+MRN: 6204773
+Accession #: SP-26-04471
+Date: 03/02/2026
+
+ADDENDUM TO THE ORIGINAL REPORT
+
+Additional immunohistochemistry was performed at the request of the
+treating oncologist.
+
+HER2 by immunohistochemistry: score 3 plus.
+HER2: positive.
+In situ hybridization is not required for a score of 3 plus.
+
+Estrogen receptor: NEGATIVE, less than 1 percent of tumor nuclei.
+Progesterone receptor: NEGATIVE.
+
+REVISED DIAGNOSIS
+
+Invasive ductal carcinoma of the right breast, poorly differentiated.
+Nottingham combined histologic grade 3, score 8 of 9.
+Metastatic carcinoma in 5 of 14 axillary lymph nodes.
+Overall stage: Stage III
+
+The original report dated 02/26/2026 is otherwise unchanged. This
+addendum supersedes the receptor section of that report only.
+
+Electronically signed by the pathologist on 03/02/2026.

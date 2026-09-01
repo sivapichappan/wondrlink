@@ -1,0 +1,63 @@
+MEDICAL ONCOLOGY CONSULTATION NOTE
+
+Patient Name: Maria Alvarez
+DOB: 04/22/1979
+MRN: 5510884
+Encounter #: ONC-26-88104
+Date of Visit: 02/24/2026
+
+REASON FOR VISIT
+
+Adjuvant therapy planning for newly diagnosed left breast carcinoma.
+
+HISTORY OF PRESENT ILLNESS
+
+The patient is a 47 year old woman who underwent left lumpectomy with
+sentinel lymph node sampling. Pathology showed a 2.6 cm invasive ductal
+carcinoma, grade 2, with one of three sentinel nodes involved. The tumor
+is hormone receptor positive and HER2 negative. She is premenopausal with
+regular cycles. She works full time and is the primary earner for two
+children at home.
+
+PAST MEDICAL HISTORY
+
+Hypothyroidism, on levothyroxine for eleven years, stable on current
+dose. No diabetes. No cardiac history. Never smoked.
+
+PERFORMANCE STATUS
+
+Fully active. No restriction on daily activity.
+
+CURRENT SYSTEMIC THERAPY
+
+Regimen: Doxorubicin and cyclophosphamide followed by paclitaxel
+Type: Chemotherapy
+Status: active
+
+Four cycles of doxorubicin and cyclophosphamide are given every two
+weeks, followed by twelve weekly doses of paclitaxel. The first cycle was
+given on 03/04/2026. She is receiving cycle 3 today and is tolerating it
+reasonably well.
+
+DISCUSSION AND FOLLOW UP
+
+Cardiac monitoring. The baseline echocardiogram before the anthracycline
+showed an ejection fraction of 62 percent, which is normal. This will be
+repeated when chemotherapy finishes.
+
+Radiation. Whole breast radiation is expected after chemotherapy
+finishes, with a boost to the tumor bed. She will be referred when we are
+closer to that point.
+
+Endocrine therapy. Given her premenopausal status we expect to use an
+antiestrogen tablet for five years, beginning after radiation. We will
+decide on the specific agent at that visit and reassess ovarian function
+at two years.
+
+Fertility and menopause. We discussed the likelihood of treatment related
+amenorrhea at her age. Referral to reproductive endocrinology was offered
+and declined at this visit.
+
+Supportive care. Growth factor support is given after each dose dense
+cycle. Antiemetics as prescribed. She was counselled at length on when to
+call for fever.

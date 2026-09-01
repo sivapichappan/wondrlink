@@ -1,0 +1,48 @@
+SURGICAL PATHOLOGY REPORT
+
+Patient Name: Maria Alvarez
+DOB: 04/22/1979
+MRN: 5510884
+Accession #: SP-26-04417
+Date of Procedure: 02/05/2026
+Ordering Physician: Dr. R. Okafor
+
+Specimen A: Left breast, lumpectomy with wire localization
+Specimen B: Left axilla, sentinel lymph nodes, three
+
+GROSS DESCRIPTION
+
+A. Received fresh, oriented with sutures, a 62 by 48 by 35 mm segment of
+fibrofatty breast tissue. Sectioning reveals a firm, gray-white, stellate
+mass measuring 2.6 cm in greatest dimension, 3 mm from the posterior
+margin.
+
+B. Three tan-pink nodular fragments, 0.9 to 1.7 cm, submitted in toto.
+
+FINAL DIAGNOSIS
+
+A. Left breast, lumpectomy:
+Invasive ductal carcinoma, moderately differentiated. Nottingham
+combined histologic grade 2, score 6 of 9.
+Tumor size 2.6 cm in greatest dimension.
+Ductal carcinoma in situ present, intermediate nuclear grade, comprising
+approximately 15 percent of the tumor volume.
+Margins negative for invasive carcinoma and for in situ carcinoma.
+Lymphovascular invasion present, focal.
+
+B. Left axilla, sentinel lymph nodes:
+Metastatic carcinoma in 1 of 3 sentinel lymph nodes.
+Largest metastatic deposit 6 mm. No extranodal extension identified.
+
+STAGING, AJCC 8th edition
+
+Primary tumor pT2. Regional lymph nodes pN1a. Distant metastasis pM0.
+The anatomic group pT2 pN1a M0 corresponds to IIB.
+Overall stage: Stage II
+
+COMMENT
+
+Receptor and proliferation studies are reported separately under the same
+specimen. Correlation with imaging and clinical findings is recommended.
+
+Electronically signed by the pathologist on 02/09/2026.

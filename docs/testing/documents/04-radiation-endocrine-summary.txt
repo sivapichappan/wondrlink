@@ -1,0 +1,48 @@
+RADIATION ONCOLOGY END OF TREATMENT SUMMARY
+
+Patient Name: Maria Alvarez
+DOB: 04/22/1979
+MRN: 5510884
+Encounter #: RO-26-21955
+Date: 08/11/2026
+
+TREATMENT DELIVERED
+
+Regimen: Whole breast radiation with a tumor bed boost
+Type: Radiation
+Status: completed
+
+Site treated: left breast. Dose 4256 cGy in 16 fractions, plus a boost of
+1000 cGy in 4 fractions. Technique: tangential fields, deep inspiration
+breath hold. First fraction 06/22/2026, final fraction 07/24/2026.
+Treatment was completed as prescribed with no unplanned breaks.
+
+TOXICITY
+
+Grade 1 skin erythema within the treated field, resolving at the time of
+this summary. Grade 1 fatigue. No moist desquamation.
+
+PRIOR SYSTEMIC THERAPY
+
+Regimen: Doxorubicin and cyclophosphamide followed by paclitaxel
+Type: Chemotherapy
+Status: completed
+
+All planned cycles were delivered. The final dose was given on
+05/28/2026.
+
+CURRENT SYSTEMIC THERAPY
+
+Regimen: Tamoxifen 20 mg daily
+Type: Hormone therapy
+Status: active
+
+Started 08/04/2026. Planned duration five years, with reassessment of
+ovarian function at two years.
+
+FOLLOW UP
+
+Clinical breast examination every six months for five years. Annual
+mammography of the treated and the opposite breast, the first study due
+in 07/2027. Baseline bone density study given the anticipated effect of
+endocrine therapy. Return to medical oncology in three months.

@@ -1,175 +1,106 @@
 # HANDOFF — active work
 
 _In-flight work only. Durable facts live in `.claude/CLAUDE.md` and
-`.claude/rules/`; the redesign decision record is in auto-memory
-(`project_trajectory_pivot`). Last updated: 2026-08-24 (evening)._
+`.claude/rules/`; decision records are in auto-memory
+(`project_trajectory_pivot`, `project_design_paper_lamplight`,
+`infra_provider_model_retirement`). Last updated: 2026-09-01._
 
-## INCIDENT 2026-08-24 — provider model retirements took prod chat DOWN (RESOLVED)
+## RESUME HERE — device testing, then night mode
 
-Discovered via a failing llm-mode eval, confirmed end-to-end against prod:
-**Together moved `moonshotai/Kimi-K2.6` to dedicated-endpoints-only** (serverless
-400s) and **Groq retired every Llama model** including `llama-3.3-70b-versatile`
-(classifier/glossary/fallback) and `llama-3.1-8b-instant` (verifier). Every
-patient question hitting the LLM 500'd, and the safety classifier's judgment
-layer silently failed open to the keyword floor on every message.
+Everything below the line is SHIPPED and prod-verified. Nothing is
+half-finished; the next move is a person looking at a phone.
 
-**Fix (live + probe-verified):** env overrides on the EXISTING prod deployment
-(`vercel env add` × 7 + `vercel redeploy` of the old build — no new code
-shipped): chat + chat_together → `meta-llama/Llama-3.3-70B-Instruct-Turbo` on
-Together (the registry's own documented rollback voice); classifier →
-**same model on Together** (`MODEL_CLASSIFIER_PROVIDER=together` — the 2026-07-21
-bake-off alternate; re-validated 12/12 tier accuracy, zero under-escalation,
-before shipping); glossary + fallback → `openai/gpt-oss-120b` on Groq;
-verifier → `openai/gpt-oss-20b` on Groq. Verified in prod: real chat answer
-(api_used together) AND the fever-on-treatment case tiers T2 with the card.
-Local `.env` mirrors the overrides (commented block at the bottom).
+**1. Device testing — the only real blocker on knowing whether any of this
+worked.** Nothing in the redesign, the retheme or the motion layer has been
+witnessed on a handset. Two instruments now exist and they are for different
+jobs:
 
-**DECIDED 2026-08-26 (owner): keep the pre-Kimi voice.** Llama-3.3-70B on
-Together is now the registry DEFAULT, not just an env override (1bae699), so
-a fresh environment no longer resolves to a model that 400s. Restoring Kimi
-needs a paid dedicated endpoint plus `MODEL_CHAT=moonshotai/Kimi-K2.6`.
+- **The Alvarez Folder** (2026-09-01) is the one for judging the PRODUCT:
+  one patient, eight sittings, six scannable documents, an arc that
+  accumulates. https://claude.ai/code/artifact/8a6b05c4-448b-4f36-8c1e-b30730ea3073
+  Source `docs/testing/persona-maria-alvarez.md`; documents in
+  `docs/testing/documents/` (verified by `scripts/check_persona_documents.py`);
+  replay via `scripts/reset_test_patient.py`. The end state is MEASURED, not
+  estimated: coverage 45% → 87%, 4 → 8 known, lifecycle → trial_ready, and
+  the check-in swaps from nausea/eating/neuropathy to joint aches/hot flashes
+  when the regimen changes.
+- The 49-check walkthrough stays for regression-probing ONE path after a
+  change: https://claude.ai/code/artifact/d107db38-ea5b-41a8-9d0c-4748b5921888
+  Sections A-C (walls, default-engage, near-misses that must NOT wall) are its
+  highest-value part. The owner's verdict on it as a product test was that the
+  questions were "random sporadic" and built no patient foundation — which is
+  what the persona kit answers.
 
-Still worth knowing:
-- The verifier (`gpt-oss-20b`) and glossary (`gpt-oss-120b`) shipped
-  unvalidated (both fail open harmlessly); worth a spot-check.
-- Any llm-mode eval baseline from the Kimi era is now cross-model — do not
-  compare numbers across 2026-08-24 without noting the voice change.
+**2. Night mode.** `mobile/constants/theme.night.ts` holds contrast-checked
+values and is deliberately NOT wired — see `project_design_paper_lamplight`
+for the two routes and why `DynamicColorIOS` was not taken. Needs `app.json`
+off `userInterfaceStyle: "light"`, so **a real build, not an OTA**, and its
+own device pass.
 
-## RESUME HERE — device testing; night mode is the next build of work
+**3. Physician review of `config/safety/sage-safety-rules-v0.9.json` — still
+the LAUNCH BLOCKER**, carrying the fail-open evidence (under a rate limit,
+LLM-only cases silently become NONE: "dizzy, black stools" → NONE). The brief
+makes this RECURRING editorial labour, not a one-time signoff; the owner still
+needs to decide who owns that queue. `config/check_in/questions.json` is
+owner-approved (2026-08-26) but has NOT had a clinician's eyes.
 
-**SHIPPED 2026-08-28: "Paper and Lamplight" + the motion pass.**
-OTA `3683c29` on channel production, runtime 1.2.0, newest on the branch.
-Client-only (no backend, no native config), so no TestFlight build was
-needed. Two cold launches picks it up.
+**4. Card telemetry has no reader.** `patient_events` type `card_engagement`
+records shown/acted/dismissed per card kind. The brief's stated risk is that
+underperforming cards starve scanning and trials never unlock — this is the
+instrument for it and nobody has looked. A weekly count by kind would answer it.
 
-What went out, on top of the 2026-08-26 redesign:
-- **The palette.** Ink blue `#24486B` replaces sage; paper `#F4F6F8`; the
-  patient's bubble is pale blue `#E4EDF7`, still the one light in the room.
-  Depth via `Elevation` (soft, blue-tinted: a neutral shadow on blue paper
-  reads as dirt) and `ui/Bloom.tsx`, one static SVG wash behind the
-  conversation. Source of truth: `docs/redesign/sage-mockups-v4.html`.
-- **Motion.** `constants/motion.ts` holds every curve and duration;
-  `ui/PressableScale.tsx` gives all 88 tappables a press state (60 had
-  none, and the iOS send button did nothing at all); `lib/haptics.ts` is
-  named by moment and fires on NOTHING in the crisis path; the dealt cards
-  enter and exit; the check-in crossfades between questions; skeletons
-  replace blank screens; the launch no longer flashes white.
-- **The emoji fix.** `stripEmoji` in `lib/answer-text.ts` + UrgencyBanner.
-  The server still injects `🚨` (`lib/llm_utils.py:417`, `:3206`); this is a
-  CLIENT defuse, mirroring what the web has always done, chosen so the
-  safety prompts keep their eval window closed.
+## Shipped and verified
 
-**Next, in order:**
-1. **Device testing.** The 49-check walkthrough is updated for the new look
-   and republished:
-   https://claude.ai/code/artifact/d107db38-ea5b-41a8-9d0c-4748b5921888
-   Section K covers the new material.
-2. **Night mode — the real remaining work.** `constants/theme.night.ts`
-   holds contrast-checked values and is NOT wired. Two honest routes: a
-   `useColors()` hook plus a sweep of ~60 static `Colors` imports, or
-   `DynamicColorIOS`, which needs no call-site changes but is unproven
-   where this app passes colours into lucide icon props (they reach
-   react-native-svg, and a platform colour may not resolve — every icon
-   going black is the failure mode). Either way it needs `app.json` off
-   `userInterfaceStyle: "light"`, which is native, so **a real build, not
-   an OTA**, and its own device pass.
-3. Physician review of `config/safety/` — still the standing launch
-   blocker. `config/check_in/questions.json` is owner-approved 2026-08-26.
-4. **Card telemetry has no reader.** `patient_events` type
-   `card_engagement` records shown/acted/dismissed per card kind. The
-   brief's stated risk is that underperforming cards starve scanning and
-   trials never unlock; a weekly count by kind would answer it.
+| What | When | Evidence |
+|---|---|---|
+| The five redesign changes | 2026-08-26 | backend `a579c1e`; prod-probed (new routes 401 vs a 405 control; the prognosis wall and the birthday-party question both confirmed on a real account) |
+| 28 adversarial-review fixes | 2026-08-26 | incl. a critical one: every clinician would have been shown the PATIENT consent |
+| Paper and Lamplight + motion | 2026-08-28 | OTA `3683c29` |
+| Dismissible AI notice, chips stop speaking jargon | 2026-08-30 | OTA `e39de5f` |
+| Composer sits on the keyboard | 2026-08-31 | OTA `070743b` |
 
-**Design revert stays one command:** `mobile/constants/theme.v1.ts` holds
-the 2026-08-24 approved palette verbatim, and the tag
-`design-v1-approved-mockups` is the whole app at that point.
+Suite at last check: 1110 backend tests, tsc + lint clean, NativeWind
+Pressable scan zero, EAS bundle green.
 
-**Carried, deliberately not done:**
-- The drawer's "All tools" launcher still exists. The brief cuts the nine-tool
-  HOME grid, which is gone; the launcher stays until cards cover the tools it
-  holds (previsit, glossary, appeal, deep research, check-up schedule),
-  because deleting it now would strand real features.
-- `/api/screening/save` and the screening tables stay server-side for the web
+## Production state
+
+- Prod runs the post-retirement model set (see
+  `infra_provider_model_retirement`). Chat answers; the classifier tiers.
+- `FEATURE_PUSH_NOTIFICATIONS=true`, but `device_push_token` has 0 rows —
+  nobody has opted in and nothing has ever been sent.
+- Breast test patient `sage.test.breast@example.org` /
+  `SageBreastTest2026!`. **Reset to the bare fixture 2026-09-01** (sitting-1
+  state for the persona kit: stage IIB, NO zip, NO treatments, NO biomarkers,
+  coverage 0.45, cooldowns clear). Chat history was NOT cleared; run
+  `reset_test_patient.py --full --clear-chat` before starting the arc.
+- **Design revert is one command**: `mobile/constants/theme.v1.ts`, or the tag
+  `design-v1-approved-mockups` for the whole app at that point.
+
+## Carried, deliberately not done
+
+- The drawer's "All tools" launcher survives; the nine-tool HOME grid is gone.
+  It stays until cards cover what it holds, because deleting it now would
+  strand real features.
+- Deep research keeps its own off-topic gate (three surfaces consume that
+  contract); revisit with its tool decision.
+- `/api/screening/save` + the screening tables stay server-side for the web
   SPA's parity pass; only the mobile questionnaires were deleted.
-- Deep research keeps its own off-topic gate (its status contract is consumed
-  by three surfaces); revisit when its tool decision is made.
-- Rule 1's sixth-grade readability check in CI is NOT built. Copy was written
-  to the standard and is guarded by tests for dashes/directives/jargon, but
-  there is no automated readability gate yet.
+- Rule 1's sixth-grade readability gate in CI is NOT built. Copy is written to
+  the standard and guarded by tests for dashes, directives and jargon, but
+  nothing measures reading level.
 - "Since your last visit" compiler, the allowlisted ingestion pipeline and
-  appointment-date awareness (the brief's below-the-top-five items) are
-  untouched.
-
-### The five changes as built
-
-1. **Gate inversion.** `lib/walls.py` — deterministic prognosis/diagnosis/
-   dosing detection; direct personal-prognosis asks get the fixed screen-12
-   card (tier NONE + no detected urgency); everything else gets the wall rule
-   appended LAST to the prompt plus `enforce_wall()` guaranteeing the limit
-   sentence in code. Off-topic refusal deleted from chat + sandbox.
-   `engagement.yaml` (x10 cancers) + `wall_accuracy` metric replace the
-   off_topic suite.
-2. **Builder dead.** build.tsx (1014 lines) + the first-launch setup modal
-   deleted; entry points point at scan/chat; trials ask is screen-09 copy
-   with Scan a report / Just tell me / Not now.
-3. **Design system + Home.** Mockup tokens in `mobile/constants/theme.ts`;
-   Source Serif 4 is Sage's voice, Instrument Sans the interface; the
-   patient's bubble is the one warm element. `ConversationSurface` shared by
-   Home and /chat/:id; `DealtCard` + `/api/events/card` telemetry; the "+"
-   sheet holds exactly Scan a report / Record a visit / Since your last visit.
-4. **Check-ins.** `config/check_in/questions.json` (clinician-reviewable
-   bank, caregiver variants written out) + `lib/check_in.py` (<=3 questions,
-   treatment-tied first, 7-day cooldowns, decline counts) +
-   `/api/checkin/due|record` + CheckInCard. Answers go through /api/chat ON
-   PURPOSE — that is where PHQ-9 Q9's self-harm detection went.
-5. **Onboarding.** Fork + basics form deleted; "For oncologists" footer link
-   carries the reviewer intent so a clinician still never sees the patient
-   consent; NameCard asks the name in the conversation; new
-   `/api/account/perspective` + `perspective_set` so the gate waits on the
-   question rather than on a name.
-
-### Cross-cutting
-
-- The 9 communication rules (memory `project_trajectory_pivot` has them
-  compressed; the brief is authoritative). Rule 1's CI readability gate is
-  still UNBUILT — see "Carried, deliberately not done" above.
-- **Full retheme: DONE** (9ff441a) — mockup tokens in
-  `mobile/constants/theme.ts`, Source Serif 4 as Sage's voice, Instrument
-  Sans as the interface, warm `#F1E9DC` reserved for the patient's own words.
-- `soften_tone`'s grammar-blindness ("you shouldn't" → "it might help ton't")
-  becomes load-bearing under rule 3's fixed templates — fix it early.
-- The frozen legal layer is explicitly out of scope for the redesign.
-
-## Production state (all verified)
-
-- **Prod is on the model overrides above** (redeploy `wondrchat-clrgghsb1`,
-  2026-08-24): chat answers again, classifier tiers again. The gate
-  inversion is NOT deployed (local commits only) — prod still runs the old
-  off-topic gate until the owner says push.
-- **The chat-UX wave is fully live**: backend deployed (probe-verified by
-  401-on-new-routes vs 405 control) AND the OTA ran. `chat_turn` shows real
-  usage (2 answered rows) — silent recovery works in prod. Still unwitnessed
-  on a device: drag-selection in the select-text sheet, and any push actually
-  landing on a handset.
-- `FEATURE_PUSH_NOTIFICATIONS=true` is active in prod, but `device_push_token`
-  has 0 rows — nobody has opted in, nothing has ever been sent.
-- Breast test patient: `sage.test.breast@example.org` / `SageBreastTest2026!`
-  (password reset 2026-08-08; profile + 4 conversations preserved).
-- Product-foundations report (the redesign's evidence base):
-  `~/Downloads/sage-product-foundations.md` + artifact
-  https://claude.ai/code/artifact/952aab65-2766-4b80-85ad-f1f33badecdf
+  appointment-date awareness (the brief's below-the-top-five items).
+- The web SPA never received the redesign at all — zero of the new tokens,
+  still on the old palette. Phone-first per the standing convention; web
+  parity is its own project.
 
 ## Blockers / waiting on people
 
-- **Physician review of `config/safety/sage-safety-rules-v0.9.json` = LAUNCH
-  BLOCKER**, carrying the fail-open evidence (under a Groq rate limit,
-  LLM-only cases silently become NONE; "dizzy, black stools" → NONE). Note the
-  brief makes this RECURRING editorial labor (library re-review), not a
-  one-time signoff — owner to decide who owns that queue.
 - **Rotate the sage-dev service-role key** (pasted in a chat once).
 - **Email pipeline** (custom SMTP + templates + "Confirm email") — user-side.
 - Test accounts still in prod: `test.doctor.a@`, `test.doctor.b@wondrlink.com`,
   `sage.test.breast@example.org` — delete when device testing is finished.
+- (Physician review of the safety rules is item 3 under RESUME HERE.)
 
 ## Connection map — unchanged, untouched
 
@@ -179,14 +110,40 @@ Csiki's sitting. 22 concepts lack `display_patient` (blocks publishing);
 to a signed source") makes this pipeline the long-term answer-source — its
 priority likely RISES with the pivot.
 
-## Eval windows that survive the pivot
+## Found by the persona kit — small, unowned, real
 
-- `soften_tone` negation/contraction suite (see Cross-cutting — now urgent).
-- Colorectal-only prompt blocks gated on `cancer_slug` (probed at walkthrough
-  Q28/Q50; also called out in the brief's defect list).
+1. **The report extractor times out more often than it succeeds under load.**
+   `EXTRACTOR_TIMEOUT_S = 10` (`lib/patient_model.py`); measured median 8.5s
+   over nine no-timeout calls, 4 of 9 over the limit, tail to 87s. The SDK
+   retries twice, so a scan takes ~30s and then reports **"No medical facts
+   found in that text. Try a clearer photo of the results section"** — blaming
+   the patient's photograph for a server timeout. Raising the timeout is a
+   product decision (it interacts with the Vercel function limit and with how
+   long the review screen spins), so it is NOT changed. Owner's call.
+2. **`ECOG unspecified` always appears on the My Care card.**
+   `lib/profile_utils.py:569` builds `performance_status` as an f-string
+   BEFORE the `!= 'unspecified'` test, so the test can never suppress it — and
+   the UI is not supposed to say ECOG at all.
+3. **The surveillance screen reads keys the server does not send** — server
+   `type`/`recommendation`/`next_due`, client `test`/`when`/`due_date` — so
+   even a correctly generated colorectal schedule renders blank rows.
+
+FIXED 2026-09-01: the PII guard's `street_address` pattern used `\s*` between
+street-name words, so `greatest` split into `greate` + `st` and **"2.6 cm in
+greatest dimension" read as a street address**. That phrase is boilerplate in
+every pathology report, so photographing a real one 422'd outright. One
+character in `lib/deidentify.py`, locked by two tests both directions.
+
+## Open eval windows
+
+- `soften_tone`'s clause-blind regexes ("you should've" → "it might help
+  to've"; "you must not X" → a weak suggestion). Load-bearing now that the
+  walls use fixed template sentences.
+- Colorectal-only prompt blocks that are not gated on `cancer_slug`.
 - `scripts/test_all_features.py` literal-substring modernization.
-- (Superseded by change 1: the `classify_query_type` vocabulary item and the
-  off-topic keyword fix — do not do them separately.)
+- The verifier (`gpt-oss-20b`) and glossary (`gpt-oss-120b`) shipped
+  unvalidated after the provider retirement; both fail open harmlessly, but
+  neither has been spot-checked.
 
 ## Standing operations
 
@@ -194,15 +151,20 @@ priority likely RISES with the pivot.
   Csiki packet.
 - `SAFETY_CLASSIFIER_ENABLED=false` = safety-layer kill switch (floor-only).
 - Deploy checks: match the commit SHA (a 200 on `/api/health` is the PREVIOUS
-  deployment); `prompt_files: 12, overlays: 10` after bundling changes; native
-  module builds gated on `strings` over the `.ipa` binary.
+  deployment, and it never touches a model, so it stayed green through the
+  provider outage); `prompt_files: 12, overlays: 10` after bundling changes;
+  `eas update:list --branch production` for what the phone will actually get;
+  native module builds gated on `strings` over the `.ipa` binary.
 
 ## Where the durable facts live (do not re-derive)
 
 `.claude/rules/` — mobile-ui (NativeWind trap, RN-selectable truth,
-typographer, binary gate), backend-python (enforce_voice, depth levels,
-de-identify strip list, throttled-eval trap), prompt-files (whitespace,
-register), supabase-migrations (probe-as-role, CAS patterns), connection-map.
+typographer, binary gate, the keyboard/safe-area double-inset, PressableScale,
+motion tokens, no delight budget, disclosure-may-be-reduced-not-removed),
+backend-python (enforce_voice, depth levels, de-identify strip list,
+throttled-eval trap, walls-are-the-only-gate, chips-never-lead-with-jargon,
+model_state merge), prompt-files (whitespace, register), supabase-migrations
+(probe-as-role, CAS patterns), connection-map.
 `PLAN.md` + `SPEC-connection-map.md` — connection map. `SAGE_TODO.md` — the
 older checklist; its Workstream D (plain-language mappings) is largely
 absorbed by the trajectory brief.

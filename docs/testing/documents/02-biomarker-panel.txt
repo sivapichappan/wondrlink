@@ -1,0 +1,42 @@
+BREAST PROGNOSTIC MARKER PANEL
+
+Patient Name: Maria Alvarez
+DOB: 04/22/1979
+MRN: 5510884
+Accession #: IHC-26-04417-A
+Report Date: 02/17/2026
+
+Specimen source: left breast, lumpectomy, tumor block A3
+
+IMMUNOHISTOCHEMISTRY
+
+Estrogen receptor: POSITIVE, 95 percent of tumor nuclei, strong
+intensity. Allred score 8 of 8.
+
+Progesterone receptor: POSITIVE, 80 percent of tumor nuclei, moderate to
+strong intensity.
+
+HER2 by immunohistochemistry: score 1 plus.
+HER2: negative.
+No reflex in situ hybridization is indicated for a score of 1 plus.
+
+Ki-67 proliferation index: 22 percent.
+
+SOLID TUMOR MUTATION PANEL, 52 GENES
+
+PIK3CA: mutation detected. H1047R, variant allele fraction 31 percent.
+BRAF: wild-type.
+No other pathogenic or likely pathogenic variants were detected in the
+genes on this panel.
+
+Tumor mutational burden 3.1 mutations per megabase, low.
+
+INTERPRETATION
+
+Hormone receptor positive, HER2 negative invasive carcinoma of the
+breast. The PIK3CA H1047R alteration is a recognized therapeutic target
+and should be discussed with the treating medical oncologist when
+considering later lines of therapy.
+
+Germline testing was ordered separately and is not included in this
+report.
