@@ -3045,9 +3045,23 @@ def api_chat():
                             _emit_trials_shown(user_id, "chat", trials_result,
                                                session_id=active_conversation_id or session_id)
                         elif trials_result.get("error") == "no_zip_code":
+                            # Reachable only when readiness passed but the ZIP
+                            # would not geocode. It must still ASK rather than
+                            # send someone to a profile screen that the 2026-08-26
+                            # redesign deleted, so it carries the same
+                            # just-in-time shape the readiness gate produces.
                             clinical_trials_data = {
                                 "error": "no_zip_code",
-                                "message": "To search for clinical trials near you, please add your zip code to your profile."
+                                "message": (
+                                    "I can search for you. I still need one thing: "
+                                    "your ZIP code, so I can look for studies near you."
+                                ),
+                                "just_in_time_question": (
+                                    "What's your ZIP code? I'll use it to find "
+                                    "studies near you."
+                                ),
+                                "chat_prefill": "My ZIP code is ",
+                                "offer_scan": False,
                             }
                 except Exception as e:
                     logger.error(f"Error searching clinical trials: {e}", exc_info=True)

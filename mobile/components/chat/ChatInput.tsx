@@ -42,13 +42,23 @@ interface Props {
   placeholder?: string;
   /** Pre-fill the composer (e.g. "My ZIP code is ") without sending. */
   prefill?: string;
+  /** Bump to re-apply the SAME prefill. Without it a card that fills the
+   *  composer works once and then looks dead, because the effect keys on the
+   *  value and the value has not changed. */
+  prefillToken?: number;
 }
 
 function joinParts(...parts: string[]): string {
   return parts.map((p) => p.trim()).filter(Boolean).join(' ');
 }
 
-export function ChatInput({ onSend, disabled, placeholder = "Let's talk", prefill }: Props) {
+export function ChatInput({
+  onSend,
+  disabled,
+  placeholder = "Let's talk",
+  prefill,
+  prefillToken,
+}: Props) {
   const insets = useSafeAreaInsets();
   const keyboardUp = useKeyboardVisible();
   const [text, setText] = useState('');
@@ -62,7 +72,7 @@ export function ChatInput({ onSend, disabled, placeholder = "Let's talk", prefil
   useEffect(() => {
     if (prefill && !text) setText(prefill);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefill]);
+  }, [prefill, prefillToken]);
 
   const baseRef = useRef('');
   const finalRef = useRef('');

@@ -4,10 +4,12 @@ import { Text, View } from 'react-native';
 import { TrialCard } from '@/components/trials/TrialCard';
 import { Colors, Fonts } from '@/constants/theme';
 import { useWatchlist } from '@/hooks/useWatchlist';
-import type { ChatClinicalTrialsBlock } from '@shared/types';
+import type { ChatTrialsResults } from '@shared/types';
 
 interface Props {
-  trials?: ChatClinicalTrialsBlock | null;
+  /** RESULTS only. The block is a union and the ask half has no trials —
+   *  callers narrow on `error` first (see BotResponseCard). */
+  trials?: ChatTrialsResults | null;
 }
 
 export function TrialsCards({ trials }: Props) {

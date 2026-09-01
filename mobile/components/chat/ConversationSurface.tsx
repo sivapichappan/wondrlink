@@ -128,6 +128,20 @@ export function ConversationSurface({
     sendAndCount(text);
   };
 
+  // A card inside the thread can fill the composer (the trials ask does),
+  // seeded by the `prefill` prop for hand-offs from another screen. The token
+  // exists so tapping the same card twice works: the effect in ChatInput keys
+  // on the value, and the value does not change.
+  const [composerPrefill, setComposerPrefill] = useState<{ text: string; token: number }>({
+    text: prefill ?? '',
+    token: 0,
+  });
+  useEffect(() => {
+    if (prefill) setComposerPrefill((p) => ({ text: prefill, token: p.token + 1 }));
+  }, [prefill]);
+  const fillComposer = (text: string) =>
+    setComposerPrefill((p) => ({ text, token: p.token + 1 }));
+
   // ONE scroll owner, not two. This used to be an animated scrollToEnd on a
   // 50ms timeout racing an unanimated one on onContentSizeChange: the list
   // teleported to the bottom the instant a row laid out, and then the new
@@ -180,6 +194,7 @@ export function ConversationSurface({
           message={item}
           onPickFollowup={(t) => patientSend(t)}
           onSelectText={(c) => openSelect(c, rateable)}
+          onPrefill={fillComposer}
         />
         {showHint && (
           <Text
@@ -346,7 +361,8 @@ export function ConversationSurface({
         // Also held while recovering: only one turn is remembered on disk, so
         // a second question would overwrite the one still being collected.
         disabled={disabled || isSending || recovering}
-        prefill={prefill}
+        prefill={composerPrefill.text}
+        prefillToken={composerPrefill.token}
       />
 
       <SourcesSheet open={sourcesOpen} onClose={() => setSourcesOpen(false)} messages={messages} />

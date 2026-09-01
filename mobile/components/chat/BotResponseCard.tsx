@@ -11,6 +11,7 @@ import { ConfirmationChips } from './ConfirmationChips';
 import { EscalationCard } from './EscalationCard';
 import { MarkdownText } from './MarkdownText';
 import { ResourcesRow } from './ResourcesRow';
+import { TrialsAskCard } from './TrialsAskCard';
 import { TrialsCards } from './TrialsCards';
 import { UrgencyBanner } from './UrgencyBanner';
 
@@ -19,6 +20,9 @@ interface Props {
   onPickFollowup: (text: string) => void;
   /** Long press on the answer text opens the select-text sheet. */
   onSelectText?: (content: string) => void;
+  /** Fills the composer without sending — how a card asks a question that
+   *  the patient answers in their own words. */
+  onPrefill?: (text: string) => void;
 }
 
 const Divider = () => (
@@ -42,16 +46,22 @@ const labelStyle = {
   marginBottom: Spacing.xs,
 };
 
-export function BotResponseCard({ message, onPickFollowup, onSelectText }: Props) {
+export function BotResponseCard({ message, onPickFollowup, onSelectText, onPrefill }: Props) {
   const [expanded, setExpanded] = useState(false);
   const meta = message.metadata ?? {};
   const hasResources = !!meta.resources && meta.resources.length > 0;
-  const hasTrials = !!meta.clinical_trials && meta.clinical_trials.trials?.length > 0;
+  // The trials block is a union: results, or the server asking for the one
+  // field that is blocking the search. Narrow on `error` before touching
+  // `trials` — reading `.trials` off an ask is exactly how the ask was lost.
+  const trialsBlock = meta.clinical_trials ?? null;
+  const trialsAsk = trialsBlock?.error ? trialsBlock : null;
+  const trialsResults = trialsBlock && !trialsBlock.error ? trialsBlock : null;
+  const hasTrials = !!trialsResults && trialsResults.trials?.length > 0;
 
   const counts = [
     hasResources && `${meta.resources!.length} place${meta.resources!.length > 1 ? 's' : ''} to get help`,
     hasTrials &&
-      `${meta.clinical_trials!.trials.length} trial${meta.clinical_trials!.trials.length > 1 ? 's' : ''}`,
+      `${trialsResults!.trials.length} trial${trialsResults!.trials.length > 1 ? 's' : ''}`,
     // follow-ups render beneath the card; sources live in the
     // composer's "+" menu, for the whole thread at once.
   ].filter(Boolean) as string[];
@@ -115,6 +125,11 @@ export function BotResponseCard({ message, onPickFollowup, onSelectText }: Props
         <ConfirmationChips confirmations={meta.pending_confirmations} />
       )}
 
+      {/* Same rule, same reason: when the trial search is blocked, the
+          question that unblocks it IS the answer to what was just asked, so
+          it cannot live behind a disclosure. */}
+      {trialsAsk && <TrialsAskCard ask={trialsAsk} onPrefill={onPrefill} />}
+
       {hasMore && (
         <Pressable
           onPress={() => setExpanded((v) => !v)}
@@ -163,7 +178,7 @@ export function BotResponseCard({ message, onPickFollowup, onSelectText }: Props
       {expanded && hasTrials && (
         <>
           <Divider />
-          <TrialsCards trials={meta.clinical_trials} />
+          <TrialsCards trials={trialsResults} />
         </>
       )}
 

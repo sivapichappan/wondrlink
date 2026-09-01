@@ -306,12 +306,43 @@ export interface ChatClinicalTrial {
   url?: string;
 }
 
-export interface ChatClinicalTrialsBlock {
+/** The search ran and matched. */
+export interface ChatTrialsResults {
+  error?: undefined;
   found: number;
   total: number;
   trials: ChatClinicalTrial[];
   search_criteria: Record<string, unknown>;
+  /** A tip when only HELPFUL fields are missing. The search still ran. */
+  profile_completeness?: string;
 }
+
+/**
+ * The search was BLOCKED on a critical field (ZIP code, or whether the cancer
+ * has spread) and the server is asking for it instead.
+ *
+ * This shape was missing from the type entirely, which is how the chat client
+ * came to discard it: `hasTrials` tested `trials?.length > 0`, an ask has no
+ * trials, and so the one thing the patient needed to see — the question that
+ * unblocks their own search — was dropped without a sound. Anything reading
+ * this block must narrow on `error` before touching `trials`.
+ */
+export interface ChatTrialsAsk {
+  error: 'incomplete_profile' | 'no_zip_code';
+  /** Plain-words why, naming exactly what is missing. Render verbatim. */
+  message: string;
+  missing_critical?: string[];
+  missing_helpful?: string[];
+  /** The single highest-value question to ask right now. */
+  just_in_time_question?: string | null;
+  /** What to put in the composer so answering is typing a number. */
+  chat_prefill?: string | null;
+  /** True only when a document could answer it (spread is on reports; a ZIP
+   *  code is not). */
+  offer_scan?: boolean;
+}
+
+export type ChatClinicalTrialsBlock = ChatTrialsResults | ChatTrialsAsk;
 
 // =============================================================================
 // SAFETY CLASSIFIER  (pre-chat tiering; config/safety/ rules)
