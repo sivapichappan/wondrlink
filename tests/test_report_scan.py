@@ -80,6 +80,26 @@ class TestDeidentifyReportText:
     def test_empty_text(self):
         assert deidentify_report_text("") == ""
 
+    def test_tumor_measurements_are_not_street_addresses(self):
+        """"N cm in greatest dimension" is boilerplate in every pathology
+        report, and it used to trip the guard's street-address pattern:
+        with \\s* between the street-name words, "greatest" split into
+        "greate" + "st". That 422'd the scan of the exact document this
+        feature exists to read. Locks the \\s+ separator."""
+        for phrase in ("Mass measuring 2.6 cm in greatest dimension.",
+                       "Lesion 1.4 cm in greatest diameter, grade 2.",
+                       "Dose 4256 cGy in 16 fractions to the left breast."):
+            leaks = [n for n, _ in detect_pii_leaks(phrase) if n == "street_address"]
+            assert leaks == [], f"false positive on {phrase!r}"
+
+    def test_real_street_addresses_still_caught(self):
+        """The other half: narrowing the separator must not open a hole."""
+        for address in ("Seen at 1515 Holcombe Boulevard for infusion.",
+                        "Clinic moved to 123 Main St last spring.",
+                        "Records sent to 456 Oak Avenue."):
+            leaks = [n for n, _ in detect_pii_leaks(address) if n == "street_address"]
+            assert leaks == ["street_address"], f"missed address in {address!r}"
+
 
 class TestReportNameMismatch:
     """Warn-never-block: True only on a clear mismatch; every doubt is False."""

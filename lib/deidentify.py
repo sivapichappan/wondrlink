@@ -343,8 +343,13 @@ _PII_PATTERNS = [
     # Full date MM/DD/YYYY
     ("full_date_us", re.compile(r'\b(0?[1-9]|1[0-2])/(0?[1-9]|[12]\d|3[01])/(19|20)\d{2}\b')),
     # Address: "123 Main St", "456 Oak Avenue", "789 Elm Blvd"
+    # The separator after each street-name word is \s+ and NOT \s*, matching the
+    # scrubber above. With \s* the last word may run into the suffix, so
+    # "greatest" parses as "greate" + "st" and "2.6 cm in greatest dimension"
+    # reads as a street address — which 422s the scan of any real pathology
+    # report, that phrase being boilerplate in every one of them.
     ("street_address", re.compile(
-        r'\b\d{1,5}\s+(?:[A-Z][a-z]+\s*){1,3}'
+        r'\b\d{1,5}\s+(?:[A-Z][a-z]+\s+){1,3}'
         r'(?:St(?:reet)?|Ave(?:nue)?|Blvd|Boulevard|Dr(?:ive)?|Rd|Road|Ln|Lane|Ct|Court|Way|Pl(?:ace)?|Pkwy|Parkway)\b\.?',
         re.IGNORECASE
     )),
