@@ -14,13 +14,28 @@
  *
  * "Not now" ends the whole check-in, and the server treats a decline as
  * answered: an escape hatch that asks again tomorrow is a snooze button.
+ *
+ * ── ON FOLDING WHEN THE PATIENT SPEAKS ────────────────────────────────
+ *
+ * Reported from a real screen: someone opened the app, typed "I was
+ * diagnosed with breast cancer three weeks ago and I don't know what I'm
+ * supposed to be doing", and this card sat at full size between her question
+ * and the answer she was waiting for, asking about her energy levels.
+ *
+ * So the card folds itself down to one quiet line the moment she says
+ * something of her own. It does NOT vanish and it does NOT record a
+ * decline: burning the seven-day cooldown because she happened to have a
+ * question first would mean never asking her at all. Tapping the line opens
+ * it back up, and once she has opened it deliberately it stays open.
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { ChevronRight } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 
 import { CardChip } from '@/components/chat/DealtCard';
+import { PressableScale } from '@/components/ui/PressableScale';
 import { Duration, Ease, cardEnter, cardExit, messageEnter } from '@/constants/motion';
 import { Colors, Elevation, FontSize, Fonts, Radius, Spacing } from '@/constants/theme';
 import { logCardEvent, recordCheckIn, type CheckInQuestion } from '@/lib/api/cards';
@@ -33,10 +48,22 @@ interface Props {
   onDone: () => void;
   /** A send is already in flight; chips must not queue another. */
   sending?: boolean;
+  /** The patient has said something of their own. Folds the card to one
+   *  line until they ask for it back. */
+  folded?: boolean;
 }
 
-export function CheckInCard({ questions, onAnswer, onDone, sending }: Props) {
+/** How many are left, in words, because a digit here reads as a form. */
+function remainingLabel(n: number): string {
+  const words = ['no', 'one', 'two', 'three', 'four', 'five'];
+  const count = words[n] ?? String(n);
+  return n === 1 ? 'one question' : `${count} questions`;
+}
+
+export function CheckInCard({ questions, onAnswer, onDone, sending, folded }: Props) {
   const [index, setIndex] = useState(0);
+  // Sticky: a thing you opened on purpose does not close itself again.
+  const [opened, setOpened] = useState(false);
   const logged = useRef(false);
   const asked = useRef<string[]>([]);
 
@@ -84,6 +111,44 @@ export function CheckInCard({ questions, onAnswer, onDone, sending }: Props) {
     void recordCheckIn(questions.map((q) => q.id), 'declined');
     onDone();
   };
+
+  // Folded: one quiet line, out of the way of the conversation she started,
+  // still reachable with one tap. Nothing is recorded here — this is not a
+  // decline, and treating it as one would cost her the next seven days.
+  if (folded && !opened) {
+    const label = `Quick check-in · ${remainingLabel(remaining)}`;
+    return (
+      <Animated.View
+        entering={messageEnter()}
+        layout={LinearTransition.duration(Duration.state).easing(Ease.out)}>
+        <PressableScale
+          onPress={() => setOpened(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`Open the check-in, ${remainingLabel(remaining)}`}
+          hitSlop={10}
+          style={{ alignSelf: 'flex-start' }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: Spacing.xs,
+              paddingVertical: Spacing.xs,
+              paddingHorizontal: Spacing.xs,
+            }}>
+            <Text
+              style={{
+                color: Colors.textMuted,
+                fontSize: FontSize.sm,
+                fontFamily: Fonts.sansMedium,
+              }}>
+              {label}
+            </Text>
+            <ChevronRight size={14} color={Colors.textMuted} />
+          </View>
+        </PressableScale>
+      </Animated.View>
+    );
+  }
 
   return (
     <Animated.View

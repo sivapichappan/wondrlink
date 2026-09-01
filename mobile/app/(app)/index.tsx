@@ -27,7 +27,7 @@ import { Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 
-import { ConversationSurface } from '@/components/chat/ConversationSurface';
+import { ConversationSurface, type CardContext } from '@/components/chat/ConversationSurface';
 import { CardChip, DealtCard } from '@/components/chat/DealtCard';
 import { Bloom } from '@/components/ui/Bloom';
 import { ConversationSkeleton } from '@/components/ui/Skeleton';
@@ -181,7 +181,12 @@ export default function HomeScreen() {
   // A reviewer may never hold a patient profile (DB trigger, both
   // directions), so every card here would either fail to save or ask them
   // about a cancer they do not have. Their chat is a sandbox demo.
-  const cards = isReviewer ? undefined : (send: (text: string) => void, sending: boolean) => (
+  //
+  // `patientSpoke` separates the GATES from the OFFERS. The name card and the
+  // anchor question stay at full size whatever else is happening, because the
+  // conversation cannot really proceed without them. The check-in is an offer
+  // and folds itself away once she has asked something of her own.
+  const cards = isReviewer ? undefined : ({ send, sending, patientSpoke }: CardContext) => (
     <>
       {needsName && (
         // Perspective from the SAME query the gate reads. usePerspective
@@ -251,6 +256,7 @@ export default function HomeScreen() {
           questions={checkIn.data.questions}
           onAnswer={send}
           sending={sending}
+          folded={patientSpoke}
           onDone={() => setCheckInDone(true)}
         />
       )}

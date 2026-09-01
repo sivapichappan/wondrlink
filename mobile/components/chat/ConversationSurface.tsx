@@ -35,6 +35,26 @@ import { useSelectTextHintSeen } from '@/hooks/useSelectTextHintSeen';
 import { ApiError, extractErrorMessage } from '@/lib/api/client';
 import type { ChatHistoryMessage } from '@shared/types';
 
+export interface CardContext {
+  /** The guarded send, so a card can answer INTO the conversation (the
+   *  check-in card does exactly that) rather than writing to storage behind
+   *  it. Sends made through this do NOT count as the patient speaking. */
+  send: (text: string) => void;
+  /** A send is already in flight. A card that can fire several in a row must
+   *  respect the same one-at-a-time rule as the composer, since only one turn
+   *  is remembered on disk for recovery. */
+  sending: boolean;
+  /** The patient has said something of their own this session — typed it,
+   *  tapped a follow-up, or arrived with a question from another screen.
+   *  Cards that are UNSOLICITED OFFERS should fold themselves away when this
+   *  turns true: an offer that keeps its full size between the question
+   *  someone just asked and the answer they are waiting for is an
+   *  interruption, however gentle its wording. Cards that are GATES (the name
+   *  card, the anchor question) must ignore it — the conversation cannot
+   *  proceed without them. */
+  patientSpoke: boolean;
+}
+
 interface Props {
   conversationId: string;
   onConversationCreated?: (id: string, title?: string | null) => void;
@@ -43,13 +63,8 @@ interface Props {
   onAutoSendHandled?: () => void;
   /** Composer prefill (never sends) — e.g. "My ZIP code is ". */
   prefill?: string;
-  /** Dealt cards, rendered in-stream under the last message. Receives the
-   *  guarded send so a card can answer INTO the conversation (the check-in
-   *  card does exactly that) rather than writing to storage behind it, plus
-   *  whether a send is already in flight — a card that can fire several in
-   *  a row must respect the same one-at-a-time rule as the composer, since
-   *  only one turn is remembered on disk for recovery. */
-  cards?: (send: (text: string) => void, sending: boolean) => React.ReactNode;
+  /** Dealt cards, rendered in-stream under the last message. */
+  cards?: (ctx: CardContext) => React.ReactNode;
   /** Shown above the composer when the conversation is empty. */
   emptyState?: React.ReactNode;
   disabled?: boolean;
@@ -103,6 +118,16 @@ export function ConversationSurface({
     guardedSend(text);
   };
 
+  // A send the PATIENT initiated, as opposed to a card answering into the
+  // conversation on its own behalf. The distinction matters: the check-in
+  // card sends every one of its own answers through `sendAndCount`, so
+  // counting those would fold the card away after its first question.
+  const [patientSpoke, setPatientSpoke] = useState(false);
+  const patientSend = (text: string) => {
+    setPatientSpoke(true);
+    sendAndCount(text);
+  };
+
   // ONE scroll owner, not two. This used to be an animated scrollToEnd on a
   // 50ms timeout racing an unanimated one on onContentSizeChange: the list
   // teleported to the bottom the instant a row laid out, and then the new
@@ -123,7 +148,7 @@ export function ConversationSurface({
     if (!autoSend || isSending) return;
     if (lastHandledQ.current === autoSend) return;
     lastHandledQ.current = autoSend;
-    sendAndCount(autoSend);
+    patientSend(autoSend);
     onAutoSendHandled?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoSend, isSending]);
@@ -153,7 +178,7 @@ export function ConversationSurface({
       <Animated.View entering={messageEnter()} style={{ paddingHorizontal: 12, paddingVertical: 6, gap: 8 }}>
         <BotResponseCard
           message={item}
-          onPickFollowup={(t) => sendAndCount(t)}
+          onPickFollowup={(t) => patientSend(t)}
           onSelectText={(c) => openSelect(c, rateable)}
         />
         {showHint && (
@@ -171,7 +196,7 @@ export function ConversationSurface({
             than on one answer, and at thread width they have room to wrap
             instead of being clipped mid-question. */}
         {followups.length > 0 && (
-          <FollowupChips followups={followups} onPick={(t) => sendAndCount(t)} />
+          <FollowupChips followups={followups} onPick={(t) => patientSend(t)} />
         )}
       </Animated.View>
     );
@@ -226,7 +251,7 @@ export function ConversationSurface({
             <Animated.View
               layout={LinearTransition.duration(Duration.state).easing(Ease.out)}
               style={{ paddingHorizontal: 12, paddingTop: 6, gap: 10 }}>
-              {cards(sendAndCount, isSending || recovering)}
+              {cards({ send: sendAndCount, sending: isSending || recovering, patientSpoke })}
             </Animated.View>
           ) : null
         }
@@ -317,7 +342,7 @@ export function ConversationSurface({
       )}
 
       <ChatInput
-        onSend={sendAndCount}
+        onSend={patientSend}
         // Also held while recovering: only one turn is remembered on disk, so
         // a second question would overwrite the one still being collected.
         disabled={disabled || isSending || recovering}
